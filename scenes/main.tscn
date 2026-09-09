@@ -1,11 +1,10 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2_player"]
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="3_enemy"]
 [ext_resource type="Script" path="res://scripts/ui.gd" id="4_ui"]
 [ext_resource type="Script" path="res://scripts/map_generator.gd" id="9_mapgen"]
-[ext_resource type="ViewportTexture" path="res://scenes/main.tscn::SubViewport_MinimapViewport" id="10_minimap_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
