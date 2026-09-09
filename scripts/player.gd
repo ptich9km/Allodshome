@@ -35,13 +35,18 @@ func _ensure_sprite():
 		sprite.name = "Sprite"
 		add_child(sprite)
 	
+	# Загружаем текстуру из файла если не задана
 	if not sprite.texture:
-		var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
-		# Синий воин
-		for y in range(48):
-			for x in range(32):
-				img.set_pixel(x, y, Color(0.2, 0.4, 0.9, 1.0))
-		sprite.texture = ImageTexture.create_from_image(img)
+		var tex = load("res://assets/sprites/hero.png")
+		if tex:
+			sprite.texture = tex
+		else:
+			# Заглушка если файл не найден
+			var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
+			for y in range(48):
+				for x in range(32):
+					img.set_pixel(x, y, Color(0.2, 0.4, 0.9, 1.0))
+			sprite.texture = ImageTexture.create_from_image(img)
 		sprite.offset = Vector2(0, -20)
 
 func _physics_process(delta):

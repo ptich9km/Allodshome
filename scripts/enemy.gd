@@ -27,16 +27,23 @@ func _create_sprite():
 		add_child(sprite)
 
 	if not sprite.texture:
-		var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
-		if max_hp >= 50:
-			for y in range(48):
-				for x in range(32):
-					img.set_pixel(x, y, Color(0.2, 0.6, 0.15, 1.0))
+		# Загружаем спрайт из файла
+		var tex_path = "res://assets/sprites/orc.png" if max_hp >= 50 else "res://assets/sprites/slime.png"
+		var tex = load(tex_path)
+		if tex:
+			sprite.texture = tex
 		else:
-			for y in range(48):
-				for x in range(32):
-					img.set_pixel(x, y, Color(0.9, 0.3, 0.6, 1.0))
-		sprite.texture = ImageTexture.create_from_image(img)
+			# Заглушка если файл не найден
+			var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
+			if max_hp >= 50:
+				for y in range(48):
+					for x in range(32):
+						img.set_pixel(x, y, Color(0.2, 0.6, 0.15, 1.0))
+			else:
+				for y in range(48):
+					for x in range(32):
+						img.set_pixel(x, y, Color(0.9, 0.3, 0.6, 1.0))
+			sprite.texture = ImageTexture.create_from_image(img)
 		sprite.offset = Vector2(0, -20)
 
 func _physics_process(delta):
