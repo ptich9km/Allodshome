@@ -30,6 +30,8 @@ func setup_ui(p: Player):
 		spell_panel.add_child(button)
 
 func update_ui(p: Player):
+	if not is_instance_valid(p):
+		return
 	hp_bar.value = p.current_hp
 	mana_bar.value = p.current_mana
 	

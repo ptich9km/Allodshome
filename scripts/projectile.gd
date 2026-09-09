@@ -20,10 +20,7 @@ func _process(delta):
 		explode()
 
 func explode():
-	# Создаём взрыв (визуальный эффект)
-	# Наносим урон врагам в радиусе
-	for enemy in get_tree().get_nodes_in_group("enemies"):
+	for enemy in Game.enemies:
 		if is_instance_valid(enemy) and enemy.global_position.distance_to(global_position) < 30.0:
 			enemy.take_damage(damage, projectile_owner)
-	
 	queue_free()
