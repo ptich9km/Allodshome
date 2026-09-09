@@ -3,7 +3,7 @@ class_name GameUI
 
 @onready var hp_bar: ProgressBar = $BottomPanel/HpBar
 @onready var mana_bar: ProgressBar = $BottomPanel/ManaBar
-@onready var spell_panel: HBoxContainer = $BottomPanel/SpellPanel
+@onready var spell_panel: HBoxContainer = $SpellPanel
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
