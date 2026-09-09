@@ -27,7 +27,7 @@ func _ready():
 	for child in get_children():
 		if child is CharacterBody2D and child != player:
 			enemies.append(child)
-			print("  Враг найден: ", child.name, " HP=", child.get("max_hp", "?"))
+			print("  Враг найден: ", child.name, " HP=", child.max_hp if "max_hp" in child else "?")
 	
 	print("Всего врагов: ", enemies.size())
 
