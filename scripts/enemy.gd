@@ -35,21 +35,21 @@ func _create_sprite():
 		add_child(sprite)
 
 	if not sprite.texture:
-		# Загружаем спрайт из файла или создаём заглушку
 		var tex_path = ""
-		var img_color = Color(0.2, 0.6, 0.15, 1.0)  # орк зелёный
+		var img_color = Color(0.2, 0.6, 0.15, 1.0)
 		
 		if max_hp >= 80:
-			# Тролль — большой серый
-			tex_path = ""
+			# Тролль — серый прямоугольник
 			img_color = Color(0.4, 0.4, 0.4, 1.0)
 		elif max_hp >= 50:
 			tex_path = "res://assets/sprites/orc.png"
 		else:
 			tex_path = "res://assets/sprites/slime.png"
-		var tex = load(tex_path)
-		if tex:
-			sprite.texture = tex
+		
+		if tex_path != "":
+			var tex = load(tex_path)
+			if tex:
+				sprite.texture = tex
 		else:
 			# Заглушка если файл не найден
 			var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)

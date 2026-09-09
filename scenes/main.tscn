@@ -166,23 +166,23 @@ offset_top = 600.0
 offset_right = 1070.0
 offset_bottom = 800.0
 
-[node name="StatBars" type="Panel" parent="UI/BottomPanel"]
+[node name="HPManaPanel" type="Panel" parent="UI"]
 offset_left = 5.0
-offset_top = 5.0
+offset_top = 740.0
 offset_right = 200.0
-offset_bottom = 60.0
+offset_bottom = 795.0
 
-[node name="HpBar" type="ProgressBar" parent="UI/BottomPanel/StatBars"]
+[node name="HpBar" type="ProgressBar" parent="UI/HPManaPanel"]
 offset_left = 5.0
-offset_top = 5.0
-offset_right = 190.0
-offset_bottom = 22.0
+offset_top = 3.0
+offset_right = 188.0
+offset_bottom = 18.0
 
-[node name="ManaBar" type="ProgressBar" parent="UI/BottomPanel/StatBars"]
+[node name="ManaBar" type="ProgressBar" parent="UI/HPManaPanel"]
 offset_left = 5.0
-offset_top = 28.0
-offset_right = 190.0
-offset_bottom = 45.0
+offset_top = 26.0
+offset_right = 188.0
+offset_bottom = 41.0
 
 [node name="SpellPanelTop" type="HBoxContainer" parent="UI/BottomPanel"]
 offset_left = 210.0
@@ -197,7 +197,7 @@ offset_right = 1020.0
 offset_bottom = 125.0
 
 [node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel"]
-offset_left = 20.0
+offset_left = 210.0
 offset_top = 130.0
 offset_right = 1050.0
 offset_bottom = 190.0

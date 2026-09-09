@@ -1,8 +1,8 @@
 extends CanvasLayer
 class_name GameUI
 
-@onready var hp_bar: ProgressBar = $BottomPanel/StatBars/HpBar
-@onready var mana_bar: ProgressBar = $BottomPanel/StatBars/ManaBar
+@onready var hp_bar: ProgressBar = $HPManaPanel/HpBar
+@onready var mana_bar: ProgressBar = $HPManaPanel/ManaBar
 @onready var spell_panel_top: HBoxContainer = $BottomPanel/SpellPanelTop
 @onready var spell_panel_bottom: HBoxContainer = $BottomPanel/SpellPanelBottom
 @onready var pause_label: Label = $PauseLabel
@@ -134,11 +134,6 @@ func _setup_inventory():
 		inventory_grid.add_child(slot)
 		inventory_slots.append(slot)
 		inventory_items.append(null)
-	
-	# Добавляем стартовые предметы
-	_add_item(0, "res://assets/sprites/hero.png", "Меч")
-	_add_item(1, "res://assets/sprites/orc.png", "Щит")
-	_add_item(5, "res://assets/sprites/slime.png", "Зелье")
 
 func _add_item(slot_idx: int, icon_path: String, name: String):
 	if slot_idx >= 0 and slot_idx < inventory_slots.size():
