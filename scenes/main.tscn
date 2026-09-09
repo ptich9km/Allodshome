@@ -36,55 +36,13 @@ agility = 10
 intellect = 10
 endurance = 10
 spirit = 10
-groups = ["player"]
 
 [node name="Sprite" type="Sprite2D" parent="Player"]
 
 [node name="Collision" type="CollisionShape2D" parent="Player"]
 shape = SubResource("CircleShape2D_player")
 
-[node name="UI" type="CanvasLayer" parent="."]
-script = ExtResource("4_ui")
-
-[node name="HPBar" type="ProgressBar" parent="UI"]
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 210.0
-offset_bottom = 25.0
-
-[node name="BG" type="TextureRect" parent="UI/HPBar"]
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 200.0
-offset_bottom = 15.0
-
-[node name="ManaBar" type="ProgressBar" parent="UI"]
-offset_left = 10.0
-offset_top = 30.0
-offset_right = 210.0
-offset_bottom = 45.0
-
-[node name="BG" type="TextureRect" parent="UI/ManaBar"]
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 200.0
-offset_bottom = 15.0
-
-[node name="SpellPanel" type="HBoxContainer" parent="UI"]
-offset_left = 400.0
-offset_top = 650.0
-offset_right = 880.0
-offset_bottom = 690.0
-
-[node name="PauseLabel" type="Label" parent="UI"]
-offset_left = 440.0
-offset_top = 50.0
-offset_right = 840.0
-offset_bottom = 80.0
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Enemy1" type="CharacterBody2D" parent="." groups="enemies"]
+[node name="Enemy1" type="CharacterBody2D" parent="."]
 script = ExtResource("3_enemy")
 max_hp = 50
 damage = 8
@@ -96,7 +54,7 @@ home_position = Vector2(200, 100)
 [node name="Collision" type="CollisionShape2D" parent="Enemy1"]
 shape = SubResource("CircleShape2D_orc")
 
-[node name="Enemy2" type="CharacterBody2D" parent="." groups="enemies"]
+[node name="Enemy2" type="CharacterBody2D" parent="."]
 script = ExtResource("3_enemy")
 max_hp = 50
 damage = 8
@@ -108,7 +66,7 @@ home_position = Vector2(-150, 150)
 [node name="Collision" type="CollisionShape2D" parent="Enemy2"]
 shape = SubResource("CircleShape2D_orc")
 
-[node name="Enemy3" type="CharacterBody2D" parent="." groups="enemies"]
+[node name="Enemy3" type="CharacterBody2D" parent="."]
 script = ExtResource("3_enemy")
 max_hp = 30
 damage = 5
@@ -119,3 +77,94 @@ home_position = Vector2(0, -200)
 
 [node name="Collision" type="CollisionShape2D" parent="Enemy3"]
 shape = SubResource("CircleShape2D_slime")
+
+[node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("4_ui")
+
+[node name="RightPanel" type="PanelContainer" parent="UI"]
+offset_left = 1080.0
+offset_top = 0.0
+offset_right = 1280.0
+offset_bottom = 720.0
+
+[node name="MinimapViewport" type="SubViewport" parent="UI/RightPanel"]
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 165.0
+offset_bottom = 165.0
+size = Vector2i(160, 160)
+
+[node name="MinimapTexture" type="TextureRect" parent="UI/RightPanel/MinimapViewport"]
+
+[node name="ActionPanel" type="VBoxContainer" parent="UI/RightPanel"]
+offset_left = 5.0
+offset_top = 170.0
+offset_right = 155.0
+offset_bottom = 280.0
+
+[node name="ActionPanel/FollowBtn" type="Button" parent="UI/RightPanel"]
+text = "👤 Следовать"
+offset_left = 5.0
+offset_top = 170.0
+offset_right = 155.0
+offset_bottom = 200.0
+
+[node name="ActionPanel/AttackBtn" type="Button" parent="UI/RightPanel"]
+text = " Атаковать"
+offset_left = 5.0
+offset_top = 205.0
+offset_right = 155.0
+offset_bottom = 235.0
+
+[node name="ActionPanel/GuardBtn" type="Button" parent="UI/RightPanel"]
+text = " Охранять"
+offset_left = 5.0
+offset_top = 240.0
+offset_right = 155.0
+offset_bottom = 270.0
+
+[node name="PortraitTexture" type="TextureRect" parent="UI/RightPanel"]
+offset_left = 10.0
+offset_top = 285.0
+offset_right = 150.0
+offset_bottom = 425.0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatsLabel" type="Label" parent="UI/RightPanel"]
+offset_left = 5.0
+offset_top = 435.0
+offset_right = 190.0
+offset_bottom = 720.0
+
+[node name="BottomPanel" type="PanelContainer" parent="UI"]
+offset_left = 0.0
+offset_top = 660.0
+offset_right = 1280.0
+offset_bottom = 720.0
+
+[node name="HpBar" type="ProgressBar" parent="UI/BottomPanel"]
+offset_left = 10.0
+offset_top = 5.0
+offset_right = 210.0
+offset_bottom = 20.0
+
+[node name="ManaBar" type="ProgressBar" parent="UI/BottomPanel"]
+offset_left = 10.0
+offset_top = 25.0
+offset_right = 210.0
+offset_bottom = 40.0
+
+[node name="SpellPanel" type="HBoxContainer" parent="UI/BottomPanel"]
+offset_left = 300.0
+offset_top = 5.0
+offset_right = 800.0
+offset_bottom = 45.0
+
+[node name="PauseLabel" type="Label" parent="UI/BottomPanel"]
+offset_left = 440.0
+offset_top = -620.0
+offset_right = 840.0
+offset_bottom = -590.0
+horizontal_alignment = 1
+vertical_alignment = 1
