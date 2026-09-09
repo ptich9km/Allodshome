@@ -22,11 +22,20 @@ var abilities = [
 	{"name": "lightning", "damage": 20, "mana_cost": 15, "cooldown": 2.5, "range": 150}
 ]
 var ability_cooldowns = [0.0, 0.0, 0.0]
+var health_bar: HealthBar
 
 func _ready():
 	current_hp = max_hp
 	current_mana = max_mana
 	_ensure_sprite()
+	_create_health_bar()
+
+func _create_health_bar():
+	health_bar = preload("res://scripts/health_bar.gd").new()
+	health_bar.max_hp = max_hp
+	health_bar.max_mana = max_mana
+	health_bar.has_mana = true
+	add_child(health_bar)
 
 func _ensure_sprite():
 	var sprite = get_node_or_null("Sprite")
@@ -56,6 +65,10 @@ func _physics_process(delta):
 	attack_cooldown = max(0, attack_cooldown - delta)
 	for i in range(ability_cooldowns.size()):
 		ability_cooldowns[i] = max(0, ability_cooldowns[i] - delta)
+
+	# Обновляем бар здоровья
+	if health_bar:
+		health_bar.update_bars(current_hp, current_mana)
 
 	# Обработка заклинаний
 	if Input.is_action_just_pressed("cast_1"):

@@ -13,11 +13,19 @@ var state: String = "idle"
 var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
 var can_flee: bool = true
+var health_bar: HealthBar
 
 func _ready():
 	current_hp = max_hp
 	home_position = global_position
 	_create_sprite()
+	_create_health_bar()
+
+func _create_health_bar():
+	health_bar = preload("res://scripts/health_bar.gd").new()
+	health_bar.max_hp = max_hp
+	health_bar.has_mana = false  # У врагов нет маны
+	add_child(health_bar)
 
 func _create_sprite():
 	var sprite = get_node_or_null("Sprite")
@@ -27,22 +35,27 @@ func _create_sprite():
 		add_child(sprite)
 
 	if not sprite.texture:
-		# Загружаем спрайт из файла
-		var tex_path = "res://assets/sprites/orc.png" if max_hp >= 50 else "res://assets/sprites/slime.png"
+		# Загружаем спрайт из файла или создаём заглушку
+		var tex_path = ""
+		var img_color = Color(0.2, 0.6, 0.15, 1.0)  # орк зелёный
+		
+		if max_hp >= 80:
+			# Тролль — большой серый
+			tex_path = ""
+			img_color = Color(0.4, 0.4, 0.4, 1.0)
+		elif max_hp >= 50:
+			tex_path = "res://assets/sprites/orc.png"
+		else:
+			tex_path = "res://assets/sprites/slime.png"
 		var tex = load(tex_path)
 		if tex:
 			sprite.texture = tex
 		else:
 			# Заглушка если файл не найден
 			var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
-			if max_hp >= 50:
-				for y in range(48):
-					for x in range(32):
-						img.set_pixel(x, y, Color(0.2, 0.6, 0.15, 1.0))
-			else:
-				for y in range(48):
-					for x in range(32):
-						img.set_pixel(x, y, Color(0.9, 0.3, 0.6, 1.0))
+			for y in range(48):
+				for x in range(32):
+					img.set_pixel(x, y, img_color)
 			sprite.texture = ImageTexture.create_from_image(img)
 		sprite.offset = Vector2(0, -20)
 
@@ -51,6 +64,10 @@ func _physics_process(delta):
 		return
 
 	attack_cooldown = max(0, attack_cooldown - delta)
+
+	# Обновляем бар здоровья
+	if health_bar:
+		health_bar.update_bars(current_hp)
 
 	var player = get_tree().get_first_node_in_group("player")
 	if not player or not is_instance_valid(player):

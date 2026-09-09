@@ -1,8 +1,8 @@
 extends CanvasLayer
 class_name GameUI
 
-@onready var hp_bar: ProgressBar = $BottomPanel/HpBar
-@onready var mana_bar: ProgressBar = $BottomPanel/ManaBar
+@onready var hp_bar: ProgressBar = $BottomPanel/StatBars/HpBar
+@onready var mana_bar: ProgressBar = $BottomPanel/StatBars/ManaBar
 @onready var spell_panel_top: HBoxContainer = $BottomPanel/SpellPanelTop
 @onready var spell_panel_bottom: HBoxContainer = $BottomPanel/SpellPanelBottom
 @onready var pause_label: Label = $PauseLabel
