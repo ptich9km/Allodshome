@@ -38,8 +38,9 @@ func _ready():
 	# Добавляем игрока в группу "player" для врагов
 	player.add_to_group("player")
 	
-	# Добавляем TileMap в группу для миникарты
+	# TileMap доступен через @onready — добавим в группу для миникарты
 	tilemap.add_to_group("tilemap")
+	print("TileMap added to 'tilemap' group")
 
 	if ui:
 		ui.setup_ui(player)

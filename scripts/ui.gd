@@ -31,6 +31,14 @@ func setup_ui(p: Player):
 
 	_setup_inventory()
 
+	# Ищем tilemap для миникарты
+	minimap_tilemap = get_tree().get_first_node_in_group("tilemap")
+	print("Minimap tilemap found: ", minimap_tilemap != null)
+	
+	_setup_minimap()
+	_setup_action_buttons()
+	_update_stats()
+
 # Панель заклинаний с иконками
 var spell_buttons: Array = []
 
