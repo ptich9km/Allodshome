@@ -126,4 +126,30 @@ func take_damage(dmg: int, attacker: Node2D):
 		state = "chase"
 		attack_target = attacker
 	if current_hp <= 0:
+		_drop_loot()
 		queue_free()
+
+func _drop_loot():
+	var num_items = 1
+	if max_hp >= 80:
+		num_items = 5
+	elif max_hp >= 50:
+		num_items = 3
+	elif max_hp >= 30:
+		num_items = 2
+	
+	var items = []
+	for i in range(num_items):
+		var roll = randi() % 4
+		match roll:
+			0: items.append({"name": "Золото", "amount": randi() % 10 + 1})
+			1: items.append({"name": "Зелье HP", "amount": 1})
+			2: items.append({"name": "Зелье маны", "amount": 1})
+			3: items.append({"name": "Руда", "amount": randi() % 3 + 1})
+	
+	var loot_scene = preload("res://scenes/loot_bag.tscn")
+	if loot_scene:
+		var bag = loot_scene.instantiate()
+		bag.items = items
+		bag.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		get_tree().root.add_child(bag)

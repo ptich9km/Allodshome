@@ -1,0 +1,17 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/loot_bag.gd" id="1_loot"]
+[ext_resource type="Texture2D" path="res://assets/sprites/loot_small.png" id="2_small"]
+[ext_resource type="Texture2D" path="res://assets/sprites/loot_medium.png" id="3_medium"]
+[ext_resource type="Texture2D" path="res://assets/sprites/loot_large.png" id="4_large"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_loot"]
+radius = 12.0
+
+[node name="LootBag" type="Area2D" input_pickable=true]
+script = ExtResource("1_loot")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+
+[node name="Collision" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_loot")
