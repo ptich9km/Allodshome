@@ -1,37 +1,30 @@
 extends CanvasLayer
 class_name GameUI
 
-# Правая панель
-@onready var minimap_viewport: SubViewport = $MinimapBorder/MinimapViewport
-
-# Нижняя панель
 @onready var hp_bar: ProgressBar = $BottomPanel/HpBar
 @onready var mana_bar: ProgressBar = $BottomPanel/ManaBar
 @onready var spell_panel: HBoxContainer = $BottomPanel/SpellPanel
 @onready var pause_label: Label = $PauseLabel
-
-# Правая панель
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
+@onready var minimap_rect: ColorRect = $MinimapBorder/MinimapRect
 
-# Миникарта
 var minimap_camera: Camera2D
 var minimap_tilemap: TileMapLayer
-const MINIMAP_SIZE = 160
-const MINIMAP_SCALE = 0.25
-
 var player: Player
+
+# Для рисования миникарты
+var minimap_image: Image
+var minimap_texture: ImageTexture
 
 func setup_ui(p: Player):
 	player = p
 
-	# HP/Mana
 	hp_bar.max_value = player.max_hp
 	hp_bar.value = player.current_hp
 	mana_bar.max_value = player.max_mana
 	mana_bar.value = player.current_mana
 
-	# Заклинания
 	for i in range(player.abilities.size()):
 		var ability = player.abilities[i]
 		var button = Button.new()
@@ -40,25 +33,85 @@ func setup_ui(p: Player):
 		button.pressed.connect(func(): cast_ability(i))
 		spell_panel.add_child(button)
 
-	# Портрет
 	var tex = load("res://assets/sprites/hero.png")
 	if tex:
 		portrait_texture.texture = tex
 
-	# Миникарта — находим TileMap
 	minimap_tilemap = get_tree().get_first_node_in_group("tilemap")
-	if minimap_tilemap:
-		_setup_minimap()
-
-	# Обновляем характеристики
+	_setup_minimap()
 	_update_stats()
 
 func _setup_minimap():
-	# Создаём камеру для миникарты
-	minimap_camera = Camera2D.new()
-	minimap_camera.zoom = Vector2(MINIMAP_SCALE, MINIMAP_SCALE)
-	minimap_camera.ignore_rotation = true
-	minimap_tilemap.add_child(minimap_camera)
+	# Создаём изображение миникарты (190x190)
+	minimap_image = Image.create(190, 190, false, Image.FORMAT_RGBA8)
+	minimap_texture = ImageTexture.create_from_image(minimap_image)
+	minimap_rect.color = Color(0, 0, 0, 0)
+	# Добавляем TextureRect для отображения
+	var tex_rect = TextureRect.new()
+	tex_rect.name = "MinimapTex"
+	tex_rect.offset_left = 0
+	tex_rect.offset_top = 0
+	tex_rect.offset_right = 190
+	tex_rect.offset_bottom = 190
+	tex_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	minimap_rect.add_child(tex_rect)
+
+func _draw_minimap():
+	if not minimap_tilemap or not is_instance_valid(player):
+		return
+	
+	var player_tile = Vector2i(int(player.global_position.x / 64), int(player.global_position.y / 32))
+	var map_center = player_tile
+	
+	# Рисуем тайлы вокруг игрока
+	for dy in range(-10, 11):
+		for dx in range(-10, 11):
+			var tile_x = map_center.x + dx
+			var tile_y = map_center.y + dy
+			var screen_x = 95 + dx * 9
+			var screen_y = 95 + dy * 9
+			
+			if screen_x < 0 or screen_x >= 190 or screen_y < 0 or screen_y >= 190:
+				continue
+			
+			# Определяем цвет тайла
+			var color = Color(0, 0, 0, 0)
+			# Трава — зелёный, стена — серый
+			var dist = abs(tile_x) + abs(tile_y)
+			if dist <= 7:
+				color = Color(0.2, 0.6, 0.15, 0.8)
+			elif dist == 8:
+				color = Color(0.4, 0.35, 0.3, 0.8)
+			
+			if color.a > 0:
+				for py in range(screen_y - 3, screen_y + 4):
+					for px in range(screen_x - 3, screen_x + 4):
+						if py >= 0 and py < 190 and px >= 0 and px < 190:
+							minimap_image.set_pixel(px, py, color)
+	
+	# Рисуем игрока (синяя точка)
+	var px = 95
+	var py = 95
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			if py+dy >= 0 and py+dy < 190 and px+dx >= 0 and px+dx < 190:
+				minimap_image.set_pixel(px+dx, py+dy, Color(0.2, 0.4, 1.0, 1.0))
+	
+	# Рисуем врагов (красные точки)
+	for enemy in Game.enemies:
+		if is_instance_valid(enemy):
+			var etx = int((enemy.global_position.x - player.global_position.x) / 64) + 95
+			var ety = int((enemy.global_position.y - player.global_position.y) / 32) + 95
+			if etx >= 0 and etx < 190 and ety >= 0 and ety < 190:
+				for dy in range(-2, 3):
+					for dx in range(-2, 3):
+						minimap_image.set_pixel(etx+dx, ety+dy, Color(1.0, 0.2, 0.2, 1.0))
+	
+	minimap_texture.update(minimap_image)
+	var tex_rect = minimap_rect.get_node_or_null("MinimapTex")
+	if tex_rect:
+		tex_rect.texture = minimap_texture
 
 func _update_stats():
 	if not is_instance_valid(player):
@@ -74,7 +127,7 @@ func _update_stats():
 	stats += "═══════════════\n"
 	stats += "УРОН:        %d-%d\n" % [p.strength, p.strength + 5]
 	stats += "БРОНЯ:       %d\n" % (p.endurance / 2)
-	stats += "ЗАЩИЩА:      %d\n" % (p.endurance / 3)
+	stats += "ЗАЩИТА:      %d\n" % (p.endurance / 3)
 	stats += "ОПЫТ:        0\n"
 	stats += "СКОРОСТЬ:    %d\n" % int(p.move_speed)
 	stats_label.text = stats
@@ -96,9 +149,7 @@ func update_ui(p: Player):
 			else:
 				button.text = "%d. %s" % [i + 1, ability.name.capitalize()]
 
-	# Обновляем миникарту
-	if minimap_camera and is_instance_valid(p):
-		minimap_camera.global_position = p.global_position
+	_draw_minimap()
 
 func cast_ability(index: int):
 	if player:

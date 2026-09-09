@@ -1,10 +1,11 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2_player"]
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="3_enemy"]
 [ext_resource type="Script" path="res://scripts/ui.gd" id="4_ui"]
 [ext_resource type="Script" path="res://scripts/map_generator.gd" id="9_mapgen"]
+[ext_resource type="ViewportTexture" path="res://scenes/main.tscn::SubViewport_MinimapViewport" id="10_minimap_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
@@ -87,12 +88,12 @@ offset_top = 5.0
 offset_right = 1275.0
 offset_bottom = 205.0
 
-[node name="MinimapViewport" type="SubViewport" parent="UI/MinimapBorder"]
+[node name="MinimapRect" type="ColorRect" parent="UI/MinimapBorder"]
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 195.0
 offset_bottom = 195.0
-size = Vector2i(190, 190)
+color = Color(0.05, 0.05, 0.05, 1)
 
 [node name="ActionPanel" type="Panel" parent="UI"]
 offset_left = 1075.0
