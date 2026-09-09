@@ -23,13 +23,16 @@ func _ready():
 
 	await get_tree().process_frame
 	
-	# Находим врагов — все CharacterBody2D кроме игрока
+	# Находим врагов и игрока
 	for child in get_children():
 		if child is CharacterBody2D and child != player:
 			enemies.append(child)
 			print("  Враг найден: ", child.name, " HP=", child.max_hp if "max_hp" in child else "?")
-	
+
 	print("Всего врагов: ", enemies.size())
+
+	# Добавляем игрока в группу "player" для врагов
+	player.add_to_group("player")
 
 	if ui:
 		ui.setup_ui(player)
@@ -70,3 +73,7 @@ func _process(delta):
 		camera.position = camera.position.lerp(player.position, 5.0 * delta)
 	if is_instance_valid(ui):
 		ui.update_ui(player)
+	
+	# Регенерация маны игрока
+	if is_instance_valid(player) and player.current_mana < player.max_mana:
+		player.current_mana = min(player.max_mana, player.current_mana + int(1 * delta))
