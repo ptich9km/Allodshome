@@ -19,29 +19,28 @@ func _ready():
 	bar_bg = ColorRect.new()
 	bar_bg.size = Vector2(50, 8)
 	bar_bg.color = Color(0.1, 0.1, 0.1, 0.8)
-	bar_bg.position = Vector2(-25, -50)
+	bar_bg.position = Vector2(-25, -65)
 	add_child(bar_bg)
-	
+
 	# HP бар (красный)
 	bar_hp = ColorRect.new()
 	bar_hp.size = Vector2(48, 6)
 	bar_hp.color = Color(0.9, 0.2, 0.2, 1.0)
-	bar_hp.position = Vector2(-24, -49)
+	bar_hp.position = Vector2(-24, -64)
 	add_child(bar_hp)
-	
+
 	# Mana бар (синий) — только если есть мана
 	if has_mana:
 		bar_mana = ColorRect.new()
 		bar_mana.size = Vector2(48, 6)
 		bar_mana.color = Color(0.2, 0.4, 0.9, 1.0)
-		bar_mana.position = Vector2(-24, -42)
+		bar_mana.position = Vector2(-24, -55)
 		add_child(bar_mana)
-	
-	var mana_bg = ColorRect.new()
-	mana_bg.size = Vector2(50, 8)
-	mana_bg.color = Color(0.1, 0.1, 0.1, 0.8)
-	mana_bg.position = Vector2(-25, -43)
-	if has_mana:
+		
+		var mana_bg = ColorRect.new()
+		mana_bg.size = Vector2(50, 8)
+		mana_bg.color = Color(0.1, 0.1, 0.1, 0.8)
+		mana_bg.position = Vector2(-25, -56)
 		add_child(mana_bg)
 
 func update_bars(hp: int, mana: int = 0):
