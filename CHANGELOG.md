@@ -24,7 +24,7 @@
 ### Fixed
 - Удалены лишние ExtResource для тайлов в main.tscn (дублировались с TileSet)
 - Регенерированы tile_grass.png и tile_wall.png — тайлы теперь содержат реальные пиксели (раньше были полностью прозрачные)
-- Ошибки парсинга .tscn файлов (SubResource синтаксис)
-- Переименование `owner` → `projectile_owner` (конфликт с Node2D)
+- Исправлены parent пути UI нод в main.tscn (HPBar/BG → BG под HPBar)
+- Удалены все предупреждения GDScript (неиспользуемые переменные, shadowing)
 
 ---
