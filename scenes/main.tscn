@@ -9,8 +9,6 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/slime.png" id="7_slime"]
 [ext_resource type="TileSet" path="res://assets/tiles/isometric_tileset.tres" id="8_tileset"]
 [ext_resource type="Script" path="res://scripts/map_generator.gd" id="9_mapgen"]
-[ext_resource type="Texture2D" path="res://assets/sprites/tile_grass.png" id="10_grass_tile"]
-[ext_resource type="Texture2D" path="res://assets/sprites/tile_wall.png" id="11_wall_tile"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
