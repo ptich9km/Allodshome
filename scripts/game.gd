@@ -20,6 +20,7 @@ const AGGRO_RADIUS: float = 150.0
 const DEAGGRO_RADIUS: float = 200.0
 
 func _ready():
+	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
 	if camera and player:
 		camera.position = player.position
 		camera.make_current()
@@ -52,8 +53,8 @@ func _input(event):
 		is_paused = !is_paused
 		get_tree().paused = is_paused
 
-	# Рестарт по R
-	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+	# Рестарт по Ctrl+R
+	if event is InputEventKey and event.pressed and event.keycode == KEY_R and event.ctrl_pressed:
 		get_tree().reload_current_scene()
 
 func handle_click(world_position: Vector2):
