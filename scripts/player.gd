@@ -99,7 +99,7 @@ func cast_ability(index: int, target_position: Vector2):
 		"heal":
 			current_hp = min(max_hp, current_hp + ability.heal)
 		"lightning":
-			var enemy = get_nearest_enemy(click_pos, ability.range)
+			var enemy = get_nearest_enemy(target_position, ability.range)
 			if enemy:
 				enemy.take_damage(ability.damage, self)
 
