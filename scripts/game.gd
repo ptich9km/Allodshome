@@ -37,8 +37,6 @@ func _ready():
 func _input(event):
 	# Клик мышью - движение или атака
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Конвертируем позицию мыши в мировые координаты
-		var mouse_screen = event.position
 		var world_position = get_global_mouse_position()
 		handle_click(world_position)
 	
@@ -65,9 +63,9 @@ func handle_click(world_position: Vector2):
 		player.state = "move"
 		player.attack_target = null
 
-func get_enemy_at_position(position: Vector2) -> Node2D:
+func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 	for enemy in enemies:
-		if is_instance_valid(enemy) and enemy.global_position.distance_to(position) < 30.0:
+		if is_instance_valid(enemy) and enemy.global_position.distance_to(click_pos) < 30.0:
 			return enemy
 	return null
 

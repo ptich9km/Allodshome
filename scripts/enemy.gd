@@ -58,11 +58,11 @@ func _physics_process(delta):
 			if distance_to_player > deaggro_radius * 1.5:
 				queue_free()  # Удаляем врага при побеге
 
-func move_toward_target(target: Vector2, delta):
+func move_toward_target(target: Vector2, _delta):
 	var direction = (target - global_position).normalized()
 	velocity = direction * move_speed
 
-func take_damage(damage: int, attacker: Node2D):
-	current_hp -= damage
+func take_damage(_damage: int, _attacker: Node2D):
+	current_hp -= _damage
 	if current_hp <= 0:
 		queue_free()  # Смерть врага

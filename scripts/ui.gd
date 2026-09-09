@@ -38,8 +38,8 @@ func update_ui(p: Player):
 		if i < p.abilities.size():
 			var button = spell_panel.get_child(i) as Button
 			var ability = p.abilities[i]
-			var ready = p.ability_cooldowns[i] <= 0 and p.current_mana >= ability.mana_cost
-			button.disabled = not ready
+			var ability_ready = p.ability_cooldowns[i] <= 0 and p.current_mana >= ability.mana_cost
+			button.disabled = not ability_ready
 			if p.ability_cooldowns[i] > 0:
 				button.text = "%s (%.1fs)" % [ability.name.capitalize(), p.ability_cooldowns[i]]
 			else:
@@ -50,7 +50,7 @@ func cast_ability(index: int):
 		var target_pos = get_viewport().get_mouse_position()
 		player.cast_ability(index, target_pos)
 
-func _process(delta):
+func _process(_delta):
 	if Game.is_paused:
 		pause_label.visible = true
 		pause_label.text = "ТАКТИЧЕСКАЯ ПАУЗА"

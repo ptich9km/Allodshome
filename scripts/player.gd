@@ -50,7 +50,7 @@ func _physics_process(delta):
 	
 	move_and_slide()
 
-func move_to_target(delta):
+func move_to_target(_delta):
 	if Game.player_target.distance_to(global_position) > 5.0:
 		var direction = (Game.player_target - global_position).normalized()
 		velocity = direction * move_speed
@@ -58,7 +58,7 @@ func move_to_target(delta):
 		state = "idle"
 		velocity = Vector2.ZERO
 
-func chase_target(delta):
+func chase_target(_delta):
 	if attack_target and is_instance_valid(attack_target):
 		var distance = global_position.distance_to(attack_target.global_position)
 		if distance > Game.ATTACK_RANGE:
@@ -71,7 +71,7 @@ func chase_target(delta):
 		state = "idle"
 		velocity = Vector2.ZERO
 
-func attack_enemy(delta):
+func attack_enemy(_delta):
 	if attack_target and is_instance_valid(attack_target):
 		if attack_cooldown <= 0:
 			# Наносим урон
@@ -99,7 +99,7 @@ func cast_ability(index: int, target_position: Vector2):
 		"heal":
 			current_hp = min(max_hp, current_hp + ability.heal)
 		"lightning":
-			var enemy = get_nearest_enemy(target_position, ability.range)
+			var enemy = get_nearest_enemy(click_pos, ability.range)
 			if enemy:
 				enemy.take_damage(ability.damage, self)
 
@@ -114,20 +114,20 @@ func create_projectile(from: Vector2, to: Vector2, damage: int):
 		projectile.projectile_owner = self
 		get_tree().root.add_child(projectile)
 
-func get_nearest_enemy(position: Vector2, range: float) -> Node2D:
+func get_nearest_enemy(click_pos: Vector2, attack_range: float) -> Node2D:
 	var nearest = null
-	var min_dist = range
+	var min_dist = attack_range
 	
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
-			var dist = enemy.global_position.distance_to(position)
+			var dist = enemy.global_position.distance_to(click_pos)
 			if dist < min_dist:
 				min_dist = dist
 				nearest = enemy
 	
 	return nearest
 
-func take_damage(damage: int, attacker: Node2D):
+func take_damage(damage: int, _attacker: Node2D):
 	current_hp -= damage
 	if current_hp <= 0:
 		queue_free()  # Смерть игрока
