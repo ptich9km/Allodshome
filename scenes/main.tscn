@@ -78,6 +78,54 @@ home_position = Vector2(0, -200)
 [node name="Collision" type="CollisionShape2D" parent="Enemy3"]
 shape = SubResource("CircleShape2D_slime")
 
+[node name="EnemyBat" type="CharacterBody2D" parent="."]
+script = ExtResource("3_enemy")
+max_hp = 20
+damage = 4
+position = Vector2(150, -80)
+home_position = Vector2(150, -80)
+
+[node name="Sprite" type="Sprite2D" parent="EnemyBat"]
+
+[node name="Collision" type="CollisionShape2D" parent="EnemyBat"]
+shape = SubResource("CircleShape2D_slime")
+
+[node name="EnemyOrc2" type="CharacterBody2D" parent="."]
+script = ExtResource("3_enemy")
+max_hp = 70
+damage = 10
+position = Vector2(-100, -120)
+home_position = Vector2(-100, -120)
+
+[node name="Sprite" type="Sprite2D" parent="EnemyOrc2"]
+
+[node name="Collision" type="CollisionShape2D" parent="EnemyOrc2"]
+shape = SubResource("CircleShape2D_orc")
+
+[node name="EnemyLudoed" type="CharacterBody2D" parent="."]
+script = ExtResource("3_enemy")
+max_hp = 100
+damage = 15
+position = Vector2(80, 120)
+home_position = Vector2(80, 120)
+
+[node name="Sprite" type="Sprite2D" parent="EnemyLudoed"]
+
+[node name="Collision" type="CollisionShape2D" parent="EnemyLudoed"]
+shape = SubResource("CircleShape2D_orc")
+
+[node name="EnemyZombie" type="CharacterBody2D" parent="."]
+script = ExtResource("3_enemy")
+max_hp = 60
+damage = 8
+position = Vector2(-80, 80)
+home_position = Vector2(-80, 80)
+
+[node name="Sprite" type="Sprite2D" parent="EnemyZombie"]
+
+[node name="Collision" type="CollisionShape2D" parent="EnemyZombie"]
+shape = SubResource("CircleShape2D_orc")
+
 [node name="NPCTroll" type="CharacterBody2D" parent="."]
 script = ExtResource("3_enemy")
 max_hp = 80

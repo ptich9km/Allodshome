@@ -38,13 +38,18 @@ func _create_sprite():
 		var tex_path = ""
 		var img_color = Color(0.2, 0.6, 0.15, 1.0)
 		
-		if max_hp >= 80:
-			# Тролль — серый прямоугольник
-			img_color = Color(0.4, 0.4, 0.4, 1.0)
+		if max_hp >= 100:
+			tex_path = "res://assets/sprites/ludoed.png"
+		elif max_hp >= 80:
+			tex_path = "res://assets/sprites/zombie.png"
+		elif max_hp >= 70:
+			tex_path = "res://assets/sprites/orc_tier2.png"
 		elif max_hp >= 50:
 			tex_path = "res://assets/sprites/orc.png"
-		else:
+		elif max_hp >= 30:
 			tex_path = "res://assets/sprites/slime.png"
+		else:
+			tex_path = "res://assets/sprites/bat.png"
 		
 		if tex_path != "":
 			var tex = load(tex_path)
