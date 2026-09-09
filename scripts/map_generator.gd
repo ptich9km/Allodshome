@@ -13,14 +13,14 @@ func generate_island(tilemap: TileMapLayer):
 	for y in range(32):
 		for x in range(64):
 			var n = ((x * 7 + y * 13) % 40) - 20
-			grass_img.set_pixel(x, y, Color((55+n)/255.0, (145+n)/255.0, (45+n/2)/255.0, 1.0))
+			grass_img.set_pixel(x, y, Color(float(55+n)/255.0, float(145+n)/255.0, float(45+int(n/2))/255.0, 1.0))
 	var grass_tex = ImageTexture.create_from_image(grass_img)
 	
 	var wall_img = Image.create(64, 32, false, Image.FORMAT_RGBA8)
 	for y in range(32):
 		for x in range(64):
 			var n = ((x * 11 + y * 7) % 30) - 15
-			var b = 100 + int(y / 8) * 8
+			var b = 100 + int(float(y) / 8.0) * 8
 			wall_img.set_pixel(x, y, Color((b+n)/255.0, (b+n-5)/255.0, (b+n-10)/255.0, 1.0))
 	var wall_tex = ImageTexture.create_from_image(wall_img)
 	
