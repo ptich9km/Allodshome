@@ -1,8 +1,6 @@
 extends CanvasLayer
 class_name GameUI
 
-@onready var hp_bar: ProgressBar = $HPManaPanel/HpBar
-@onready var mana_bar: ProgressBar = $HPManaPanel/ManaBar
 @onready var spell_panel_top: HBoxContainer = $BottomPanel/SpellPanelTop
 @onready var spell_panel_bottom: HBoxContainer = $BottomPanel/SpellPanelBottom
 @onready var pause_label: Label = $PauseLabel
@@ -24,11 +22,6 @@ var minimap_texture: ImageTexture
 
 func setup_ui(p: Player):
 	player = p
-
-	hp_bar.max_value = player.max_hp
-	hp_bar.value = player.current_hp
-	mana_bar.max_value = player.max_mana
-	mana_bar.value = player.current_mana
 
 	_setup_spells()
 
@@ -260,8 +253,6 @@ func _update_stats():
 func update_ui(p: Player):
 	if not is_instance_valid(p):
 		return
-	hp_bar.value = p.current_hp
-	mana_bar.value = p.current_mana
 
 	for i in range(spell_buttons.size()):
 		var button = spell_buttons[i] as Button

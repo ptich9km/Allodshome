@@ -160,24 +160,6 @@ offset_right = 190.0
 offset_bottom = 275.0
 autowrap_mode = 3
 
-[node name="HPManaPanel" type="Panel" parent="UI"]
-offset_left = 5.0
-offset_top = 740.0
-offset_right = 200.0
-offset_bottom = 795.0
-
-[node name="HpBar" type="ProgressBar" parent="UI/HPManaPanel"]
-offset_left = 5.0
-offset_top = 3.0
-offset_right = 188.0
-offset_bottom = 18.0
-
-[node name="ManaBar" type="ProgressBar" parent="UI/HPManaPanel"]
-offset_left = 5.0
-offset_top = 26.0
-offset_right = 188.0
-offset_bottom = 41.0
-
 [node name="BottomPanel" type="Panel" parent="UI"]
 offset_left = 0.0
 offset_top = 600.0
