@@ -93,7 +93,7 @@ shape = SubResource("CircleShape2D_orc")
 [node name="UI" type="CanvasLayer" parent="."]
 script = ExtResource("4_ui")
 
-[node name="MinimapBorder" type="Panel" parent="UI"]
+[node name="MinimapBorder" type="Panel" parent="UI" z_index=10]
 offset_left = 1075.0
 offset_top = 5.0
 offset_right = 1275.0
@@ -108,7 +108,7 @@ color = Color(0.05, 0.05, 0.05, 1)
 
 [node name="ActionPanel" type="Panel" parent="UI"]
 offset_left = 1075.0
-offset_top = 210.0
+offset_top = 5.0
 offset_right = 1275.0
 offset_bottom = 310.0
 
@@ -160,12 +160,6 @@ offset_right = 190.0
 offset_bottom = 275.0
 autowrap_mode = 3
 
-[node name="BottomPanel" type="Panel" parent="UI"]
-offset_left = 0.0
-offset_top = 600.0
-offset_right = 1070.0
-offset_bottom = 800.0
-
 [node name="HPManaPanel" type="Panel" parent="UI"]
 offset_left = 5.0
 offset_top = 740.0
@@ -183,6 +177,12 @@ offset_left = 5.0
 offset_top = 26.0
 offset_right = 188.0
 offset_bottom = 41.0
+
+[node name="BottomPanel" type="Panel" parent="UI"]
+offset_left = 0.0
+offset_top = 600.0
+offset_right = 1070.0
+offset_bottom = 800.0
 
 [node name="SpellPanelTop" type="HBoxContainer" parent="UI/BottomPanel"]
 offset_left = 210.0
