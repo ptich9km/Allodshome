@@ -36,8 +36,7 @@ func _ensure_sprite():
 		add_child(sprite)
 	
 	if not sprite.texture:
-		var img = Image.new()
-		img.create(32, 48, false, Image.FORMAT_RGBA8)
+		var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
 		# Синий воин
 		for y in range(48):
 			for x in range(32):

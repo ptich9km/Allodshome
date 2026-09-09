@@ -29,8 +29,7 @@ func _create_sprite():
 	
 	# Если текстура не задана — создаём заглушку
 	if not sprite.texture:
-		var img = Image.new()
-		img.create(32, 48, false, Image.FORMAT_RGBA8)
+		var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
 		
 		# Определяем тип врага по HP
 		if max_hp >= 50:

@@ -9,16 +9,14 @@ func generate_island(tilemap: TileMapLayer):
 	print("Генерируем остров...")
 	
 	# Создаём текстуры
-	var grass_img = Image.new()
-	grass_img.create(64, 32, false, Image.FORMAT_RGBA8)
+	var grass_img = Image.create(64, 32, false, Image.FORMAT_RGBA8)
 	for y in range(32):
 		for x in range(64):
 			var n = ((x * 7 + y * 13) % 40) - 20
 			grass_img.set_pixel(x, y, Color((55+n)/255.0, (145+n)/255.0, (45+n/2)/255.0, 1.0))
 	var grass_tex = ImageTexture.create_from_image(grass_img)
 	
-	var wall_img = Image.new()
-	wall_img.create(64, 32, false, Image.FORMAT_RGBA8)
+	var wall_img = Image.create(64, 32, false, Image.FORMAT_RGBA8)
 	for y in range(32):
 		for x in range(64):
 			var n = ((x * 11 + y * 7) % 30) - 15
@@ -29,13 +27,13 @@ func generate_island(tilemap: TileMapLayer):
 	# Создаём TileSet
 	var tileset = TileSet.new()
 	tileset.tile_size = Vector2i(64, 32)
-	tileset.tile_layout = 3  # isometric
+	tileset.tile_layout = 3
 	
 	# Source 0 — трава
 	var gs = TileSetAtlasSource.new()
 	gs.texture = grass_tex
 	gs.texture_region_size = Vector2i(64, 32)
-	gs.create_region(Vector2i(0, 0), Vector2i(1, 1))
+	gs.create_tile(Vector2i(0, 0))
 	var gid = tileset.add_source(gs)
 	print("  Grass source_id=", gid)
 	
@@ -43,13 +41,12 @@ func generate_island(tilemap: TileMapLayer):
 	var ws = TileSetAtlasSource.new()
 	ws.texture = wall_tex
 	ws.texture_region_size = Vector2i(64, 32)
-	ws.create_region(Vector2i(0, 0), Vector2i(1, 1))
+	ws.create_tile(Vector2i(0, 0))
 	var wid = tileset.add_source(ws)
 	print("  Wall source_id=", wid)
 	
 	tilemap.tile_set = tileset
 	
-	# Рисуем тайлы
 	for x in range(-8, 9):
 		for y in range(-8, 9):
 			var dist = abs(x) + abs(y)
