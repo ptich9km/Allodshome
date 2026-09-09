@@ -175,37 +175,46 @@ func _setup_minimap():
 	minimap_rect.add_child(tex_rect)
 
 func _draw_minimap():
-	if not minimap_tilemap or not is_instance_valid(player):
+	if not minimap_tilemap:
+		print("MINIMAP: tilemap not found!")
 		return
+	if not is_instance_valid(player):
+		return
+	
+	print("MINIMAP: drawing... player=", player.global_position)
 	
 	var player_tile = Vector2i(int(player.global_position.x / 64), int(player.global_position.y / 32))
 	var map_center = player_tile
 	
 	# Рисуем тайлы вокруг игрока
+	var draw_count = 0
 	for dy in range(-10, 11):
 		for dx in range(-10, 11):
 			var tile_x = map_center.x + dx
 			var tile_y = map_center.y + dy
-			var screen_x = 95 + dx * 9
-			var screen_y = 95 + dy * 9
+			var screen_x = 95 + dx * 12
+			var screen_y = 95 + dy * 12
 			
 			if screen_x < 0 or screen_x >= 190 or screen_y < 0 or screen_y >= 190:
 				continue
 			
 			# Определяем цвет тайла
 			var color = Color(0, 0, 0, 0)
-			# Трава — зелёный, стена — серый
 			var dist = abs(tile_x) + abs(tile_y)
 			if dist <= 7:
 				color = Color(0.2, 0.6, 0.15, 0.8)
+				draw_count += 1
 			elif dist == 8:
 				color = Color(0.4, 0.35, 0.3, 0.8)
+				draw_count += 1
 			
 			if color.a > 0:
-				for py in range(screen_y - 3, screen_y + 4):
-					for px in range(screen_x - 3, screen_x + 4):
+				for py in range(screen_y - 5, screen_y + 6):
+					for px in range(screen_x - 5, screen_x + 6):
 						if py >= 0 and py < 190 and px >= 0 and px < 190:
 							minimap_image.set_pixel(px, py, color)
+	
+	print("MINIMAP: drawn ", draw_count, " tiles")
 	
 	# Рисуем игрока (синяя точка, красная если мёртв)
 	var px = 95
