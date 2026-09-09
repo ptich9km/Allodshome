@@ -9,6 +9,7 @@ class_name Game
 static var is_paused: bool = false
 static var player_target: Vector2 = Vector2.ZERO
 static var enemies: Array = []
+static var mana_regen_accum: float = 0.0
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
@@ -74,6 +75,9 @@ func _process(delta):
 	if is_instance_valid(ui):
 		ui.update_ui(player)
 	
-	# Регенерация маны игрока
+	# Регенерация маны игрока — 1 мана в секунду
 	if is_instance_valid(player) and player.current_mana < player.max_mana:
-		player.current_mana = min(player.max_mana, player.current_mana + int(1 * delta))
+		mana_regen_accum += delta
+		if mana_regen_accum >= 1.0:
+			mana_regen_accum -= 1.0
+			player.current_mana = min(player.max_mana, player.current_mana + 1)
