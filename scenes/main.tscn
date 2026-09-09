@@ -1,0 +1,136 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="2_player"]
+[ext_resource type="Script" path="res://scripts/enemy.gd" id="3_enemy"]
+[ext_resource type="Script" path="res://scripts/ui.gd" id="4_ui"]
+[ext_resource type="Texture2D" path="res://assets/sprites/hero.png" id="5_hero"]
+[ext_resource type="Texture2D" path="res://assets/sprites/orc.png" id="6_orc"]
+[ext_resource type="Texture2D" path="res://assets/sprites/slime.png" id="7_slime"]
+[ext_resource type="TileSet" path="res://assets/tiles/isometric_tileset.tres" id="8_tileset"]
+[ext_resource type="Script" path="res://scripts/map_generator.gd" id="9_mapgen"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tile_grass.png" id="10_grass_tile"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tile_wall.png" id="11_wall_tile"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_player"]
+radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_orc"]
+radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_slime"]
+radius = 12.0
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="TileMap" type="TileMapLayer" parent="."]
+enabled = true
+tile_set = ExtResource("8_tileset")
+
+[node name="MapGenerator" type="Node" parent="TileMap"]
+script = ExtResource("9_mapgen")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(1.5, 1.5)
+
+[node name="Player" type="CharacterBody2D" parent="."]
+script = ExtResource("2_player")
+max_hp = 100
+max_mana = 50
+strength = 10
+agility = 10
+intellect = 10
+endurance = 10
+spirit = 10
+groups = ["player"]
+
+[node name="Sprite" type="Sprite2D" parent="Player"]
+texture = ExtResource("5_hero")
+offset = Vector2(0, -20)
+
+[node name="Collision" type="CollisionShape2D" parent="Player"]
+shape = SubResource("CircleShape2D_player")
+
+[node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("4_ui")
+
+[node name="HPBar" type="ProgressBar" parent="UI"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 210.0
+offset_bottom = 25.0
+
+[node name="HPBar/BG" type="TextureRect" parent="HPBar"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 200.0
+offset_bottom = 15.0
+
+[node name="ManaBar" type="ProgressBar" parent="UI"]
+offset_left = 10.0
+offset_top = 30.0
+offset_right = 210.0
+offset_bottom = 45.0
+
+[node name="ManaBar/BG" type="TextureRect" parent="ManaBar"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 200.0
+offset_bottom = 15.0
+
+[node name="SpellPanel" type="HBoxContainer" parent="UI"]
+offset_left = 400.0
+offset_top = 650.0
+offset_right = 880.0
+offset_bottom = 690.0
+
+[node name="PauseLabel" type="Label" parent="UI"]
+offset_left = 440.0
+offset_top = 50.0
+offset_right = 840.0
+offset_bottom = 80.0
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Enemy1" type="CharacterBody2D" parent="." groups="enemies"]
+script = ExtResource("3_enemy")
+max_hp = 50
+damage = 8
+position = Vector2(200, 100)
+home_position = Vector2(200, 100)
+
+[node name="Sprite" type="Sprite2D" parent="Enemy1"]
+texture = ExtResource("6_orc")
+offset = Vector2(0, -15)
+
+[node name="Collision" type="CollisionShape2D" parent="Enemy1"]
+shape = SubResource("CircleShape2D_orc")
+
+[node name="Enemy2" type="CharacterBody2D" parent="." groups="enemies"]
+script = ExtResource("3_enemy")
+max_hp = 50
+damage = 8
+position = Vector2(-150, 150)
+home_position = Vector2(-150, 150)
+
+[node name="Sprite" type="Sprite2D" parent="Enemy2"]
+texture = ExtResource("6_orc")
+offset = Vector2(0, -15)
+
+[node name="Collision" type="CollisionShape2D" parent="Enemy2"]
+shape = SubResource("CircleShape2D_orc")
+
+[node name="Enemy3" type="CharacterBody2D" parent="." groups="enemies"]
+script = ExtResource("3_enemy")
+max_hp = 30
+damage = 5
+position = Vector2(0, -200)
+home_position = Vector2(0, -200)
+
+[node name="Sprite" type="Sprite2D" parent="Enemy3"]
+texture = ExtResource("7_slime")
+offset = Vector2(0, -10)
+
+[node name="Collision" type="CollisionShape2D" parent="Enemy3"]
+shape = SubResource("CircleShape2D_slime")

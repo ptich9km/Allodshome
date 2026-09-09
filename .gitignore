@@ -1,0 +1,25 @@
+# Godot 4+ specific ignores
+.godot/
+*.godot/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Godot Mono (if using C#)
+.mono/
+*.sln
+*.csproj
+
+# Export files
+*.pck
+*.exe
+*.app
+*.x86_64
+*.wasm
+*.html
+
+# IDE
+.vscode/
+.idea/
+*.import
