@@ -2,17 +2,17 @@ extends CanvasLayer
 class_name GameUI
 
 # Правая панель
-@onready var minimap_viewport: SubViewport = $RightPanel/MinimapViewport
-@onready var minimap_texture: TextureRect = $RightPanel/MinimapViewport/MinimapTexture
-@onready var action_panel: VBoxContainer = $RightPanel/ActionPanel
-@onready var portrait_texture: TextureRect = $RightPanel/PortraitTexture
-@onready var stats_label: Label = $RightPanel/StatsLabel
+@onready var minimap_viewport: SubViewport = $MinimapBorder/MinimapViewport
 
 # Нижняя панель
 @onready var hp_bar: ProgressBar = $BottomPanel/HpBar
 @onready var mana_bar: ProgressBar = $BottomPanel/ManaBar
 @onready var spell_panel: HBoxContainer = $BottomPanel/SpellPanel
-@onready var pause_label: Label = $BottomPanel/PauseLabel
+@onready var pause_label: Label = $PauseLabel
+
+# Правая панель
+@onready var stats_label: Label = $StatsBorder/StatsLabel
+@onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
 
 # Миникарта
 var minimap_camera: Camera2D
