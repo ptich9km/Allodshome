@@ -52,6 +52,14 @@ func _physics_process(delta):
 	for i in range(ability_cooldowns.size()):
 		ability_cooldowns[i] = max(0, ability_cooldowns[i] - delta)
 
+	# Обработка заклинаний
+	if Input.is_action_just_pressed("cast_1"):
+		cast_ability(0, get_global_mouse_position())
+	elif Input.is_action_just_pressed("cast_2"):
+		cast_ability(1, get_global_mouse_position())
+	elif Input.is_action_just_pressed("cast_3"):
+		cast_ability(2, get_global_mouse_position())
+
 	match state:
 		"idle":
 			velocity = Vector2.ZERO
