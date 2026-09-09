@@ -29,20 +29,69 @@ func setup_ui(p: Player):
 	mana_bar.max_value = player.max_mana
 	mana_bar.value = player.current_mana
 
-	for i in range(player.abilities.size()):
-		var ability = player.abilities[i]
-		var button = Button.new()
-		button.text = "%d. %s" % [i + 1, ability.name.capitalize()]
-		button.custom_minimum_size = Vector2(80, 28)
-		button.pressed.connect(func(): cast_ability(i))
-		spell_panel.add_child(button)
+	_setup_spells()
 
 	var tex = load("res://assets/sprites/hero.png")
 	if tex:
 		portrait_texture.texture = tex
 
 	_setup_inventory()
-	minimap_tilemap = get_tree().get_first_node_in_group("tilemap")
+
+# Панель заклинаний с иконками
+var spell_buttons: Array = []
+
+func _setup_spells():
+	# Создаём кнопки заклинаний с иконками
+	var spell_icons = [
+		{"name": "Fireball", "color": Color(1.0, 0.3, 0.0, 1.0), "key": "1"},
+		{"name": "Heal", "color": Color(0.2, 1.0, 0.2, 1.0), "key": "2"},
+		{"name": "Lightning", "color": Color(0.3, 0.6, 1.0, 1.0), "key": "3"}
+	]
+	
+	for i in range(spell_icons.size()):
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(60, 60)
+		btn.name = "SpellBtn" + str(i)
+		
+		# Рисуем иконку на кнопке
+		var icon = Image.create(48, 48, false, Image.FORMAT_RGBA8)
+		var sc = spell_icons[i]
+		
+		match i:
+			0:  # Fireball — огненный круг
+				for y in range(48):
+					for x in range(48):
+						var d = sqrt(pow(x-24,2) + pow(y-24,2))
+						if d < 20:
+							var intensity = 1.0 - d / 20.0
+							icon.set_pixel(x, y, Color(1.0 * intensity, 0.3 * intensity, 0.0, intensity))
+						elif d < 24:
+							icon.set_pixel(x, y, Color(1.0, 0.5, 0.0, 0.3))
+			1:  # Heal — зелёный крест
+				icon.fill(Color(0.0, 0.3, 0.0, 1.0))
+				for y in range(16, 32):
+					for x in range(8, 40):
+						icon.set_pixel(x, y, Color(0.2, 1.0, 0.2, 1.0))
+				for y in range(8, 40):
+					for x in range(16, 32):
+						icon.set_pixel(x, y, Color(0.2, 1.0, 0.2, 1.0))
+			2:  # Lightning — синяя молния
+				icon.fill(Color(0.0, 0.0, 0.2, 1.0))
+				for y in range(8, 40):
+					var zig_x = 24 + int(sin(y * 0.5) * 10)
+					for dx in range(-2, 3):
+						if zig_x+dx >= 0 and zig_x+dx < 48:
+							icon.set_pixel(zig_x+dx, y, Color(0.5, 0.7, 1.0, 1.0))
+		
+		var tex = ImageTexture.create_from_image(icon)
+		btn.icon = tex
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn.text = sc.key
+		btn.pressed.connect(func(): cast_ability(i))
+		
+		spell_panel.add_child(btn)
+		spell_buttons.append(btn)
+	
 	_setup_minimap()
 	_setup_action_buttons()
 	_update_stats()
@@ -210,16 +259,13 @@ func update_ui(p: Player):
 	hp_bar.value = p.current_hp
 	mana_bar.value = p.current_mana
 
-	for i in range(spell_panel.get_child_count()):
+	for i in range(spell_buttons.size()):
 		if i < p.abilities.size():
-			var button = spell_panel.get_child(i) as Button
+			var button = spell_buttons[i] as Button
 			var ability = p.abilities[i]
 			var ability_ready = p.ability_cooldowns[i] <= 0 and p.current_mana >= ability.mana_cost
 			button.disabled = not ability_ready
-			if p.ability_cooldowns[i] > 0:
-				button.text = "%s (%.1fs)" % [ability.name.capitalize(), p.ability_cooldowns[i]]
-			else:
-				button.text = "%d. %s" % [i + 1, ability.name.capitalize()]
+			button.modulate = Color(1, 1, 1, 0.4) if not ability_ready else Color.WHITE
 
 	_draw_minimap()
 
