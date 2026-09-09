@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2_player"]
@@ -59,7 +59,7 @@ offset_top = 10.0
 offset_right = 210.0
 offset_bottom = 25.0
 
-[node name="HPBar/BG" type="TextureRect" parent="HPBar"]
+[node name="BG" type="TextureRect" parent="UI/HPBar"]
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 200.0
@@ -71,7 +71,7 @@ offset_top = 30.0
 offset_right = 210.0
 offset_bottom = 45.0
 
-[node name="ManaBar/BG" type="TextureRect" parent="ManaBar"]
+[node name="BG" type="TextureRect" parent="UI/ManaBar"]
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 200.0
