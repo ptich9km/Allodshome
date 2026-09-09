@@ -11,6 +11,7 @@ class_name GameUI
 @onready var follow_btn: Button = $ActionPanel/FollowBtn
 @onready var attack_btn: Button = $ActionPanel/AttackBtn
 @onready var guard_btn: Button = $ActionPanel/GuardBtn
+@onready var inventory_grid: GridContainer = $BottomPanel/InventoryGrid
 
 var minimap_camera: Camera2D
 var minimap_tilemap: TileMapLayer
@@ -40,10 +41,54 @@ func setup_ui(p: Player):
 	if tex:
 		portrait_texture.texture = tex
 
+	_setup_inventory()
 	minimap_tilemap = get_tree().get_first_node_in_group("tilemap")
 	_setup_minimap()
 	_setup_action_buttons()
 	_update_stats()
+
+# Инвентарь
+var inventory_slots: Array = []
+var inventory_items: Array = []
+
+func _setup_inventory():
+	# Создаём 40 слотов (10 колонок × 4 ряда)
+	inventory_grid.columns = 10
+	inventory_grid.custom_minimum_size = Vector2(700, 64)
+	
+	for i in range(40):
+		var slot = TextureRect.new()
+		slot.custom_minimum_size = Vector2(48, 48)
+		slot.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		slot.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		slot.modulate = Color(0.15, 0.15, 0.15, 1.0)  # тёмный фон
+		
+		# Рамка слота
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.1, 0.1, 0.12, 1.0)
+		style.border_color = Color(0.3, 0.3, 0.3, 1.0)
+		style.border_width_left = 1
+		style.border_width_right = 1
+		style.border_width_top = 1
+		style.border_width_bottom = 1
+		slot.add_theme_stylebox_override("panel", style)
+		
+		inventory_grid.add_child(slot)
+		inventory_slots.append(slot)
+		inventory_items.append(null)
+	
+	# Добавляем стартовые предметы
+	_add_item(0, "res://assets/sprites/hero.png", "Меч")
+	_add_item(1, "res://assets/sprites/orc.png", "Щит")
+	_add_item(5, "res://assets/sprites/slime.png", "Зелье")
+
+func _add_item(slot_idx: int, icon_path: String, name: String):
+	if slot_idx >= 0 and slot_idx < inventory_slots.size():
+		var tex = load(icon_path)
+		if tex:
+			inventory_slots[slot_idx].texture = tex
+			inventory_slots[slot_idx].modulate = Color.WHITE
+		inventory_items[slot_idx] = {"name": name, "icon": icon_path}
 
 func _setup_action_buttons():
 	follow_btn.pressed.connect(func(): _set_action_mode("follow"))

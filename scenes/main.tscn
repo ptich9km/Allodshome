@@ -149,20 +149,27 @@ offset_bottom = 195.0
 
 [node name="BottomPanel" type="Panel" parent="UI"]
 offset_left = 0.0
-offset_top = 660.0
+offset_top = 500.0
 offset_right = 1070.0
 offset_bottom = 720.0
+
+[node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel"]
+offset_left = 200.0
+offset_top = 5.0
+offset_right = 900.0
+offset_bottom = 210.0
+columns = 10
 
 [node name="HpBar" type="ProgressBar" parent="UI/BottomPanel"]
 offset_left = 10.0
 offset_top = 5.0
-offset_right = 210.0
+offset_right = 190.0
 offset_bottom = 20.0
 
 [node name="ManaBar" type="ProgressBar" parent="UI/BottomPanel"]
 offset_left = 10.0
 offset_top = 28.0
-offset_right = 210.0
+offset_right = 190.0
 offset_bottom = 43.0
 
 [node name="SpellPanel" type="HBoxContainer" parent="UI/BottomPanel"]
