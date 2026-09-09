@@ -3,7 +3,8 @@ class_name GameUI
 
 @onready var hp_bar: ProgressBar = $BottomPanel/HpBar
 @onready var mana_bar: ProgressBar = $BottomPanel/ManaBar
-@onready var spell_panel: HBoxContainer = $SpellPanel
+@onready var spell_panel_top: HBoxContainer = $BottomPanel/SpellPanelTop
+@onready var spell_panel_bottom: HBoxContainer = $BottomPanel/SpellPanelBottom
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
@@ -41,33 +42,40 @@ func setup_ui(p: Player):
 var spell_buttons: Array = []
 
 func _setup_spells():
-	# Создаём кнопки заклинаний с иконками
-	var spell_icons = [
-		{"name": "Fireball", "color": Color(1.0, 0.3, 0.0, 1.0), "key": "1"},
-		{"name": "Heal", "color": Color(0.2, 1.0, 0.2, 1.0), "key": "2"},
-		{"name": "Lightning", "color": Color(0.3, 0.6, 1.0, 1.0), "key": "3"}
+	# 2 ряда заклинаний: верхний — 3 кнопки, нижний — 4 кнопки
+	var spells_row1 = [
+		{"name": "Fireball", "key": "1"},
+		{"name": "Heal", "key": "2"},
+		{"name": "Lightning", "key": "3"}
+	]
+	var spells_row2 = [
+		{"name": "Frost", "key": "4"},
+		{"name": "Shield", "key": "5"},
+		{"name": "Teleport", "key": "6"},
+		{"name": "AoE", "key": "7"}
 	]
 	
-	for i in range(spell_icons.size()):
+	_create_spell_row(spell_panel_top, spells_row1, 0)
+	_create_spell_row(spell_panel_bottom, spells_row2, 3)
+
+func _create_spell_row(panel: HBoxContainer, spells: Array, offset: int):
+	for i in range(spells.size()):
+		var idx = offset + i
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(60, 60)
-		btn.name = "SpellBtn" + str(i)
+		btn.custom_minimum_size = Vector2(60, 50)
 		
-		# Рисуем иконку на кнопке
 		var icon = Image.create(48, 48, false, Image.FORMAT_RGBA8)
-		var sc = spell_icons[i]
+		var sc = spells[i]
 		
-		match i:
-			0:  # Fireball — огненный круг
+		match sc.name:
+			"Fireball":
 				for y in range(48):
 					for x in range(48):
 						var d = sqrt(pow(x-24,2) + pow(y-24,2))
 						if d < 20:
 							var intensity = 1.0 - d / 20.0
 							icon.set_pixel(x, y, Color(1.0 * intensity, 0.3 * intensity, 0.0, intensity))
-						elif d < 24:
-							icon.set_pixel(x, y, Color(1.0, 0.5, 0.0, 0.3))
-			1:  # Heal — зелёный крест
+			"Heal":
 				icon.fill(Color(0.0, 0.3, 0.0, 1.0))
 				for y in range(16, 32):
 					for x in range(8, 40):
@@ -75,21 +83,22 @@ func _setup_spells():
 				for y in range(8, 40):
 					for x in range(16, 32):
 						icon.set_pixel(x, y, Color(0.2, 1.0, 0.2, 1.0))
-			2:  # Lightning — синяя молния
+			"Lightning":
 				icon.fill(Color(0.0, 0.0, 0.2, 1.0))
 				for y in range(8, 40):
 					var zig_x = 24 + int(sin(y * 0.5) * 10)
 					for dx in range(-2, 3):
 						if zig_x+dx >= 0 and zig_x+dx < 48:
 							icon.set_pixel(zig_x+dx, y, Color(0.5, 0.7, 1.0, 1.0))
+			_:
+				icon.fill(Color(0.2, 0.2, 0.3, 1.0))
 		
 		var tex = ImageTexture.create_from_image(icon)
 		btn.icon = tex
-		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		btn.text = sc.key
-		btn.pressed.connect(func(): cast_ability(i))
+		btn.pressed.connect(func(): cast_ability(idx))
 		
-		spell_panel.add_child(btn)
+		panel.add_child(btn)
 		spell_buttons.append(btn)
 	
 	_setup_minimap()
@@ -260,17 +269,32 @@ func update_ui(p: Player):
 	mana_bar.value = p.current_mana
 
 	for i in range(spell_buttons.size()):
+		var button = spell_buttons[i] as Button
 		if i < p.abilities.size():
-			var button = spell_buttons[i] as Button
 			var ability = p.abilities[i]
 			var ability_ready = p.ability_cooldowns[i] <= 0 and p.current_mana >= ability.mana_cost
 			button.disabled = not ability_ready
 			button.modulate = Color(1, 1, 1, 0.4) if not ability_ready else Color.WHITE
+		else:
+			# Заглушки — всегда disabled
+			button.disabled = true
+			button.modulate = Color(1, 1, 1, 0.3)
 
 	_draw_minimap()
 
 func cast_ability(index: int):
-	if player:
+	if not player or index >= player.abilities.size():
+		return
+	# Заглушки для новых заклинаний
+	if index == 3:
+		print("Frost — в разработке")
+	elif index == 4:
+		print("Shield — в разработке")
+	elif index == 5:
+		print("Teleport — в разработке")
+	elif index == 6:
+		print("AoE — в разработке")
+	else:
 		var target_pos = get_viewport().get_mouse_position()
 		player.cast_ability(index, target_pos)
 
