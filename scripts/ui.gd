@@ -8,6 +8,9 @@ class_name GameUI
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
 @onready var minimap_rect: ColorRect = $MinimapBorder/MinimapRect
+@onready var follow_btn: Button = $ActionPanel/FollowBtn
+@onready var attack_btn: Button = $ActionPanel/AttackBtn
+@onready var guard_btn: Button = $ActionPanel/GuardBtn
 
 var minimap_camera: Camera2D
 var minimap_tilemap: TileMapLayer
@@ -39,7 +42,30 @@ func setup_ui(p: Player):
 
 	minimap_tilemap = get_tree().get_first_node_in_group("tilemap")
 	_setup_minimap()
+	_setup_action_buttons()
 	_update_stats()
+
+func _setup_action_buttons():
+	follow_btn.pressed.connect(func(): _set_action_mode("follow"))
+	attack_btn.pressed.connect(func(): _set_action_mode("attack"))
+	guard_btn.pressed.connect(func(): _set_action_mode("guard"))
+
+func _set_action_mode(mode: String):
+	# Сбрасываем подсветку всех кнопок
+	follow_btn.modulate = Color.WHITE
+	attack_btn.modulate = Color.WHITE
+	guard_btn.modulate = Color.WHITE
+	
+	match mode:
+		"follow":
+			follow_btn.modulate = Color.YELLOW
+			Game.action_mode = "follow"
+		"attack":
+			attack_btn.modulate = Color.RED
+			Game.action_mode = "attack"
+		"guard":
+			guard_btn.modulate = Color.GREEN
+			Game.action_mode = "guard"
 
 func _setup_minimap():
 	# Создаём изображение миникарты (190x190)

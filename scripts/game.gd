@@ -10,6 +10,8 @@ static var is_paused: bool = false
 static var player_target: Vector2 = Vector2.ZERO
 static var enemies: Array = []
 static var mana_regen_accum: float = 0.0
+static var action_mode: String = "none"  # none, follow, attack, guard
+static var action_target: Node2D = null
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
@@ -84,3 +86,39 @@ func _process(delta):
 		if mana_regen_accum >= 1.0:
 			mana_regen_accum -= 1.0
 			player.current_mana = min(player.max_mana, player.current_mana + 1)
+	
+	# Обработка режимов действий
+	_process_action_mode()
+
+func _process_action_mode():
+	if action_mode == "none" or not is_instance_valid(player):
+		return
+	
+	match action_mode:
+		"follow":
+			# Идти за ближайшим союзником (пока за ближайшим NPC)
+			if action_target and is_instance_valid(action_target):
+				player.attack_target = action_target
+				player.state = "chase"
+		"attack":
+			# Атаковать ближайшего врага
+			if enemies.size() > 0:
+				var nearest = null
+				var min_dist = 9999.0
+				for e in enemies:
+					if is_instance_valid(e):
+						var d = e.global_position.distance_to(player.global_position)
+						if d < min_dist:
+							min_dist = d
+							nearest = e
+				if nearest:
+					player.attack_target = nearest
+					player.state = "chase"
+		"guard":
+			# Стоять на месте и атаковать врагов в радиусе
+			if player.state == "idle":
+				for e in enemies:
+					if is_instance_valid(e) and e.global_position.distance_to(player.global_position) < 150:
+						player.attack_target = e
+						player.state = "chase"
+						break
