@@ -20,29 +20,22 @@ func _ready():
 	_create_sprite()
 
 func _create_sprite():
-	# Создаём спрайт программно если нет дочернего Sprite2D
 	var sprite = get_node_or_null("Sprite")
 	if not sprite:
 		sprite = Sprite2D.new()
 		sprite.name = "Sprite"
 		add_child(sprite)
-	
-	# Если текстура не задана — создаём заглушку
+
 	if not sprite.texture:
 		var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
-		
-		# Определяем тип врага по HP
 		if max_hp >= 50:
-			# Орк — зелёный
 			for y in range(48):
 				for x in range(32):
 					img.set_pixel(x, y, Color(0.2, 0.6, 0.15, 1.0))
 		else:
-			# Слизень — розовый
 			for y in range(48):
 				for x in range(32):
 					img.set_pixel(x, y, Color(0.9, 0.3, 0.6, 1.0))
-		
 		sprite.texture = ImageTexture.create_from_image(img)
 		sprite.offset = Vector2(0, -20)
 
@@ -54,6 +47,8 @@ func _physics_process(delta):
 
 	var player = get_tree().get_first_node_in_group("player")
 	if not player or not is_instance_valid(player):
+		velocity = Vector2.ZERO
+		move_and_slide()
 		return
 
 	var distance_to_player = global_position.distance_to(player.global_position)
@@ -64,10 +59,13 @@ func _physics_process(delta):
 			if distance_to_player < aggro_radius:
 				state = "chase"
 				attack_target = player
+			else:
+				velocity = Vector2.ZERO
 		"chase":
 			if distance_to_player > deaggro_radius:
 				state = "idle"
 				attack_target = null
+				velocity = Vector2.ZERO
 			elif distance_to_player < 40.0:
 				state = "attack"
 			elif hp_percent < 0.15 and can_flee:
@@ -86,11 +84,17 @@ func _physics_process(delta):
 			if distance_to_player > deaggro_radius * 1.5:
 				queue_free()
 
+	move_and_slide()
+
 func move_toward_target(target: Vector2, _delta):
 	var direction = (target - global_position).normalized()
 	velocity = direction * move_speed
 
-func take_damage(_damage: int, _attacker: Node2D):
-	current_hp -= _damage
+func take_damage(dmg: int, attacker: Node2D):
+	current_hp -= dmg
+	# При получении урона — сразу начинаем погоню
+	if is_instance_valid(attacker):
+		state = "chase"
+		attack_target = attacker
 	if current_hp <= 0:
 		queue_free()
