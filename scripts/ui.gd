@@ -3,6 +3,8 @@ class_name GameUI
 
 @onready var spell_panel_top: HBoxContainer = $BottomPanel/SpellPanelTop
 @onready var spell_panel_bottom: HBoxContainer = $BottomPanel/SpellPanelBottom
+@onready var bottom_panel: Panel = $BottomPanel
+@onready var inventory_grid: GridContainer = $BottomPanel/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
@@ -40,6 +42,8 @@ func setup_ui(p: Player):
 
 # Панель заклинаний с иконками
 var spell_buttons: Array = []
+var inventory_visible: bool = true
+var spells_visible: bool = true
 
 func _setup_spells():
 	# 2 ряда заклинаний: верхний — 3 кнопки, нижний — 4 кнопки
@@ -296,3 +300,12 @@ func _process(_delta):
 		pause_label.text = "ТАКТИЧЕСКАЯ ПАУЗА"
 	else:
 		pause_label.visible = false
+
+func toggle_inventory():
+	inventory_visible = !inventory_visible
+	inventory_grid.visible = inventory_visible
+
+func toggle_spells():
+	spells_visible = !spells_visible
+	spell_panel_top.visible = spells_visible
+	spell_panel_bottom.visible = spells_visible

@@ -57,6 +57,16 @@ func _input(event):
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R and event.ctrl_pressed:
 		get_tree().reload_current_scene()
 
+	# Toggle инвентаря по I
+	if event is InputEventKey and event.pressed and event.keycode == KEY_I:
+		if ui:
+			ui.toggle_inventory()
+
+	# Toggle магий по B
+	if event is InputEventKey and event.pressed and event.keycode == KEY_B:
+		if ui:
+			ui.toggle_spells()
+
 func handle_click(world_position: Vector2):
 	print("Клик в: ", world_position)
 
