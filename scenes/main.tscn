@@ -214,17 +214,12 @@ offset_top = 600.0
 offset_right = 1070.0
 offset_bottom = 800.0
 
-[node name="SpellPanelTop" type="HBoxContainer" parent="UI/BottomPanel"]
-offset_left = 210.0
+[node name="SpellGrid" type="GridContainer" parent="UI/BottomPanel"]
+offset_left = 10.0
 offset_top = 5.0
-offset_right = 1020.0
-offset_bottom = 65.0
-
-[node name="SpellPanelBottom" type="HBoxContainer" parent="UI/BottomPanel"]
-offset_left = 210.0
-offset_top = 65.0
-offset_right = 1020.0
-offset_bottom = 125.0
+offset_right = 730.0
+offset_bottom = 105.0
+columns = 12
 
 [node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel"]
 offset_left = 210.0

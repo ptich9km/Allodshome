@@ -1,8 +1,7 @@
 extends CanvasLayer
 class_name GameUI
 
-@onready var spell_panel_top: HBoxContainer = $BottomPanel/SpellPanelTop
-@onready var spell_panel_bottom: HBoxContainer = $BottomPanel/SpellPanelBottom
+@onready var spell_grid: GridContainer = $BottomPanel/SpellGrid
 @onready var bottom_panel: Panel = $BottomPanel
 @onready var inventory_grid: GridContainer = $BottomPanel/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
@@ -46,63 +45,27 @@ var inventory_visible: bool = true
 var spells_visible: bool = true
 
 func _setup_spells():
-	# 2 ряда заклинаний: верхний — 3 кнопки, нижний — 4 кнопки
-	var spells_row1 = [
-		{"name": "Fireball", "key": "1"},
-		{"name": "Heal", "key": "2"},
-		{"name": "Lightning", "key": "3"}
-	]
-	var spells_row2 = [
-		{"name": "Frost", "key": "4"},
-		{"name": "Shield", "key": "5"},
-		{"name": "Teleport", "key": "6"},
-		{"name": "AoE", "key": "7"}
-	]
+	# 2 ряда по 12 = 24 иконки заклинаний
+	spell_grid.columns = 12
 	
-	_create_spell_row(spell_panel_top, spells_row1, 0)
-	_create_spell_row(spell_panel_bottom, spells_row2, 3)
-
-func _create_spell_row(panel: HBoxContainer, spells: Array, offset: int):
-	for i in range(spells.size()):
-		var idx = offset + i
+	for i in range(24):
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(60, 50)
+		btn.custom_minimum_size = Vector2(58, 48)
+		btn.flat = true
 		
-		var icon = Image.create(48, 48, false, Image.FORMAT_RGBA8)
-		var sc = spells[i]
+		# Загружаем иконку
+		var icon_path = "res://assets/spells/spell_%02d.png" % i
+		var tex = load(icon_path)
+		if tex:
+			btn.icon = tex
+		else:
+			# Заглушка если файл не найден
+			var icon = Image.create(48, 48, false, Image.FORMAT_RGBA8)
+			icon.fill(Color(0.2, 0.2, 0.3, 1.0))
+			btn.icon = ImageTexture.create_from_image(icon)
 		
-		match sc.name:
-			"Fireball":
-				for y in range(48):
-					for x in range(48):
-						var d = sqrt(pow(x-24,2) + pow(y-24,2))
-						if d < 20:
-							var intensity = 1.0 - d / 20.0
-							icon.set_pixel(x, y, Color(1.0 * intensity, 0.3 * intensity, 0.0, intensity))
-			"Heal":
-				icon.fill(Color(0.0, 0.3, 0.0, 1.0))
-				for y in range(16, 32):
-					for x in range(8, 40):
-						icon.set_pixel(x, y, Color(0.2, 1.0, 0.2, 1.0))
-				for y in range(8, 40):
-					for x in range(16, 32):
-						icon.set_pixel(x, y, Color(0.2, 1.0, 0.2, 1.0))
-			"Lightning":
-				icon.fill(Color(0.0, 0.0, 0.2, 1.0))
-				for y in range(8, 40):
-					var zig_x = 24 + int(sin(y * 0.5) * 10)
-					for dx in range(-2, 3):
-						if zig_x+dx >= 0 and zig_x+dx < 48:
-							icon.set_pixel(zig_x+dx, y, Color(0.5, 0.7, 1.0, 1.0))
-			_:
-				icon.fill(Color(0.2, 0.2, 0.3, 1.0))
-		
-		var tex = ImageTexture.create_from_image(icon)
-		btn.icon = tex
-		btn.text = sc.key
-		btn.pressed.connect(func(): cast_ability(idx))
-		
-		panel.add_child(btn)
+		btn.pressed.connect(func(idx=i): cast_ability(idx))
+		spell_grid.add_child(btn)
 		spell_buttons.append(btn)
 	
 	_setup_minimap()
@@ -279,20 +242,15 @@ func update_ui(p: Player):
 	_draw_minimap()
 
 func cast_ability(index: int):
-	if not player or index >= player.abilities.size():
+	if not player:
 		return
-	# Заглушки для новых заклинаний
-	if index == 3:
-		print("Frost — в разработке")
-	elif index == 4:
-		print("Shield — в разработке")
-	elif index == 5:
-		print("Teleport — в разработке")
-	elif index == 6:
-		print("AoE — в разработке")
-	else:
+	# Первые 3 — реальные заклинания
+	if index < 3:
 		var target_pos = get_viewport().get_mouse_position()
 		player.cast_ability(index, target_pos)
+	else:
+		# Остальные 21 — заглушки
+		print("Заклинание #%d — в разработке" % (index + 1))
 
 func _process(_delta):
 	if Game.is_paused:
@@ -307,5 +265,4 @@ func toggle_inventory():
 
 func toggle_spells():
 	spells_visible = !spells_visible
-	spell_panel_top.visible = spells_visible
-	spell_panel_bottom.visible = spells_visible
+	spell_grid.visible = spells_visible
