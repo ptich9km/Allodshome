@@ -52,6 +52,10 @@ func _input(event):
 		is_paused = !is_paused
 		get_tree().paused = is_paused
 
+	# Рестарт по R
+	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+		get_tree().reload_current_scene()
+
 func handle_click(world_position: Vector2):
 	print("Клик в: ", world_position)
 
@@ -77,7 +81,7 @@ func _process(delta):
 		return
 	if is_instance_valid(player) and camera:
 		camera.position = camera.position.lerp(player.position, 5.0 * delta)
-	if is_instance_valid(ui):
+	if is_instance_valid(ui) and is_instance_valid(player):
 		ui.update_ui(player)
 	
 	# Регенерация маны игрока — 1 мана в секунду

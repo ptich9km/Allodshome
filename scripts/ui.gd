@@ -161,13 +161,14 @@ func _draw_minimap():
 						if py >= 0 and py < 190 and px >= 0 and px < 190:
 							minimap_image.set_pixel(px, py, color)
 	
-	# Рисуем игрока (синяя точка)
+	# Рисуем игрока (синяя точка, красная если мёртв)
 	var px = 95
 	var py = 95
+	var player_color = Color(0.2, 0.4, 1.0, 1.0) if is_instance_valid(player) and player.current_hp > 0 else Color(1.0, 0.0, 0.0, 1.0)
 	for dy in range(-2, 3):
 		for dx in range(-2, 3):
 			if py+dy >= 0 and py+dy < 190 and px+dx >= 0 and px+dx < 190:
-				minimap_image.set_pixel(px+dx, py+dy, Color(0.2, 0.4, 1.0, 1.0))
+				minimap_image.set_pixel(px+dx, py+dy, player_color)
 	
 	# Рисуем врагов (красные точки)
 	for enemy in Game.enemies:

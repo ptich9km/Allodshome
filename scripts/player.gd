@@ -74,6 +74,8 @@ func _physics_process(delta):
 			chase_target(delta)
 		"attack":
 			attack_enemy(delta)
+		"dead":
+			velocity = Vector2.ZERO
 
 	move_and_slide()
 
@@ -188,4 +190,8 @@ func _create_lightning_effect(from: Vector2, to: Vector2):
 func take_damage(damage: int, _attacker: Node2D):
 	current_hp -= damage
 	if current_hp <= 0:
-		queue_free()
+		# Смерть — не удаляем а показываем экран
+		velocity = Vector2.ZERO
+		state = "dead"
+		get_tree().paused = true
+		print("=== ВЫ ПОГИБЛИ! Нажмите R для рестарта ===")
