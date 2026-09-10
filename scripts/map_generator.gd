@@ -13,14 +13,12 @@ func generate_original_terrain(tilemap: TileMapLayer):
 	print("Загружаем оригинальные тайлы Allods 2...")
 
 	# Загружаем тайлы из BMP файлов
-	# tile1-XX — основной terrain (4 тайлсета)
 	var tilesets = []
 	var tileset_names = ["tile1", "tile2", "tile3", "tile4"]
 	
 	for ts_name in tileset_names:
 		var tiles = []
 		var max_variants = 16
-		# tile4 имеет только 4 вариации (00-03)
 		if ts_name == "tile4":
 			max_variants = 4
 		
@@ -29,9 +27,7 @@ func generate_original_terrain(tilemap: TileMapLayer):
 			var tex = load(path)
 			if tex:
 				tiles.append(tex)
-				print("  Loaded: %s-%02d.bmp (%dx%d)" % [ts_name, i, tex.get_width(), tex.get_height()])
 			else:
-				# Файл не найден — пробуем без leading zero
 				path = "res://assets/terrain/%s-%d.bmp" % [ts_name, i]
 				tex = load(path)
 				if tex:
@@ -53,19 +49,15 @@ func generate_original_terrain(tilemap: TileMapLayer):
 	# Создаём TileSet
 	var tileset = TileSet.new()
 	tileset.tile_size = Vector2i(TILE_WIDTH, TILE_HEIGHT)
-	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED  # Изометрическая раскладка
+	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
 
-	# Добавляем каждый тайлсет как источник
 	var source_ids = {}
 	for ts_data in tilesets:
 		var source = TileSetAtlasSource.new()
-		
-		# Первая текстура (вариация 00) — основная
 		var main_tex = ts_data["tiles"][0]
 		source.texture = main_tex
 		source.texture_region_size = Vector2i(TILE_WIDTH, TILE_HEIGHT)
 		
-		# Создаём тайлы для каждой вариации
 		for i in range(ts_data["tiles"].size()):
 			source.create_tile(Vector2i(i, 0))
 		
@@ -75,8 +67,15 @@ func generate_original_terrain(tilemap: TileMapLayer):
 
 	tilemap.tile_set = tileset
 
-	# Генерируем карту как в оригинале (диамантовый остров)
+	# Проверяем что tile1 загружен
+	if not source_ids.has("tile1"):
+		print("  ERROR: tile1 not found! Using fallback.")
+		_create_fallback_terrain(tilemap)
+		return
+
+	# Генерируем карту
 	var map_radius = 10
+	var tile1_variants = tilesets[0]["tiles"].size()
 	
 	for x in range(-map_radius, map_radius + 1):
 		for y in range(-map_radius, map_radius + 1):
@@ -84,28 +83,23 @@ func generate_original_terrain(tilemap: TileMapLayer):
 			var pos = Vector2i(x, y)
 			
 			if dist <= 5:
-				# Центр — тайлсет 1 (трава), вариация 0
 				tilemap.set_cell(pos, source_ids["tile1"], Vector2i(0, 0))
 			elif dist <= 7:
-				# Середина — тайлсет 1, разные вариации
-				var variant = (x + y * 3) % 16
+				var variant = (x + y * 3) % tile1_variants
 				tilemap.set_cell(pos, source_ids["tile1"], Vector2i(variant, 0))
 			elif dist <= 9:
-				# Край — тайлсет 2 (песок/камень)
-				var variant = (x * 2 + y) % 16
 				if source_ids.has("tile2"):
+					var variant = (x * 2 + y) % tilesets[1]["tiles"].size()
 					tilemap.set_cell(pos, source_ids["tile2"], Vector2i(variant, 0))
 				else:
 					tilemap.set_cell(pos, source_ids["tile1"], Vector2i(0, 0))
 			elif dist <= 10:
-				# Обод — тайлсет 3 (вода/край)
 				if source_ids.has("tile3"):
 					tilemap.set_cell(pos, source_ids["tile3"], Vector2i(0, 0))
 
 	print("Остров готов! Размер: %dx%d" % [map_radius*2+1, map_radius*2+1])
 
 func _create_fallback_terrain(tilemap: TileMapLayer):
-	# Фоллбэк если BMP не загрузились
 	var grass_img = Image.create(TILE_WIDTH, TILE_HEIGHT, false, Image.FORMAT_RGBA8)
 	for y in range(TILE_HEIGHT):
 		for x in range(TILE_WIDTH):
@@ -129,10 +123,9 @@ func _create_fallback_terrain(tilemap: TileMapLayer):
 	tileset.add_source(gs)
 	tilemap.tile_set = tileset
 
-	# Маленький остров
 	for x in range(-5, 6):
 		for y in range(-5, 6):
 			if abs(x) + abs(y) <= 5:
 				tilemap.set_cell(Vector2i(x, y), 0, Vector2i(0, 0))
 	
-	print("Fallback island created (no terrain BMP found)")
+	print("Fallback island created")
