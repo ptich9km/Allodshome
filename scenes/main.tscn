@@ -8,6 +8,8 @@
 [ext_resource type="Texture2D" path="res://assets/units/monsters/orc/sprites-001.png" id="orc_tex"]
 [ext_resource type="Texture2D" path="res://assets/units/heroes/swordsman/sprites-001.png" id="hero_tex"]
 
+[ext_resource type="Texture2D" path="res://assets/portraits/humanh1.bmp" id="hero_portrait"]
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
 
@@ -133,7 +135,7 @@ offset_right = 190.0
 offset_bottom = 190.0
 expand_mode = 1
 stretch_mode = 5
-texture = ExtResource("hero_tex")
+texture = ExtResource("hero_portrait")
 
 [node name="StatsBorder" type="Panel" parent="UI"]
 offset_left = 1075.0
