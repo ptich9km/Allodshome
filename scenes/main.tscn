@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/units/monsters/orc/sprites-001.png" id="orc_tex"]
 [ext_resource type="Texture2D" path="res://assets/units/heroes/swordsman/sprites-001.png" id="hero_tex"]
 
-[ext_resource type="Texture2D" path="res://assets/portraits/orc.png" id="hero_portrait"]
+[ext_resource type="Texture2D" path="res://assets/portraits/goodorc.png" id="hero_portrait"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
@@ -74,6 +74,14 @@ offset_top = 5.0
 offset_right = 730.0
 offset_bottom = 105.0
 columns = 12
+modulate = Color(1, 1, 1, 1)
+
+[node name="Panel" type="ColorRect" parent="UI/BottomPanel"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1070.0
+offset_bottom = 200.0
+color = Color(0.05, 0.05, 0.05, 0.95)
 
 [node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel"]
 offset_left = 210.0
