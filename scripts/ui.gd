@@ -11,7 +11,6 @@ class_name GameUI
 @onready var follow_btn: Button = $ActionPanel/FollowBtn
 @onready var attack_btn: Button = $ActionPanel/AttackBtn
 @onready var guard_btn: Button = $ActionPanel/GuardBtn
-@onready var inventory_grid: GridContainer = $BottomPanel/InventoryGrid
 
 var minimap_camera: Camera2D
 var minimap_tilemap: TileMapLayer
