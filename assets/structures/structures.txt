@@ -1,0 +1,3757 @@
+object Root
+{
+  object Global
+  {
+    int Count = 179
+  }
+
+  object Structure0
+  {
+    string DescText = "Goblin's Hut 1"
+    int ID = 1
+    string File = "hut1\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 18
+    int SelectionY2 = 86
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "goblinh"
+    int IconID = 224
+  }
+
+  object Structure1
+  {
+    string DescText = "Goblin's Hut 2"
+    int ID = 2
+    string File = "hut2\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 18
+    int SelectionY2 = 86
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "goblinh"
+    int IconID = 225
+  }
+
+  object Structure10
+  {
+    string DescText = "Church"
+    int ID = 11
+    string File = "church\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 5
+    int SelectionX1 = 18
+    int SelectionX2 = 112
+    int SelectionY1 = 34
+    int SelectionY2 = 144
+    int ShadowY = 48
+    int Phases = 6
+    string AnimMask = "--------++----------"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [4, 4, 4, 4, 4, 4]
+    string Picture = "church"
+    int IconID = 234
+  }
+
+  object Structure100
+  {
+    string DescText = "Multiplayer Kaarg Inn 3"
+    int ID = 101
+    string File = "kaarginn3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarginn"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure101
+  {
+    string DescText = "Barbarian Hut 1"
+    int ID = 114
+    string File = "bhut1\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut"
+  }
+
+  object Structure102
+  {
+    string DescText = "Barbarian Hut 2"
+    int ID = 115
+    string File = "bhut2\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut"
+  }
+
+  object Structure103
+  {
+    string DescText = "Barbarian Hut 3"
+    int ID = 116
+    string File = "bhut3\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut"
+  }
+
+  object Structure104
+  {
+    string DescText = "Crater"
+    int ID = 117
+    string File = "crater\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure105
+  {
+    string DescText = "Vigvam 1"
+    int ID = 118
+    string File = "vigvam1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "vigvam"
+  }
+
+  object Structure106
+  {
+    string DescText = "Vigvam 2"
+    int ID = 119
+    string File = "vigvam2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "vigvam"
+  }
+
+  object Structure107
+  {
+    string DescText = "Vigvam 3"
+    int ID = 120
+    string File = "vigvam3\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "vigvam"
+  }
+
+  object Structure108
+  {
+    string DescText = "Open Grave 1"
+    int ID = 121
+    string File = "opengrave1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure109
+  {
+    string DescText = "Open Grave 2"
+    int ID = 122
+    string File = "opengrave2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure11
+  {
+    string DescText = "Tower 1"
+    int ID = 12
+    string File = "tower1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 50
+    int SelectionY1 = 23
+    int SelectionY2 = 92
+    int ShadowY = 40
+    int Phases = 3
+    string AnimMask = "++++++"
+    array AnimFrame = [1, 0]
+    array AnimTime = [8, 8]
+    string Picture = "tower1"
+    int LightRadius = 1
+    int LightPulse = 8
+    int IconID = 235
+  }
+
+  object Structure110
+  {
+    string DescText = "Open Grave 3"
+    int ID = 123
+    string File = "opengrave3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure111
+  {
+    string DescText = "Torture 1"
+    int ID = 130
+    string File = "torture1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "well"
+    int Indestructible = 1
+  }
+
+  object Structure112
+  {
+    string DescText = "Torture 2"
+    int ID = 131
+    string File = "torture2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "well"
+    int Indestructible = 1
+  }
+
+  object Structure113
+  {
+    string DescText = "Torture 3"
+    int ID = 132
+    string File = "torture3\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "well"
+    int Indestructible = 1
+  }
+
+  object Structure114
+  {
+    string DescText = "Kaarg tower 1"
+    int ID = 136
+    string File = "kaargtower1\\house"
+    int TileWidth = 2
+    int TileHeight = 1
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 35
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargtow1"
+  }
+
+  object Structure115
+  {
+    string DescText = "Kaarg tower 2"
+    int ID = 137
+    string File = "kaargtower2\\house"
+    int TileWidth = 2
+    int TileHeight = 1
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 35
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargtow2"
+  }
+
+  object Structure116
+  {
+    string DescText = "Sclep 1"
+    int ID = 133
+    string File = "sclep1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sclep"
+  }
+
+  object Structure117
+  {
+    string DescText = "Sclep 2"
+    int ID = 134
+    string File = "sclep2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sclep"
+  }
+
+  object Structure118
+  {
+    string DescText = "Sclep 3"
+    int ID = 135
+    string File = "sclep3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sclep"
+  }
+
+  object Structure119
+  {
+    string DescText = "Dragon's nest"
+    int ID = 138
+    string File = "nest\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int Flat = 1
+  }
+
+  object Structure12
+  {
+    string DescText = "Tower 2"
+    int ID = 13
+    string File = "tower2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 50
+    int SelectionY1 = 23
+    int SelectionY2 = 92
+    int ShadowY = 40
+    int Phases = 3
+    string AnimMask = "++++++"
+    array AnimFrame = [1, 0]
+    array AnimTime = [8, 8]
+    string Picture = "tower2"
+    int LightRadius = 1
+    int LightPulse = 8
+    int IconID = 236
+  }
+
+  object Structure120
+  {
+    string DescText = "Necro Tower"
+    int ID = 139
+    string File = "necrotower\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 7
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "necrotower"
+    int Indestructible = 1
+  }
+
+  object Structure121
+  {
+    string DescText = "Tent 1"
+    int ID = 124
+    string File = "tent1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tent"
+  }
+
+  object Structure122
+  {
+    string DescText = "Tent 2"
+    int ID = 125
+    string File = "tent2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tent"
+  }
+
+  object Structure123
+  {
+    string DescText = "Tent 3"
+    int ID = 126
+    string File = "tent3\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tent"
+  }
+
+  object Structure124
+  {
+    string DescText = "Big tent 1"
+    int ID = 127
+    string File = "bigtent1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bigtent"
+  }
+
+  object Structure125
+  {
+    string DescText = "Big tent 2"
+    int ID = 128
+    string File = "bigtent2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bigtent"
+  }
+
+  object Structure126
+  {
+    string DescText = "Big tent 3"
+    int ID = 129
+    string File = "bigtent3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bigtent"
+  }
+
+  object Structure127
+  {
+    string DescText = "Druid Shop 1"
+    int ID = 102
+    string File = "druidshop1\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drshop"
+  }
+
+  object Structure128
+  {
+    string DescText = "Druid Shop 2"
+    int ID = 103
+    string File = "druidshop2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drshop"
+  }
+
+  object Structure129
+  {
+    string DescText = "Druid Shop 3"
+    int ID = 104
+    string File = "druidshop3\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drshop"
+  }
+
+  object Structure13
+  {
+    string DescText = "Cave"
+    int ID = 14
+    string File = "cave\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "cave"
+    int IconID = 237
+  }
+
+  object Structure130
+  {
+    string DescText = "Multiplayer Druid Shop 1"
+    int ID = 105
+    string File = "druidshop1\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drshop"
+    int Usable = 1
+    int Indestructible = 1
+  }
+
+  object Structure131
+  {
+    string DescText = "Multiplayer Druid Shop 2"
+    int ID = 106
+    string File = "druidshop2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drshop"
+    int Usable = 1
+    int Indestructible = 1
+  }
+
+  object Structure132
+  {
+    string DescText = "Multiplayer Druid Shop 3"
+    int ID = 107
+    string File = "druidshop3\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drshop"
+    int Usable = 1
+    int Indestructible = 1
+  }
+
+  object Structure133
+  {
+    string DescText = "Druid Inn 1"
+    int ID = 108
+    string File = "druidinn1\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drinn"
+  }
+
+  object Structure134
+  {
+    string DescText = "Druid Inn 2"
+    int ID = 109
+    string File = "druidinn2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drinn"
+  }
+
+  object Structure135
+  {
+    string DescText = "Druid Inn 3"
+    int ID = 110
+    string File = "druidinn3\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drinn"
+  }
+
+  object Structure136
+  {
+    string DescText = "Multiplayer Druid Inn 1"
+    int ID = 111
+    string File = "druidinn1\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drinn"
+    int Usable = 1
+    int Indestructible = 1
+  }
+
+  object Structure137
+  {
+    string DescText = "Multiplayer Druid Inn 2"
+    int ID = 112
+    string File = "druidinn2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drinn"
+    int Usable = 1
+    int Indestructible = 1
+  }
+
+  object Structure138
+  {
+    string DescText = "Multiplayer Druid Inn 3"
+    int ID = 113
+    string File = "druidinn3\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drinn"
+    int Usable = 1
+    int Indestructible = 1
+  }
+
+  object Structure139
+  {
+    string DescText = "Druid House 1"
+    int ID = 140
+    string File = "druidhouse1\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drhouse"
+  }
+
+  object Structure14
+  {
+    string DescText = "Well 2"
+    int ID = 15
+    string File = "well2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 48
+    int SelectionY1 = 0
+    int SelectionY2 = 48
+    int ShadowY = 10000
+    int Phases = 6
+    string AnimMask = "++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [2, 2, 2, 2, 2, 2]
+    string Picture = "well_02"
+    int IconID = 233
+    int Indestructible = 1
+    int Usable = 1
+    int LightRadius = 1
+  }
+
+  object Structure140
+  {
+    string DescText = "Druid House 2"
+    int ID = 141
+    string File = "druidhouse2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drhouse"
+  }
+
+  object Structure141
+  {
+    string DescText = "Druid House 3"
+    int ID = 142
+    string File = "druidhouse3\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "++++++++++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "drhouse"
+  }
+
+  object Structure142
+  {
+    string DescText = "Grave Doors 1"
+    int ID = 143
+    string File = "doors1\\house"
+    int TileWidth = 5
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "drhouse"
+    int Indestructible = 1
+  }
+
+  object Structure143
+  {
+    string DescText = "Grave Doors 2"
+    int ID = 144
+    string File = "doors2\\house"
+    int TileWidth = 5
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "drhouse"
+    int Indestructible = 1
+  }
+
+  object Structure144
+  {
+    string DescText = "Blacksmith 1"
+    int ID = 145
+    string File = "blacksmith1\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 28
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "-++--++--++--++-"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "blacksmith"
+  }
+
+  object Structure145
+  {
+    string DescText = "Blacksmith 2"
+    int ID = 146
+    string File = "blacksmith2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 28
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 7
+    string AnimMask = "-++--++--++--++-"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4]
+    string Picture = "blacksmith"
+  }
+
+  object Structure146
+  {
+    string DescText = "Stonehenge 1"
+    int ID = 147
+    string File = "henge1\\house"
+    int TileWidth = 1
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure147
+  {
+    string DescText = "Stonehenge 2"
+    int ID = 148
+    string File = "henge2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure148
+  {
+    string DescText = "Stonehenge 3"
+    int ID = 149
+    string File = "henge3\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure149
+  {
+    string DescText = "Stonehenge 4"
+    int ID = 150
+    string File = "henge4\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure15
+  {
+    string DescText = "Well 3"
+    int ID = 16
+    string File = "well3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 10000
+    int Phases = 6
+    string AnimMask = "+++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [2, 2, 2, 2, 2, 2]
+    string Picture = "well_03"
+    int IconID = 233
+    int Indestructible = 1
+    int Usable = 1
+    int LightRadius = 1
+    int LightPulse = 4
+  }
+
+  object Structure150
+  {
+    string DescText = "Stonehenge 5"
+    int ID = 151
+    string File = "henge5\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure151
+  {
+    string DescText = "Stonehenge 6"
+    int ID = 152
+    string File = "henge6\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure152
+  {
+    string DescText = "Stonehenge 7"
+    int ID = 153
+    string File = "henge7\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure153
+  {
+    string DescText = "Stonehenge 8"
+    int ID = 154
+    string File = "henge8\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 20
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonehenge"
+    int Indestructible = 1
+  }
+
+  object Structure154
+  {
+    string DescText = "Barbarian hut 4"
+    int ID = 155
+    string File = "bhut4\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 112
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut2"
+  }
+
+  object Structure155
+  {
+    string DescText = "Barbarian hut 5"
+    int ID = 156
+    string File = "bhut5\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 112
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut2"
+  }
+
+  object Structure156
+  {
+    string DescText = "Barbarian hut 6"
+    int ID = 157
+    string File = "bhut6\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 112
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut2"
+  }
+
+  object Structure157
+  {
+    string DescText = "Barbarian hut 7"
+    int ID = 158
+    string File = "bhut7\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 112
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut3"
+  }
+
+  object Structure158
+  {
+    string DescText = "Barbarian hut 8"
+    int ID = 159
+    string File = "bhut8\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 112
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut3"
+  }
+
+  object Structure159
+  {
+    string DescText = "Barbarian hut 9"
+    int ID = 160
+    string File = "bhut9\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 112
+    int SelectionY1 = 8
+    int SelectionY2 = 112
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bhut3"
+  }
+
+  object Structure16
+  {
+    string DescText = "Human House 3a"
+    int ID = 17
+    string File = "hut7(h3)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 90
+    int SelectionY1 = 8
+    int SelectionY2 = 90
+    int ShadowY = 32
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "house03"
+    int IconID = 247
+  }
+
+  object Structure160
+  {
+    string DescText = "Kaarg hut 1"
+    int ID = 161
+    string File = "khut1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarghut1"
+  }
+
+  object Structure161
+  {
+    string DescText = "Kaarg hut 2"
+    int ID = 162
+    string File = "khut2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarghut1"
+  }
+
+  object Structure162
+  {
+    string DescText = "Kaarg hut 3"
+    int ID = 163
+    string File = "khut3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarghut1"
+  }
+
+  object Structure163
+  {
+    string DescText = "Kaarg hut 4"
+    int ID = 164
+    string File = "khut4\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarghut2"
+  }
+
+  object Structure164
+  {
+    string DescText = "Kaarg hut 5"
+    int ID = 165
+    string File = "khut5\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarghut2"
+  }
+
+  object Structure165
+  {
+    string DescText = "Kaarg hut 6"
+    int ID = 166
+    string File = "khut6\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarghut2"
+  }
+
+  object Structure166
+  {
+    string DescText = "Mine 1"
+    int ID = 167
+    string File = "mine1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "mine"
+  }
+
+  object Structure167
+  {
+    string DescText = "Mine 2"
+    int ID = 168
+    string File = "mine2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "mine"
+  }
+
+  object Structure168
+  {
+    string DescText = "Mine 3"
+    int ID = 169
+    string File = "mine3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "mine"
+  }
+
+  object Structure169
+  {
+    string DescText = "Ore 1"
+    int ID = 170
+    string File = "ore1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ore"
+    int Indestructible = 1
+  }
+
+  object Structure17
+  {
+    string DescText = "Human House 3b"
+    int ID = 18
+    string File = "hut8(h3)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 90
+    int SelectionY1 = 8
+    int SelectionY2 = 90
+    int ShadowY = 32
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "house03"
+    int IconID = 246
+  }
+
+  object Structure170
+  {
+    string DescText = "Ore 2"
+    int ID = 171
+    string File = "ore2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ore"
+    int Indestructible = 1
+  }
+
+  object Structure171
+  {
+    string DescText = "Ore 3"
+    int ID = 172
+    string File = "ore3\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ore"
+    int Indestructible = 1
+  }
+
+  object Structure172
+  {
+    string DescText = "Stone crusher 1"
+    int ID = 173
+    string File = "stonecr1\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonecr"
+  }
+
+  object Structure173
+  {
+    string DescText = "Stone crusher 2"
+    int ID = 174
+    string File = "stonecr2\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 8
+    int SelectionX2 = 88
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonecr"
+  }
+
+  object Structure174
+  {
+    string DescText = "Stone crusher 3"
+    int ID = 175
+    string File = "stonecr3\\house"
+    int TileWidth = 2
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "stonecr"
+  }
+
+  object Structure175
+  {
+    string DescText = "Pyramid 1"
+    int ID = 176
+    string File = "pyramid1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 88
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pyramid1"
+  }
+
+  object Structure176
+  {
+    string DescText = "Pyramid 2"
+    int ID = 177
+    string File = "pyramid2\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pyramid2"
+  }
+
+  object Structure177
+  {
+    string DescText = "Pyramid 3"
+    int ID = 178
+    string File = "pyramid3\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pyramid3"
+  }
+
+  object Structure178
+  {
+    string DescText = "Pyramid 4"
+    int ID = 179
+    string File = "pyramid4\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 8
+    int SelectionX2 = 56
+    int SelectionY1 = 8
+    int SelectionY2 = 56
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pyramid4"
+  }
+
+  object Structure18
+  {
+    string DescText = "Human House 2a"
+    int ID = 19
+    string File = "hut9(h2)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 6
+    int SelectionX2 = 92
+    int SelectionY1 = 15
+    int SelectionY2 = 92
+    int ShadowY = 32
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "house02"
+    int IconID = 248
+  }
+
+  object Structure19
+  {
+    string DescText = "Human House 2b"
+    int ID = 20
+    string File = "huta(h2)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 15
+    int SelectionX2 = 88
+    int SelectionY1 = 3
+    int SelectionY2 = 90
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "house02"
+    int IconID = 249
+  }
+
+  object Structure2
+  {
+    string DescText = "Hut on Foot 1"
+    int ID = 3
+    string File = "hut3\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 50
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int IconID = 226
+  }
+
+  object Structure20
+  {
+    string DescText = "Ogre House 1"
+    int ID = 21
+    string File = "hutb(o0)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 14
+    int SelectionX2 = 90
+    int SelectionY1 = 15
+    int SelectionY2 = 90
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ogreh"
+    int IconID = 250
+  }
+
+  object Structure21
+  {
+    string DescText = "Ogre House 2"
+    int ID = 22
+    string File = "hutc(o1)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 17
+    int SelectionX2 = 88
+    int SelectionY1 = 16
+    int SelectionY2 = 90
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ogreh"
+    int IconID = 251
+  }
+
+  object Structure22
+  {
+    string DescText = "Ogre House 3"
+    int ID = 23
+    string File = "hutd(o2)\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 9
+    int SelectionX2 = 88
+    int SelectionY1 = 11
+    int SelectionY2 = 86
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ogreh"
+    int IconID = 252
+  }
+
+  object Structure23
+  {
+    string DescText = "Bee House 1"
+    int ID = 24
+    string File = "hute(b0)\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int IconID = 253
+  }
+
+  object Structure24
+  {
+    string DescText = "Bee House 2"
+    int ID = 25
+    string File = "hutf(b1)\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int IconID = 254
+  }
+
+  object Structure25
+  {
+    string DescText = "Leg's House"
+    int ID = 26
+    string File = "leg's\\house"
+    int TileWidth = 2
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 12
+    int SelectionX2 = 54
+    int SelectionY1 = 20
+    int SelectionY2 = 62
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "norka"
+    int IconID = 255
+  }
+
+  object Structure26
+  {
+    string DescText = "Magic Symbol"
+    int ID = 27
+    string File = "magic\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 10000
+    int Phases = 4
+    string AnimMask = "+++++++++"
+    array AnimFrame = [0, 1, 2, 3]
+    array AnimTime = [1, 1, 1, 1]
+    string Picture = "magic"
+    int IconID = 256
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure27
+  {
+    string DescText = "Switch 1"
+    int ID = 28
+    string File = "switch1\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 50
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "switch"
+    int IconID = 257
+    int Usable = 1
+  }
+
+  object Structure28
+  {
+    string DescText = "Switch 2"
+    int ID = 29
+    string File = "switch2\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 50
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "switch"
+    int IconID = 258
+    int Usable = 1
+  }
+
+  object Structure29
+  {
+    string DescText = "Ruins 1"
+    int ID = 30
+    string File = "ruins1\\house"
+    int TileWidth = 3
+    int TileHeight = 1
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ruins"
+    int IconID = 259
+    int Indestructible = 1
+  }
+
+  object Structure3
+  {
+    string DescText = "Hut on Foot 2"
+    int ID = 4
+    string File = "hut4\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 20
+    int SelectionX2 = 90
+    int SelectionY1 = 2
+    int SelectionY2 = 88
+    int ShadowY = 50
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "hutfoot"
+    int IconID = 227
+  }
+
+  object Structure30
+  {
+    string DescText = "Ruins 2"
+    int ID = 31
+    string File = "ruins2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 64
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ruins"
+    int IconID = 260
+    int Indestructible = 1
+  }
+
+  object Structure31
+  {
+    string DescText = "Ruins 3"
+    int ID = 32
+    string File = "ruins3\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "ruins"
+    int IconID = 261
+    int Indestructible = 1
+  }
+
+  object Structure32
+  {
+    string DescText = "Vertical Wooden Bridge"
+    int ID = 33
+    string File = "bridge1v\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int IconID = 261
+    int Indestructible = 1
+    int VariableSize = 1
+    int Flat = 1
+  }
+
+  object Structure33
+  {
+    string DescText = "Multiplayer Plagat Shop 1"
+    int ID = 34
+    string File = "shop1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 5
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 56
+    int SelectionY2 = 160
+    int ShadowY = 30
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shop"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure34
+  {
+    string DescText = "Multiplayer Plagat Shop 2"
+    int ID = 35
+    string File = "shop2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 5
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 56
+    int SelectionY2 = 160
+    int ShadowY = 30
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shop"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure35
+  {
+    string DescText = "Hanging Peasant"
+    int ID = 36
+    string File = "hangman\\house"
+    int TileWidth = 2
+    int TileHeight = 1
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 64
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 40
+    int Phases = 8
+    string AnimMask = "++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    array AnimTime = [4, 4, 4, 4, 4, 4, 4, 4]
+    string Picture = "ruins"
+    int Indestructible = 1
+  }
+
+  object Structure36
+  {
+    string DescText = "Horisontal Wooden Bridge"
+    int ID = 37
+    string File = "bridge2\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int Indestructible = 1
+    int VariableSize = 1
+    int Flat = 1
+  }
+
+  object Structure37
+  {
+    string DescText = "Horisontal Bridge"
+    int ID = 38
+    string File = "bridge3\\house"
+    int TileWidth = 6
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 4
+    string AnimMask = "-------------------++++-"
+    array AnimFrame = [0, 1, 2, 3]
+    array AnimTime = [4, 4, 4, 4]
+    string Picture = "beeh"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure38
+  {
+    string DescText = "King's Grave 1"
+    int ID = 39
+    string File = "Grave1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure39
+  {
+    string DescText = "King's Grave 2"
+    int ID = 40
+    string File = "Grave2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure4
+  {
+    string DescText = "Windmill 1"
+    int ID = 5
+    string File = "mill1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 14
+    int SelectionX2 = 80
+    int SelectionY1 = 6
+    int SelectionY2 = 83
+    int ShadowY = 40
+    int Phases = 6
+    string AnimMask = "+++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [2, 2, 2, 2, 2, 2]
+    string Picture = "windmill"
+    int IconID = 230
+  }
+
+  object Structure40
+  {
+    string DescText = "Common Grave 1"
+    int ID = 41
+    string File = "Grave3\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int Indestructible = 1
+  }
+
+  object Structure41
+  {
+    string DescText = "Common Grave 2"
+    int ID = 42
+    string File = "Grave4\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int Indestructible = 1
+  }
+
+  object Structure42
+  {
+    string DescText = "Plagat Inn 1"
+    int ID = 43
+    string File = "Inn1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 32
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tavern"
+    int Indestructible = 0
+  }
+
+  object Structure43
+  {
+    string DescText = "Plagat Inn 2"
+    int ID = 44
+    string File = "Inn2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 32
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tavern"
+    int Indestructible = 0
+  }
+
+  object Structure44
+  {
+    string DescText = "Plagat Inn 3"
+    int ID = 45
+    string File = "Inn3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 128
+    int ShadowY = 32
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tavern"
+    int Indestructible = 0
+  }
+
+  object Structure45
+  {
+    string DescText = "Plagat Guard Tower 1"
+    int ID = 46
+    string File = "Tower_1\\house"
+    int TileWidth = 2
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 64
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 38
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "guardtow"
+  }
+
+  object Structure46
+  {
+    string DescText = "Plagat Guard Tower 2"
+    int ID = 47
+    string File = "Tower_2\\house"
+    int TileWidth = 2
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 64
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 40
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "guardtow"
+  }
+
+  object Structure47
+  {
+    string DescText = "Teleport Pad"
+    int ID = 48
+    string File = "Teleport\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    int ShadowY = 20000
+    string Picture = "beeh"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure48
+  {
+    string DescText = "Training School 1"
+    int ID = 49
+    string File = "Train1\\house"
+    int TileWidth = 3
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 128
+    int ShadowY = 35
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "training"
+    int Indestructible = 0
+  }
+
+  object Structure49
+  {
+    string DescText = "Training School 2"
+    int ID = 50
+    string File = "Train2\\house"
+    int TileWidth = 3
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 128
+    int ShadowY = 35
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "training"
+    int Indestructible = 0
+  }
+
+  object Structure5
+  {
+    string DescText = "Windmill 2"
+    int ID = 6
+    string File = "mill2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 16
+    int SelectionX2 = 85
+    int SelectionY1 = 7
+    int SelectionY2 = 86
+    int ShadowY = 40
+    int Phases = 6
+    string AnimMask = "+++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [2, 2, 2, 2, 2, 2]
+    string Picture = "windmill"
+    int IconID = 231
+  }
+
+  object Structure50
+  {
+    string DescText = "Training School 3"
+    int ID = 51
+    string File = "Train3\\house"
+    int TileWidth = 3
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 128
+    int ShadowY = 35
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "training"
+    int Indestructible = 0
+  }
+
+  object Structure51
+  {
+    string DescText = "Vertical Bridge"
+    int ID = 52
+    string File = "bridge4\\house"
+    int TileWidth = 4
+    int TileHeight = 6
+    int FullHeight = 6
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "beeh"
+    int Indestructible = 1
+    int Flat = 1
+  }
+
+  object Structure52
+  {
+    string DescText = "Campfire"
+    int ID = 53
+    string File = "campfire\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 20000
+    int Phases = 12
+    string AnimMask = "+"
+    array AnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    array AnimTime = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    string Picture = "beeh"
+    int Indestructible = 1
+    int Flat = 1
+    int LightRadius = 1
+    int LightPulse = 6
+  }
+
+  object Structure53
+  {
+    string DescText = "Skrakan Tower 1"
+    int ID = 54
+    string File = "tower_s1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 6
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 35
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tower_s"
+    int Indestructible = 1
+  }
+
+  object Structure54
+  {
+    string DescText = "Skrakan Tower 2"
+    int ID = 55
+    string File = "tower_s2\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 6
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 35
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tower_s"
+    int Indestructible = 1
+  }
+
+  object Structure55
+  {
+    string DescText = "Mage's tower"
+    int ID = 56
+    string File = "tower_m\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 0
+    int SelectionY1 = 0
+    int SelectionY2 = 0
+    int ShadowY = 35
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tower_m"
+    int Indestructible = 0
+  }
+
+  object Structure56
+  {
+    string DescText = "Castle"
+    int ID = 57
+    string File = "castle\\house"
+    int TileWidth = 11
+    int TileHeight = 5
+    int FullHeight = 5
+    int SelectionX1 = 0
+    int SelectionX2 = 352
+    int SelectionY1 = 0
+    int SelectionY2 = 160
+    int ShadowY = 55
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "castle"
+    int Indestructible = 0
+  }
+
+  object Structure57
+  {
+    string DescText = "Sphinx 1"
+    int ID = 58
+    string File = "sphinx1\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 42
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure58
+  {
+    string DescText = "Sphinx 2"
+    int ID = 59
+    string File = "sphinx2\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure59
+  {
+    string DescText = "Sphinx 3"
+    int ID = 60
+    string File = "sphinx3\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 42
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure6
+  {
+    string DescText = "Windmill 3"
+    int ID = 7
+    string File = "mill3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 13
+    int SelectionX2 = 79
+    int SelectionY1 = 15
+    int SelectionY2 = 86
+    int ShadowY = 40
+    int Phases = 6
+    string AnimMask = "+++++++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [2, 2, 2, 2, 2, 2]
+    string Picture = "windmill"
+    int IconID = 232
+  }
+
+  object Structure60
+  {
+    string DescText = "Sphinx 4"
+    int ID = 61
+    string File = "sphinx4\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure61
+  {
+    string DescText = "Sphinx 5"
+    int ID = 62
+    string File = "sphinx5\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 42
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure62
+  {
+    string DescText = "Sphinx 6"
+    int ID = 63
+    string File = "sphinx6\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure63
+  {
+    string DescText = "Sphinx 7"
+    int ID = 64
+    string File = "sphinx7\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 42
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure64
+  {
+    string DescText = "Sphinx 8"
+    int ID = 65
+    string File = "sphinx8\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "sphinx"
+    int Indestructible = 1
+  }
+
+  object Structure65
+  {
+    string DescText = "Saving Place"
+    int ID = 66
+    string File = "church\\house"
+    int TileWidth = 4
+    int TileHeight = 3
+    int FullHeight = 5
+    int SelectionX1 = 18
+    int SelectionX2 = 112
+    int SelectionY1 = 34
+    int SelectionY2 = 144
+    int ShadowY = 50
+    int Phases = 6
+    string AnimMask = "--------++----------"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [4, 4, 4, 4, 4, 4]
+    string Picture = "church"
+    int IconID = 234
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure66
+  {
+    string DescText = "Multiplayer Plagat Inn 1"
+    int ID = 67
+    string File = "Inn1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 32
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tavern"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure67
+  {
+    string DescText = "Multiplayer Plagat Inn 2"
+    int ID = 68
+    string File = "Inn2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 96
+    int ShadowY = 32
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tavern"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure68
+  {
+    string DescText = "Multiplayer Plagat Inn 3"
+    int ID = 69
+    string File = "Inn3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 4
+    int SelectionX1 = 0
+    int SelectionX2 = 96
+    int SelectionY1 = 0
+    int SelectionY2 = 128
+    int ShadowY = 32
+    int Phases = 2
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "tavern"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure69
+  {
+    string DescText = "Usable Pointer 1"
+    int ID = 70
+    string File = "Pointer1\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pointer"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure7
+  {
+    string DescText = "Well 1"
+    int ID = 8
+    string File = "well1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 48
+    int SelectionY1 = 0
+    int SelectionY2 = 48
+    int ShadowY = 10000
+    int Phases = 6
+    string AnimMask = "++++"
+    array AnimFrame = [0, 1, 2, 3, 4, 5]
+    array AnimTime = [2, 2, 2, 2, 2, 2]
+    string Picture = "well"
+    int IconID = 233
+    int Indestructible = 1
+  }
+
+  object Structure70
+  {
+    string DescText = "Usable Pointer 2"
+    int ID = 71
+    string File = "Pointer2\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pointer"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure71
+  {
+    string DescText = "Usable Pointer 3"
+    int ID = 72
+    string File = "Pointer3\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pointer"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure72
+  {
+    string DescText = "Usable Pointer 4"
+    int ID = 73
+    string File = "Pointer4\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pointer"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure73
+  {
+    string DescText = "Usable Pointer 5"
+    int ID = 74
+    string File = "Pointer5\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pointer"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure74
+  {
+    string DescText = "Usable Pointer 6"
+    int ID = 75
+    string File = "Pointer6\\house"
+    int TileWidth = 1
+    int TileHeight = 1
+    int FullHeight = 1
+    int SelectionX1 = 0
+    int SelectionX2 = 32
+    int SelectionY1 = 0
+    int SelectionY2 = 32
+    int ShadowY = -20000
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "pointer"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure75
+  {
+    string DescText = "Usable Altar 1"
+    int ID = 76
+    string File = "altar1\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 64
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 40
+    int Phases = 3
+    string AnimMask = "++++"
+    array AnimFrame = [0, 1, 2]
+    array AnimTime = [2, 2, 2]
+    string Picture = "altar"
+    int Usable = 1
+  }
+
+  object Structure76
+  {
+    string DescText = "Usable Altar 2"
+    int ID = 77
+    string File = "altar2\\house"
+    int TileWidth = 2
+    int TileHeight = 2
+    int FullHeight = 2
+    int SelectionX1 = 0
+    int SelectionX2 = 64
+    int SelectionY1 = 0
+    int SelectionY2 = 64
+    int ShadowY = 40
+    int Phases = 3
+    string AnimMask = "++++"
+    array AnimFrame = [0, 1, 2]
+    array AnimTime = [2, 2, 2]
+    string Picture = "altar"
+    int Usable = 1
+  }
+
+  object Structure77
+  {
+    string DescText = "Necro house 1"
+    int ID = 78
+    string File = "necro1\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "necrohouse"
+  }
+
+  object Structure78
+  {
+    string DescText = "Necro house 2"
+    int ID = 79
+    string File = "necro2\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "necrohouse"
+  }
+
+  object Structure79
+  {
+    string DescText = "Necro house 3"
+    int ID = 80
+    string File = "necro3\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "necrohouse"
+  }
+
+  object Structure8
+  {
+    string DescText = "Human House 1a"
+    int ID = 9
+    string File = "hut5\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 15
+    int SelectionX2 = 88
+    int SelectionY1 = 11
+    int SelectionY2 = 85
+    int ShadowY = 34
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "humanh1"
+    int IconID = 228
+  }
+
+  object Structure80
+  {
+    string DescText = "Shed 1"
+    int ID = 81
+    string File = "shed1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shed"
+  }
+
+  object Structure81
+  {
+    string DescText = "Shed 2"
+    int ID = 82
+    string File = "shed2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shed"
+  }
+
+  object Structure82
+  {
+    string DescText = "Shed 3"
+    int ID = 83
+    string File = "shed3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shed"
+  }
+
+  object Structure83
+  {
+    string DescText = "Orc Shaman House 1"
+    int ID = 84
+    string File = "shaman1\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shamanh"
+  }
+
+  object Structure84
+  {
+    string DescText = "Orc Shaman House 2"
+    int ID = 85
+    string File = "shaman2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shamanh"
+  }
+
+  object Structure85
+  {
+    string DescText = "Orc Shaman House 3"
+    int ID = 86
+    string File = "shaman3\\house"
+    int TileWidth = 3
+    int TileHeight = 2
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "shamanh"
+  }
+
+  object Structure86
+  {
+    string DescText = "Big Human House 1"
+    int ID = 87
+    string File = "bighouse1\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bighouse"
+  }
+
+  object Structure87
+  {
+    string DescText = "Big Human House 2"
+    int ID = 88
+    string File = "bighouse2\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bighouse"
+  }
+
+  object Structure88
+  {
+    string DescText = "Big Human House 3"
+    int ID = 89
+    string File = "bighouse3\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "bighouse"
+  }
+
+  object Structure89
+  {
+    string DescText = "Kaarg Shop 1"
+    int ID = 90
+    string File = "kaargshop1\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargshop"
+  }
+
+  object Structure9
+  {
+    string DescText = "Human House 1b"
+    int ID = 10
+    string File = "hut6\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 10
+    int SelectionX2 = 88
+    int SelectionY1 = 11
+    int SelectionY2 = 93
+    int ShadowY = 28
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "humanh1"
+    int IconID = 229
+  }
+
+  object Structure90
+  {
+    string DescText = "Kaarg Shop 2"
+    int ID = 91
+    string File = "kaargshop2\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargshop"
+  }
+
+  object Structure91
+  {
+    string DescText = "Kaarg Shop 3"
+    int ID = 92
+    string File = "kaargshop3\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargshop"
+  }
+
+  object Structure92
+  {
+    string DescText = "Multiplayer Kaarg Shop 1"
+    int ID = 93
+    string File = "kaargshop1\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargshop"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure93
+  {
+    string DescText = "Multiplayer Kaarg Shop 2"
+    int ID = 94
+    string File = "kaargshop2\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargshop"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure94
+  {
+    string DescText = "Multiplayer Kaarg Shop 3"
+    int ID = 95
+    string File = "kaargshop3\\house"
+    int TileWidth = 4
+    int TileHeight = 4
+    int FullHeight = 4
+    int SelectionX1 = 12
+    int SelectionX2 = 116
+    int SelectionY1 = 12
+    int SelectionY2 = 116
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaargshop"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure95
+  {
+    string DescText = "Kaarg Inn 1"
+    int ID = 96
+    string File = "kaarginn1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarginn"
+  }
+
+  object Structure96
+  {
+    string DescText = "Kaarg Inn 2"
+    int ID = 97
+    string File = "kaarginn2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarginn"
+  }
+
+  object Structure97
+  {
+    string DescText = "Kaarg Inn 3"
+    int ID = 98
+    string File = "kaarginn3\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarginn"
+  }
+
+  object Structure98
+  {
+    string DescText = "Multiplayer Kaarg Inn 1"
+    int ID = 99
+    string File = "kaarginn1\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarginn"
+    int Indestructible = 1
+    int Usable = 1
+  }
+
+  object Structure99
+  {
+    string DescText = "Multiplayer Kaarg Inn 2"
+    int ID = 100
+    string File = "kaarginn2\\house"
+    int TileWidth = 3
+    int TileHeight = 3
+    int FullHeight = 3
+    int SelectionX1 = 12
+    int SelectionX2 = 82
+    int SelectionY1 = 0
+    int SelectionY2 = 82
+    int ShadowY = 40
+    int Phases = 1
+    string AnimMask = ""
+    string AnimFrame = ""
+    string AnimTime = ""
+    string Picture = "kaarginn"
+    int Indestructible = 1
+    int Usable = 1
+  }
+}

@@ -1,0 +1,2840 @@
+object Root
+{
+  object Files
+  {
+    string File0 = "pine1\\sprites"
+    string File1 = "pine1\\fire\\fpine"
+    string File2 = "pine1\\dead\\sprites"
+    string File3 = "vallen1\\sprites"
+    string File4 = "vallen1\\fire\\fvallen"
+    string File5 = "vallen1\\dead\\sprites"
+    string File6 = "bush1\\sprites"
+    string File7 = "bush1\\fire\\fbush1"
+    string File8 = "bush1\\dead\\sprites"
+    string File9 = "elka1\\sprites"
+    string File10 = "elka1\\fire\\felka"
+    string File11 = "elka1\\dead\\sprites"
+    string File12 = "iva1\\sprites"
+    string File13 = "iva1\\fire\\fiva"
+    string File14 = "iva1\\dead\\sprites"
+    string File15 = "maple1\\sprites"
+    string File16 = "maple1\\fire\\fmaple"
+    string File17 = "maple1\\dead\\sprites"
+    string File18 = "oak1\\sprites"
+    string File19 = "oak1\\fire\\foak"
+    string File20 = "oak1\\dead\\sprites"
+    string File21 = "stones\\sprites"
+    string File22 = "pointer\\sprites"
+    string File23 = "palka\\sprites"
+    string File24 = "totem\\sprites"
+    string File25 = "pine2\\sprites"
+    string File26 = "pine2\\dead\\sprites"
+    string File27 = "pine3\\sprites"
+    string File28 = "pine3\\dead\\sprites"
+    string File29 = "vallen2\\sprites"
+    string File30 = "vallen2\\dead\\sprites"
+    string File31 = "vallen3\\sprites"
+    string File32 = "vallen3\\dead\\sprites"
+    string File33 = "bush2\\sprites"
+    string File34 = "bush2\\dead\\sprites"
+    string File35 = "bush3\\sprites"
+    string File36 = "bush3\\dead\\sprites"
+    string File37 = "elka2\\sprites"
+    string File38 = "elka2\\dead\\sprites"
+    string File39 = "elka3\\sprites"
+    string File40 = "elka3\\dead\\sprites"
+    string File41 = "iva2\\sprites"
+    string File42 = "iva2\\dead\\sprites"
+    string File43 = "iva3\\sprites"
+    string File44 = "iva3\\dead\\sprites"
+    string File45 = "maple2\\sprites"
+    string File46 = "maple2\\dead\\sprites"
+    string File47 = "maple3\\sprites"
+    string File48 = "maple3\\dead\\sprites"
+    string File49 = "oak2\\sprites"
+    string File50 = "oak2\\dead\\sprites"
+    string File51 = "oak3\\sprites"
+    string File52 = "oak3\\dead\\sprites"
+    string File53 = "statue\\sprites"
+    string File54 = "fence\\sprites"
+    string File55 = "bones\\sprites"
+    string File56 = "column\\sprites"
+    string File57 = "skulls\\sprites"
+    string File58 = "fence1\\sprites"
+    string File59 = "scull\\sprites"
+    string File60 = "bambuk1\\sprites"
+    string File61 = "bambuk2\\sprites"
+    string File62 = "bambuk3\\sprites"
+    string File63 = "bambuk1\\dead\\sprites"
+    string File64 = "bambuk2\\dead\\sprites"
+    string File65 = "bambuk3\\dead\\sprites"
+    string File66 = "cactus1\\sprites"
+    string File67 = "cactus2\\sprites"
+    string File68 = "cactus3\\sprites"
+    string File69 = "cactus1\\dead\\sprites"
+    string File70 = "cactus2\\dead\\sprites"
+    string File71 = "cactus3\\dead\\sprites"
+    string File72 = "draz1\\sprites"
+    string File73 = "draz1\\dead\\sprites"
+    string File74 = "draz2\\sprites"
+    string File75 = "draz2\\dead\\sprites"
+    string File76 = "trbush1\\sprites"
+    string File77 = "trbush1\\dead\\sprites"
+    string File78 = "trbush2\\sprites"
+    string File79 = "trbush2\\dead\\sprites"
+    string File80 = "trbush3\\sprites"
+    string File81 = "trbush3\\dead\\sprites"
+    string File82 = "trbush4\\sprites"
+    string File83 = "trbush4\\dead\\sprites"
+    string File84 = "trbush5\\sprites"
+    string File85 = "trbush5\\dead\\sprites"
+    string File86 = "trbush6\\sprites"
+    string File87 = "trbush6\\dead\\sprites"
+    string File88 = "trbush7\\sprites"
+    string File89 = "trbush7\\dead\\sprites"
+    string File90 = "trbush8\\sprites"
+    string File91 = "trbush8\\dead\\sprites"
+    string File92 = "trbush9\\sprites"
+    string File93 = "trbush9\\dead\\sprites"
+    string File94 = "trbush10\\sprites"
+    string File95 = "trbush10\\dead\\sprites"
+    string File96 = "palm1\\sprites"
+    string File97 = "palm1\\dead\\sprites"
+    string File98 = "palm2\\sprites"
+    string File99 = "palm2\\dead\\sprites"
+    string File100 = "palm3\\sprites"
+    string File101 = "palm3\\dead\\sprites"
+    string File102 = "palm4\\sprites"
+    string File103 = "palm4\\dead\\sprites"
+    string File104 = "fence2\\sprites"
+    string File105 = "drova\\sprites"
+    string File106 = "seno\\sprites"
+    string File107 = "trollstone\\sprites"
+    string File108 = "trollstone2\\sprites"
+    string File109 = "henge1\\sprites"
+    string File110 = "henge2\\sprites"
+    string File111 = "drtree1\\sprites"
+    string File112 = "drtree1\\dead\\sprites"
+    string File113 = "drtree2\\sprites"
+    string File114 = "drtree2\\dead\\sprites"
+    string File115 = "drtree3\\sprites"
+    string File116 = "drtree3\\dead\\sprites"
+    string File117 = "fattree1\\sprites"
+    string File118 = "fattree1\\dead\\sprites"
+    string File119 = "fattree2\\sprites"
+    string File120 = "fattree2\\dead\\sprites"
+    string File121 = "fattree3\\sprites"
+    string File122 = "fattree3\\dead\\sprites"
+    string File123 = "pihta1\\sprites"
+    string File124 = "pihta1\\dead\\sprites"
+    string File125 = "pihta2\\sprites"
+    string File126 = "pihta2\\dead\\sprites"
+    string File127 = "pihta3\\sprites"
+    string File128 = "pihta3\\dead\\sprites"
+    string File129 = "teerose1\\sprites"
+    string File130 = "teerose1\\dead\\sprites"
+    string File131 = "teerose2\\sprites"
+    string File132 = "teerose2\\dead\\sprites"
+    string File133 = "teerose3\\sprites"
+    string File134 = "teerose3\\dead\\sprites"
+    string File135 = "tuya1\\sprites"
+    string File136 = "tuya1\\dead\\sprites"
+    string File137 = "tuya2\\sprites"
+    string File138 = "tuya2\\dead\\sprites"
+    string File139 = "tuya3\\sprites"
+    string File140 = "tuya3\\dead\\sprites"
+    string File141 = "tachka\\sprites"
+  }
+
+  object Global
+  {
+    int ObjectCount = 192
+    int FileCount = 142
+  }
+
+  object Object0
+  {
+    string DescText = "Pine 1"
+    int ID = 0
+    int File = 0
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 2
+    int InMapEditor = 1
+    int IconID = 187
+  }
+
+  object Object1
+  {
+    int ID = 1
+    int File = 1
+    int Index = 0
+    int Phases = 17
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 2
+  }
+
+  object Object10
+  {
+    int ID = 10
+    int File = 10
+    int Index = 0
+    int Phases = 17
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 96
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 11
+  }
+
+  object Object100
+  {
+    int ID = 100
+    string DescText = "Dead Cactus 1"
+    int File = 69
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object101
+  {
+    int ID = 101
+    string DescText = "Dead Cactus 2"
+    int File = 70
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object102
+  {
+    int ID = 102
+    string DescText = "Dead Cactus 3"
+    int File = 71
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object103
+  {
+    int ID = 103
+    string DescText = "Draz 1"
+    int File = 72
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 105
+    int DeadObject = 104
+  }
+
+  object Object104
+  {
+    int ID = 104
+    string DescText = "Dead Draz 1"
+    int File = 73
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 105
+  }
+
+  object Object105
+  {
+    int ID = 105
+    string DescText = "Draz 2"
+    int File = 74
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 105
+    int DeadObject = 106
+  }
+
+  object Object106
+  {
+    int ID = 106
+    string DescText = "Dead Draz 2"
+    int File = 75
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 105
+  }
+
+  object Object107
+  {
+    int ID = 107
+    string DescText = "Tropic Bush 1"
+    int File = 76
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 108
+  }
+
+  object Object108
+  {
+    int ID = 108
+    string DescText = "Dead Tropic Bush 1"
+    int File = 77
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object109
+  {
+    int ID = 109
+    string DescText = "Tropic Bush 2"
+    int File = 78
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 110
+  }
+
+  object Object11
+  {
+    string DescText = "Fur 1 (dead)"
+    int ID = 11
+    int File = 11
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 96
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 196
+  }
+
+  object Object110
+  {
+    int ID = 110
+    string DescText = "Dead Tropic Bush 2"
+    int File = 79
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object111
+  {
+    int ID = 111
+    string DescText = "Tropic Bush 3"
+    int File = 80
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 112
+  }
+
+  object Object112
+  {
+    int ID = 112
+    string DescText = "Dead Tropic Bush 3"
+    int File = 81
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object113
+  {
+    int ID = 113
+    string DescText = "Tropic Bush 4"
+    int File = 82
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 114
+  }
+
+  object Object114
+  {
+    int ID = 114
+    string DescText = "Dead Tropic Bush 4"
+    int File = 83
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object115
+  {
+    int ID = 115
+    string DescText = "Tropic Bush 5"
+    int File = 84
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 116
+  }
+
+  object Object116
+  {
+    int ID = 116
+    string DescText = "Dead Tropic Bush 5"
+    int File = 85
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object117
+  {
+    int ID = 117
+    string DescText = "Tropic Bush 6"
+    int File = 86
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 118
+  }
+
+  object Object118
+  {
+    int ID = 118
+    string DescText = "Dead Tropic Bush 6"
+    int File = 87
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object119
+  {
+    int ID = 119
+    string DescText = "Tropic Bush 7"
+    int File = 88
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 120
+  }
+
+  object Object12
+  {
+    string DescText = "Iva 1"
+    int ID = 12
+    int File = 12
+    int Index = 0
+    int Phases = 7
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 14
+    int InMapEditor = 1
+    int IconID = 202
+  }
+
+  object Object120
+  {
+    int ID = 120
+    string DescText = "Dead Tropic Bush 7"
+    int File = 89
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object121
+  {
+    int ID = 121
+    string DescText = "Tropic Bush 8"
+    int File = 90
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 122
+  }
+
+  object Object122
+  {
+    int ID = 122
+    string DescText = "Dead Tropic Bush 8"
+    int File = 91
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object123
+  {
+    int ID = 123
+    string DescText = "Tropic Bush 9"
+    int File = 92
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 124
+  }
+
+  object Object124
+  {
+    int ID = 124
+    string DescText = "Dead Tropic Bush 9"
+    int File = 93
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object125
+  {
+    int ID = 125
+    string DescText = "Tropic Bush 10"
+    int File = 94
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 126
+  }
+
+  object Object126
+  {
+    int ID = 126
+    string DescText = "Dead Tropic Bush 10"
+    int File = 95
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object127
+  {
+    int ID = 127
+    string DescText = "Palm 1"
+    int File = 96
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 112
+    int DeadObject = 128
+  }
+
+  object Object128
+  {
+    int ID = 128
+    string DescText = "Dead Palm 1"
+    int File = 97
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 112
+  }
+
+  object Object129
+  {
+    int ID = 129
+    string DescText = "Palm 2"
+    int File = 98
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 112
+    int DeadObject = 130
+  }
+
+  object Object13
+  {
+    int ID = 13
+    int File = 13
+    int Index = 0
+    int Phases = 17
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 14
+  }
+
+  object Object130
+  {
+    int ID = 130
+    string DescText = "Dead Palm 2"
+    int File = 99
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 112
+  }
+
+  object Object131
+  {
+    int ID = 131
+    string DescText = "Palm 3"
+    int File = 100
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 85
+    int DeadObject = 132
+  }
+
+  object Object132
+  {
+    int ID = 132
+    string DescText = "Dead Palm 3"
+    int File = 101
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 85
+  }
+
+  object Object133
+  {
+    int ID = 133
+    string DescText = "Palm 4"
+    int File = 102
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 85
+    int DeadObject = 134
+  }
+
+  object Object134
+  {
+    int ID = 134
+    string DescText = "Dead Palm 4"
+    int File = 103
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 85
+  }
+
+  object Object135
+  {
+    int ID = 135
+    string DescText = "Grave Fence 1"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object136
+  {
+    int ID = 136
+    string DescText = "Grave Fence 2"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object137
+  {
+    int ID = 137
+    string DescText = "Grave Fence 3"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object138
+  {
+    int ID = 138
+    string DescText = "Grave Fence 4"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 3
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object139
+  {
+    int ID = 139
+    string DescText = "Grave Fence 5"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 4
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object14
+  {
+    string DescText = "Iva 1 (dead)"
+    int ID = 14
+    int File = 14
+    int Index = 0
+    int Phases = 7
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 203
+  }
+
+  object Object140
+  {
+    int ID = 140
+    string DescText = "Grave Fence 6"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 5
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object141
+  {
+    int ID = 141
+    string DescText = "Grave Fence 7"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 6
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object142
+  {
+    int ID = 142
+    string DescText = "Grave Fence 8"
+    int File = 104
+    int InMapEditor = 1
+    int Index = 7
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object143
+  {
+    int ID = 143
+    string DescText = "Firewood 1"
+    int File = 105
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object144
+  {
+    int ID = 144
+    string DescText = "Firewood 2"
+    int File = 105
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object145
+  {
+    int ID = 145
+    string DescText = "Firewood 3"
+    int File = 105
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object146
+  {
+    int ID = 146
+    string DescText = "Firewood 4"
+    int File = 105
+    int InMapEditor = 1
+    int Index = 3
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object147
+  {
+    int ID = 147
+    string DescText = "CEHO 1"
+    int File = 106
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object148
+  {
+    int ID = 148
+    string DescText = "CEHO 2"
+    int File = 106
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object149
+  {
+    int ID = 149
+    string DescText = "CEHO 3"
+    int File = 106
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object15
+  {
+    string DescText = "Maple 1"
+    int ID = 15
+    int File = 15
+    int Index = 0
+    int Phases = 7
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 17
+    int InMapEditor = 1
+    int IconID = 206
+  }
+
+  object Object150
+  {
+    int ID = 150
+    string DescText = "Troll Stones 1"
+    int File = 107
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object151
+  {
+    int ID = 151
+    string DescText = "Troll Stones 2"
+    int File = 107
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object152
+  {
+    int ID = 152
+    string DescText = "Troll Stones 3"
+    int File = 108
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object153
+  {
+    int ID = 153
+    string DescText = "Stonehenge 1-1"
+    int File = 109
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+  }
+
+  object Object154
+  {
+    int ID = 154
+    string DescText = "Stonehenge 1-2"
+    int File = 109
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+  }
+
+  object Object155
+  {
+    int ID = 155
+    string DescText = "Stonehenge 1-3"
+    int File = 109
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+  }
+
+  object Object156
+  {
+    int ID = 156
+    string DescText = "Stonehenge 2-1"
+    int File = 110
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+  }
+
+  object Object157
+  {
+    int ID = 157
+    string DescText = "Stonehenge 2-2"
+    int File = 110
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+  }
+
+  object Object158
+  {
+    int ID = 158
+    string DescText = "Stonehenge 2-3"
+    int File = 110
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+  }
+
+  object Object159
+  {
+    string DescText = "Druid tree 1"
+    int ID = 159
+    int File = 111
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 160
+    int InMapEditor = 1
+  }
+
+  object Object16
+  {
+    int ID = 16
+    int File = 16
+    int Index = 0
+    int Phases = 17
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 17
+  }
+
+  object Object160
+  {
+    string DescText = "Druid tree 1 (dead)"
+    int ID = 160
+    int File = 112
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object161
+  {
+    string DescText = "Druid tree 2"
+    int ID = 161
+    int File = 113
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 162
+    int InMapEditor = 1
+  }
+
+  object Object162
+  {
+    string DescText = "Druid tree 2 (dead)"
+    int ID = 162
+    int File = 114
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object163
+  {
+    string DescText = "Druid tree 3"
+    int ID = 163
+    int File = 115
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 164
+    int InMapEditor = 1
+  }
+
+  object Object164
+  {
+    string DescText = "Druid tree 3 (dead)"
+    int ID = 164
+    int File = 116
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object165
+  {
+    string DescText = "Fat tree 1"
+    int ID = 165
+    int File = 117
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 73
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 166
+    int InMapEditor = 1
+  }
+
+  object Object166
+  {
+    string DescText = "Fat tree 1 (dead)"
+    int ID = 166
+    int File = 118
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 73
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object167
+  {
+    string DescText = "Fat tree 2"
+    int ID = 167
+    int File = 119
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 73
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 168
+    int InMapEditor = 1
+  }
+
+  object Object168
+  {
+    string DescText = "Fat tree 2 (dead)"
+    int ID = 168
+    int File = 120
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 73
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object169
+  {
+    string DescText = "Fat tree 3"
+    int ID = 169
+    int File = 121
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 73
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 170
+    int InMapEditor = 1
+  }
+
+  object Object17
+  {
+    string DescText = "Maple 1 (dead)"
+    int ID = 17
+    int File = 17
+    int Index = 0
+    int Phases = 7
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 207
+  }
+
+  object Object170
+  {
+    string DescText = "Fat tree 3 (dead)"
+    int ID = 170
+    int File = 122
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 73
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object171
+  {
+    string DescText = "nuxTa 1"
+    int ID = 171
+    int File = 123
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 172
+    int InMapEditor = 1
+  }
+
+  object Object172
+  {
+    string DescText = "nuxTa 1 (dead)"
+    int ID = 172
+    int File = 124
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object173
+  {
+    string DescText = "nuxTa 2"
+    int ID = 173
+    int File = 125
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 174
+    int InMapEditor = 1
+  }
+
+  object Object174
+  {
+    string DescText = "nuxTa 2 (dead)"
+    int ID = 174
+    int File = 126
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object175
+  {
+    string DescText = "nuxTa 3"
+    int ID = 175
+    int File = 127
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 176
+    int InMapEditor = 1
+  }
+
+  object Object176
+  {
+    string DescText = "nuxTa 3 (dead)"
+    int ID = 176
+    int File = 128
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object177
+  {
+    string DescText = "TeeRose 1"
+    int ID = 177
+    int File = 129
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 178
+    int InMapEditor = 1
+  }
+
+  object Object178
+  {
+    string DescText = "TeeRose 1 (dead)"
+    int ID = 178
+    int File = 130
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object179
+  {
+    string DescText = "TeeRose 2"
+    int ID = 179
+    int File = 131
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 180
+    int InMapEditor = 1
+  }
+
+  object Object18
+  {
+    string DescText = "Oak 1"
+    int ID = 18
+    int File = 18
+    int Index = 0
+    int Phases = 7
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 20
+    int InMapEditor = 1
+    int IconID = 204
+  }
+
+  object Object180
+  {
+    string DescText = "TeeRose 2 (dead)"
+    int ID = 180
+    int File = 132
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object181
+  {
+    string DescText = "TeeRose 3"
+    int ID = 181
+    int File = 133
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 182
+    int InMapEditor = 1
+  }
+
+  object Object182
+  {
+    string DescText = "TeeRose 3 (dead)"
+    int ID = 182
+    int File = 134
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 93
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object183
+  {
+    string DescText = "Tuya 1"
+    int ID = 183
+    int File = 135
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 184
+    int InMapEditor = 1
+  }
+
+  object Object184
+  {
+    string DescText = "Tuya 1 (dead)"
+    int ID = 184
+    int File = 136
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object185
+  {
+    string DescText = "Tuya 2"
+    int ID = 185
+    int File = 137
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 186
+    int InMapEditor = 1
+  }
+
+  object Object186
+  {
+    string DescText = "Tuya 2 (dead)"
+    int ID = 186
+    int File = 138
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object187
+  {
+    string DescText = "Tuya 3"
+    int ID = 187
+    int File = 139
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 188
+    int InMapEditor = 1
+  }
+
+  object Object188
+  {
+    string DescText = "Tuya 3 (dead)"
+    int ID = 188
+    int File = 140
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int DeadObject = -1
+    int InMapEditor = 1
+  }
+
+  object Object189
+  {
+    int ID = 189
+    string DescText = "TA4KA 1"
+    int File = 141
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object19
+  {
+    int ID = 19
+    int File = 19
+    int Index = 0
+    int Phases = 17
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 20
+  }
+
+  object Object190
+  {
+    int ID = 190
+    string DescText = "TA4KA 2"
+    int File = 141
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object191
+  {
+    int ID = 191
+    string DescText = "TA4KA 3"
+    int File = 141
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+  }
+
+  object Object2
+  {
+    string DescText = "Pine 1 (dead)"
+    int ID = 2
+    int File = 2
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 100
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 190
+  }
+
+  object Object20
+  {
+    string DescText = "Oak 1 (dead)"
+    int ID = 20
+    int File = 20
+    int Index = 0
+    int Phases = 7
+    int Width = 96
+    int Height = 96
+    int CenterX = 48
+    int CenterY = 80
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 205
+  }
+
+  object Object21
+  {
+    string DescText = "Big stone 1"
+    int ID = 21
+    int File = 21
+    int Index = 0
+    int Phases = 1
+    int Width = 64
+    int Height = 80
+    int CenterX = 32
+    int CenterY = 40
+    int InMapEditor = 1
+    int IconID = 208
+  }
+
+  object Object22
+  {
+    string DescText = "Big stone 2"
+    int ID = 22
+    int File = 21
+    int Index = 1
+    int Phases = 1
+    int Width = 64
+    int Height = 80
+    int CenterX = 32
+    int CenterY = 40
+    int InMapEditor = 1
+    int IconID = 209
+  }
+
+  object Object23
+  {
+    string DescText = "Big stone 3"
+    int ID = 23
+    int File = 21
+    int Index = 2
+    int Phases = 1
+    int Width = 64
+    int Height = 80
+    int CenterX = 32
+    int CenterY = 40
+    int InMapEditor = 1
+    int IconID = 210
+  }
+
+  object Object24
+  {
+    string DescText = "Rock 1"
+    int ID = 24
+    int File = 21
+    int Index = 3
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+    int InMapEditor = 1
+    int IconID = 211
+  }
+
+  object Object25
+  {
+    string DescText = "Rock 2"
+    int ID = 25
+    int File = 21
+    int Index = 4
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+    int InMapEditor = 1
+    int IconID = 212
+  }
+
+  object Object26
+  {
+    string DescText = "Rock 3"
+    int ID = 26
+    int File = 21
+    int Index = 5
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+    int InMapEditor = 1
+    int IconID = 213
+  }
+
+  object Object27
+  {
+    string DescText = "Small Stone 1"
+    int ID = 27
+    int File = 21
+    int Index = 6
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 34
+    int InMapEditor = 1
+    int IconID = 214
+  }
+
+  object Object28
+  {
+    string DescText = "SmallStone 2"
+    int ID = 28
+    int File = 21
+    int Index = 7
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 32
+    int InMapEditor = 1
+    int IconID = 215
+  }
+
+  object Object29
+  {
+    string DescText = "SmallStone 3"
+    int ID = 29
+    int File = 21
+    int Index = 8
+    int Phases = 1
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 38
+    int InMapEditor = 1
+    int IconID = 216
+  }
+
+  object Object3
+  {
+    string DescText = "Vallenwood 1"
+    int ID = 3
+    int File = 3
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 96
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 5
+    int InMapEditor = 1
+    int IconID = 191
+  }
+
+  object Object30
+  {
+    string DescText = "Pointer 1"
+    int ID = 30
+    int File = 22
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 22
+    int InMapEditor = 1
+    int IconID = 238
+  }
+
+  object Object31
+  {
+    string DescText = "Pointer 2"
+    int ID = 31
+    int File = 22
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 22
+    int InMapEditor = 1
+    int IconID = 239
+  }
+
+  object Object32
+  {
+    string DescText = "Pointer 3"
+    int ID = 32
+    int File = 22
+    int Index = 2
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 22
+    int InMapEditor = 1
+    int IconID = 240
+  }
+
+  object Object33
+  {
+    string DescText = "Pointer 4"
+    int ID = 33
+    int File = 22
+    int Index = 3
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 22
+    int InMapEditor = 1
+    int IconID = 241
+  }
+
+  object Object34
+  {
+    string DescText = "Pointer 5"
+    int ID = 34
+    int File = 22
+    int Index = 4
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 22
+    int InMapEditor = 1
+    int IconID = 242
+  }
+
+  object Object35
+  {
+    string DescText = "Pointer 6"
+    int ID = 35
+    int File = 22
+    int Index = 5
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 22
+    int InMapEditor = 1
+    int IconID = 243
+  }
+
+  object Object36
+  {
+    string DescText = "Strange Device (Palka from Well) 1"
+    int ID = 36
+    int File = 23
+    int Index = 0
+    int Phases = 3
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 54
+    int InMapEditor = 1
+    array AnimationTime = [6, 6, 6, 6]
+    array AnimationFrame = [0, 1, 2, 1]
+    int IconID = 244
+  }
+
+  object Object37
+  {
+    string DescText = "Strange Device (Palka from Well) 2"
+    int ID = 37
+    int File = 23
+    int Index = 3
+    int Phases = 3
+    int Width = 64
+    int Height = 64
+    int CenterX = 28
+    int CenterY = 53
+    int InMapEditor = 1
+    array AnimationTime = [6, 6, 6, 6]
+    array AnimationFrame = [0, 1, 2, 1]
+    int IconID = 245
+  }
+
+  object Object38
+  {
+    string DescText = "Totem 1"
+    int ID = 38
+    int File = 24
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 62
+    int InMapEditor = 1
+    int IconID = 264
+  }
+
+  object Object39
+  {
+    string DescText = "Totem 2"
+    int ID = 39
+    int File = 24
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 62
+    int InMapEditor = 1
+    int IconID = 265
+  }
+
+  object Object4
+  {
+    int ID = 4
+    int File = 4
+    int Index = 0
+    int Phases = 17
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 96
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 5
+  }
+
+  object Object40
+  {
+    int ID = 40
+    string DescText = "Pine 2"
+    int Parent = 0
+    int File = 25
+    int InMapEditor = 1
+    int DeadObject = 41
+  }
+
+  object Object41
+  {
+    int ID = 41
+    string DescText = "Pine 2 (dead)"
+    int Parent = 2
+    int File = 26
+    int InMapEditor = 1
+  }
+
+  object Object42
+  {
+    int ID = 42
+    string DescText = "Pine 3"
+    int Parent = 0
+    int File = 27
+    int InMapEditor = 1
+    int DeadObject = 43
+  }
+
+  object Object43
+  {
+    int ID = 43
+    string DescText = "Pine 3 (dead)"
+    int Parent = 2
+    int File = 28
+    int InMapEditor = 1
+  }
+
+  object Object44
+  {
+    int ID = 44
+    string DescText = "Vallenwood 2"
+    int Parent = 3
+    int File = 29
+    int InMapEditor = 1
+    int DeadObject = 45
+  }
+
+  object Object45
+  {
+    int ID = 45
+    string DescText = "Vallenwood 2 (dead)"
+    int Parent = 5
+    int File = 30
+    int InMapEditor = 1
+  }
+
+  object Object46
+  {
+    int ID = 46
+    string DescText = "Vallenwood 3"
+    int Parent = 3
+    int File = 31
+    int InMapEditor = 1
+    int DeadObject = 47
+  }
+
+  object Object47
+  {
+    int ID = 47
+    string DescText = "Vallenwood 3 (dead)"
+    int Parent = 5
+    int File = 32
+    int InMapEditor = 1
+  }
+
+  object Object48
+  {
+    int ID = 48
+    string DescText = "Bush 2"
+    int Parent = 6
+    int File = 33
+    int InMapEditor = 1
+    int DeadObject = 49
+  }
+
+  object Object49
+  {
+    int ID = 49
+    string DescText = "Bush 2 (dead)"
+    int Parent = 8
+    int File = 34
+    int InMapEditor = 1
+  }
+
+  object Object5
+  {
+    string DescText = "Vallenwood 1 (dead)"
+    int ID = 5
+    int File = 5
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 96
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 192
+  }
+
+  object Object50
+  {
+    int ID = 50
+    string DescText = "Bush 3"
+    int Parent = 6
+    int File = 35
+    int InMapEditor = 1
+    int DeadObject = 51
+  }
+
+  object Object51
+  {
+    int ID = 51
+    string DescText = "Bush 3 (dead)"
+    int Parent = 8
+    int File = 36
+    int InMapEditor = 1
+  }
+
+  object Object52
+  {
+    int ID = 52
+    string DescText = "Fur 2"
+    int Parent = 9
+    int File = 37
+    int InMapEditor = 1
+    int DeadObject = 53
+  }
+
+  object Object53
+  {
+    int ID = 53
+    string DescText = "Fur 2 (dead)"
+    int Parent = 11
+    int File = 38
+    int InMapEditor = 1
+  }
+
+  object Object54
+  {
+    int ID = 54
+    string DescText = "Fur 3"
+    int Parent = 9
+    int File = 39
+    int InMapEditor = 1
+    int DeadObject = 55
+  }
+
+  object Object55
+  {
+    int ID = 55
+    string DescText = "Fur 3 (dead)"
+    int Parent = 11
+    int File = 40
+    int InMapEditor = 1
+  }
+
+  object Object56
+  {
+    int ID = 56
+    string DescText = "Iva 2"
+    int Parent = 12
+    int File = 41
+    int InMapEditor = 1
+    int DeadObject = 57
+  }
+
+  object Object57
+  {
+    int ID = 57
+    string DescText = "Iva 2 (dead)"
+    int Parent = 14
+    int File = 42
+    int InMapEditor = 1
+  }
+
+  object Object58
+  {
+    int ID = 58
+    string DescText = "Iva 3"
+    int Parent = 12
+    int File = 43
+    int InMapEditor = 1
+    int DeadObject = 59
+  }
+
+  object Object59
+  {
+    int ID = 59
+    string DescText = "Iva 3 (dead)"
+    int Parent = 14
+    int File = 44
+    int InMapEditor = 1
+  }
+
+  object Object6
+  {
+    string DescText = "Bush 1"
+    int ID = 6
+    int File = 6
+    int Index = 0
+    int Phases = 7
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 8
+    int InMapEditor = 1
+    int IconID = 201
+  }
+
+  object Object60
+  {
+    int ID = 60
+    string DescText = "Maple 2"
+    int Parent = 15
+    int File = 45
+    int InMapEditor = 1
+    int DeadObject = 61
+  }
+
+  object Object61
+  {
+    int ID = 61
+    string DescText = "Maple 2 (dead)"
+    int Parent = 17
+    int File = 46
+    int InMapEditor = 1
+  }
+
+  object Object62
+  {
+    int ID = 62
+    string DescText = "Maple 3"
+    int Parent = 15
+    int File = 47
+    int InMapEditor = 1
+    int DeadObject = 63
+  }
+
+  object Object63
+  {
+    int ID = 63
+    string DescText = "Maple 3 (dead)"
+    int Parent = 17
+    int File = 48
+    int InMapEditor = 1
+  }
+
+  object Object64
+  {
+    int ID = 64
+    string DescText = "Oak 2"
+    int Parent = 18
+    int File = 49
+    int InMapEditor = 1
+    int DeadObject = 65
+  }
+
+  object Object65
+  {
+    int ID = 65
+    string DescText = "Oak 2 (dead)"
+    int Parent = 20
+    int File = 50
+    int InMapEditor = 1
+  }
+
+  object Object66
+  {
+    int ID = 66
+    string DescText = "Oak 3"
+    int Parent = 18
+    int File = 51
+    int InMapEditor = 1
+    int DeadObject = 67
+  }
+
+  object Object67
+  {
+    int ID = 67
+    string DescText = "Oak 3 (dead)"
+    int Parent = 20
+    int File = 52
+    int InMapEditor = 1
+  }
+
+  object Object68
+  {
+    int ID = 68
+    string DescText = "Statue 1"
+    int File = 53
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+  }
+
+  object Object69
+  {
+    int Parent = 68
+    int ID = 69
+    string DescText = "Statue 2"
+    int File = 53
+    int Index = 1
+    int InMapEditor = 1
+  }
+
+  object Object7
+  {
+    int ID = 7
+    int File = 7
+    int Index = 0
+    int Phases = 7
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+    array AnimationTime = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 7, 8, 9, 10, 11, 12, 14, 13, 15, 16]
+    int FireObject = -1
+    int DeadObject = 8
+  }
+
+  object Object70
+  {
+    int ID = 70
+    string DescText = "Fence 1"
+    int File = 54
+    int Index = 0
+    int InMapEditor = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object71
+  {
+    int Parent = 70
+    int ID = 71
+    string DescText = "Fence 2"
+    int File = 54
+    int Index = 1
+    int InMapEditor = 1
+  }
+
+  object Object72
+  {
+    int Parent = 70
+    int ID = 72
+    string DescText = "Fence 3"
+    int File = 54
+    int Index = 2
+    int InMapEditor = 1
+  }
+
+  object Object73
+  {
+    int Parent = 70
+    int ID = 73
+    string DescText = "Fence 4"
+    int File = 54
+    int Index = 3
+    int InMapEditor = 1
+  }
+
+  object Object74
+  {
+    int Parent = 70
+    int ID = 74
+    string DescText = "Fence 5"
+    int File = 54
+    int Index = 4
+    int InMapEditor = 1
+  }
+
+  object Object75
+  {
+    int Parent = 70
+    int ID = 75
+    string DescText = "Fence 6"
+    int File = 54
+    int Index = 5
+    int InMapEditor = 1
+  }
+
+  object Object76
+  {
+    int Parent = 70
+    int ID = 76
+    string DescText = "Fence 7"
+    int File = 54
+    int Index = 6
+    int InMapEditor = 1
+  }
+
+  object Object77
+  {
+    int ID = 77
+    string DescText = "Bones 1"
+    int File = 55
+    int Index = 0
+    int InMapEditor = 1
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+  }
+
+  object Object78
+  {
+    int ID = 78
+    string DescText = "Bones 2"
+    int File = 55
+    int Index = 1
+    int Parent = 77
+    int InMapEditor = 1
+  }
+
+  object Object79
+  {
+    int ID = 79
+    string DescText = "Bones 3"
+    int File = 55
+    int Index = 2
+    int Parent = 77
+    int InMapEditor = 1
+  }
+
+  object Object8
+  {
+    string DescText = "Bush 1 (dead)"
+    int ID = 8
+    int File = 8
+    int Index = 0
+    int Phases = 7
+    int Width = 64
+    int Height = 64
+    int CenterX = 32
+    int CenterY = 48
+    int FireObject = -2
+    int DeadObject = -1
+    int InMapEditor = 1
+    int IconID = 194
+  }
+
+  object Object80
+  {
+    int ID = 80
+    string DescText = "Bones 4"
+    int File = 55
+    int Index = 3
+    int Parent = 77
+    int InMapEditor = 1
+  }
+
+  object Object81
+  {
+    int ID = 81
+    string DescText = "Bones 5"
+    int File = 55
+    int Index = 4
+    int Parent = 78
+    int InMapEditor = 1
+  }
+
+  object Object82
+  {
+    int ID = 82
+    string DescText = "Column 1"
+    int File = 56
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object83
+  {
+    int ID = 83
+    string DescText = "Column 2"
+    int File = 56
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object84
+  {
+    int ID = 84
+    string DescText = "Skulls"
+    int File = 57
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 64
+    int CenterX = 16
+    int CenterY = 48
+  }
+
+  object Object85
+  {
+    int ID = 85
+    string DescText = "Dark fence 1"
+    int File = 58
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object86
+  {
+    int ID = 86
+    string DescText = "Dark fence 2"
+    int File = 58
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object87
+  {
+    int ID = 87
+    string DescText = "Dark fence 3"
+    int File = 58
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object88
+  {
+    int ID = 88
+    string DescText = "Scull fence 1"
+    int File = 59
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object89
+  {
+    int ID = 89
+    string DescText = "Scull fence 2"
+    int File = 59
+    int InMapEditor = 1
+    int Index = 1
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object9
+  {
+    string DescText = "Fur 1"
+    int ID = 9
+    int File = 9
+    int Index = 0
+    int Phases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 96
+    array AnimationTime = [4, 4, 4, 4, 4, 4, 4]
+    array AnimationFrame = [0, 1, 2, 3, 4, 5, 6]
+    int DeadObject = 11
+    int InMapEditor = 1
+    int IconID = 200
+  }
+
+  object Object90
+  {
+    int ID = 90
+    string DescText = "Scull fence 3"
+    int File = 59
+    int InMapEditor = 1
+    int Index = 2
+    int Phases = 1
+    int Width = 32
+    int Height = 32
+    int CenterX = 16
+    int CenterY = 16
+  }
+
+  object Object91
+  {
+    int ID = 91
+    string DescText = "Bambuk 1"
+    int File = 60
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int DeadObject = 94
+  }
+
+  object Object92
+  {
+    int ID = 92
+    string DescText = "Bambuk 2"
+    int File = 61
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int DeadObject = 95
+  }
+
+  object Object93
+  {
+    int ID = 93
+    string DescText = "Bambuk 3"
+    int File = 62
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int DeadObject = 96
+  }
+
+  object Object94
+  {
+    int ID = 94
+    string DescText = "Dead Bambuk 1"
+    int File = 63
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+  }
+
+  object Object95
+  {
+    int ID = 95
+    string DescText = "Dead Bambuk 2"
+    int File = 64
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+  }
+
+  object Object96
+  {
+    int ID = 96
+    string DescText = "Dead Bambuk 3"
+    int File = 65
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+  }
+
+  object Object97
+  {
+    int ID = 97
+    string DescText = "Cactus 1"
+    int File = 66
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 100
+  }
+
+  object Object98
+  {
+    int ID = 98
+    string DescText = "Cactus 2"
+    int File = 67
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 101
+  }
+
+  object Object99
+  {
+    int ID = 99
+    string DescText = "Cactus 3"
+    int File = 68
+    int InMapEditor = 1
+    int Index = 0
+    int Phases = 1
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int DeadObject = 102
+  }
+}

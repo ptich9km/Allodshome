@@ -1,0 +1,1812 @@
+object Root
+{
+  object Files
+  {
+    string File0 = "humans\\swordsman\\swordsman"
+    string File1 = "humans\\swordsman_\\swordsman_"
+    string File2 = "humans\\swordsman2\\swordsman2"
+    string File3 = "humans\\axeman\\axeman"
+    string File4 = "humans\\axeman_sh\\axeman_sh"
+    string File5 = "humans\\axeman_2hd\\axeman_2hd"
+    string File6 = "humans\\clubman\\clubman"
+    string File7 = "humans\\clubman_sh\\clubman_sh"
+    string File8 = "humans\\archer\\archer"
+    string File9 = "humans\\xbowman\\xbowman"
+    string File10 = "monsters\\goblin\\sprites"
+    string File11 = "monsters\\orc\\sprites"
+    string File12 = "monsters\\troll\\sprites"
+    string File13 = "monsters\\bat\\sprites"
+    string File14 = "monsters\\legg\\sprites"
+    string File15 = "monsters\\bee\\sprites"
+    string File16 = "humans\\mage_st\\mage_st"
+    string File17 = "humans\\catapult1\\sprites"
+    string File18 = "monsters\\ogre\\sprites"
+    string File19 = "humans\\catapult2\\sprites"
+    string File20 = "humans\\mage\\sprites"
+    string File21 = "humans\\unarmed\\sprites"
+    string File22 = "monsters\\dragon\\sprites"
+    string File23 = "monsters\\squirrel\\sprites"
+    string File24 = "monsters\\ghost\\sprites"
+    string File25 = "monsters\\turtle\\sprites"
+    string File26 = "heroes\\pikeman\\sprites"
+    string File27 = "humans\\pikeman_\\sprites"
+    string File28 = "humans\\cavalrypike\\sprites"
+    string File29 = "humans\\cavalrysword\\sprites"
+    string File30 = "monsters\\mainnecro\\sprites"
+    string File31 = "monsters\\goblin_s\\sprites"
+    string File32 = "monsters\\orc_s\\sprites"
+    string File33 = "monsters\\orc_sh\\sprites"
+    string File34 = "monsters\\zombie_f1\\sprites"
+    string File35 = "monsters\\zombie_f2\\sprites"
+    string File36 = "monsters\\zombie_f3\\sprites"
+    string File37 = "monsters\\zombie_f4\\sprites"
+    string File38 = "monsters\\zombie_a2\\sprites"
+    string File39 = "monsters\\zombie_a3\\sprites"
+    string File40 = "monsters\\zombie_a4\\sprites"
+    string File41 = "monsters\\skeleton_f1\\sprites"
+    string File42 = "monsters\\skeleton_f2\\sprites"
+    string File43 = "monsters\\skeleton_f3\\sprites"
+    string File44 = "monsters\\skeleton_f4\\sprites"
+    string File45 = "monsters\\skeleton_a1\\sprites"
+    string File46 = "monsters\\skeleton_a2\\sprites"
+    string File47 = "monsters\\skeleton_a3\\sprites"
+    string File48 = "monsters\\skeleton_a4\\sprites"
+    string File49 = "monsters\\skeleton_m3\\sprites"
+    string File50 = "monsters\\skeleton_m4\\sprites"
+    string File51 = "monsters\\necromant\\sprites"
+    string File52 = "monsters\\druid\\sprites"
+    string File53 = "monsters\\orc_good\\sprites"
+    string File54 = "monsters\\sheep\\sprites"
+    string File55 = "monsters\\dino\\sprites"
+    string File56 = "monsters\\succubus\\sprites"
+    string File57 = "monsters\\wolf\\sprites"
+    string File58 = "monsters\\spider\\sprites"
+    string File59 = "monsters\\troll_good\\sprites"
+  }
+
+  object Global
+  {
+    int UnitCount = 61
+    int FileCount = 60
+  }
+
+  object Unit0
+  {
+    string DescText = "Human Swordsman"
+    int ID = 3
+    int File = 0
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 1, 1, 1, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 4
+    int Palette = 0
+    array Sound = [100, 200, 220, 221, 240]
+    int AttackDelay = 4
+    string InfoPicture = "SwordsMan"
+    int InMapEditor = 1
+  }
+
+  object Unit1
+  {
+    string DescText = "Human Swordsman with shield"
+    int Parent = 3
+    int ID = 4
+    int File = 1
+    int DyingPhases = 4
+    int Dying = 4
+    array Sound = [100, 202, 220, 221, 240]
+    int BonePhases = 3
+    string InfoPicture = "SwordsManSh"
+    int InMapEditor = 1
+  }
+
+  object Unit10
+  {
+    string DescText = "Goblin"
+    int ID = 64
+    int File = 10
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 10
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 77
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 64
+    int BonePhases = 3
+    int Palette = 5
+    array Sound = [150, 210, 311, 311, 312]
+    int AttackDelay = 4
+    string InfoPicture = "Goblin"
+    int InMapEditor = 1
+  }
+
+  object Unit11
+  {
+    string DescText = "Orc Archer"
+    int ID = 65
+    int File = 11
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 10
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 3, 2, 2, 6, 3, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 65
+    int BonePhases = 3
+    int Palette = 5
+    int Projectile = 3
+    array Sound = [130, 210, 300, 301, 302]
+    string InfoPicture = "Orc"
+    int AttackDelay = 20
+    int ShootDelay = 22
+    array ShootOffset = [59, 77, 44, 67, 42, 53, 51, 42, 66, 39, 80, 45, 85, 59, 77, 72]
+    int InMapEditor = 1
+  }
+
+  object Unit12
+  {
+    string DescText = "Fat troll"
+    int ID = 68
+    int File = 12
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 4
+    int AttackPhases = 7
+    int DyingPhases = 9
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int SelectionX1 = 34
+    int SelectionX2 = 94
+    int SelectionY1 = 30
+    int SelectionY2 = 100
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 68
+    int BonePhases = 3
+    int Palette = 5
+    int TileSize = 2
+    array Sound = [323, 212, 320, 321, 322]
+    int AttackDelay = 6
+    string InfoPicture = "Troll"
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit13
+  {
+    string DescText = "Sonic Bat"
+    int ID = 70
+    int File = 13
+    int Index = 0
+    int MovePhases = 6
+    int MoveBeginPhases = 0
+    int AttackPhases = 4
+    int DyingPhases = 4
+    int IdlePhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 44
+    int SelectionY2 = 80
+    array AttackAnimTime = [2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3]
+    array MoveAnimTime = [4, 4, 4, 4, 4, 4]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5]
+    array IdleAnimTime = [2, 2, 2, 2, 2, 2]
+    array IdleAnimFrame = [0, 1, 2, 3, 4, 5]
+    int Dying = 70
+    int Palette = 5
+    int TileSize = 1
+    array Sound = [333, 0, 330, 331, 332]
+    int AttackDelay = 2
+    int ShootDelay = 2
+    int Projectile = 7
+    array ShootOffset = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64]
+    string InfoPicture = "Bat"
+    int Z = 96
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit14
+  {
+    string DescText = "Snake"
+    int ID = 75
+    int File = 14
+    int Index = 0
+    int MovePhases = 6
+    int MoveBeginPhases = 0
+    int AttackPhases = 7
+    int DyingPhases = 5
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 40
+    int SelectionY2 = 66
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5]
+    int Dying = 75
+    int BonePhases = 3
+    int Palette = 5
+    int TileSize = 1
+    array Sound = [363, 0, 360, 361, 362]
+    int AttackDelay = 2
+    string InfoPicture = "Leg"
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit15
+  {
+    string DescText = "Bee"
+    int ID = 73
+    int File = 15
+    int Index = 0
+    int MovePhases = 4
+    int MoveBeginPhases = 0
+    int AttackPhases = 4
+    int DyingPhases = 4
+    int IdlePhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 44
+    int SelectionY2 = 80
+    array AttackAnimTime = [2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3]
+    array MoveAnimTime = [1, 1, 1, 1]
+    array MoveAnimFrame = [0, 1, 2, 3]
+    array IdleAnimTime = [1, 1, 1, 1]
+    array IdleAnimFrame = [0, 1, 2, 3]
+    int Dying = 73
+    int Palette = 5
+    int TileSize = 1
+    array Sound = [343, 0, 340, 341, 342]
+    int AttackDelay = 2
+    string InfoPicture = "Bee"
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit16
+  {
+    string DescText = "Human Mage"
+    int Parent = 3
+    int ID = 24
+    int File = 16
+    int AttackPhases = 6
+    int DyingPhases = 6
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    int Dying = 24
+    int BonePhases = 3
+    array Sound = [510, 211, 222, 223, 241]
+    string InfoPicture = "Mage"
+    int AttackDelay = 8
+    int ShootDelay = 8
+    array ShootOffset = [52, 79, 36, 64, 37, 46, 54, 33, 75, 34, 91, 46, 91, 65, 75, 79]
+    int Projectile = 10
+    int InMapEditor = 1
+  }
+
+  object Unit17
+  {
+    string DescText = "Catapult 1"
+    int ID = 26
+    int File = 17
+    int Index = 0
+    int MovePhases = 2
+    int MoveBeginPhases = 0
+    int AttackPhases = 9
+    int DyingPhases = 4
+    int BonePhases = 3
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int SelectionX1 = 32
+    int SelectionX2 = 96
+    int SelectionY1 = 32
+    int SelectionY2 = 96
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2]
+    array MoveAnimFrame = [0, 1]
+    int Dying = 26
+    int Palette = 1
+    array Sound = [120, 0, 0, 0, 243]
+    string InfoPicture = "Catapult1"
+    int AttackDelay = 4
+    int Projectile = 5
+    array ShootOffset = [64, 72, 44, 64, 36, 48, 44, 32, 64, 28, 82, 31, 92, 48, 84, 64]
+    int TileSize = 2
+    int InMapEditor = 1
+  }
+
+  object Unit18
+  {
+    string DescText = "Ogre (Lord)"
+    int ID = 66
+    int File = 18
+    int Index = 0
+    int MovePhases = 6
+    int MoveBeginPhases = 3
+    int AttackPhases = 7
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 34
+    int SelectionX2 = 94
+    int SelectionY1 = 30
+    int SelectionY2 = 100
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5]
+    int Dying = 66
+    int BonePhases = 3
+    int Palette = 5
+    int TileSize = 2
+    array Sound = [110, 212, 350, 351, 352]
+    int AttackDelay = 6
+    string InfoPicture = "Ogre"
+    int InMapEditor = 1
+  }
+
+  object Unit19
+  {
+    string DescText = "Catapult 2"
+    int Parent = 26
+    int ID = 27
+    int File = 19
+    int AttackPhases = 8
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 27
+    int Palette = 1
+    array Sound = [120, 0, 0, 0, 243]
+    string InfoPicture = "Catap2"
+    int AttackDelay = 4
+    int Projectile = 6
+    array ShootOffset = [64, 69, 48, 64, 40, 50, 48, 39, 64, 35, 78, 40, 85, 50, 79, 64]
+    int TileSize = 2
+    int InMapEditor = 1
+  }
+
+  object Unit2
+  {
+    string DescText = "Human Two-Handed Swordsman"
+    int Parent = 3
+    int ID = 5
+    int File = 2
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array Sound = [100, 200, 220, 221, 240]
+    int AttackDelay = 6
+    string InfoPicture = "2HSwordsMan"
+    int InMapEditor = 1
+  }
+
+  object Unit20
+  {
+    string DescText = "Unarmed Mage"
+    int Parent = 3
+    int ID = 23
+    int File = 20
+    int AttackPhases = 6
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    int Palette = 0
+    int Dying = 24
+    array Sound = [0, 211, 222, 223, 241]
+    string InfoPicture = "Mage"
+    int AttackDelay = 8
+    int ShootDelay = 8
+    array ShootOffset = [57, 75, 45, 66, 44, 53, 52, 43, 68, 42, 80, 50, 81, 62, 73, 73]
+    int InMapEditor = 1
+  }
+
+  object Unit21
+  {
+    string DescText = "Unarmed Fighter"
+    int Parent = 3
+    int ID = 1
+    int File = 21
+    int AttackPhases = 7
+    int DyingPhases = 4
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int Dying = 1
+    int BonePhases = 3
+    int Palette = 0
+    array Sound = [0, 211, 220, 221, 240]
+    string InfoPicture = "Bee"
+    int AttackDelay = 0
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit22
+  {
+    string DescText = "Dragon"
+    int ID = 71
+    int File = 22
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 3
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int IdlePhases = 7
+    int Width = 160
+    int Height = 160
+    int CenterX = 80
+    int CenterY = 80
+    int SelectionX1 = 32
+    int SelectionX2 = 128
+    int SelectionY1 = 32
+    int SelectionY2 = 128
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    array IdleAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array IdleAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int TileSize = 3
+    int Dying = 71
+    int Palette = 5
+    array Sound = [512, 0, 400, 401, 402]
+    string InfoPicture = "Dragon"
+    int Z = 96
+    int Flip = 1
+    int InMapEditor = 1
+    int AttackDelay = 8
+    array ShootOffset = [79, 113, 38, 101, 27, 69, 41, 37, 78, 24, 115, 36, 129, 69, 115, 100]
+    int ShootDelay = 8
+    int Projectile = 12
+  }
+
+  object Unit23
+  {
+    string DescText = "Squirrel"
+    int ID = 74
+    int File = 23
+    int Index = 0
+    int MovePhases = 5
+    int MoveBeginPhases = 1
+    int AttackPhases = 5
+    int DyingPhases = 5
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 58
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4]
+    array MoveAnimTime = [2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4]
+    int Dying = 74
+    int BonePhases = 3
+    int Palette = 5
+    array Sound = [383, 0, 380, 380, 382]
+    string InfoPicture = "Squirrel"
+    int AttackDelay = 0
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit24
+  {
+    string DescText = "Ghost"
+    int ID = 69
+    int File = 24
+    int Index = 0
+    int MovePhases = 3
+    int IdlePhases = 3
+    int MoveBeginPhases = 0
+    int AttackPhases = 6
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 70
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    array MoveAnimTime = [2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 1]
+    array IdleAnimTime = [3, 3, 3, 3]
+    array IdleAnimFrame = [0, 1, 2, 1]
+    int Dying = 69
+    int Palette = 5
+    array Sound = [373, 0, 370, 370, 372]
+    string InfoPicture = "ghost"
+    int AttackDelay = 0
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit25
+  {
+    string DescText = "Turtle"
+    int ID = 76
+    int File = 25
+    int Index = 0
+    int MovePhases = 7
+    int MoveBeginPhases = 0
+    int AttackPhases = 5
+    int DyingPhases = 2
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 60
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int Dying = 76
+    int BonePhases = 3
+    int Palette = 5
+    array Sound = [410, 0, 411, 411, 412]
+    string InfoPicture = "Turtle"
+    int AttackDelay = 0
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit26
+  {
+    string DescText = "Human Pikeman (Snowballs)"
+    int ID = 12
+    int File = 26
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 5
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 4
+    int Palette = 0
+    array Sound = [150, 200, 220, 221, 240]
+    int AttackDelay = 4
+    string InfoPicture = "PikeMan"
+  }
+
+  object Unit27
+  {
+    string DescText = "Human Pikeman with shield"
+    int Parent = 12
+    int ID = 13
+    int File = 27
+    array AttackAnimTime = [2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    array Sound = [150, 202, 220, 221, 240]
+    string InfoPicture = "PikemanSh"
+    int InMapEditor = 1
+  }
+
+  object Unit28
+  {
+    string DescText = "Hero of the Lance"
+    int ID = 21
+    int File = 28
+    int Index = 0
+    int MovePhases = 7
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int BonePhases = 3
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 40
+    int SelectionX2 = 88
+    int SelectionY1 = 40
+    int SelectionY2 = 88
+    array AttackAnimTime = [2, 2, 1, 1, 1, 1, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int Dying = 21
+    int Palette = 0
+    array Sound = [150, 201, 220, 221, 242]
+    int AttackDelay = 4
+    string InfoPicture = "PikeMan"
+    int InMapEditor = 1
+  }
+
+  object Unit29
+  {
+    string DescText = "Hero of the Sword"
+    int ID = 19
+    int File = 29
+    int Parent = 21
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int Dying = 19
+    int Palette = 0
+    array Sound = [100, 201, 220, 221, 242]
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit3
+  {
+    string DescText = "Human AxeMan"
+    int Parent = 3
+    int ID = 7
+    int File = 3
+    array AttackAnimTime = [2, 2, 2, 1, 1, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array Sound = [110, 201, 221, 223, 240]
+    int AttackDelay = 5
+    string InfoPicture = "AxeMan"
+    int InMapEditor = 1
+  }
+
+  object Unit30
+  {
+    string DescText = "Very Bad Guy (Urd)"
+    int ID = 72
+    int File = 30
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 72
+    int BonePhases = 3
+    array Sound = [490, 0, 491, 492, 493]
+    int Palette = 1
+    string InfoPicture = "mainnecro"
+    int AttackDelay = 6
+    int ShootDelay = 6
+    array ShootOffset = [78, 83, 58, 85, 30, 69, 30, 46, 48, 30, 72, 28, 91, 41, 96, 64]
+    int InMapEditor = 1
+  }
+
+  object Unit31
+  {
+    string DescText = "Goblin slinger"
+    int ID = 79
+    int File = 31
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 77
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 79
+    int BonePhases = 3
+    int Projectile = 4
+    int Palette = 5
+    array Sound = [160, 210, 311, 311, 312]
+    int AttackDelay = 6
+    int ShootDelay = 10
+    array ShootOffset = [59, 77, 44, 67, 42, 53, 51, 42, 66, 39, 80, 45, 85, 59, 77, 72]
+    string InfoPicture = "Goblins"
+    int InMapEditor = 1
+  }
+
+  object Unit32
+  {
+    string DescText = "Orc with sabre"
+    int ID = 80
+    int File = 32
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 6
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 3, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 80
+    int BonePhases = 3
+    array Sound = [100, 200, 300, 301, 302]
+    int Palette = 5
+    string InfoPicture = "Orcsabre"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit33
+  {
+    string DescText = "Unarmed Fighter with Shield"
+    int Parent = 3
+    int ID = 2
+    int File = 21
+    int AttackPhases = 7
+    int DyingPhases = 4
+    string AttackAnimTime = ""
+    string AttackAnimFrame = ""
+    int Dying = 1
+    int BonePhases = 3
+    int Palette = 0
+    array Sound = [0, 211, 220, 221, 240]
+    string InfoPicture = "Bee"
+    int AttackDelay = 0
+  }
+
+  object Unit34
+  {
+    string DescText = "Orc shaman"
+    int ID = 81
+    int File = 33
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 8
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [3, 3, 3, 3, 3, 3, 3, 3]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 81
+    int BonePhases = 3
+    array Sound = [0, 210, 300, 301, 302]
+    int Palette = 5
+    string InfoPicture = "Orcshaman"
+    int AttackDelay = 4
+    int ShootDelay = 6
+    array ShootOffset = [65, 57, 61, 58, 57, 58, 58, 51, 60, 49, 65, 49, 69, 52, 66, 56]
+    int InMapEditor = 1
+  }
+
+  object Unit35
+  {
+    string DescText = "Zombie Fighter 1"
+    int ID = 82
+    int File = 34
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 6
+    int DyingPhases = 5
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 82
+    int BonePhases = 3
+    array Sound = [110, 210, 471, 472, 473]
+    int Palette = 1
+    string InfoPicture = "Zombie_f1"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit36
+  {
+    string DescText = "Zombie Fighter 2"
+    int ID = 83
+    int File = 35
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 6
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 83
+    int BonePhases = 3
+    array Sound = [110, 210, 471, 472, 473]
+    int Palette = 1
+    string InfoPicture = "Zombie_f2"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit37
+  {
+    string DescText = "Zombie Fighter 3"
+    int ID = 84
+    int File = 36
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 84
+    int BonePhases = 3
+    array Sound = [110, 210, 471, 472, 473]
+    int Palette = 1
+    string InfoPicture = "Zombie_f3"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit38
+  {
+    string DescText = "Zombie Fighter 4"
+    int ID = 85
+    int File = 37
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 85
+    int BonePhases = 3
+    array Sound = [110, 210, 471, 472, 473]
+    int Palette = 2
+    string InfoPicture = "Zombie_f4"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit39
+  {
+    string DescText = "Zombie Archer 2"
+    int ID = 86
+    int File = 38
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 6, 2, 4, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 86
+    int BonePhases = 3
+    array Sound = [140, 210, 471, 472, 473]
+    int Palette = 1
+    string InfoPicture = "Zombie_a2"
+    int Projectile = 2
+    int AttackDelay = 7
+    int ShootDelay = 9
+    array ShootOffset = [57, 75, 45, 66, 44, 53, 52, 43, 68, 42, 80, 50, 81, 62, 73, 73]
+    int InMapEditor = 1
+  }
+
+  object Unit4
+  {
+    string DescText = "Human AxeMan with shield"
+    int Parent = 3
+    int ID = 8
+    int File = 4
+    array AttackAnimTime = [2, 2, 2, 1, 1, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array Sound = [110, 202, 221, 223, 240]
+    int AttackDelay = 5
+    string InfoPicture = "AxeManSh"
+    int InMapEditor = 1
+  }
+
+  object Unit40
+  {
+    string DescText = "Zombie Archer 3"
+    int ID = 87
+    int File = 39
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 6, 2, 4, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 87
+    int BonePhases = 3
+    array Sound = [140, 210, 471, 472, 473]
+    int Palette = 1
+    string InfoPicture = "Zombie_a3"
+    int Projectile = 2
+    int AttackDelay = 7
+    int ShootDelay = 9
+    array ShootOffset = [57, 75, 45, 66, 44, 53, 52, 43, 68, 42, 80, 50, 81, 62, 73, 73]
+    int InMapEditor = 1
+  }
+
+  object Unit41
+  {
+    string DescText = "Zombie Archer 4"
+    int ID = 88
+    int File = 40
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 6, 2, 4, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 88
+    int BonePhases = 3
+    array Sound = [140, 210, 471, 472, 473]
+    int Palette = 2
+    int Projectile = 2
+    string InfoPicture = "Zombie_a4"
+    int AttackDelay = 7
+    int ShootDelay = 9
+    array ShootOffset = [57, 75, 45, 66, 44, 53, 52, 43, 68, 42, 80, 50, 81, 62, 73, 73]
+    int InMapEditor = 1
+  }
+
+  object Unit42
+  {
+    string DescText = "Skeleton Fighter 1"
+    int ID = 89
+    int File = 41
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [100, 211, 461, 462, 463]
+    int Palette = 2
+    string InfoPicture = "skeleton_f"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit43
+  {
+    string DescText = "Skeleton Fighter 2"
+    int ID = 90
+    int File = 42
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [100, 211, 461, 462, 463]
+    int Palette = 1
+    string InfoPicture = "skeleton_f2"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit44
+  {
+    string DescText = "Skeleton Fighter 3"
+    int ID = 91
+    int File = 43
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [100, 211, 461, 462, 463]
+    int Palette = 1
+    string InfoPicture = "skeleton_f3"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit45
+  {
+    string DescText = "Skeleton Fighter 4"
+    int ID = 92
+    int File = 44
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [100, 211, 461, 462, 463]
+    int Palette = 2
+    string InfoPicture = "sk_f4"
+    int AttackDelay = 4
+    int InMapEditor = 1
+  }
+
+  object Unit46
+  {
+    string DescText = "Skeleton Archer 1"
+    int ID = 93
+    int File = 45
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 2, 2, 2, 6, 3, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [130, 211, 461, 462, 463]
+    int Palette = 1
+    string InfoPicture = "skeleton_a"
+    int AttackDelay = 19
+    int ShootDelay = 21
+    array ShootOffset = [55, 90, 29, 74, 25, 48, 42, 28, 71, 23, 96, 37, 103, 62, 87, 85]
+    int InMapEditor = 1
+    int Projectile = 1
+  }
+
+  object Unit47
+  {
+    string DescText = "Skeleton Archer 2"
+    int ID = 94
+    int File = 46
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 2, 2, 2, 6, 3, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [130, 211, 461, 462, 463]
+    int Palette = 1
+    string InfoPicture = "skeleton_a2"
+    int AttackDelay = 19
+    int ShootDelay = 21
+    array ShootOffset = [55, 90, 29, 74, 25, 48, 42, 28, 71, 23, 96, 37, 103, 62, 87, 85]
+    int InMapEditor = 1
+    int Projectile = 1
+  }
+
+  object Unit48
+  {
+    string DescText = "Skeleton Archer 3"
+    int ID = 95
+    int File = 47
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 2, 2, 2, 6, 3, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [130, 211, 461, 462, 463]
+    int Palette = 1
+    string InfoPicture = "skeleton_a3"
+    int AttackDelay = 19
+    int ShootDelay = 21
+    array ShootOffset = [55, 90, 29, 74, 25, 48, 42, 28, 71, 23, 96, 37, 103, 62, 87, 85]
+    int InMapEditor = 1
+    int Projectile = 1
+  }
+
+  object Unit49
+  {
+    string DescText = "Skeleton Archer 4"
+    int ID = 96
+    int File = 48
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 9
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 2, 2, 2, 6, 3, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 89
+    int BonePhases = 3
+    array Sound = [130, 211, 461, 462, 463]
+    int Palette = 2
+    string InfoPicture = "sk_a4"
+    int AttackDelay = 19
+    int ShootDelay = 21
+    array ShootOffset = [55, 90, 29, 74, 25, 48, 42, 28, 71, 23, 96, 37, 103, 62, 87, 85]
+    int InMapEditor = 1
+    int Projectile = 1
+  }
+
+  object Unit5
+  {
+    string DescText = "Human AxeMan with 2-handed axe"
+    int Parent = 3
+    int ID = 9
+    int File = 5
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array Sound = [110, 201, 221, 223, 240]
+    int AttackDelay = 6
+    string InfoPicture = "2HAxeMan"
+    int InMapEditor = 1
+  }
+
+  object Unit50
+  {
+    string DescText = "Skeleton Mage 3"
+    int ID = 97
+    int File = 49
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 97
+    int BonePhases = 3
+    array Sound = [0, 212, 481, 482, 483]
+    int Palette = 1
+    string InfoPicture = "skeleton_m3"
+    int AttackDelay = 6
+    int ShootDelay = 6
+    array ShootOffset = [62, 60, 55, 61, 56, 56, 58, 50, 62, 47, 68, 49, 69, 56, 65, 60]
+    int InMapEditor = 1
+  }
+
+  object Unit51
+  {
+    string DescText = "Skeleton Mage 4"
+    int ID = 98
+    int File = 50
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 98
+    int BonePhases = 3
+    array Sound = [0, 212, 481, 482, 483]
+    int Palette = 2
+    string InfoPicture = "sk_m4"
+    int AttackDelay = 6
+    int ShootDelay = 6
+    array ShootOffset = [49, 61, 43, 51, 48, 39, 61, 34, 75, 38, 82, 48, 78, 59, 63, 65]
+    int InMapEditor = 1
+  }
+
+  object Unit52
+  {
+    string DescText = "Necromancer"
+    int ID = 99
+    int File = 51
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 76
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 99
+    int BonePhases = 3
+    array Sound = [0, 210, 491, 492, 493]
+    int Palette = 3
+    string InfoPicture = "necro"
+    int AttackDelay = 6
+    int ShootDelay = 6
+    array ShootOffset = [78, 83, 58, 85, 30, 69, 30, 46, 48, 30, 72, 28, 91, 41, 96, 64]
+    int InMapEditor = 1
+  }
+
+  object Unit53
+  {
+    string DescText = "Druid"
+    int ID = 100
+    int File = 52
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 7
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 63
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 100
+    int BonePhases = 3
+    array Sound = [0, 211, 496, 497, 498]
+    int Palette = 7
+    string InfoPicture = "druid"
+    int AttackDelay = 6
+    int ShootDelay = 6
+    array ShootOffset = [50, 52, 49, 44, 53, 36, 64, 33, 74, 38, 75, 47, 71, 56, 62, 62]
+    int InMapEditor = 1
+  }
+
+  object Unit54
+  {
+    string DescText = "Good Orc"
+    int ID = 101
+    int File = 53
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 2
+    int AttackPhases = 10
+    int DyingPhases = 7
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 78
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    array AttackAnimTime = [2, 3, 3, 3, 2, 2, 6, 3, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 101
+    int BonePhases = 3
+    array Sound = [100, 200, 300, 301, 302]
+    int Palette = 1
+    string InfoPicture = "goodorc"
+    int AttackDelay = 20
+    int ShootDelay = 22
+    array ShootOffset = [59, 77, 44, 67, 42, 53, 51, 42, 66, 39, 80, 45, 85, 59, 77, 72]
+    int InMapEditor = 1
+    int Projectile = 3
+  }
+
+  object Unit55
+  {
+    string DescText = "Mercenary troll"
+    int ID = 102
+    int File = 59
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 4
+    int AttackPhases = 7
+    int DyingPhases = 9
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 80
+    int SelectionX1 = 34
+    int SelectionX2 = 94
+    int SelectionY1 = 30
+    int SelectionY2 = 100
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 102
+    int BonePhases = 3
+    int Palette = 4
+    int TileSize = 2
+    array Sound = [323, 212, 320, 321, 322]
+    int AttackDelay = 6
+    string InfoPicture = "Troll"
+    int Flip = 1
+    int InMapEditor = 1
+  }
+
+  object Unit56
+  {
+    string DescText = "Succubus"
+    int ID = 105
+    int File = 56
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 0
+    int AttackPhases = 8
+    int DyingPhases = 5
+    int IdlePhases = 9
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 60
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 41
+    int SelectionY2 = 77
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    array IdleAnimTime = [2, 2, 2, 2, 2, 2, 2, 2, 2]
+    array IdleAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    int Dying = 105
+    int Palette = 5
+    int TileSize = 1
+    array Sound = [440, 0, 441, 442, 443]
+    int AttackDelay = 6
+    int ShootDelay = 6
+    int Projectile = 7
+    array ShootOffset = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64]
+    string InfoPicture = "succubus"
+    int Z = 96
+    int InMapEditor = 1
+  }
+
+  object Unit57
+  {
+    string DescText = "Wolf"
+    int ID = 103
+    int File = 57
+    int Index = 0
+    int MovePhases = 6
+    int MoveBeginPhases = 0
+    int AttackPhases = 6
+    int DyingPhases = 6
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 69
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 45
+    int SelectionY2 = 87
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5]
+    int Dying = 103
+    int BonePhases = 3
+    int Palette = 5
+    array Sound = [420, 0, 421, 422, 423]
+    string InfoPicture = "wolf"
+    int AttackDelay = 0
+    int InMapEditor = 1
+  }
+
+  object Unit58
+  {
+    string DescText = "Spider"
+    int ID = 104
+    int File = 58
+    int Index = 0
+    int MovePhases = 5
+    int MoveBeginPhases = 0
+    int AttackPhases = 3
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 68
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 43
+    int SelectionY2 = 85
+    array AttackAnimTime = [2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2]
+    array MoveAnimTime = [2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4]
+    int Dying = 104
+    int BonePhases = 3
+    int Palette = 5
+    array Sound = [430, 0, 431, 432, 433]
+    string InfoPicture = "spider"
+    int AttackDelay = 0
+    int InMapEditor = 1
+  }
+
+  object Unit59
+  {
+    string DescText = "Dino"
+    int ID = 106
+    int File = 55
+    int Index = 0
+    int MovePhases = 10
+    int MoveBeginPhases = 0
+    int AttackPhases = 7
+    int DyingPhases = 8
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 63
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 34
+    int SelectionY2 = 76
+    array AttackAnimTime = [2, 2, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    array MoveAnimTime = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    int Dying = 106
+    int BonePhases = 3
+    int Palette = 5
+    array Sound = [450, 0, 451, 452, 453]
+    string InfoPicture = "dino"
+    int AttackDelay = 0
+    int InMapEditor = 1
+  }
+
+  object Unit6
+  {
+    string DescText = "Human ClubMan"
+    int Parent = 3
+    int ID = 10
+    int File = 6
+    array AttackAnimTime = [2, 2, 1, 1, 1, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int Dying = 1
+    array Sound = [120, 200, 220, 223, 240]
+    int AttackDelay = 4
+    string InfoPicture = "ClubMan"
+    int InMapEditor = 1
+  }
+
+  object Unit60
+  {
+    string DescText = "WarSheep"
+    int ID = 107
+    int File = 54
+    int Index = 0
+    int MovePhases = 8
+    int MoveBeginPhases = 0
+    int AttackPhases = 0
+    int DyingPhases = 4
+    int Width = 128
+    int Height = 128
+    int CenterX = 64
+    int CenterY = 64
+    int SelectionX1 = 48
+    int SelectionX2 = 80
+    int SelectionY1 = 48
+    int SelectionY2 = 90
+    string AttackAnimTime = ""
+    string AttackAnimFrame = ""
+    array MoveAnimTime = [1, 1, 1, 1, 1, 1, 1, 1]
+    array MoveAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7]
+    int Dying = 107
+    int BonePhases = 3
+    int Palette = 1
+    array Sound = [499, 0, 499, 499, 499]
+    string InfoPicture = "sheep"
+    int AttackDelay = 0
+    int InMapEditor = 1
+  }
+
+  object Unit7
+  {
+    string DescText = "Human Clubman with shield"
+    int Parent = 3
+    int ID = 11
+    int File = 7
+    array AttackAnimTime = [2, 2, 1, 1, 1, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6]
+    int Dying = 1
+    array Sound = [120, 202, 220, 223, 240]
+    int AttackDelay = 4
+    string InfoPicture = "ClubManSh"
+    int InMapEditor = 1
+  }
+
+  object Unit8
+  {
+    string DescText = "Human Archer"
+    int Parent = 3
+    int ID = 14
+    int File = 8
+    int Dying = 1
+    int AttackPhases = 9
+    array AttackAnimTime = [2, 3, 3, 2, 2, 2, 6, 3, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array Sound = [130, 211, 225, 235, 245]
+    int Projectile = 1
+    string InfoPicture = "Archer"
+    int AttackDelay = 19
+    int ShootDelay = 21
+    array ShootOffset = [61, 90, 36, 80, 28, 58, 40, 39, 65, 30, 85, 40, 96, 60, 87, 81]
+    int InMapEditor = 1
+  }
+
+  object Unit9
+  {
+    string DescText = "Human CrossBowMan"
+    int Parent = 3
+    int ID = 15
+    int File = 9
+    int Dying = 1
+    int AttackPhases = 9
+    array AttackAnimTime = [2, 6, 2, 4, 2, 2, 2, 2, 2]
+    array AttackAnimFrame = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    array Sound = [140, 212, 222, 223, 240]
+    int Projectile = 2
+    string InfoPicture = "XBowMan"
+    int AttackDelay = 7
+    int ShootDelay = 9
+    array ShootOffset = [57, 75, 45, 66, 44, 53, 52, 43, 68, 42, 80, 50, 81, 62, 73, 73]
+    int InMapEditor = 1
+  }
+}
