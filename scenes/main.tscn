@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/units/monsters/orc/sprites-001.png" id="orc_tex"]
 [ext_resource type="Texture2D" path="res://assets/units/heroes/swordsman/sprites-001.png" id="hero_tex"]
 
-[ext_resource type="Texture2D" path="res://assets/portraits/humanh1.png" id="hero_portrait"]
+[ext_resource type="Texture2D" path="res://assets/portraits/orc.png" id="hero_portrait"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0

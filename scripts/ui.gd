@@ -25,7 +25,8 @@ func setup_ui(p: Player):
 
 	_setup_spells()
 
-	var tex = load("res://assets/sprites/hero.png")
+	# Загружаем портрет героя из оригинала
+	var tex = load("res://assets/portraits/orc.png")
 	if tex:
 		portrait_texture.texture = tex
 
