@@ -146,10 +146,11 @@ func _drop_loot():
 			1: items.append({"name": "Зелье HP", "amount": 1})
 			2: items.append({"name": "Зелье маны", "amount": 1})
 			3: items.append({"name": "Руда", "amount": randi() % 3 + 1})
-	
-	var loot_scene = preload("res://scenes/loot_bag.tscn")
-	if loot_scene:
-		var bag = loot_scene.instantiate()
-		bag.items = items
-		bag.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
-		get_tree().root.add_child(bag)
+
+	# Лут пока отключён - вернём когда создадим систему инвентаря
+	# var loot_scene = preload("res://scenes/loot_bag.tscn")
+	# if loot_scene:
+	# 	var bag = loot_scene.instantiate()
+	# 	bag.items = items
+	# 	bag.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+	# 	get_tree().root.add_child(bag)

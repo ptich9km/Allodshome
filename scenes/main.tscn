@@ -5,8 +5,8 @@
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="3_enemy"]
 [ext_resource type="Script" path="res://scripts/ui.gd" id="4_ui"]
 [ext_resource type="Script" path="res://scripts/map_generator.gd" id="9_mapgen"]
-[ext_resource type="Texture2D" path="res://assets/portraits/goodorc.bmp" id="orc_tex"]
-[ext_resource type="Texture2D" path="res://assets/portraits/goblin.bmp" id="hero_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/orc.png" id="orc_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/hero.png" id="hero_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
