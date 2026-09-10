@@ -10,6 +10,9 @@
 
 [ext_resource type="Texture2D" path="res://assets/portraits/goodorc.png" id="hero_portrait"]
 
+[ext_resource type="Texture2D" path="res://assets/interface/spellbook.bmp" id="spellbook_tex"]
+[ext_resource type="Texture2D" path="res://assets/interface/humanbackr.bmp" id="humanbackr_tex"]
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
 
@@ -73,7 +76,7 @@ offset_left = 0.0
 offset_top = 0.0
 offset_right = 480.0
 offset_bottom = 85.0
-texture = load("res://assets/interface/spellbook.bmp")
+texture = ExtResource("spellbook_tex")
 expand_mode = 0
 stretch_mode = 0
 
@@ -142,7 +145,7 @@ offset_left = 0.0
 offset_top = 0.0
 offset_right = 160.0
 offset_bottom = 242.0
-texture = load("res://assets/interface/humanbackr.bmp")
+texture = ExtResource("humanbackr_tex")
 expand_mode = 0
 stretch_mode = 0
 
