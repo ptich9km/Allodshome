@@ -44,6 +44,10 @@ var inventory_visible: bool = true
 var spells_visible: bool = true
 
 func _setup_spells():
+	if not spell_grid:
+		print("WARNING: SpellGrid not found, skipping spell setup")
+		return
+	
 	# 2 ряда по 12 = 24 иконки заклинаний
 	spell_grid.columns = 12
 	

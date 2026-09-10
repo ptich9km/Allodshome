@@ -19,7 +19,12 @@ func generate_original_terrain(tilemap: TileMapLayer):
 	
 	for ts_name in tileset_names:
 		var tiles = []
-		for i in range(16):  # 00-15 вариаций
+		var max_variants = 16
+		# tile4 имеет только 4 вариации (00-03)
+		if ts_name == "tile4":
+			max_variants = 4
+		
+		for i in range(max_variants):
 			var path = "res://assets/terrain/%s-%02d.bmp" % [ts_name, i]
 			var tex = load(path)
 			if tex:
