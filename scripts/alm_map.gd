@@ -122,7 +122,7 @@ func _rock_color_for(tile_img: Image) -> Color:
 	# Тёмный оттенок нижней строки тайла — цвет скалы
 	var y := tile_img.get_height() - 1
 	var r := 0.0; var g := 0.0; var b := 0.0
-	var step := max(1, tile_img.get_width() / 8)
+	var step: int = maxi(1, tile_img.get_width() / 8)
 	var cnt := 0
 	for x in range(0, tile_img.get_width(), step):
 		var c := tile_img.get_pixel(x, y)
