@@ -10,7 +10,6 @@
 
 [ext_resource type="Texture2D" path="res://assets/portraits/goodorc.png" id="hero_portrait"]
 
-[ext_resource type="Texture2D" path="res://assets/interface/spellbook.bmp" id="spellbook_tex"]
 [ext_resource type="Texture2D" path="res://assets/interface/humanbackr.bmp" id="humanbackr_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
@@ -71,20 +70,11 @@ offset_top = 600.0
 offset_right = 1070.0
 offset_bottom = 800.0
 
-[node name="SpellbookBg" type="TextureRect" parent="UI/BottomPanel"]
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 480.0
-offset_bottom = 85.0
-texture = ExtResource("spellbook_tex")
-expand_mode = 0
-stretch_mode = 0
-
 [node name="SpellGrid" type="GridContainer" parent="UI/BottomPanel"]
 offset_left = 10.0
-offset_top = 5.0
-offset_right = 470.0
-offset_bottom = 80.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 90.0
 columns = 12
 
 [node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel"]

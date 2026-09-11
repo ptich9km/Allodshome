@@ -54,8 +54,10 @@ func _setup_spells():
 	
 	for i in range(24):
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(58, 48)
+		btn.custom_minimum_size = Vector2(40, 40)
 		btn.flat = true
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn.expand_icon = true
 		
 		# Загружаем иконку
 		var icon_path = "res://assets/spells/spell_%02d.png" % i
