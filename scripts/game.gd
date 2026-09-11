@@ -2,7 +2,6 @@ extends Node2D
 class_name Game
 
 @onready var alm_map: AlmMap = $AlmMap
-@onready var tilemap: TileMapLayer = $AlmMap/TileMap
 @onready var player: CharacterBody2D = $Player
 @onready var camera: Camera2D = $Camera2D
 @onready var ui: CanvasLayer = $UI
@@ -42,10 +41,6 @@ func _ready():
 
 	# Добавляем игрока в группу "player" для врагов
 	player.add_to_group("player")
-
-	# TileMap — в группу для миникарты
-	if tilemap:
-		tilemap.add_to_group("tilemap")
 
 	if ui:
 		ui.setup_ui(player)

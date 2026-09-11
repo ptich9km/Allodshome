@@ -15,7 +15,7 @@ class_name GameUI
 @onready var guard_btn: Button = $ActionPanel/GuardBtn
 
 var minimap_camera: Camera2D
-var minimap_tilemap: TileMapLayer
+var alm_map: AlmMap
 var player: Player
 
 # Для рисования миникарты
@@ -34,9 +34,9 @@ func setup_ui(p: Player):
 
 	_setup_inventory()
 
-	# Ищем tilemap для миникарты
-	minimap_tilemap = get_tree().get_first_node_in_group("tilemap")
-	
+	# AlmMap для миникарты (реальные данные карты)
+	alm_map = get_tree().get_first_node_in_group("alm_map") as AlmMap
+
 	_setup_minimap()
 	_setup_action_buttons()
 	_update_stats()
@@ -163,56 +163,60 @@ func _setup_minimap():
 	minimap_rect.add_child(tex_rect)
 
 func _draw_minimap():
-	if not minimap_tilemap or not is_instance_valid(player):
+	if not alm_map or not is_instance_valid(player):
 		return
-	
-	var player_tile = Vector2i(int(player.global_position.x / 64), int(player.global_position.y / 32))
-	var map_center = player_tile
-	
-	# Рисуем тайлы вокруг игрока
-	for dy in range(-10, 11):
-		for dx in range(-10, 11):
-			var tile_x = map_center.x + dx
-			var tile_y = map_center.y + dy
-			var screen_x = 95 + dx * 12
-			var screen_y = 95 + dy * 12
-			
-			if screen_x < 0 or screen_x >= 190 or screen_y < 0 or screen_y >= 190:
-				continue
-			
-			# Определяем цвет тайла
-			var color = Color(0, 0, 0, 0)
-			var dist = abs(tile_x) + abs(tile_y)
-			if dist <= 7:
-				color = Color(0.2, 0.6, 0.15, 0.8)
-			elif dist == 8:
-				color = Color(0.4, 0.35, 0.3, 0.8)
-			
-			if color.a > 0:
-				for py in range(screen_y - 5, screen_y + 6):
-					for px in range(screen_x - 5, screen_x + 6):
-						if py >= 0 and py < 190 and px >= 0 and px < 190:
-							minimap_image.set_pixel(px, py, color)
-	
-	# Рисуем игрока (синяя точка, красная если мёртв)
-	var px = 95
-	var py = 95
-	var player_color = Color(0.2, 0.4, 1.0, 1.0) if is_instance_valid(player) and player.current_hp > 0 else Color(1.0, 0.0, 0.0, 1.0)
-	for dy in range(-2, 3):
-		for dx in range(-2, 3):
-			if py+dy >= 0 and py+dy < 190 and px+dx >= 0 and px+dx < 190:
-				minimap_image.set_pixel(px+dx, py+dy, player_color)
-	
-	# Рисуем врагов (красные точки)
+
+	var mw: int = alm_map.map_width
+	var mh: int = alm_map.map_height
+	if mw == 0:
+		return
+
+	var ptx := int(player.global_position.x) / alm_map.tile_width
+	var pty := int(player.global_position.y) / alm_map.tile_height
+	var scale_x := 190.0 / float(mw)
+	var scale_y := 190.0 / float(mh)
+
+	minimap_image.fill(Color(0.03, 0.03, 0.04, 1.0))
+
+	# Вся карта: земля/вода/барьеры
+	for ty in range(mh):
+		for tx in range(mw):
+			var flag := AlmLoader.classify(alm_map._hflags[ty * mw + tx])
+			var color: Color
+			match flag:
+				AlmLoader.TileFlag.WATER:
+					color = Color(0.15, 0.35, 0.75, 1.0)
+				AlmLoader.TileFlag.BARRIER:
+					color = Color(0.45, 0.4, 0.32, 1.0)
+				_:
+					var h: int = alm_map._height_grid[ty][tx]
+					color = Color(0.25, 0.45 + h * 0.12, 0.2, 1.0)
+			var sx := int(tx * scale_x)
+			var sy := int(ty * scale_y)
+			var ex := int((tx + 1) * scale_x)
+			var ey := int((ty + 1) * scale_y)
+			for py in range(sy, min(ey + 1, 190)):
+				for px in range(sx, min(ex + 1, 190)):
+					minimap_image.set_pixel(px, py, color)
+
+	# Игрок (белая точка)
+	var px := int(ptx * scale_x)
+	var py := int(pty * scale_y)
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var xx := px + dx; var yy := py + dy
+			if xx >= 0 and xx < 190 and yy >= 0 and yy < 190:
+				minimap_image.set_pixel(xx, yy, Color(1, 1, 1, 1))
+
+	# Враги (красные точки)
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
-			var etx = int((enemy.global_position.x - player.global_position.x) / 64) + 95
-			var ety = int((enemy.global_position.y - player.global_position.y) / 32) + 95
-			if etx >= 0 and etx < 190 and ety >= 0 and ety < 190:
-				for dy in range(-2, 3):
-					for dx in range(-2, 3):
-						minimap_image.set_pixel(etx+dx, ety+dy, Color(1.0, 0.2, 0.2, 1.0))
-	
+			var etx := int(enemy.global_position.x) / alm_map.tile_width
+			var ety := int(enemy.global_position.y) / alm_map.tile_height
+			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
+			if exx >= 0 and exx < 190 and eyy >= 0 and eyy < 190:
+				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))
+
 	minimap_texture.update(minimap_image)
 	var tex_rect = minimap_rect.get_node_or_null("MinimapTex")
 	if tex_rect:
