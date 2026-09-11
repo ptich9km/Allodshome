@@ -45,45 +45,50 @@ func _build_tileset() -> void:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(tile_width, tile_height)
 	ts.tile_layout = TileSet.TILE_LAYOUT_STACKED
-
-	# Три типа тайлов: 0=трава(проходима), 1=вода(блок), 2=барьер(блок)
-	var grass_tex := _load_tex("res://assets/terrain/tiles/tile1-00_00.png")
-	var water_tex := _make_color_tex(Color(0.15, 0.35, 0.7, 1.0))
-	var barrier_tex := _make_color_tex(Color(0.35, 0.3, 0.25, 1.0))
-
-	# Физический слой для коллизий
 	ts.add_physics_layer()
 
-	var textures := [grass_tex, water_tex, barrier_tex]
-	for i in range(3):
+	# 16 вариантов травы (ряд 00 каждого) + вода + барьер
+	var grass_variants := 16
+	for i in range(grass_variants):
+		var path := "res://assets/terrain/tiles/tile1-%02d_00.png" % i
 		var src := TileSetAtlasSource.new()
-		src.texture = textures[i]
+		src.texture = _load_tex(path)
 		src.texture_region_size = Vector2i(tile_width, tile_height)
 		src.create_tile(Vector2i(0, 0))
-		# Вода и барьер — непроходимы
-		if i >= 1:
-			var td := src.get_tile_data(Vector2i(0, 0), 0)
-			var poly := PackedVector2Array([
-				Vector2(0, 0), Vector2(tile_width, 0),
-				Vector2(tile_width, tile_height), Vector2(0, tile_height)
-			])
-			td.add_collision_polygon(0)
-			td.set_collision_polygon_points(0, 0, poly)
 		ts.add_source(src, i)
+
+	# Вода (индекс 16) и барьер (индекс 17) — с коллизией
+	var water_tex := _make_color_tex(Color(0.15, 0.35, 0.7, 1.0))
+	var barrier_tex := _make_color_tex(Color(0.35, 0.3, 0.25, 1.0))
+	for i in range(2):
+		var src := TileSetAtlasSource.new()
+		src.texture = water_tex if i == 0 else barrier_tex
+		src.texture_region_size = Vector2i(tile_width, tile_height)
+		src.create_tile(Vector2i(0, 0))
+		var td := src.get_tile_data(Vector2i(0, 0), 0)
+		var poly := PackedVector2Array([
+			Vector2(0, 0), Vector2(tile_width, 0),
+			Vector2(tile_width, tile_height), Vector2(0, tile_height)
+		])
+		td.add_collision_polygon(0)
+		td.set_collision_polygon_points(0, 0, poly)
+		ts.add_source(src, grass_variants + i)
 
 	tilemap.tile_set = ts
 
 func _fill_tiles() -> void:
+	var grass_variants := 16
 	for y in range(map_height):
 		for x in range(map_width):
-			var hf := _hflags[y * map_width + x]
+			var i := y * map_width + x
+			var hf := _hflags[i]
 			var flag := AlmLoader.classify(hf)
-			var tile_id := 0  # трава
+			var tile_id := int(_terrain[i]) % grass_variants  # вариант травы
 			match flag:
 				AlmLoader.TileFlag.WATER:
-					tile_id = 1
+					tile_id = grass_variants      # 16
 				AlmLoader.TileFlag.BARRIER:
-					tile_id = 2
+					tile_id = grass_variants + 1  # 17
 			tilemap.set_cell(Vector2i(x, y), tile_id, Vector2i(0, 0))
 
 ## Уровень высоты тайла (0..3) для замедления/обзора.
@@ -104,6 +109,12 @@ func is_walkable_world(pos: Vector2) -> bool:
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return false
 	return AlmLoader.is_walkable(_hflags[ty * map_width + tx])
+
+## В пределах ли карты мировая позиция.
+func is_within_bounds(pos: Vector2) -> bool:
+	var tx := int(pos.x) / tile_width
+	var ty := int(pos.y) / tile_height
+	return tx >= 0 and ty >= 0 and tx < map_width and ty < map_height
 
 func _load_tex(path: String) -> Texture2D:
 	var t := load(path)

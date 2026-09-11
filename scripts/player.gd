@@ -43,6 +43,27 @@ func _height_speed_factor(target_pos: Vector2) -> float:
 		return maxf(0.4, 1.0 - 0.3 * (tgt_h - cur_h))
 	return 1.0
 
+## Можно ли двигаться в точку: проходимость (вода/барьер) + границы карты.
+func _can_move_to(pos: Vector2) -> bool:
+	if not alm_map:
+		return true
+	if not alm_map.is_walkable_world(pos):
+		return false
+	return alm_map.is_within_bounds(pos)
+
+## Движение с проверкой проходимости: если цель непроходима — скользим вдоль.
+func _move_checked(direction: Vector2, speed: float, delta: float):
+	var step := direction * speed * delta
+	var next := global_position + step
+	if _can_move_to(next):
+		velocity = direction * speed
+	elif _can_move_to(global_position + Vector2(step.x, 0)):
+		velocity = Vector2(direction.x, 0) * speed   # скользим по X
+	elif _can_move_to(global_position + Vector2(0, step.y)):
+		velocity = Vector2(0, direction.y) * speed   # скользим по Y
+	else:
+		velocity = Vector2.ZERO
+
 func _create_health_bar():
 	health_bar = preload("res://scripts/health_bar.gd").new()
 	health_bar.max_hp = max_hp
@@ -105,22 +126,22 @@ func _physics_process(delta):
 
 	move_and_slide()
 
-func move_to_target(_delta):
+func move_to_target(delta):
 	if Game.player_target.distance_to(global_position) > 5.0:
 		var direction = (Game.player_target - global_position).normalized()
 		var speed_factor = _height_speed_factor(Game.player_target)
-		velocity = direction * move_speed * speed_factor
+		_move_checked(direction, move_speed * speed_factor, delta)
 	else:
 		state = "idle"
 		velocity = Vector2.ZERO
 
-func chase_target(_delta):
+func chase_target(delta):
 	if attack_target and is_instance_valid(attack_target):
 		var distance = global_position.distance_to(attack_target.global_position)
 		if distance > Game.ATTACK_RANGE:
 			var direction = (attack_target.global_position - global_position).normalized()
 			var speed_factor = _height_speed_factor(attack_target.global_position)
-			velocity = direction * move_speed * speed_factor
+			_move_checked(direction, move_speed * speed_factor, delta)
 		else:
 			state = "attack"
 			velocity = Vector2.ZERO
