@@ -100,9 +100,9 @@ func _fill_tiles() -> void:
 					# Когерентный terrain: тип по //32 (связные регионы),
 					# вариант по переходному значению (плавные края)
 					var t := int(_terrain[i])
-					var ttype := (t / 32) % 8
-					var tileset := type_to_set[ttype]
-					var variant := (t % 32) / 8
+					var ttype: int = (t / 32) % 8
+					var tileset: int = int(type_to_set[ttype])
+					var variant: int = (t % 32) / 8
 					tile_id = tileset * variants + variant
 			tilemap.set_cell(Vector2i(x, y), tile_id, Vector2i(0, 0))
 
