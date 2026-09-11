@@ -222,19 +222,38 @@ func _update_stats():
 	if not is_instance_valid(player):
 		return
 	var p = player
+
+	# Производные значения (формулы как в оригинале)
+	var damage_min = p.strength
+	var damage_max = p.strength + 5
+	var defense = p.endurance / 2
+	var absorption = p.endurance / 3
+	var hp_regen = 1 + p.endurance / 10
+	var mana_regen = 1 + p.spirit / 10
+
 	var stats = "ИМЯ: ГЕРОЙ\n"
-	stats += "═══════════════\n"
+	stats += "─────────────────\n"
 	stats += "СИЛА:        %d\n" % p.strength
+	stats += "РАЗУМ:       %d\n" % p.intellect
 	stats += "ЛОВКОСТЬ:    %d\n" % p.agility
-	stats += "ИНТЕЛЛЕКТ:   %d\n" % p.intellect
-	stats += "ВЫНОСЛИВОСТЬ:%d\n" % p.endurance
 	stats += "ДУХ:         %d\n" % p.spirit
-	stats += "═══════════════\n"
-	stats += "УРОН:        %d-%d\n" % [p.strength, p.strength + 5]
-	stats += "БРОНЯ:       %d\n" % (p.endurance / 2)
-	stats += "ЗАЩИТА:      %d\n" % (p.endurance / 3)
-	stats += "ОПЫТ:        0\n"
+	stats += "─────────────────\n"
+	stats += "ЗДОРОВЬЕ:    %d/%d\n" % [p.current_hp, p.max_hp]
+	stats += "РЕГЕН HP:    %d\n" % hp_regen
+	stats += "МАНА:        %d/%d\n" % [p.current_mana, p.max_mana]
+	stats += "РЕГЕН МАНЫ:  %d\n" % mana_regen
+	stats += "─────────────────\n"
+	stats += "АТАКА:       %d\n" % p.strength
+	stats += "УРОН:        %d-%d\n" % [damage_min, damage_max]
+	stats += "ЗАЩИТА:      %d\n" % defense
+	stats += "ПОГЛОЩЕНИЕ:  %d\n" % absorption
 	stats += "СКОРОСТЬ:    %d\n" % int(p.move_speed)
+	stats += "─────────────────\n"
+	stats += "ЗАЩИТА ОГОНЬ:  %d\n" % (p.spirit / 2)
+	stats += "ЗАЩИТА ВОДА:   %d\n" % (p.spirit / 2)
+	stats += "ЗАЩИТА ВОЗДУХ: %d\n" % (p.spirit / 2)
+	stats += "ЗАЩИТА ЗЕМЛЯ:  %d\n" % (p.spirit / 2)
+	stats += "ЗАЩИТА АСТРАЛ: %d\n" % (p.spirit / 2)
 	stats_label.text = stats
 
 func update_ui(p: Player):

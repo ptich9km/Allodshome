@@ -177,17 +177,17 @@ expand_mode = 0
 stretch_mode = 0
 
 [node name="PortraitTexture" type="TextureRect" parent="UI/PortraitBorder"]
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 140.0
-offset_bottom = 220.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 160.0
+offset_bottom = 242.0
 expand_mode = 1
 stretch_mode = 5
 texture = ExtResource("hero_portrait")
 
 [node name="StatsBorder" type="Panel" parent="UI"]
 offset_left = 1075.0
-offset_top = 520.0
+offset_top = 560.0
 offset_right = 1275.0
 offset_bottom = 800.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
