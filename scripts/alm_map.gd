@@ -83,6 +83,8 @@ func _fill_tiles() -> void:
 	var sets := 4
 	var variants := 4
 	var ground_count := sets * variants  # 16
+	# 8 типов terrain (byte[0]//32) -> 4 тайлсета. Доминирующие типы -> разные тайлсеты.
+	var type_to_set := [2, 2, 3, 0, 0, 1, 1, 3]
 	for y in range(map_height):
 		for x in range(map_width):
 			var i := y * map_width + x
@@ -95,10 +97,12 @@ func _fill_tiles() -> void:
 				AlmLoader.TileFlag.BARRIER:
 					tile_id = ground_count + 1  # 17
 				_:
-					# Когерентный terrain: значение -> тайлсет+вариант
+					# Когерентный terrain: тип по //32 (связные регионы),
+					# вариант по переходному значению (плавные края)
 					var t := int(_terrain[i])
-					var tileset := (t / 32) % sets
-					var variant := t % variants
+					var ttype := (t / 32) % 8
+					var tileset := type_to_set[ttype]
+					var variant := (t % 32) / 8
 					tile_id = tileset * variants + variant
 			tilemap.set_cell(Vector2i(x, y), tile_id, Vector2i(0, 0))
 
