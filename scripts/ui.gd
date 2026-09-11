@@ -1,9 +1,11 @@
 extends CanvasLayer
 class_name GameUI
 
-@onready var spell_grid: GridContainer = $BottomPanel/SpellGrid
-@onready var bottom_panel: Panel = $BottomPanel
-@onready var inventory_grid: GridContainer = $BottomPanel/InventoryScroll/InventoryGrid
+@onready var spell_grid: GridContainer = $BottomPanel/SpellPanel/SpellGrid
+@onready var bottom_panel: Control = $BottomPanel
+@onready var spell_panel: Panel = $BottomPanel/SpellPanel
+@onready var inventory_panel: Panel = $BottomPanel/InventoryPanel
+@onready var inventory_grid: GridContainer = $BottomPanel/InventoryPanel/InventoryScroll/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
@@ -38,6 +40,7 @@ func setup_ui(p: Player):
 	_setup_minimap()
 	_setup_action_buttons()
 	_update_stats()
+	_update_bottom_panel_visibility()
 
 # Панель заклинаний с иконками
 var spell_buttons: Array = []
@@ -272,14 +275,40 @@ func _process(_delta):
 
 func toggle_inventory():
 	inventory_visible = !inventory_visible
-	inventory_grid.visible = inventory_visible
-	# Если обе панели скрыты — прячем весь нижний блок
 	_update_bottom_panel_visibility()
 
 func toggle_spells():
 	spells_visible = !spells_visible
-	spell_grid.visible = spells_visible
 	_update_bottom_panel_visibility()
 
+# Магия (B) и инвентарь (I) — независимые панели.
+# Обе видны: магия сверху, инвентарь снизу. Контейнер подгоняется под контент.
 func _update_bottom_panel_visibility():
-	bottom_panel.visible = spells_visible or inventory_visible
+	spell_panel.visible = spells_visible
+	inventory_panel.visible = inventory_visible
+
+	var any_visible = spells_visible or inventory_visible
+	bottom_panel.visible = any_visible
+	if not any_visible:
+		return
+
+	# Высота секций
+	var spell_h = 90.0
+	var inv_h = 80.0
+	var gap = 5.0
+
+	if spells_visible and inventory_visible:
+		# Магия сверху, инвентарь снизу
+		spell_panel.offset_top = 0.0
+		spell_panel.offset_bottom = spell_h
+		inventory_panel.offset_top = spell_h + gap
+		inventory_panel.offset_bottom = spell_h + gap + inv_h
+		bottom_panel.offset_top = 800.0 - (spell_h + gap + inv_h)
+	elif spells_visible:
+		spell_panel.offset_top = 0.0
+		spell_panel.offset_bottom = spell_h
+		bottom_panel.offset_top = 800.0 - spell_h
+	else:
+		inventory_panel.offset_top = 0.0
+		inventory_panel.offset_bottom = inv_h
+		bottom_panel.offset_top = 800.0 - inv_h
