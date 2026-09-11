@@ -83,7 +83,7 @@ script = ExtResource("4_ui")
 [node name="BottomPanel" type="Panel" parent="UI"]
 offset_left = 0.0
 offset_top = 600.0
-offset_right = 1070.0
+offset_right = 720.0
 offset_bottom = 800.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
@@ -150,8 +150,8 @@ text = "Охранять"
 [node name="PortraitBorder" type="Panel" parent="UI"]
 offset_left = 1075.0
 offset_top = 315.0
-offset_right = 1275.0
-offset_bottom = 555.0
+offset_right = 1235.0
+offset_bottom = 557.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
 [node name="PortraitBg" type="TextureRect" parent="UI/PortraitBorder"]

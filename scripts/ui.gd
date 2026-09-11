@@ -273,7 +273,13 @@ func _process(_delta):
 func toggle_inventory():
 	inventory_visible = !inventory_visible
 	inventory_grid.visible = inventory_visible
+	# Если обе панели скрыты — прячем весь нижний блок
+	_update_bottom_panel_visibility()
 
 func toggle_spells():
 	spells_visible = !spells_visible
 	spell_grid.visible = spells_visible
+	_update_bottom_panel_visibility()
+
+func _update_bottom_panel_visibility():
+	bottom_panel.visible = spells_visible or inventory_visible
