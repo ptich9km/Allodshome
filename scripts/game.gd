@@ -1,7 +1,8 @@
 extends Node2D
 class_name Game
 
-@onready var tilemap: TileMapLayer = $TileMap
+@onready var alm_map: AlmMap = $AlmMap
+@onready var tilemap: TileMapLayer = $AlmMap/TileMap
 @onready var player: CharacterBody2D = $Player
 @onready var camera: Camera2D = $Camera2D
 @onready var ui: CanvasLayer = $UI
@@ -21,12 +22,16 @@ const DEAGGRO_RADIUS: float = 200.0
 
 func _ready():
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
+
+	# Спавним игрока на проходимом тайле в центре карты
+	_spawn_player_on_walkable()
+
 	if camera and player:
 		camera.position = player.position
 		camera.make_current()
 
 	await get_tree().process_frame
-	
+
 	# Находим врагов и игрока
 	for child in get_children():
 		if child is CharacterBody2D and child != player:
@@ -37,12 +42,30 @@ func _ready():
 
 	# Добавляем игрока в группу "player" для врагов
 	player.add_to_group("player")
-	
-	# TileMap доступен через @onready — добавим в группу для миникарты
-	tilemap.add_to_group("tilemap")
+
+	# TileMap — в группу для миникарты
+	if tilemap:
+		tilemap.add_to_group("tilemap")
 
 	if ui:
 		ui.setup_ui(player)
+
+func _spawn_player_on_walkable():
+	if not alm_map or alm_map.map_width == 0:
+		return
+	var cx := alm_map.map_width / 2
+	var cy := alm_map.map_height / 2
+	# Ищем проходимый тайл спиралью от центра
+	for r in range(0, 20):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var tx := cx + dx
+				var ty := cy + dy
+				var wx := tx * alm_map.tile_width + alm_map.tile_width / 2
+				var wy := ty * alm_map.tile_height + alm_map.tile_height / 2
+				if alm_map.is_walkable_world(Vector2(wx, wy)):
+					player.global_position = Vector2(wx, wy)
+					return
 
 func _input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

@@ -23,12 +23,25 @@ var abilities = [
 ]
 var ability_cooldowns = [0.0, 0.0, 0.0]
 var health_bar: HealthBar
+var alm_map: AlmMap = null
 
 func _ready():
 	current_hp = max_hp
 	current_mana = max_mana
+	alm_map = get_tree().get_first_node_in_group("alm_map") as AlmMap
 	_ensure_sprite()
 	_create_health_bar()
+
+## Множитель скорости с учётом высоты: подъём замедляет, спуск/равнина — норма.
+func _height_speed_factor(target_pos: Vector2) -> float:
+	if not alm_map:
+		return 1.0
+	var cur_h := alm_map.height_at_world(global_position)
+	var tgt_h := alm_map.height_at_world(target_pos)
+	if tgt_h > cur_h:
+		# Подъём — замедление (каждый уровень -30%)
+		return maxf(0.4, 1.0 - 0.3 * (tgt_h - cur_h))
+	return 1.0
 
 func _create_health_bar():
 	health_bar = preload("res://scripts/health_bar.gd").new()
@@ -95,7 +108,8 @@ func _physics_process(delta):
 func move_to_target(_delta):
 	if Game.player_target.distance_to(global_position) > 5.0:
 		var direction = (Game.player_target - global_position).normalized()
-		velocity = direction * move_speed
+		var speed_factor = _height_speed_factor(Game.player_target)
+		velocity = direction * move_speed * speed_factor
 	else:
 		state = "idle"
 		velocity = Vector2.ZERO
@@ -105,7 +119,8 @@ func chase_target(_delta):
 		var distance = global_position.distance_to(attack_target.global_position)
 		if distance > Game.ATTACK_RANGE:
 			var direction = (attack_target.global_position - global_position).normalized()
-			velocity = direction * move_speed
+			var speed_factor = _height_speed_factor(attack_target.global_position)
+			velocity = direction * move_speed * speed_factor
 		else:
 			state = "attack"
 			velocity = Vector2.ZERO
