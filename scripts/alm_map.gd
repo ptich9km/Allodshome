@@ -53,9 +53,22 @@ func _load_tile_images() -> void:
 	for s in range(sets):
 		for v in range(variants):
 			var path := "res://assets/terrain/tiles/tile%d-%02d_00.png" % [s + 1, v]
-			_ground_images.append(_tex_to_image(path))
+			_ground_images.append(_brighten(_tex_to_image(path), 1.9))
 	_water_img = _color_image(Color(0.12, 0.3, 0.6, 1.0))
-	_barrier_img = _color_image(Color(0.4, 0.36, 0.3, 1.0))
+	_barrier_img = _color_image(Color(0.45, 0.4, 0.34, 1.0))
+
+## Осветлить изображение (сырые тайлы очень тёмные).
+func _brighten(img: Image, factor: float) -> Image:
+	var out := img.duplicate()
+	out.convert(Image.FORMAT_RGBA8)
+	for y in range(out.get_height()):
+		for x in range(out.get_width()):
+			var c := out.get_pixel(x, y)
+			out.set_pixel(x, y, Color(
+				minf(1.0, c.r * factor),
+				minf(1.0, c.g * factor),
+				minf(1.0, c.b * factor), c.a))
+	return out
 
 func _tex_to_image(path: String) -> Image:
 	var t := load(path)
@@ -116,6 +129,8 @@ func _bake_map() -> void:
 	var sprite := Sprite2D.new()
 	sprite.texture = tex
 	sprite.centered = false
+	# Компенсируем верхний отступ, чтобы мировые координаты совпадали с тайлами
+	sprite.position = Vector2(0, -top_margin)
 	add_child(sprite)
 
 func _rock_color_for(tile_img: Image) -> Color:
