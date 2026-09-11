@@ -94,12 +94,16 @@ offset_right = 500.0
 offset_bottom = 90.0
 columns = 12
 
-[node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel"]
+[node name="InventoryScroll" type="ScrollContainer" parent="UI/BottomPanel"]
 offset_left = 10.0
 offset_top = 95.0
 offset_right = 710.0
-offset_bottom = 165.0
-columns = 10
+offset_bottom = 170.0
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+
+[node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel/InventoryScroll"]
+columns = 40
 
 [node name="MinimapBorder" type="Panel" parent="UI"]
 offset_left = 1075.0

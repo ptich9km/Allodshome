@@ -3,7 +3,7 @@ class_name GameUI
 
 @onready var spell_grid: GridContainer = $BottomPanel/SpellGrid
 @onready var bottom_panel: Panel = $BottomPanel
-@onready var inventory_grid: GridContainer = $BottomPanel/InventoryGrid
+@onready var inventory_grid: GridContainer = $BottomPanel/InventoryScroll/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
@@ -83,9 +83,8 @@ var inventory_slots: Array = []
 var inventory_items: Array = []
 
 func _setup_inventory():
-	# Создаём 40 слотов (10 колонок × 4 ряда)
-	inventory_grid.columns = 10
-	inventory_grid.custom_minimum_size = Vector2(700, 64)
+	# Один ряд слотов со скроллом влево/вправо
+	inventory_grid.columns = 40
 
 	var slot_bg = load("res://assets/interface/myitem.png")
 
