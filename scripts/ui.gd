@@ -86,35 +86,41 @@ func _setup_inventory():
 	# Создаём 40 слотов (10 колонок × 4 ряда)
 	inventory_grid.columns = 10
 	inventory_grid.custom_minimum_size = Vector2(700, 64)
-	
+
+	var slot_bg = load("res://assets/interface/myitem.png")
+
 	for i in range(40):
 		var slot = TextureRect.new()
-		slot.custom_minimum_size = Vector2(48, 48)
-		slot.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		slot.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		slot.modulate = Color(0.15, 0.15, 0.15, 1.0)  # тёмный фон
-		
-		# Рамка слота
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.1, 0.1, 0.12, 1.0)
-		style.border_color = Color(0.3, 0.3, 0.3, 1.0)
-		style.border_width_left = 1
-		style.border_width_right = 1
-		style.border_width_top = 1
-		style.border_width_bottom = 1
-		slot.add_theme_stylebox_override("panel", style)
-		
+		slot.custom_minimum_size = Vector2(68, 68)
+		slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		slot.stretch_mode = TextureRect.STRETCH_SCALE
+		if slot_bg:
+			slot.texture = slot_bg
+		else:
+			slot.modulate = Color(0.15, 0.15, 0.15, 1.0)
+
 		inventory_grid.add_child(slot)
 		inventory_slots.append(slot)
 		inventory_items.append(null)
 
-func _add_item(slot_idx: int, icon_path: String, name: String):
+	# Тестовые предметы (иконки из оригинала)
+	_add_item(0, "res://assets/inventory/0001002-000.png", "Меч")
+	_add_item(1, "res://assets/inventory/0014001-000.png", "Зелье")
+	_add_item(2, "res://assets/inventory/0002001-000.png", "Щит")
+
+func _add_item(slot_idx: int, icon_path: String, item_name: String):
 	if slot_idx >= 0 and slot_idx < inventory_slots.size():
 		var tex = load(icon_path)
 		if tex:
-			inventory_slots[slot_idx].texture = tex
-			inventory_slots[slot_idx].modulate = Color.WHITE
-		inventory_items[slot_idx] = {"name": name, "icon": icon_path}
+			var slot = inventory_slots[slot_idx]
+			# Иконка предмета поверх фона слота
+			var icon_rect = TextureRect.new()
+			icon_rect.texture = tex
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+			slot.add_child(icon_rect)
+		inventory_items[slot_idx] = {"name": item_name, "icon": icon_path}
 
 func _setup_action_buttons():
 	follow_btn.pressed.connect(func(): _set_action_mode("follow"))
