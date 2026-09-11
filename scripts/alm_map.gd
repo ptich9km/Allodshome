@@ -63,7 +63,7 @@ func _brighten(img: Image, factor: float) -> Image:
 	out.convert(Image.FORMAT_RGBA8)
 	for y in range(out.get_height()):
 		for x in range(out.get_width()):
-			var c := out.get_pixel(x, y)
+			var c: Color = out.get_pixel(x, y)
 			out.set_pixel(x, y, Color(
 				minf(1.0, c.r * factor),
 				minf(1.0, c.g * factor),
@@ -140,7 +140,7 @@ func _rock_color_for(tile_img: Image) -> Color:
 	var step: int = maxi(1, tile_img.get_width() / 8)
 	var cnt := 0
 	for x in range(0, tile_img.get_width(), step):
-		var c := tile_img.get_pixel(x, y)
+		var c: Color = tile_img.get_pixel(x, y)
 		r += c.r; g += c.g; b += c.b; cnt += 1
 	if cnt > 0:
 		r /= cnt; g /= cnt; b /= cnt
