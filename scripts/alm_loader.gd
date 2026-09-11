@@ -43,15 +43,14 @@ static func _find_tile_offset(data: PackedByteArray, width: int, height: int) ->
 	return best_off
 
 ## Классифицировать byte1 в флаг проходимости/высоты.
+## 0,1 = ровная земля (1 — второй уровень, без обрыва). 2,3 = возвышенности.
 static func classify(hf: int) -> int:
-	if hf == 0:
+	if hf == 0 or hf == 1:
 		return TileFlag.GROUND
-	elif hf == 1:
-		return TileFlag.HILL
 	elif hf == 2:
-		return TileFlag.HIGH2
+		return TileFlag.HILL
 	elif hf == 3:
-		return TileFlag.HIGH3
+		return TileFlag.HIGH2
 	elif hf >= 16 and hf <= 40:
 		return TileFlag.WATER
 	else:
@@ -63,7 +62,6 @@ static func height_level(hf: int) -> int:
 		TileFlag.GROUND: return 0
 		TileFlag.HILL: return 1
 		TileFlag.HIGH2: return 2
-		TileFlag.HIGH3: return 3
 		_: return 0
 
 static func is_walkable(hf: int) -> bool:
