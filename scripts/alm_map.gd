@@ -115,14 +115,20 @@ func _bake_map() -> void:
 			var top_y := ground_y - h * cliff_height
 			var tile_img := _tile_image_for(x, y)
 
-			# Обрыв (скала) под возвышенным тайлом
-			if h > 0:
-				var cliff := Image.create(tile_width, h * cliff_height, false, Image.FORMAT_RGBA8)
+			# Обрыв (скала): виден только там, где следующий ряд ниже текущего тайла
+			var cliff_face := 0
+			if y + 1 < map_height:
+				var h_next: int = _height_grid[y + 1][x]
+				if h > h_next:
+					var next_top := top_margin + (y + 1) * tile_height - h_next * cliff_height
+					cliff_face = (top_y + tile_height) - next_top
+			if cliff_face > 0:
+				var cliff := Image.create(tile_width, cliff_face, false, Image.FORMAT_RGBA8)
 				var rock := _rock_color_for(tile_img)
 				cliff.fill(rock)
-				canvas.blit_rect(cliff, Rect2i(0, 0, tile_width, cliff.get_height()), Vector2i(px, top_y + tile_height))
+				canvas.blit_rect(cliff, Rect2i(0, 0, tile_width, cliff_face), Vector2i(px, top_y + tile_height - cliff_face))
 
-			# Сам тайл (возвышенный)
+			# Сам тайл
 			canvas.blit_rect(tile_img, Rect2i(0, 0, tile_width, tile_height), Vector2i(px, top_y))
 
 	var tex := ImageTexture.create_from_image(canvas)

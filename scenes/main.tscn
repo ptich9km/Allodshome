@@ -39,7 +39,7 @@ script = ExtResource("1_game")
 
 [node name="AlmMap" type="Node2D" parent="."]
 script = ExtResource("9_almmap")
-alm_path = "res://assets/maps/84.alm"
+alm_path = "res://assets/maps/Beach.alm"
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, 0)
