@@ -13,6 +13,7 @@ var _terrain: PackedByteArray
 var _hflags: PackedByteArray
 var _height_grid: Array = []
 var tilemap: TileMapLayer
+var _max_rows: Dictionary = {}   # sid -> число рядов в источнике
 
 func _ready() -> void:
 	add_to_group("alm_map")
@@ -49,7 +50,8 @@ func _build_tilemap() -> void:
 	ts.tile_size = Vector2i(tile_size, tile_size)
 	ts.tile_layout = TileSet.TILE_LAYOUT_STACKED
 
-	# Источники: тип 0-3 -> tile1-4, вариант 0-15 -> файл tileN-XX, каждый файл = атлас из 14 рядов
+	# Источники: тип 0-3 -> tile1-4, вариант 0-15 -> файл tileN-XX, каждый файл = атлас рядов
+	# Число рядов берём из реальной высоты файла (tile3 короче — 8 рядов)
 	for t in range(4):
 		var vmax := 16
 		if t == 3:
@@ -59,12 +61,14 @@ func _build_tilemap() -> void:
 			var tex := load(path)
 			if tex == null:
 				continue
+			var nrows := tex.get_height() / tile_size
 			var src := TileSetAtlasSource.new()
 			src.texture = tex
 			src.texture_region_size = Vector2i(tile_size, tile_size)
-			for r in range(14):
+			for r in range(nrows):
 				src.create_tile(Vector2i(0, r))
 			ts.add_source(src, t * 16 + v)
+			_max_rows[t * 16 + v] = nrows
 
 	tilemap.tile_set = ts
 
@@ -75,8 +79,9 @@ func _build_tilemap() -> void:
 			var t := clampi(tt, 0, 3)
 			var vmax := 16 if t < 3 else 4
 			var variant := clampi(int(_terrain[i]) & 0xF, 0, vmax - 1)
-			var row := clampi(int(_terrain[i]) >> 4, 0, 13)
 			var sid := t * 16 + variant
+			var maxr: int = _max_rows.get(sid, 14)
+			var row := clampi(int(_terrain[i]) >> 4, 0, maxr - 1)
 			tilemap.set_cell(Vector2i(x, y), sid, Vector2i(0, row))
 
 ## --- Запросы для движения и миникарты ---
