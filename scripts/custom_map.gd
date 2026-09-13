@@ -33,7 +33,7 @@ func load_map(path: String) -> bool:
 	if f == null:
 		push_error("CustomMap: не открыть " + path)
 		return false
-	var json := JSON.parse_string(f.get_as_text())
+	var json: Variant = JSON.parse_string(f.get_as_text())
 	f.close()
 	if json is not Dictionary:
 		push_error("CustomMap: битый JSON")
@@ -125,14 +125,14 @@ func _build_tilemap() -> void:
 func _load_tile_region(file_idx: int, variant: int, row: int) -> Image:
 	var v := clampi(variant, 0, 15)
 	var path := "res://assets/terrain/tile%d-%02d.bmp" % [clampi(file_idx, 1, 4), v]
-	var tex := load(path)
+	var tex: Variant = load(path)
 	if tex == null:
 		var fallback := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
 		return fallback
-	var img := tex.get_image()
-	var nrows := img.get_height() / 32
+	var img: Image = tex.get_image()
+	var nrows: int = img.get_height() / 32
 	var r := clampi(row, 0, nrows - 1)
-	var cell := img.get_region(Rect2i(0, r * 32, 32, 32))
+	var cell: Image = img.get_region(Rect2i(0, r * 32, 32, 32))
 	cell.convert(Image.FORMAT_RGBA8)
 	return cell
 
