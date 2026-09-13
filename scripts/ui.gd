@@ -178,19 +178,20 @@ func _draw_minimap():
 
 	minimap_image.fill(Color(0.03, 0.03, 0.04, 1.0))
 
-	# Вся карта: земля/вода/барьеры
+	# Вся карта: трава/земля/вода/скалы по типам terrain
 	for ty in range(mh):
 		for tx in range(mw):
-			var flag := AlmLoader.classify(alm_map._hflags[ty * mw + tx])
+			var t := AlmLoader.terrain_type(alm_map._hflags[ty * mw + tx])
 			var color: Color
-			match flag:
-				AlmLoader.TileFlag.WATER:
-					color = Color(0.15, 0.35, 0.75, 1.0)
-				AlmLoader.TileFlag.BARRIER:
-					color = Color(0.45, 0.4, 0.32, 1.0)
+			match t:
+				2, -1:
+					color = Color(0.15, 0.35, 0.75, 1.0)  # вода
+				3, -2:
+					color = Color(0.5, 0.45, 0.38, 1.0)   # скала/барьер
+				1:
+					color = Color(0.55, 0.45, 0.3, 1.0)   # земля
 				_:
-					var h: int = alm_map._height_grid[ty][tx]
-					color = Color(0.25, 0.45 + h * 0.12, 0.2, 1.0)
+					color = Color(0.25, 0.55, 0.25, 1.0)   # трава
 			var sx := int(tx * scale_x)
 			var sy := int(ty * scale_y)
 			var ex := int((tx + 1) * scale_x)

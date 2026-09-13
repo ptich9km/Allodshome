@@ -1,22 +1,23 @@
 class_name AlmLoader
 ## Парсер карт Allods 2 (.alm). Читает бинарный формат напрямую.
-## Формат: M7R magic, width@0x28, height@0x2c, тайлы по 2 байта
-## (byte0=terrain, byte1=высота+флаги). Offset данных ищется по связности.
+## Структура: 2 байта на тайл, ДВА слоя.
+## Layer A: byte[0] = вариант автайла (младший ниббл -> файл tileN-XX, старший -> ряд),
+##          byte[1] = ТИП terrain (0-3 -> tile1-4; 16-40=вода; >40=барьер).
+## Layer B: объекты/декор.
 
-const MAGIC := 0x4D375200  # "M7R\0" little-endian
+const MAGIC := 0x4D375200  # "M7R\0"
 
-# Флаги высоты/проходимости (byte1)
-enum TileFlag { GROUND, HILL, HIGH2, HIGH3, WATER, BARRIER }
+# Флаги проходимости
+enum TileFlag { GROUND, HILL, HIGH2, WATER, BARRIER }
 
 static func _u32le(data: PackedByteArray, off: int) -> int:
 	return data[off] | (data[off+1] << 8) | (data[off+2] << 16) | (data[off+3] << 24)
 
-## Найти offset тайловых данных: максимум пространственной связности byte1.
+## Найти offset Layer A (максимум пространственной связности byte[1]).
 static func _find_tile_offset(data: PackedByteArray, width: int, height: int) -> int:
 	var best_off := 0x2c0
 	var best_score := -1.0
 	var n := width * height
-	# Сэмплируем каждый 3-й тайл для скорости
 	for off in range(0x100, 0x400, 2):
 		var matches := 0
 		var total := 0
@@ -42,31 +43,38 @@ static func _find_tile_offset(data: PackedByteArray, width: int, height: int) ->
 				best_off = off
 	return best_off
 
-## Классифицировать byte1 в флаг проходимости/высоты.
-## 0,1 = ровная земля (1 — второй уровень, без обрыва). 2,3 = возвышенности.
-static func classify(hf: int) -> int:
-	if hf == 0 or hf == 1:
-		return TileFlag.GROUND
-	elif hf == 2:
-		return TileFlag.HILL
-	elif hf == 3:
-		return TileFlag.HIGH2
+## Тип terrain из byte[1]: 0-3 = tile1-4, -1 = вода (16-40), -2 = барьер.
+static func terrain_type(hf: int) -> int:
+	if hf >= 0 and hf <= 3:
+		return hf
 	elif hf >= 16 and hf <= 40:
-		return TileFlag.WATER
-	else:
-		return TileFlag.BARRIER
+		return -1
+	return -2
 
-## Высота в "уровнях" для замедления/обзора (0..3).
+## Проходимы: тип 0 (трава/tile1) и тип 1 (земля/tile2). Вода и скала — нет.
+static func is_walkable_type(t: int) -> bool:
+	return t >= 0 and t <= 1
+
+static func classify(hf: int) -> int:
+	var t := terrain_type(hf)
+	if t == -1:
+		return TileFlag.WATER
+	elif t == -2:
+		return TileFlag.BARRIER
+	elif t == 3:
+		return TileFlag.HILL  # скала — приподнята визуально
+	elif t == 2:
+		return TileFlag.WATER  # tile3 = вода
+	return TileFlag.GROUND
+
+## Высота для визуала: скала (тип 3) приподнята на 1 уровень.
 static func height_level(hf: int) -> int:
-	match classify(hf):
-		TileFlag.GROUND: return 0
-		TileFlag.HILL: return 1
-		TileFlag.HIGH2: return 2
-		_: return 0
+	if classify(hf) == TileFlag.HILL:
+		return 1
+	return 0
 
 static func is_walkable(hf: int) -> bool:
-	var c := classify(hf)
-	return c != TileFlag.WATER and c != TileFlag.BARRIER
+	return is_walkable_type(terrain_type(hf))
 
 ## Загрузить карту. Возвращает Dictionary или {} при ошибке.
 static func load_map(path: String) -> Dictionary:
@@ -93,8 +101,8 @@ static func load_map(path: String) -> Dictionary:
 	var offset := _find_tile_offset(data, width, height)
 	var n := width * height
 
-	var terrain := PackedByteArray()
-	var hflags := PackedByteArray()
+	var terrain := PackedByteArray()  # byte[0] — вариант автайла
+	var hflags := PackedByteArray()   # byte[1] — тип terrain
 	terrain.resize(n)
 	hflags.resize(n)
 	for i in range(n):
