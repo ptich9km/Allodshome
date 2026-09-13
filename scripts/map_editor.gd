@@ -15,7 +15,7 @@ var status_label: Label
 
 func _ready() -> void:
 	camera = Camera2D.new()
-	camera.zoom = Vector2(2, 2)
+	camera.zoom = Vector2(1, 1)
 	add_child(camera)
 	camera.make_current()
 
@@ -24,6 +24,7 @@ func _ready() -> void:
 	map.new_map(64, 64)
 	_build_ui()
 	_update_palette_icons()
+	_center_camera()
 
 func _build_ui() -> void:
 	ui = CanvasLayer.new()
@@ -110,15 +111,24 @@ func _update_palette_icons() -> void:
 			b.expand_icon = true
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _point_over_ui(event.position):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			if camera:
+				camera.zoom = camera.zoom * 1.15
 			return
-		var cell := _mouse_to_cell()
-		if cell.x >= 0 and cell.y >= 0:
-			if brush_type >= 0:
-				_paint(cell, brush_type, brush_size)
-			else:
-				_paint(cell, -1, brush_size)
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			if camera:
+				camera.zoom = camera.zoom / 1.15
+			return
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if _point_over_ui(event.position):
+				return
+			var cell := _mouse_to_cell()
+			if cell.x >= 0 and cell.y >= 0:
+				if brush_type >= 0:
+					_paint(cell, brush_type, brush_size)
+				else:
+					_paint(cell, -1, brush_size)
 
 func _point_over_ui(screen_pos: Vector2) -> bool:
 	if ui == null:
@@ -165,8 +175,21 @@ func _on_back() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _process(_delta) -> void:
+	if camera:
+		var speed := 300.0 * _delta * (1.0 / camera.zoom.x)
+		var dir := Vector2.ZERO
+		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+			dir.y -= 1
+		if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+			dir.y += 1
+		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+			dir.x -= 1
+		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+			dir.x += 1
+		if dir != Vector2.ZERO:
+			camera.position += dir.normalized() * speed
 	if map:
-		status_label.text = "Клетка: %s Тип: %s" % [_mouse_to_cell(), _type_name(brush_type)]
+		status_label.text = "Клетка: %s Тип: %s   (WASD/стрелки - камера, колесо - зум)" % [_mouse_to_cell(), _type_name(brush_type)]
 
 func _type_name(t: int) -> String:
 	if t < 0:

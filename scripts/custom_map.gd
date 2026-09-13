@@ -12,7 +12,7 @@ const DEFAULT_TEX := {
 	1: {"file": 2, "variant": 4, "row": 1},   # земля
 	2: {"file": 1, "variant": 0, "row": 11},  # песок (тёплая строка tile1)
 	3: {"file": 3, "variant": 1, "row": 5},   # вода
-	4: {"file": 4, "variant": 5, "row": 3},   # скала
+	4: {"file": 4, "variant": 1, "row": 3},   # скала (tile4 имеет 00-03)
 }
 
 var map_width := 0
@@ -123,8 +123,10 @@ func _build_tilemap() -> void:
 				tilemap.set_cell(Vector2i(x, y), t, Vector2i(0, 0))
 
 func _load_tile_region(file_idx: int, variant: int, row: int) -> Image:
-	var v := clampi(variant, 0, 15)
-	var path := "res://assets/terrain/tile%d-%02d.bmp" % [clampi(file_idx, 1, 4), v]
+	var file_n := clampi(file_idx, 1, 4)
+	var vmax := 4 if file_n == 4 else 16  # tile4 имеет только 00-03
+	var v := clampi(variant, 0, vmax - 1)
+	var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, v]
 	var tex: Variant = load(path)
 	if tex == null:
 		var fallback := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
