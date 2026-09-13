@@ -171,8 +171,8 @@ func _draw_minimap():
 	if mw == 0:
 		return
 
-	var ptx := int(player.global_position.x) / alm_map.tile_width
-	var pty := int(player.global_position.y) / alm_map.tile_height
+	var ptx := int(player.global_position.x) / alm_map.tile_size
+	var pty := int(player.global_position.y) / alm_map.tile_size
 	var scale_x := 190.0 / float(mw)
 	var scale_y := 190.0 / float(mh)
 
@@ -212,8 +212,8 @@ func _draw_minimap():
 	# Враги (красные точки)
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
-			var etx := int(enemy.global_position.x) / alm_map.tile_width
-			var ety := int(enemy.global_position.y) / alm_map.tile_height
+			var etx := int(enemy.global_position.x) / alm_map.tile_size
+			var ety := int(enemy.global_position.y) / alm_map.tile_size
 			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
 			if exx >= 0 and exx < 190 and eyy >= 0 and eyy < 190:
 				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))

@@ -56,8 +56,8 @@ func _spawn_player_on_walkable():
 			for dx in range(-r, r + 1):
 				var tx := cx + dx
 				var ty := cy + dy
-				var wx := tx * alm_map.tile_width + alm_map.tile_width / 2
-				var wy := ty * alm_map.tile_height + alm_map.tile_height / 2
+				var wx := tx * alm_map.tile_size + alm_map.tile_size / 2
+				var wy := ty * alm_map.tile_size + alm_map.tile_size / 2
 				if alm_map.is_walkable_world(Vector2(wx, wy)):
 					player.global_position = Vector2(wx, wy)
 					return
