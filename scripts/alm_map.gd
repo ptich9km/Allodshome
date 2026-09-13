@@ -58,10 +58,10 @@ func _build_tilemap() -> void:
 			vmax = 4  # tile4 имеет только 00-03
 		for v in range(vmax):
 			var path := "res://assets/terrain/tile%d-%02d.bmp" % [t + 1, v]
-			var tex := load(path)
+			var tex: Variant = load(path)
 			if tex == null:
 				continue
-			var nrows := tex.get_height() / tile_size
+			var nrows: int = tex.get_height() / tile_size
 			var src := TileSetAtlasSource.new()
 			src.texture = tex
 			src.texture_region_size = Vector2i(tile_size, tile_size)
