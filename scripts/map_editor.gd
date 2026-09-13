@@ -176,7 +176,7 @@ func _on_back() -> void:
 
 func _process(_delta) -> void:
 	if camera:
-		var speed := 300.0 * _delta * (1.0 / camera.zoom.x)
+		var speed: float = 300.0 * _delta * (1.0 / camera.zoom.x)
 		var dir := Vector2.ZERO
 		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
 			dir.y -= 1
