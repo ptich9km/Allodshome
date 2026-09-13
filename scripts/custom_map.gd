@@ -26,7 +26,7 @@ func _ready() -> void:
 	if map_file != "":
 		load_map(map_file)
 
-func map_file := ""
+var map_file := ""
 
 func load_map(path: String) -> bool:
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -127,7 +127,8 @@ func _load_tile_region(file_idx: int, variant: int, row: int) -> Image:
 	var path := "res://assets/terrain/tile%d-%02d.bmp" % [clampi(file_idx, 1, 4), v]
 	var tex := load(path)
 	if tex == null:
-		return null
+		var fallback := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
+		return fallback
 	var img := tex.get_image()
 	var nrows := img.get_height() / 32
 	var r := clampi(row, 0, nrows - 1)
