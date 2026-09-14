@@ -46,7 +46,7 @@ func _ready() -> void:
 ## Загрузить палитру текстур пользователя (assets/maps/palette.json).
 func _load_palette() -> void:
 	var json: Variant = null
-	var f := FileAccess.open("res://assets/maps/palette.json", FileAccess.READ)
+	var f := FileAccess.open("res://assets/maps/map_editor_palette.json", FileAccess.READ)
 	if f:
 		json = JSON.parse_string(f.get_as_text())
 		f.close()
