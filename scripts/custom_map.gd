@@ -5,15 +5,18 @@ extends Node2D
 ## индекс текстуры в наборе (tex_ids), -1 = первая в наборе.
 
 const TILE := 32
-const TYPE_NAMES := ["Трава", "Земля", "Песок", "Вода", "Скала"]
-const TYPE_WALKABLE := [true, true, true, false, false]
-# Текстуры заливки по умолчанию: {file: tileN, variant: XX, row: ряд}
+const TYPE_NAMES := ["Трава", "Земля", "Песок", "Вода", "Скала", "Строение", "НПЦ", "Спавн"]
+const TYPE_WALKABLE := [true, true, true, false, false, false, true, true]
+# Текстуры заливки по умолчанию: {file: tileN, variant: XX, row: ряд}; file=0 -> цвет
 const DEFAULT_TEX := {
 	0: {"file": 1, "variant": 4, "row": 1},   # трава
 	1: {"file": 2, "variant": 4, "row": 1},   # земля
 	2: {"file": 1, "variant": 0, "row": 11},  # песок (тёплая строка tile1)
 	3: {"file": 3, "variant": 1, "row": 5},   # вода
 	4: {"file": 4, "variant": 1, "row": 3},   # скала (tile4 имеет 00-03)
+	5: {"file": 0, "color": "8b5a2b"},        # строение (плейсхолдер-цвет)
+	6: {"file": 0, "color": "7ec8e3"},        # НПЦ (плейсхолдер-цвет)
+	7: {"file": 0, "color": "ffd700"},        # спавн героя (плейсхолдер-цвет)
 }
 
 var map_width := 0
@@ -23,6 +26,7 @@ var tex_ids: PackedInt32Array  # индекс текстуры в наборе �
 var texture_sets := {}         # тип -> Array[{file, variant, row}]
 var text_spec := {}            # тип -> {file, variant, row} (первая в наборе)
 var tilemap: TileMapLayer
+var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (тип 7)
 
 # (тип, индекс в наборе) -> source_id в TileSet
 var _src_for := {}
@@ -60,6 +64,7 @@ func load_map(path: String) -> bool:
 	else:
 		texture_sets = _default_sets()
 	_sync_text_spec()
+	_refresh_spawn()
 	_build_tilemap()
 	print("CustomMap: %s %dx%d загружена" % [path.get_file(), map_width, map_height])
 	return true
@@ -84,6 +89,7 @@ func new_map(w: int, h: int) -> void:
 	tex_ids.fill(-1)
 	texture_sets = _default_sets()
 	_sync_text_spec()
+	_refresh_spawn()
 	_build_tilemap()
 
 ## Применить наборы текстур (из настроек редактора или из JSON карты).
@@ -93,14 +99,14 @@ func set_texture_sets(sets: Dictionary) -> void:
 	# Индексы за пределами новых наборов — сбрасываем на первую текстуру
 	for i in range(tex_ids.size()):
 		var t := tiles[i]
-		if t >= 0 and t < 5 and tex_ids[i] >= 0:
+		if t >= 0 and t < 8 and tex_ids[i] >= 0:
 			if tex_ids[i] > _set_size(t) - 1:
 				tex_ids[i] = -1
 	_build_tilemap()
 
 func _sync_text_spec() -> void:
 	text_spec = {}
-	for t in range(5):
+	for t in range(8):
 		var set: Array = texture_sets.get(t, [])
 		if set.size() > 0:
 			var first: Dictionary = set[0]
@@ -111,14 +117,14 @@ func _sync_text_spec() -> void:
 
 func _default_sets() -> Dictionary:
 	var sets := {}
-	for t in range(5):
+	for t in range(8):
 		var def: Dictionary = DEFAULT_TEX[t]
 		sets[t] = [def.duplicate(true)]
 	return sets
 
 func _normalize_sets(sets: Dictionary) -> Dictionary:
 	var out := {}
-	for t in range(5):
+	for t in range(8):
 		# JSON превращает int-ключи словаря в строки ("0".."4")
 		var arr: Array = []
 		if sets.has(t):
@@ -133,6 +139,8 @@ func _normalize_sets(sets: Dictionary) -> Dictionary:
 					"variant": int(item.get("variant", 0)),
 					"row": int(item.get("row", 0)),
 				}
+				if item.has("color"):
+					spec["color"] = str(item["color"])
 				clean.append(spec)
 		if clean.is_empty():
 			var def: Dictionary = DEFAULT_TEX[t]
@@ -168,11 +176,15 @@ func set_tile(cell: Vector2i, type_id: int, tex_idx: int = -1) -> void:
 	var i := cell.y * map_width + cell.x
 	tiles[i] = type_id
 	tex_ids[i] = tex_idx
+	if type_id == 7:
+		spawn_cell = cell
+	elif spawn_cell == cell:
+		spawn_cell = Vector2i(-1, -1)
 	if tilemap:
 		tilemap.set_cell(cell, _source_id_for(type_id, tex_idx), Vector2i(0, 0))
 
 func _source_id_for(type_id: int, tex_idx: int) -> int:
-	if type_id < 0 or type_id >= 5:
+	if type_id < 0 or type_id >= 8:
 		return -1
 	var idx := clampi(tex_idx, 0, _set_size(type_id) - 1)
 	return int(_src_for.get(Vector2i(type_id, idx), -1))
@@ -187,12 +199,12 @@ func _build_tilemap() -> void:
 	ts.tile_size = Vector2i(TILE, TILE)
 	_src_for = {}
 	var src_id := 0
-	for t in range(5):
+	for t in range(8):
 		var set: Array = texture_sets.get(t, [])
 		for idx in range(set.size()):
 			var spec: Dictionary = set[idx]
 			var img := _load_tile_region(
-				int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)))
+				int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)), str(spec.get("color", "")))
 			var src := TileSetAtlasSource.new()
 			src.texture = ImageTexture.create_from_image(img)
 			src.texture_region_size = Vector2i(TILE, TILE)
@@ -210,8 +222,16 @@ func _build_tilemap() -> void:
 			if t >= 0:
 				tilemap.set_cell(Vector2i(x, y), _source_id_for(t, tex_ids[i]), Vector2i(0, 0))
 
-func _load_tile_region(file_idx: int, variant: int, row: int) -> Image:
-	var file_n := clampi(file_idx, 1, 4)
+func _load_tile_region(file_idx: int, variant: int, row: int, color_hex: String = "") -> Image:
+	var file_n := clampi(file_idx, 0, 4)
+	if file_n == 0:
+		# Плейсхолдер-цвет для строений/НПЦ/спавна
+		var img := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
+		var c := Color("#8b5a2b")
+		if color_hex != "":
+			c = Color(color_hex)
+		img.fill(c)
+		return img
 	var vmax := 4 if file_n == 4 else 16  # tile4 имеет только 00-03
 	var v := clampi(variant, 0, vmax - 1)
 	var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, v]
@@ -219,12 +239,26 @@ func _load_tile_region(file_idx: int, variant: int, row: int) -> Image:
 	if tex == null:
 		var fallback := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
 		return fallback
-	var img: Image = tex.get_image()
-	var nrows: int = img.get_height() / 32
+	var img2: Image = tex.get_image()
+	var nrows: int = img2.get_height() / 32
 	var r := clampi(row, 0, nrows - 1)
-	var cell: Image = img.get_region(Rect2i(0, r * 32, 32, 32))
+	var cell: Image = img2.get_region(Rect2i(0, r * 32, 32, 32))
 	cell.convert(Image.FORMAT_RGBA8)
 	return cell
+
+## Мировая позиция спавна героя (тип 7) или центр карты если не задан.
+func get_spawn_pos() -> Vector2:
+	if spawn_cell.x >= 0:
+		return Vector2(spawn_cell.x * TILE + TILE / 2, spawn_cell.y * TILE + TILE / 2)
+	return Vector2(map_width * TILE / 2, map_height * TILE / 2)
+
+## Найти клетку спавна (тип 7) — первая встреченная.
+func _refresh_spawn() -> void:
+	spawn_cell = Vector2i(-1, -1)
+	for i in range(tiles.size()):
+		if tiles[i] == 7:
+			spawn_cell = Vector2i(i % map_width, i / map_width)
+			break
 
 func save_map(path: String) -> bool:
 	if map_width == 0:

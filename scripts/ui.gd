@@ -15,7 +15,7 @@ class_name GameUI
 @onready var guard_btn: Button = $ActionPanel/GuardBtn
 
 var minimap_camera: Camera2D
-var alm_map: AlmMap
+var alm_map = null   # CustomMap или AlmMap (группа "alm_map")
 var player: Player
 
 # Для рисования миникарты
@@ -171,27 +171,19 @@ func _draw_minimap():
 	if mw == 0:
 		return
 
-	var ptx := int(player.global_position.x) / alm_map.tile_size
-	var pty := int(player.global_position.y) / alm_map.tile_size
+	var ptx: int = int(player.global_position.x) / alm_map.tile_size
+	var pty: int = int(player.global_position.y) / alm_map.tile_size
 	var scale_x := 190.0 / float(mw)
 	var scale_y := 190.0 / float(mh)
 
 	minimap_image.fill(Color(0.03, 0.03, 0.04, 1.0))
 
-	# Вся карта: трава/земля/вода/скалы по типам terrain
+	# Вся карта: цвета по типу клетки (CustomMap) или terrain (.alm)
 	for ty in range(mh):
 		for tx in range(mw):
-			var t := AlmLoader.terrain_type(alm_map._hflags[ty * mw + tx])
-			var color: Color
-			match t:
-				2, -1:
-					color = Color(0.15, 0.35, 0.75, 1.0)  # вода
-				3, -2:
-					color = Color(0.5, 0.45, 0.38, 1.0)   # скала/барьер
-				1:
-					color = Color(0.55, 0.45, 0.3, 1.0)   # земля
-				_:
-					color = Color(0.25, 0.55, 0.25, 1.0)   # трава
+			var color := _minimap_color_at(tx, ty)
+			if color.a == 0.0:
+				continue
 			var sx := int(tx * scale_x)
 			var sy := int(ty * scale_y)
 			var ex := int((tx + 1) * scale_x)
@@ -212,8 +204,8 @@ func _draw_minimap():
 	# Враги (красные точки)
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
-			var etx := int(enemy.global_position.x) / alm_map.tile_size
-			var ety := int(enemy.global_position.y) / alm_map.tile_size
+			var etx: int = int(enemy.global_position.x) / alm_map.tile_size
+			var ety: int = int(enemy.global_position.y) / alm_map.tile_size
 			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
 			if exx >= 0 and exx < 190 and eyy >= 0 and eyy < 190:
 				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))
@@ -222,6 +214,31 @@ func _draw_minimap():
 	var tex_rect = minimap_rect.get_node_or_null("MinimapTex")
 	if tex_rect:
 		tex_rect.texture = minimap_texture
+
+# Цвет клетки для миникарты: CustomMap -> тип (0-7), .alm -> terrain_type
+func _minimap_color_at(tx: int, ty: int) -> Color:
+	if alm_map is CustomMap:
+		var t: int = alm_map.tile_id_at(Vector2i(tx, ty))
+		match t:
+			1: return Color(0.55, 0.45, 0.3, 1.0)    # земля
+			2: return Color(0.75, 0.7, 0.4, 1.0)      # песок
+			3: return Color(0.15, 0.35, 0.75, 1.0)    # вода
+			4: return Color(0.5, 0.45, 0.38, 1.0)     # скала
+			5: return Color(0.45, 0.3, 0.2, 1.0)      # строение
+			6: return Color(0.4, 0.8, 0.9, 1.0)       # НПЦ
+			7: return Color(1.0, 0.85, 0.2, 1.0)      # спавн
+			0: return Color(0.25, 0.55, 0.25, 1.0)    # трава
+			_: return Color(0, 0, 0, 0)                # пусто
+	var t2 := AlmLoader.terrain_type(alm_map._hflags[ty * alm_map.map_width + tx])
+	match t2:
+		2, -1:
+			return Color(0.15, 0.35, 0.75, 1.0)  # вода
+		3, -2:
+			return Color(0.5, 0.45, 0.38, 1.0)   # скала/барьер
+		1:
+			return Color(0.55, 0.45, 0.3, 1.0)   # земля
+		_:
+			return Color(0.25, 0.55, 0.25, 1.0)   # трава
 
 func _update_stats():
 	if not is_instance_valid(player):

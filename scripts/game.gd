@@ -1,7 +1,7 @@
 extends Node2D
 class_name Game
 
-@onready var alm_map: AlmMap = $AlmMap
+@onready var alm_map: CustomMap = $Map
 @onready var player: CharacterBody2D = $Player
 @onready var camera: Camera2D = $Camera2D
 @onready var ui: CanvasLayer = $UI
@@ -48,16 +48,22 @@ func _ready():
 func _spawn_player_on_walkable():
 	if not alm_map or alm_map.map_width == 0:
 		return
+	# 1) Точка спавна, заданная в карте (тип «Спавн»)
+	var spawn_pos := alm_map.get_spawn_pos()
+	if alm_map.is_walkable_world(spawn_pos):
+		player.global_position = spawn_pos
+		return
+	# 2) Запасной вариант — проходимый тайл от центра
 	var cx := alm_map.map_width / 2
 	var cy := alm_map.map_height / 2
-	# Ищем проходимый тайл спиралью от центра
 	for r in range(0, 20):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				var tx := cx + dx
 				var ty := cy + dy
-				var wx := tx * alm_map.tile_size + alm_map.tile_size / 2
-				var wy := ty * alm_map.tile_size + alm_map.tile_size / 2
+				var ts := alm_map.tile_size()
+				var wx := tx * ts + ts / 2
+				var wy := ty * ts + ts / 2
 				if alm_map.is_walkable_world(Vector2(wx, wy)):
 					player.global_position = Vector2(wx, wy)
 					return
