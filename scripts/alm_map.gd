@@ -14,12 +14,24 @@ var _hflags: PackedByteArray
 var _height_grid: Array = []
 var tilemap: TileMapLayer
 var _max_rows: Dictionary = {}   # sid -> число рядов в источнике
+var _sets := {}                  # палитра пользователя: тип редактора -> Array[{file,variant,row}]
+
+# Маппинг byte[1] (.alm) -> тип палитры редактора (0=Трава,1=Земля,3=Вода,4=Скала)
+func _palette_type_for(hf: int) -> int:
+	match AlmLoader.terrain_type(hf):
+		0: return 0   # трава
+		1: return 1   # земля
+		2: return 3   # вода (tile3)
+		3: return 4   # скала
+		-1: return 3  # вода_spec
+		_: return 4   # барьер -> скала
 
 func _ready() -> void:
 	add_to_group("alm_map")
 	if alm_path.is_empty():
 		push_warning("AlmMap: alm_path не задан")
 		return
+	_load_palette()
 	var data := AlmLoader.load_map(alm_path)
 	if data.is_empty():
 		return
@@ -30,6 +42,25 @@ func _ready() -> void:
 	_build_height_grid()
 	_build_tilemap()
 	print("AlmMap: %s %dx%d клеток %dpx" % [alm_path.get_file(), map_width, map_height, tile_size])
+
+## Загрузить палитру текстур пользователя (assets/maps/palette.json).
+func _load_palette() -> void:
+	var json: Variant = null
+	var f := FileAccess.open("res://assets/maps/palette.json", FileAccess.READ)
+	if f:
+		json = JSON.parse_string(f.get_as_text())
+		f.close()
+	var source: Dictionary = {}
+	if json is Dictionary and json.has("texture_sets"):
+		source = json["texture_sets"]
+	for t in range(5):
+		var arr: Array = []
+		if source.has(t):
+			arr = source[t]
+		elif source.has(str(t)):
+			arr = source[str(t)]
+		_sets[t] = arr.duplicate(true)
+	print("AlmMap: палитра загружена (%d наборов)" % _sets.size())
 
 func _build_height_grid() -> void:
 	_height_grid.clear()
@@ -72,16 +103,23 @@ func _build_tilemap() -> void:
 
 	tilemap.tile_set = ts
 
+	# Заливка клеток: тип из byte[1] -> набор палитры, выбор текстуры из набора по byte[0]
 	for y in range(map_height):
 		for x in range(map_width):
 			var i := y * map_width + x
-			var tt := AlmLoader.terrain_type(_hflags[i])
-			var t := clampi(tt, 0, 3)
-			var vmax := 16 if t < 3 else 4
-			var variant := clampi(int(_terrain[i]) & 0xF, 0, vmax - 1)
-			var sid := t * 16 + variant
+			var hf := _hflags[i]
+			var pt := _palette_type_for(hf)
+			var set: Array = _sets.get(pt, [])
+			if set.is_empty():
+				continue
+			var idx := int(_terrain[i]) % set.size()
+			var spec: Dictionary = set[idx]
+			var file_n := clampi(int(spec.get("file", 1)), 1, 4)
+			var vmax := 16 if file_n != 4 else 4
+			var variant := clampi(int(spec.get("variant", 0)), 0, vmax - 1)
+			var sid := (file_n - 1) * 16 + variant
 			var maxr: int = _max_rows.get(sid, 14)
-			var row := clampi(int(_terrain[i]) >> 4, 0, maxr - 1)
+			var row := clampi(int(spec.get("row", 0)), 0, maxr - 1)
 			tilemap.set_cell(Vector2i(x, y), sid, Vector2i(0, row))
 
 ## --- Запросы для движения и миникарты ---
