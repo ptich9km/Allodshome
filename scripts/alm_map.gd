@@ -31,6 +31,7 @@ func _ready() -> void:
 	if alm_path.is_empty():
 		push_warning("AlmMap: alm_path не задан")
 		return
+	_load_palette()
 	var data := AlmLoader.load_map(alm_path)
 	if data.is_empty():
 		return
@@ -102,33 +103,25 @@ func _build_tilemap() -> void:
 
 	tilemap.tile_set = ts
 
-	# Заливка клеток: прямое чтение данных карты (как писали разработчики).
-	# byte[1] -> файл: 0/1=земля(tile1), 3=горы(tile2), 2/16-40=вода(tile3), иначе=горы.
-	# byte[0]&0xF -> вариант (группы по 4 = материал), byte[0]>>4 -> ряд.
+	# Заливка: материал = byte[1] -> набор палитры пользователя.
+	# Связный регион материала = одна текстура (первая из набора) — гарантированно чисто.
+	# byte[0] пока не расшифрован как селектор — не используем для риска винегрета.
 	for y in range(map_height):
 		for x in range(map_width):
 			var i := y * map_width + x
 			var hf := _hflags[i]
-			var b0 := int(_terrain[i])
-			var file_n := _file_for(hf)
+			var pt := _palette_type_for(hf)
+			var set: Array = _sets.get(pt, [])
+			if set.is_empty():
+				continue
+			var spec: Dictionary = set[0]
+			var file_n := clampi(int(spec.get("file", 1)), 1, 4)
 			var vmax := 16 if file_n != 4 else 4
-			var variant := clampi(b0 & 0xF, 0, vmax - 1)
+			var variant := clampi(int(spec.get("variant", 0)), 0, vmax - 1)
 			var sid := (file_n - 1) * 16 + variant
 			var maxr: int = _max_rows.get(sid, 14)
-			var row := clampi(b0 >> 4, 0, maxr - 1)
+			var row := clampi(int(spec.get("row", 0)), 0, maxr - 1)
 			tilemap.set_cell(Vector2i(x, y), sid, Vector2i(0, row))
-
-## Файл текстуры по byte[1]: 0/1=земля(tile1), 3=горы(tile2), вода(tile3).
-func _file_for(hf: int) -> int:
-	match AlmLoader.terrain_type(hf):
-		0, 1:
-			return 1   # земля: tile1 (варианты: 0-3 трава, 4-7 грязь, 8-11 песок, 12-15 кусты)
-		3:
-			return 2   # горы: tile2 (0-3 травяные, 4-7 грязевые, 8-11 песчаные, 12-15 каменные)
-		2, -1:
-			return 3   # вода: tile3
-		_:
-			return 2   # барьер -> горы (tile2)
 
 ## --- Запросы для движения и миникарты ---
 
