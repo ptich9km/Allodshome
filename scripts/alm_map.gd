@@ -103,23 +103,13 @@ func _build_tilemap() -> void:
 
 	tilemap.tile_set = ts
 
-	# Заливка: материал = byte[1] -> файл (земля/горы/вода).
-	# Для земли: подтип = (byte[0]&0xF)//4 — группа из 4 вариантов = материал
-	# (0 трава, 1 грязь, 2 песок, 3 кусты). Соседи одной группы — связные пятна.
+	# Заливка: материал = byte[1] -> набор палитры (чистые связные регионы).
+	# byte[0] не используется: он шумный и даёт винегрет (автайл-детали не расшифрованы).
 	for y in range(map_height):
 		for x in range(map_width):
 			var i := y * map_width + x
 			var hf := _hflags[i]
-			var b0 := int(_terrain[i])
 			var pt := _palette_type_for(hf)
-			if pt == 0 or pt == 1:
-				# земля: подтип по группе вариантов
-				var g := (b0 & 0xF) / 4
-				match g:
-					0: pt = 0  # трава
-					1: pt = 1  # грязь/земля
-					2: pt = 2  # песок
-					_: pt = 1  # кусты (в наборе «Земля»)
 			var set: Array = _sets.get(pt, [])
 			if set.is_empty():
 				continue
