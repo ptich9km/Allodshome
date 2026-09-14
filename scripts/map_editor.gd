@@ -1,17 +1,25 @@
 extends Node2D
 ## Редактор карт Allods Home. Кисть по сетке, палитра типов terrain.
-## Сохранение: JSON 1:1 (клетка -> тип). Игра читает как есть.
+## У каждого типа — набор текстур (настраивается в «Настройки…»), кисть красит
+## выбранной текстурой из набора. Сохранение: JSON 1:1 (клетка -> тип + индекс
+## текстуры внутри набора).
 
 const SAVE_PATH := "res://assets/maps/my_map.json"
+const SETTINGS_PATH := "user://map_editor_palette.json"
 const TILE := 32
 
 var map: CustomMap
 var brush_type := 0            # 0-4 тип, -1 ластик
+var brush_tex_idx := 0         # индекс текстуры в наборе типа
 var brush_size := 1
 var camera: Camera2D
 var ui: CanvasLayer
 var palette_buttons := {}      # тип -> Button
+var tex_strip_grid: GridContainer
+var tex_strip_buttons: Array = []
+var brush_size_buttons: Array = []
 var status_label: Label
+var settings_panel: TextureSettingsPanel = null
 
 func _ready() -> void:
 	camera = Camera2D.new()
@@ -23,7 +31,9 @@ func _ready() -> void:
 	add_child(map)
 	map.new_map(64, 64)
 	_build_ui()
+	_load_global_sets()
 	_update_palette_icons()
+	_build_texture_strip()
 	_center_camera()
 
 func _build_ui() -> void:
@@ -39,6 +49,7 @@ func _build_ui() -> void:
 	x = _add_top_button(top, x, "Новая", _on_new)
 	x = _add_top_button(top, x, "Сохранить", _on_save)
 	x = _add_top_button(top, x, "Загрузить", _on_load)
+	x = _add_top_button(top, x, "Настройки…", _on_settings)
 	x = _add_top_button(top, x, "Назад в игру (F9)", _on_back)
 
 	status_label = Label.new()
@@ -47,7 +58,7 @@ func _build_ui() -> void:
 
 	# Палитра слева
 	var pal := Panel.new()
-	pal.offset_left = 8; pal.offset_top = 52; pal.offset_right = 120; pal.offset_bottom = 320
+	pal.offset_left = 8; pal.offset_top = 52; pal.offset_right = 186; pal.offset_bottom = 548
 	ui.add_child(pal)
 
 	var py := 8.0
@@ -56,34 +67,63 @@ func _build_ui() -> void:
 		b.text = CustomMap.TYPE_NAMES[t]
 		b.toggle_mode = true
 		b.position = Vector2(8, py)
-		b.size = Vector2(92, 42)
+		b.size = Vector2(150, 30)
 		b.pressed.connect(func(id=t): _select_brush(id))
 		pal.add_child(b)
 		palette_buttons[t] = b
-		py += 50
+		py += 36
 
 	var erase := Button.new()
 	erase.text = "Ластик"
 	erase.toggle_mode = true
 	erase.position = Vector2(8, py)
-	erase.size = Vector2(92, 30)
+	erase.size = Vector2(150, 26)
 	erase.pressed.connect(func(): _select_brush(-1))
 	pal.add_child(erase)
 	palette_buttons[-1] = erase
+	py += 32
+
+	var tlabel := Label.new()
+	tlabel.text = "Текстура:"
+	tlabel.position = Vector2(8, py)
+	pal.add_child(tlabel)
+	py += 22
+
+	# Полоса выбора текстуры из набора категории
+	var strip_scroll := ScrollContainer.new()
+	strip_scroll.position = Vector2(8, py)
+	strip_scroll.size = Vector2(170, 218)
+	pal.add_child(strip_scroll)
+
+	tex_strip_grid = GridContainer.new()
+	tex_strip_grid.columns = 3
+	tex_strip_grid.add_theme_constant_override("h_separation", 4)
+	tex_strip_grid.add_theme_constant_override("v_separation", 4)
+	strip_scroll.add_child(tex_strip_grid)
 
 	# Размер кисти
-	var lbl := Label.new()
-	lbl.text = "Кисть:"
-	lbl.position = Vector2(8, py + 40)
-	pal.add_child(lbl)
+	var blabel := Label.new()
+	blabel.text = "Кисть:"
+	blabel.position = Vector2(8, 486)
+	pal.add_child(blabel)
+	brush_size_buttons.clear()
 	for i in range(3):
 		var sb := Button.new()
 		sb.text = str(i + 1)
 		sb.toggle_mode = true
-		sb.position = Vector2(8 + i * 26, py + 62)
+		sb.button_pressed = (i == 0)
+		sb.position = Vector2(8 + i * 28, 508)
 		sb.size = Vector2(24, 24)
-		sb.pressed.connect(func(s=i+1): brush_size = s)
+		sb.pressed.connect(func(s=i+1):
+			brush_size = s
+			_update_brush_size_buttons())
 		pal.add_child(sb)
+		brush_size_buttons.append(sb)
+
+func _update_brush_size_buttons() -> void:
+	for i in range(brush_size_buttons.size()):
+		var b: Button = brush_size_buttons[i]
+		b.button_pressed = (i + 1 == brush_size)
 
 func _add_top_button(parent: Control, x: float, text: String, cb: Callable) -> float:
 	var b := Button.new()
@@ -96,8 +136,37 @@ func _add_top_button(parent: Control, x: float, text: String, cb: Callable) -> f
 
 func _select_brush(t: int) -> void:
 	brush_type = t
+	brush_tex_idx = 0
 	for k in palette_buttons:
 		palette_buttons[k].button_pressed = (k == t)
+	_build_texture_strip()
+
+func _select_tex(idx: int) -> void:
+	brush_tex_idx = idx
+	for i in range(tex_strip_buttons.size()):
+		var b: Button = tex_strip_buttons[i]
+		b.button_pressed = (i == idx)
+
+func _build_texture_strip() -> void:
+	if tex_strip_grid == null:
+		return
+	for child in tex_strip_grid.get_children():
+		child.queue_free()
+	tex_strip_buttons.clear()
+	var set: Array = map.texture_sets.get(brush_type, [])
+	for i in range(set.size()):
+		var spec: Dictionary = set[i]
+		var img: Image = map._load_tile_region(
+			int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)))
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(52, 52)
+		b.expand_icon = true
+		b.icon = ImageTexture.create_from_image(img)
+		b.toggle_mode = true
+		b.button_pressed = (i == brush_tex_idx)
+		b.pressed.connect(func(idx=i): _select_tex(idx))
+		tex_strip_grid.add_child(b)
+		tex_strip_buttons.append(b)
 
 func _update_palette_icons() -> void:
 	# Иконки палитры из текущих текстур заливки
@@ -111,6 +180,8 @@ func _update_palette_icons() -> void:
 			b.expand_icon = true
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_instance_valid(settings_panel):
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			if camera:
@@ -150,13 +221,20 @@ func _paint(center: Vector2i, type_id: int, size: int) -> void:
 	var r := size - 1
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
-			map.set_tile(center + Vector2i(dx, dy), type_id)
+			var cell := center + Vector2i(dx, dy)
+			if type_id >= 0:
+				map.set_tile(cell, type_id, brush_tex_idx)
+			else:
+				map.set_tile(cell, -1)
 
 func _center_camera() -> void:
 	camera.position = Vector2(map.map_width * TILE / 2, map.map_height * TILE / 2)
 
 func _on_new() -> void:
 	map.new_map(64, 64)
+	brush_tex_idx = 0
+	_update_palette_icons()
+	_build_texture_strip()
 	status_label.text = "Новая карта 64x64"
 
 func _on_save() -> void:
@@ -167,12 +245,48 @@ func _on_save() -> void:
 
 func _on_load() -> void:
 	if map.load_map(SAVE_PATH):
+		brush_tex_idx = 0
+		_update_palette_icons()
+		_build_texture_strip()
 		status_label.text = "Загружено: " + SAVE_PATH
 	else:
 		status_label.text = "Файл не найден: " + SAVE_PATH
 
 func _on_back() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+## --- Настройки текстур ---
+
+func _on_settings() -> void:
+	if is_instance_valid(settings_panel):
+		return
+	settings_panel = TextureSettingsPanel.new()
+	settings_panel.setup(map)
+	add_child(settings_panel)
+	settings_panel.applied.connect(_on_settings_applied)
+	settings_panel.closed.connect(_on_settings_closed)
+
+func _on_settings_applied() -> void:
+	# Панель уже применила наборы к карте и сохранила в user://
+	brush_tex_idx = 0
+	_update_palette_icons()
+	_build_texture_strip()
+	status_label.text = "Настройки текстур сохранены"
+
+func _on_settings_closed() -> void:
+	settings_panel = null
+
+## Глобальные наборы текстур (палитра редактора) — переживают перезапуск.
+func _load_global_sets() -> void:
+	if not FileAccess.file_exists(SETTINGS_PATH):
+		return
+	var f := FileAccess.open(SETTINGS_PATH, FileAccess.READ)
+	if f == null:
+		return
+	var json: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if json is Dictionary and json.has("texture_sets"):
+		map.set_texture_sets(json["texture_sets"])
 
 func _process(_delta) -> void:
 	if camera:
@@ -189,7 +303,12 @@ func _process(_delta) -> void:
 		if dir != Vector2.ZERO:
 			camera.position += dir.normalized() * speed
 	if map:
-		status_label.text = "Клетка: %s Тип: %s   (WASD/стрелки - камера, колесо - зум)" % [_mouse_to_cell(), _type_name(brush_type)]
+		var tex_info := "-"
+		var set: Array = map.texture_sets.get(brush_type, [])
+		if brush_type >= 0 and set.size() > 0:
+			tex_info = "%d/%d" % [brush_tex_idx + 1, set.size()]
+		status_label.text = "Клетка: %s Тип: %s Текстура: %s   (WASD - камера, колесо - зум)" % [
+			_mouse_to_cell(), _type_name(brush_type), tex_info]
 
 func _type_name(t: int) -> String:
 	if t < 0:
