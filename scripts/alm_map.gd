@@ -103,7 +103,9 @@ func _build_tilemap() -> void:
 
 	tilemap.tile_set = ts
 
-	# Заливка клеток: тип из byte[1] -> набор палитры, выбор текстуры из набора по byte[0]
+	# Заливка клеток: тип из byte[1] -> набор палитры.
+	# Выбор текстуры: группа вариантов (byte0&0xF)//4 + ряд (byte0>>4) —
+	# текстуры одной группы стыкуются друг с другом (4 автайла материала).
 	for y in range(map_height):
 		for x in range(map_width):
 			var i := y * map_width + x
@@ -112,8 +114,10 @@ func _build_tilemap() -> void:
 			var set: Array = _sets.get(pt, [])
 			if set.is_empty():
 				continue
-			var idx := int(_terrain[i]) % set.size()
-			var spec: Dictionary = set[idx]
+			var b0 := int(_terrain[i])
+			var group := (b0 & 0xF) / 4
+			var brow := b0 >> 4
+			var spec := _pick_sticky(set, group, brow, b0)
 			var file_n := clampi(int(spec.get("file", 1)), 1, 4)
 			var vmax := 16 if file_n != 4 else 4
 			var variant := clampi(int(spec.get("variant", 0)), 0, vmax - 1)
@@ -121,6 +125,21 @@ func _build_tilemap() -> void:
 			var maxr: int = _max_rows.get(sid, 14)
 			var row := clampi(int(spec.get("row", 0)), 0, maxr - 1)
 			tilemap.set_cell(Vector2i(x, y), sid, Vector2i(0, row))
+
+## Выбрать текстуру из набора: та же группа вариантов (0-3/4-7/8-11/12-15) и тот же ряд,
+## чтобы соседние клетки стыковались. Фолбэк — по byte[0] % набора.
+func _pick_sticky(set: Array, group: int, brow: int, b0: int) -> Dictionary:
+	for item in set:
+		if item is Dictionary and int(item.get("variant", -1)) / 4 == group \
+				and int(item.get("row", -1)) == brow:
+			return item
+	for item in set:
+		if item is Dictionary and int(item.get("variant", -1)) / 4 == group:
+			return item
+	var idx := b0 % set.size()
+	if set[idx] is Dictionary:
+		return set[idx]
+	return {}
 
 ## --- Запросы для движения и миникарты ---
 
