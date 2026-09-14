@@ -9,7 +9,7 @@ const SETTINGS_PATH := "user://map_editor_palette.json"
 const TILE := 32
 
 var map: CustomMap
-var brush_type := 0            # 0-4 тип, -1 ластик
+var brush_type := 0            # 0-7 тип, -1 ластик
 var brush_tex_idx := 0         # индекс текстуры в наборе типа
 var brush_size := 1
 var camera: Camera2D
@@ -20,6 +20,11 @@ var tex_strip_buttons: Array = []
 var brush_size_buttons: Array = []
 var status_label: Label
 var settings_panel: TextureSettingsPanel = null
+var _fill_mode := false
+var fill_btn: Button
+var _undo_stack: Array = []
+var map_w_spin: SpinBox
+var map_h_spin: SpinBox
 
 func _ready() -> void:
 	camera = Camera2D.new()
@@ -52,26 +57,42 @@ func _build_ui() -> void:
 	x = _add_top_button(top, x, "Настройки…", _on_settings)
 	x = _add_top_button(top, x, "Назад в игру (F9)", _on_back)
 
+	# Размер новой карты
+	var wl := Label.new()
+	wl.text = "Ш:"; wl.position = Vector2(x, 12)
+	top.add_child(wl)
+	map_w_spin = SpinBox.new()
+	map_w_spin.min_value = 16; map_w_spin.max_value = 256; map_w_spin.value = 64; map_w_spin.step = 8
+	map_w_spin.position = Vector2(x + 22, 8); map_w_spin.size = Vector2(72, 28)
+	top.add_child(map_w_spin)
+	var hl := Label.new()
+	hl.text = "В:"; hl.position = Vector2(x + 100, 12)
+	top.add_child(hl)
+	map_h_spin = SpinBox.new()
+	map_h_spin.min_value = 16; map_h_spin.max_value = 256; map_h_spin.value = 64; map_h_spin.step = 8
+	map_h_spin.position = Vector2(x + 122, 8); map_h_spin.size = Vector2(72, 28)
+	top.add_child(map_h_spin)
+
 	status_label = Label.new()
-	status_label.position = Vector2(x + 20, 12)
+	status_label.position = Vector2(x + 210, 12)
 	top.add_child(status_label)
 
 	# Палитра слева
 	var pal := Panel.new()
-	pal.offset_left = 8; pal.offset_top = 52; pal.offset_right = 186; pal.offset_bottom = 548
+	pal.offset_left = 8; pal.offset_top = 52; pal.offset_right = 186; pal.offset_bottom = 720
 	ui.add_child(pal)
 
 	var py := 8.0
-	for t in range(5):
+	for t in range(8):
 		var b := Button.new()
 		b.text = CustomMap.TYPE_NAMES[t]
 		b.toggle_mode = true
 		b.position = Vector2(8, py)
-		b.size = Vector2(150, 30)
+		b.size = Vector2(150, 26)
 		b.pressed.connect(func(id=t): _select_brush(id))
 		pal.add_child(b)
 		palette_buttons[t] = b
-		py += 36
+		py += 32
 
 	var erase := Button.new()
 	erase.text = "Ластик"
@@ -81,6 +102,16 @@ func _build_ui() -> void:
 	erase.pressed.connect(func(): _select_brush(-1))
 	pal.add_child(erase)
 	palette_buttons[-1] = erase
+	py += 32
+
+	var fill := Button.new()
+	fill.text = "Залить область"
+	fill.toggle_mode = true
+	fill.position = Vector2(8, py)
+	fill.size = Vector2(150, 26)
+	fill.pressed.connect(func(): _fill_mode = not _fill_mode)
+	pal.add_child(fill)
+	fill_btn = fill
 	py += 32
 
 	var tlabel := Label.new()
@@ -182,6 +213,9 @@ func _update_palette_icons() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if is_instance_valid(settings_panel):
 		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_Z and event.ctrl_pressed:
+		_undo()
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			if camera:
@@ -196,7 +230,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			var cell := _mouse_to_cell()
 			if cell.x >= 0 and cell.y >= 0:
-				if brush_type >= 0:
+				if _fill_mode and brush_type >= 0:
+					_flood_fill(cell, brush_type, brush_tex_idx)
+					fill_btn.button_pressed = false
+					_fill_mode = false
+				elif brush_type >= 0:
 					_paint(cell, brush_type, brush_size)
 				else:
 					_paint(cell, -1, brush_size)
@@ -222,20 +260,70 @@ func _paint(center: Vector2i, type_id: int, size: int) -> void:
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			var cell := center + Vector2i(dx, dy)
-			if type_id >= 0:
-				map.set_tile(cell, type_id, brush_tex_idx)
-			else:
-				map.set_tile(cell, -1)
+			_set_cell_undo(cell, type_id)
+
+## Записать изменение в undo-стек и применить.
+func _set_cell_undo(cell: Vector2i, type_id: int) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map.map_width or cell.y >= map.map_height:
+		return
+	var i := cell.y * map.map_width + cell.x
+	var old_t := map.tiles[i]
+	var old_tex := map.tex_ids[i]
+	if old_t == type_id and old_tex == (brush_tex_idx if type_id >= 0 else -1):
+		return
+	_undo_stack.append({"cell": cell, "type": old_t, "tex": old_tex})
+	if _undo_stack.size() > 2000:
+		_undo_stack.pop_front()
+	if type_id >= 0:
+		map.set_tile(cell, type_id, brush_tex_idx)
+	else:
+		map.set_tile(cell, -1)
+
+func _undo() -> void:
+	if _undo_stack.is_empty():
+		return
+	var entry: Dictionary = _undo_stack.pop_back()
+	var cell: Vector2i = entry["cell"]
+	var t: int = entry["type"]
+	var tex: int = entry["tex"]
+	map.set_tile(cell, t, tex)
+	status_label.text = "Отменено (%d)" % _undo_stack.size()
+
+## Заливка области: все соседние клетки того же типа -> выбранный тип.
+func _flood_fill(start: Vector2i, new_type: int, new_tex: int) -> void:
+	if start.x < 0 or start.y < 0 or start.x >= map.map_width or start.y >= map.map_height:
+		return
+	var old_type := map.tile_id_at(start)
+	if old_type == new_type:
+		return
+	var stack: Array = [start]
+	var visited := {}
+	while not stack.is_empty():
+		var c: Vector2i = stack.pop_back()
+		if visited.has(c):
+			continue
+		visited[c] = true
+		if map.tile_id_at(c) != old_type:
+			continue
+		_set_cell_undo(c, new_type)
+		stack.append(c + Vector2i(1, 0))
+		stack.append(c + Vector2i(-1, 0))
+		stack.append(c + Vector2i(0, 1))
+		stack.append(c + Vector2i(0, -1))
+	status_label.text = "Залито!"
 
 func _center_camera() -> void:
 	camera.position = Vector2(map.map_width * TILE / 2, map.map_height * TILE / 2)
 
 func _on_new() -> void:
-	map.new_map(64, 64)
+	var w := int(map_w_spin.value)
+	var h := int(map_h_spin.value)
+	map.new_map(w, h)
 	brush_tex_idx = 0
 	_update_palette_icons()
 	_build_texture_strip()
-	status_label.text = "Новая карта 64x64"
+	_center_camera()
+	status_label.text = "Новая карта %dx%d" % [w, h]
 
 func _on_save() -> void:
 	if map.save_map(SAVE_PATH):
