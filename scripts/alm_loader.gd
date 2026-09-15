@@ -52,7 +52,8 @@ static func _find_tile_offset(data: PackedByteArray, width: int, height: int) ->
 				best_off = off
 	return best_off
 
-## Тип terrain из byte[1]: 0-3 = tile1-4, -1 = вода (16-40), -2 = барьер.
+## Тип terrain из byte[1]: 0 = трава (tile1), 1 = ГОРЫ (tile2), -1 = вода (tile3),
+## 3 = ДОРОГИ/мостовая (tile4), >40 = барьер.
 static func terrain_type(hf: int) -> int:
 	if hf >= 0 and hf <= 3:
 		return hf
@@ -60,9 +61,18 @@ static func terrain_type(hf: int) -> int:
 		return -1
 	return -2
 
-## Проходимы: тип 0 (трава/tile1) и тип 1 (земля/tile2). Вода и скала — нет.
+## Проходимы: тип 0 (трава/tile1) и тип 3 (дорога/tile4, по ней ходят быстрее).
+## Горы (тип 1, tile2) и вода (тип 2, tile3) — нет. Уточнено по картам Nival:
+## например на Kids3 массивы типа 1 внизу = горные хребты, тип 3 в центре = деревня.
 static func is_walkable_type(t: int) -> bool:
-	return t >= 0 and t <= 1
+	return t == 0 or t == 3
+
+## Скорость по типу клетки: дорога (3) быстрее травы (0). Остальное 1.0
+## (воду/горы персонаж туда не заходит).
+static func speed_factor_type(t: int) -> float:
+	if t == 3:
+		return 1.4
+	return 1.0
 
 static func classify(hf: int) -> int:
 	var t := terrain_type(hf)
@@ -70,13 +80,13 @@ static func classify(hf: int) -> int:
 		return TileFlag.WATER
 	elif t == -2:
 		return TileFlag.BARRIER
-	elif t == 3:
-		return TileFlag.HILL  # скала — приподнята визуально
+	elif t == 1:
+		return TileFlag.HILL  # горы (tile2) — визуально приподняты
 	elif t == 2:
 		return TileFlag.WATER  # tile3 = вода
 	return TileFlag.GROUND
 
-## Высота для визуала: скала (тип 3) приподнята на 1 уровень.
+## Высота для визуала: горы (тип 1) приподняты на 1 уровень.
 static func height_level(hf: int) -> int:
 	if classify(hf) == TileFlag.HILL:
 		return 1

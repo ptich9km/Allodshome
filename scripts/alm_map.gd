@@ -313,6 +313,14 @@ func is_walkable_world(pos: Vector2) -> bool:
 		return false
 	return true
 
+## Множитель скорости по типу клетки: дороги (tile4) быстрее травы.
+func speed_factor_at_world(pos: Vector2) -> float:
+	var tx := int(pos.x) / TILE
+	var ty := int(pos.y) / TILE
+	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
+		return 1.0
+	return AlmLoader.speed_factor_type(AlmLoader.terrain_type(_hflags[ty * map_width + tx]))
+
 func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var min_x := margin
 	var min_y := margin
