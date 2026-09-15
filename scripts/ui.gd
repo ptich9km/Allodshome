@@ -85,6 +85,33 @@ func _setup_spells():
 var inventory_slots: Array = []
 var inventory_items: Array = []
 
+## Тестовые предметы: все виды оружия и брони по правилам игры.
+## slot: "armor"|"weapon"|"shield", armor: "light"|"heavy", weapon: тип,
+## two_handed/shield_useful — параметры анимации героя.
+const TEST_GEAR := [
+	{"name": "Кожаная броня", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0006006-000.png"},
+	{"name": "Плотная кожа", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0006010-000.png"},
+	{"name": "Бронзовая броня", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0501202-000.png"},
+	{"name": "Железная броня", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0601202-000.png"},
+	{"name": "Драконья кожа", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0701302-000.png"},
+	{"name": "Стальная броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0502205-000.png"},
+	{"name": "Мифриловая броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0602305-000.png"},
+	{"name": "Адамантовая броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0701309-000.png"},
+	{"name": "Метеоритная броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0801013-000.png"},
+	{"name": "Кристальная броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0901214-000.png"},
+	{"name": "Меч", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001002-000.png"},
+	{"name": "Двуручный меч", "slot": "weapon", "weapon": "sword", "two_handed": true, "icon": "res://assets/inventory/0001003-000.png"},
+	{"name": "Топор", "slot": "weapon", "weapon": "axe", "two_handed": false, "icon": "res://assets/inventory/0101002-000.png"},
+	{"name": "Двуручный топор", "slot": "weapon", "weapon": "axe", "two_handed": true, "icon": "res://assets/inventory/0101006-000.png"},
+	{"name": "Булава", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0201102-000.png"},
+	{"name": "Копьё", "slot": "weapon", "weapon": "pike", "two_handed": false, "icon": "res://assets/inventory/0301202-000.png"},
+	{"name": "Лук", "slot": "weapon", "weapon": "bow", "icon": "res://assets/inventory/0005002-000.png"},
+	{"name": "Арбалет", "slot": "weapon", "weapon": "xbow", "icon": "res://assets/inventory/0008018-000.png"},
+	{"name": "Посох", "slot": "weapon", "weapon": "staff", "two_handed": true, "icon": "res://assets/inventory/0010026-000.png"},
+	{"name": "Кулаки", "slot": "weapon", "weapon": "unarmed", "icon": "res://assets/inventory/0001009-000.png"},
+	{"name": "Щит", "slot": "shield", "icon": "res://assets/inventory/0002001-000.png"},
+]
+
 func _setup_inventory():
 	# Один ряд слотов со скроллом влево/вправо
 	inventory_grid.columns = 40
@@ -105,16 +132,38 @@ func _setup_inventory():
 		inventory_slots.append(slot)
 		inventory_items.append(null)
 
-	# Тестовые предметы (иконки из оригинала)
-	_add_item(0, "res://assets/inventory/0001002-000.png", "Меч")
-	_add_item(1, "res://assets/inventory/0014001-000.png", "Зелье")
-	_add_item(2, "res://assets/inventory/0002001-000.png", "Щит")
+	var idx := 0
+	for gear in TEST_GEAR:
+		if idx >= inventory_slots.size():
+			break
+		_add_item(idx, str(gear["icon"]), str(gear["name"]), gear)
+		idx += 1
 
-func _add_item(slot_idx: int, icon_path: String, item_name: String):
+## Обработчик клика по предмету — экипировать героя.
+func _on_item_clicked(item: Dictionary):
+	if not is_instance_valid(player):
+		return
+	var slot := str(item.get("slot", ""))
+	if slot == "armor":
+		player.armor_kind = str(item.get("armor", "light"))
+	elif slot == "weapon":
+		player.weapon = str(item.get("weapon", "sword"))
+		player.two_handed = bool(item.get("two_handed", false))
+		player.has_shield = false
+	elif slot == "shield":
+		if player.two_handed:
+			print("Щит нельзя с двуручным оружием!")
+			return
+		player.has_shield = true
+	player.refresh_animation()
+	_update_stats()
+	print("Экипировано: " + str(item.get("name", "?")))
+
+func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictionary = {}):
 	if slot_idx >= 0 and slot_idx < inventory_slots.size():
 		var tex = load(icon_path)
+		var slot: TextureRect = inventory_slots[slot_idx]
 		if tex:
-			var slot = inventory_slots[slot_idx]
 			# Иконка предмета поверх фона слота
 			var icon_rect = TextureRect.new()
 			icon_rect.texture = tex
@@ -122,7 +171,16 @@ func _add_item(slot_idx: int, icon_path: String, item_name: String):
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 			slot.add_child(icon_rect)
-		inventory_items[slot_idx] = {"name": item_name, "icon": icon_path}
+
+		var item_data: Dictionary = gear.duplicate(true)
+		item_data["name"] = item_name
+		item_data["icon"] = icon_path
+		inventory_items[slot_idx] = item_data
+
+		# Кликабельный слот: наводим и нажимаем для экипировки
+		slot.gui_input.connect(func(event: InputEvent, data := item_data):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				_on_item_clicked(data))
 
 func _setup_action_buttons():
 	follow_btn.pressed.connect(func(): _set_action_mode("follow"))

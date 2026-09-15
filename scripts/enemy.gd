@@ -7,6 +7,7 @@ class_name Enemy
 @export var aggro_radius: float = 150.0
 @export var deaggro_radius: float = 200.0
 @export var home_position: Vector2
+@export var anim_set: String = "monsters/orc"   # набор анимаций из units_db.json
 
 var current_hp: int
 var state: String = "idle"
@@ -14,6 +15,7 @@ var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
 var can_flee: bool = true
 var health_bar: HealthBar
+var _anim: UnitAnim = null
 
 func _ready():
 	current_hp = max_hp
@@ -28,41 +30,15 @@ func _create_health_bar():
 	add_child(health_bar)
 
 func _create_sprite():
-	var sprite = get_node_or_null("Sprite")
-	if not sprite:
-		sprite = Sprite2D.new()
-		sprite.name = "Sprite"
-		add_child(sprite)
+	var old_sprite = get_node_or_null("Sprite")
+	if old_sprite:
+		old_sprite.queue_free()
 
-	if not sprite.texture:
-		var tex_path = ""
-		var img_color = Color(0.2, 0.6, 0.15, 1.0)
-		
-		if max_hp >= 100:
-			tex_path = "res://assets/sprites/ludoed.png"
-		elif max_hp >= 80:
-			tex_path = "res://assets/sprites/zombie.png"
-		elif max_hp >= 70:
-			tex_path = "res://assets/sprites/orc_tier2.png"
-		elif max_hp >= 50:
-			tex_path = "res://assets/sprites/orc.png"
-		elif max_hp >= 30:
-			tex_path = "res://assets/sprites/slime.png"
-		else:
-			tex_path = "res://assets/sprites/bat.png"
-		
-		if tex_path != "":
-			var tex = load(tex_path)
-			if tex:
-				sprite.texture = tex
-		else:
-			# Заглушка если файл не найден
-			var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
-			for y in range(48):
-				for x in range(32):
-					img.set_pixel(x, y, img_color)
-			sprite.texture = ImageTexture.create_from_image(img)
-		sprite.offset = Vector2(0, -20)
+	_anim = UnitAnim.new()
+	_anim.name = "UnitAnim"
+	add_child(_anim)
+	_anim.setup(anim_set)
+	_anim.play(UnitAnim.Anim.IDLE)
 
 func _physics_process(delta):
 	if Game.is_paused:
@@ -112,6 +88,19 @@ func _physics_process(delta):
 			velocity = flee_direction * move_speed * 1.5
 			if distance_to_player > deaggro_radius * 1.5:
 				queue_free()
+
+	# Анимация монстра по состоянию
+	if _anim:
+		match state:
+			"chase", "flee":
+				_anim.play(UnitAnim.Anim.MOVE)
+				_anim.set_direction_vec(velocity)
+				_anim.advance(delta)
+			"attack":
+				_anim.play(UnitAnim.Anim.ATTACK)
+				_anim.advance(delta)
+			_:
+				_anim.play(UnitAnim.Anim.IDLE)
 
 	move_and_slide()
 

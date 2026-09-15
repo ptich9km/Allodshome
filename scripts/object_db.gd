@@ -5,7 +5,7 @@ class_name ObjectDB
 
 const DB_PATH := "res://assets/map-objects/object_db.json"
 const ANIM_TICK := 0.06  # множитель тайминга кадра (anim_time)
-const DEFAULT_FRAME_TIME := 0.1  # секунд на кадр, если расписания нет
+const DEFAULT_FRAME_TIME := 0.5  # секунд на кадр, если расписания нет
 
 static var _db: Dictionary = {}
 static var _loaded := false

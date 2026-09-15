@@ -25,12 +25,49 @@ var ability_cooldowns = [0.0, 0.0, 0.0]
 var health_bar: HealthBar
 var alm_map = null   # CustomMap или AlmMap из группы "alm_map"
 
+# --- Экипировка героя (определяет набор анимаций) ---
+var armor_kind: String = "heavy"   # "heavy" -> heroes/, "light" -> heroes_l/
+var weapon: String = "sword"       # unarmed, sword, axe, club, pike, bow, xbow, staff, magic
+var two_handed: bool = false
+var has_shield: bool = false
+var _anim: UnitAnim = null
+
 func _ready():
 	current_hp = max_hp
 	current_mana = max_mana
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	_ensure_sprite()
 	_create_health_bar()
+
+## Текущий набор анимаций по экипировке ("heroes/swordsman_").
+func anim_set_name() -> String:
+	var top := "heroes" if armor_kind == "heavy" else "heroes_l"
+	var base := weapon
+	match weapon:
+		"unarmed": base = "unarmed"
+		"sword":
+			base = "swordsman2h" if two_handed else ("swordsman_" if has_shield else "swordsman")
+		"axe":
+			base = "axeman2h" if two_handed else ("axeman_" if has_shield else "axeman")
+		"club":
+			base = "clubman_" if has_shield else "clubman"
+		"pike":
+			base = "pikeman_" if has_shield else "pikeman"
+		"bow": base = "archer"
+		"xbow": base = "xbowman"
+		"staff": base = "mage_st"
+		"magic": base = "mage"
+	if has_shield and base == "unarmed":
+		base = "unarmed_"
+	return "%s/%s" % [top, base]
+
+## Пересоздать анимацию после смены экипировки.
+func refresh_animation() -> void:
+	if _anim == null:
+		return
+	var set := anim_set_name()
+	_anim.setup(set)
+	_anim.play(UnitAnim.Anim.MOVE, true)
 
 ## Множитель скорости с учётом высоты: подъём замедляет, спуск/равнина — норма.
 func _height_speed_factor(target_pos: Vector2) -> float:
@@ -72,25 +109,14 @@ func _create_health_bar():
 	add_child(health_bar)
 
 func _ensure_sprite():
-	var sprite = get_node_or_null("Sprite")
-	if not sprite:
-		sprite = Sprite2D.new()
-		sprite.name = "Sprite"
-		add_child(sprite)
-	
-	# Загружаем текстуру из файла если не задана
-	if not sprite.texture:
-		var tex = load("res://assets/sprites/hero.png")
-		if tex:
-			sprite.texture = tex
-		else:
-			# Заглушка если файл не найден
-			var img = Image.create(32, 48, false, Image.FORMAT_RGBA8)
-			for y in range(48):
-				for x in range(32):
-					img.set_pixel(x, y, Color(0.2, 0.4, 0.9, 1.0))
-			sprite.texture = ImageTexture.create_from_image(img)
-		sprite.offset = Vector2(0, -20)
+	var old_sprite = get_node_or_null("Sprite")
+	if old_sprite:
+		old_sprite.queue_free()
+
+	_anim = UnitAnim.new()
+	_anim.name = "UnitAnim"
+	add_child(_anim)
+	refresh_animation()
 
 func _physics_process(delta):
 	if Game.is_paused:
@@ -115,14 +141,29 @@ func _physics_process(delta):
 	match state:
 		"idle":
 			velocity = Vector2.ZERO
+			if _anim:
+				_anim.play(UnitAnim.Anim.IDLE)
 		"move":
 			move_to_target(delta)
+			if _anim:
+				_anim.play(UnitAnim.Anim.MOVE)
+				_anim.set_direction_vec(velocity)
+				_anim.advance(delta)
 		"chase":
 			chase_target(delta)
+			if _anim:
+				_anim.play(UnitAnim.Anim.MOVE)
+				_anim.set_direction_vec(velocity)
+				_anim.advance(delta)
 		"attack":
 			attack_enemy(delta)
+			if _anim:
+				_anim.play(UnitAnim.Anim.ATTACK)
+				_anim.advance(delta)
 		"dead":
 			velocity = Vector2.ZERO
+			if _anim:
+				_anim.play(UnitAnim.Anim.DYING)
 
 	move_and_slide()
 
