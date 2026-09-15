@@ -152,3 +152,7 @@ func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var max_x := map_width * tile_size - margin
 	var max_y := map_height * tile_size - margin
 	return pos.x >= min_x and pos.y >= min_y and pos.x <= max_x and pos.y <= max_y
+
+## .alm-карта не содержит объектов — заглушка для совместимости с CustomMap.
+func damage_area(_world_pos: Vector2, _radius: float, _dmg: int) -> void:
+	pass

@@ -5,7 +5,7 @@ extends Node2D
 ## текстуры внутри набора).
 
 const SAVE_PATH := "res://assets/maps/my_map.json"
-const SETTINGS_PATH := "user://map_editor_palette.json"
+const SETTINGS_PATH := "res://assets/maps/map_editor_palette.json"
 const TILE := 32
 
 var map: CustomMap
@@ -187,8 +187,7 @@ func _build_texture_strip() -> void:
 	var set: Array = map.texture_sets.get(brush_type, [])
 	for i in range(set.size()):
 		var spec: Dictionary = set[i]
-		var img: Image = map._load_tile_region(
-			int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)))
+		var img: Image = map._load_spec_image(spec)
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(52, 52)
 		b.expand_icon = true
@@ -201,10 +200,9 @@ func _build_texture_strip() -> void:
 
 func _update_palette_icons() -> void:
 	# Иконки палитры из текущих текстур заливки
-	for t in range(5):
+	for t in range(8):
 		var spec: Dictionary = map.text_spec.get(t, {})
-		var img := map._load_tile_region(
-			int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)))
+		var img := map._load_spec_image(spec)
 		if img:
 			var b: Button = palette_buttons[t]
 			b.icon = ImageTexture.create_from_image(img)
@@ -269,9 +267,10 @@ func _set_cell_undo(cell: Vector2i, type_id: int) -> void:
 	var i := cell.y * map.map_width + cell.x
 	var old_t := map.tiles[i]
 	var old_tex := map.tex_ids[i]
+	var old_under := map.under_tiles[i]
 	if old_t == type_id and old_tex == (brush_tex_idx if type_id >= 0 else -1):
 		return
-	_undo_stack.append({"cell": cell, "type": old_t, "tex": old_tex})
+	_undo_stack.append({"cell": cell, "type": old_t, "tex": old_tex, "under": old_under})
 	if _undo_stack.size() > 2000:
 		_undo_stack.pop_front()
 	if type_id >= 0:
@@ -286,7 +285,12 @@ func _undo() -> void:
 	var cell: Vector2i = entry["cell"]
 	var t: int = entry["type"]
 	var tex: int = entry["tex"]
-	map.set_tile(cell, t, tex)
+	var under: int = entry.get("under", -1)
+	var i := cell.y * map.map_width + cell.x
+	map.tiles[i] = t
+	map.tex_ids[i] = tex
+	map.under_tiles[i] = under
+	map._refresh_cell(cell)
 	status_label.text = "Отменено (%d)" % _undo_stack.size()
 
 ## Заливка области: все соседние клетки того же типа -> выбранный тип.
@@ -300,6 +304,10 @@ func _flood_fill(start: Vector2i, new_type: int, new_tex: int) -> void:
 	var visited := {}
 	while not stack.is_empty():
 		var c: Vector2i = stack.pop_back()
+		# Пустота (-1) считается "той же" за границами карты — без этой проверки
+		# заливка пустой области уходит в бесконечность за края карты.
+		if c.x < 0 or c.y < 0 or c.x >= map.map_width or c.y >= map.map_height:
+			continue
 		if visited.has(c):
 			continue
 		visited[c] = true
@@ -319,6 +327,7 @@ func _on_new() -> void:
 	var w := int(map_w_spin.value)
 	var h := int(map_h_spin.value)
 	map.new_map(w, h)
+	_load_global_sets()  # вернуть наборы текстур из палитры (не дефолт)
 	brush_tex_idx = 0
 	_update_palette_icons()
 	_build_texture_strip()

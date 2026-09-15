@@ -23,4 +23,8 @@ func explode():
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy) and enemy.global_position.distance_to(global_position) < 30.0:
 			enemy.take_damage(damage, projectile_owner)
+	# Урон по объектам карты (разрушаемые деревья/камни)
+	var map_node = get_tree().get_first_node_in_group("alm_map")
+	if map_node and map_node.has_method("damage_area"):
+		map_node.damage_area(global_position, 40.0, damage)
 	queue_free()

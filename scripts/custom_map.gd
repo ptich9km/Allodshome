@@ -23,9 +23,13 @@ var map_width := 0
 var map_height := 0
 var tiles: PackedInt32Array    # тип на клетку, -1 = пусто
 var tex_ids: PackedInt32Array  # индекс текстуры в наборе типа, -1 = первая
+var under_tiles: PackedInt32Array  # земля ПОД объектом (0-4) или -1: объект "стоит" на ней
 var texture_sets := {}         # тип -> Array[{file, variant, row}]
 var text_spec := {}            # тип -> {file, variant, row} (первая в наборе)
-var tilemap: TileMapLayer
+var tilemap: TileMapLayer      # слой земли (типы 0-4)
+var object_layer: TileMapLayer # слой объектов (типы 5-7) поверх земли
+var objects_root: Node2D       # слой анимированных спрайтов объектов (y-sort)
+var map_objects := {}          # клетка (Vector2i) -> MapObject
 var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (тип 7)
 
 # (тип, индекс в наборе) -> source_id в TileSet
@@ -59,6 +63,7 @@ func load_map(path: String) -> bool:
 	for i in range(raw.size()):
 		tiles[i] = int(raw[i])
 	_load_tex_ids(json)
+	_load_under_tiles(json)
 	if json.has("texture_sets"):
 		texture_sets = _normalize_sets(json["texture_sets"])
 	else:
@@ -78,6 +83,16 @@ func _load_tex_ids(json: Dictionary) -> void:
 		for i in range(raw.size()):
 			tex_ids[i] = int(raw[i])
 
+## Земля под объектами (типы 5-7). У старых карт поля нет — всё -1.
+func _load_under_tiles(json: Dictionary) -> void:
+	under_tiles = PackedInt32Array()
+	under_tiles.resize(map_width * map_height)
+	under_tiles.fill(-1)
+	var raw: Variant = json.get("under_tiles", null)
+	if raw is Array and raw.size() == map_width * map_height:
+		for i in range(raw.size()):
+			under_tiles[i] = int(raw[i])
+
 func new_map(w: int, h: int) -> void:
 	map_width = w
 	map_height = h
@@ -87,6 +102,9 @@ func new_map(w: int, h: int) -> void:
 	tex_ids = PackedInt32Array()
 	tex_ids.resize(w * h)
 	tex_ids.fill(-1)
+	under_tiles = PackedInt32Array()
+	under_tiles.resize(w * h)
+	under_tiles.fill(-1)
 	texture_sets = _default_sets()
 	_sync_text_spec()
 	_refresh_spawn()
@@ -134,11 +152,16 @@ func _normalize_sets(sets: Dictionary) -> Dictionary:
 		var clean: Array = []
 		for item in arr:
 			if item is Dictionary:
-				var spec := {
-					"file": int(item.get("file", 1)),
-					"variant": int(item.get("variant", 0)),
-					"row": int(item.get("row", 0)),
-				}
+				var spec := {}
+				spec["file"] = int(item.get("file", 1))
+				spec["variant"] = int(item.get("variant", 0))
+				spec["row"] = int(item.get("row", 0))
+				if item.has("kind"):
+					spec["kind"] = str(item["kind"])
+				if item.has("obj"):
+					spec["obj"] = str(item["obj"])
+				if item.has("path"):
+					spec["path"] = str(item["path"])
 				if item.has("color"):
 					spec["color"] = str(item["color"])
 				clean.append(spec)
@@ -174,14 +197,73 @@ func set_tile(cell: Vector2i, type_id: int, tex_idx: int = -1) -> void:
 	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
 		return
 	var i := cell.y * map_width + cell.x
-	tiles[i] = type_id
-	tex_ids[i] = tex_idx
+	if type_id == -1:
+		# Ластик: снять объект -> вернуть землю из-под него; иначе пусто
+		if tiles[i] >= 5 and under_tiles[i] >= 0:
+			tiles[i] = under_tiles[i]
+			under_tiles[i] = -1
+			tex_ids[i] = -1
+		else:
+			tiles[i] = -1
+			tex_ids[i] = -1
+			under_tiles[i] = -1
+	elif type_id >= 5:
+		# Объект: запомнить землю под ним (если клетка была землёй)
+		if tiles[i] >= 0 and tiles[i] < 5:
+			under_tiles[i] = tiles[i]
+		else:
+			under_tiles[i] = -1
+		tiles[i] = type_id
+		tex_ids[i] = tex_idx
+	else:
+		# Земля (0-4): закрашивает всё, включая объект
+		tiles[i] = type_id
+		tex_ids[i] = tex_idx
+		under_tiles[i] = -1
 	if type_id == 7:
 		spawn_cell = cell
 	elif spawn_cell == cell:
 		spawn_cell = Vector2i(-1, -1)
 	if tilemap:
-		tilemap.set_cell(cell, _source_id_for(type_id, tex_idx), Vector2i(0, 0))
+		_refresh_cell(cell)
+
+## Применить клетку: земля (0-4) внизу, объект (5-7) поверх.
+## Объекты с kind=object рендерятся анимированными спрайтами (map_objects).
+func _refresh_cell(cell: Vector2i) -> void:
+	var i := cell.y * map_width + cell.x
+	var t := tiles[i]
+
+	if t >= 0 and t < 5:
+		if tilemap:
+			tilemap.set_cell(cell, _source_id_for(t, tex_ids[i]), Vector2i(0, 0))
+		if object_layer:
+			object_layer.erase_cell(cell)
+		_remove_map_object(cell)
+	elif t >= 5:
+		var spec := texture_spec_at(cell)
+		var obj_name := ObjectDB.object_name_from_spec(spec)
+		if obj_name != "":
+			# Объект с анимацией: спрайт поверх, земля из-под него остаётся
+			if under_tiles[i] >= 0:
+				tilemap.set_cell(cell, _source_id_for(under_tiles[i], -1), Vector2i(0, 0))
+			else:
+				tilemap.erase_cell(cell)
+			object_layer.erase_cell(cell)
+			_ensure_map_object(cell, obj_name)
+		else:
+			# Цветовой плейсхолдер — обычный тайл
+			if under_tiles[i] >= 0:
+				tilemap.set_cell(cell, _source_id_for(under_tiles[i], -1), Vector2i(0, 0))
+			else:
+				tilemap.erase_cell(cell)
+			object_layer.set_cell(cell, _source_id_for(t, tex_ids[i]), Vector2i(0, 0))
+			_remove_map_object(cell)
+	else:
+		if tilemap:
+			tilemap.erase_cell(cell)
+		if object_layer:
+			object_layer.erase_cell(cell)
+		_remove_map_object(cell)
 
 func _source_id_for(type_id: int, tex_idx: int) -> int:
 	if type_id < 0 or type_id >= 8:
@@ -194,6 +276,25 @@ func _build_tilemap() -> void:
 		tilemap = TileMapLayer.new()
 		tilemap.name = "TileMap"
 		add_child(tilemap)
+	if object_layer == null:
+		object_layer = TileMapLayer.new()
+		object_layer.name = "Objects"
+		# Объекты поверх земли
+		object_layer.z_index = 5
+		add_child(object_layer)
+	if objects_root == null:
+		objects_root = Node2D.new()
+		objects_root.name = "MapObjects"
+		objects_root.y_sort_enabled = true
+		objects_root.z_index = 6
+		add_child(objects_root)
+
+	# Удалить старые спрайты объектов при перестройке
+	for cell_key in map_objects.keys():
+		var mo: MapObject = map_objects[cell_key]
+		if is_instance_valid(mo):
+			mo.queue_free()
+	map_objects.clear()
 
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(TILE, TILE)
@@ -203,8 +304,7 @@ func _build_tilemap() -> void:
 		var set: Array = texture_sets.get(t, [])
 		for idx in range(set.size()):
 			var spec: Dictionary = set[idx]
-			var img := _load_tile_region(
-				int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)), str(spec.get("color", "")))
+			var img := _load_spec_image(spec)
 			var src := TileSetAtlasSource.new()
 			src.texture = ImageTexture.create_from_image(img)
 			src.texture_region_size = Vector2i(TILE, TILE)
@@ -213,14 +313,77 @@ func _build_tilemap() -> void:
 			_src_for[Vector2i(t, idx)] = src_id
 			src_id += 1
 	tilemap.tile_set = ts
+	object_layer.tile_set = ts
 
 	tilemap.clear()
+	object_layer.clear()
 	for y in range(map_height):
 		for x in range(map_width):
-			var i := y * map_width + x
-			var t := tiles[i]
-			if t >= 0:
-				tilemap.set_cell(Vector2i(x, y), _source_id_for(t, tex_ids[i]), Vector2i(0, 0))
+			_refresh_cell(Vector2i(x, y))
+
+## Создать (или обновить) спрайт объекта на клетке.
+func _ensure_map_object(cell: Vector2i, obj_name: String) -> void:
+	var existing: MapObject = map_objects.get(cell)
+	if existing != null and is_instance_valid(existing) and existing.obj_name == obj_name:
+		return
+	if existing != null and is_instance_valid(existing):
+		existing.queue_free()
+	var mo := MapObject.new()
+	var anchor := Vector2.ZERO
+	var o := ObjectDB.get_obj(obj_name)
+	if not o.is_empty():
+		anchor = Vector2(int(o.get("cx", 0)), int(o.get("cy", 0)))
+	mo.setup(obj_name, cell, TILE, anchor)
+	# Точка якоря (cx,cy) спрайта = центр-низ клетки (объект "стоит" на клетке)
+	mo.position = Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE)
+	objects_root.add_child(mo)
+	map_objects[cell] = mo
+
+func _remove_map_object(cell: Vector2i) -> void:
+	var mo: MapObject = map_objects.get(cell)
+	if mo == null:
+		return
+	map_objects.erase(cell)
+	if is_instance_valid(mo):
+		mo.queue_free()
+
+## Урон по объектам в радиусе от точки (world coords).
+func damage_area(world_pos: Vector2, radius: float, dmg: int) -> void:
+	for cell_key in map_objects.keys():
+		var mo: MapObject = map_objects[cell_key]
+		if is_instance_valid(mo) and mo.position.distance_to(world_pos) <= radius:
+			mo.take_damage(dmg)
+
+func _load_spec_image(spec: Dictionary) -> Image:
+	# Объект карты (map-objects): спрайт вписывается в клетку 32x32
+	if str(spec.get("kind", "")) == "object":
+		var obj_name := ObjectDB.object_name_from_spec(spec)
+		if obj_name != "":
+			var path := ObjectDB.frame_path(obj_name, 1)
+			var tex: Variant = load(path)
+			if tex != null:
+				var img: Image = tex.get_image()
+				img.convert(Image.FORMAT_RGBA8)
+				return _fit_in_cell(img)
+	return _load_tile_region(
+		int(spec.get("file", 1)), int(spec.get("variant", 0)), int(spec.get("row", 0)),
+		str(spec.get("color", "")))
+
+## Вписать спрайт в клетку 32x32 с сохранением пропорций (по центру, прозрачный фон).
+func _fit_in_cell(img: Image) -> Image:
+	var sw := img.get_width()
+	var sh := img.get_height()
+	if sw <= 0 or sh <= 0:
+		return img
+	var scale := minf(float(TILE) / float(sw), float(TILE) / float(sh))
+	var nw := maxi(1, int(round(float(sw) * scale)))
+	var nh := maxi(1, int(round(float(sh) * scale)))
+	var resized: Image = img.duplicate()
+	resized.resize(nw, nh, Image.INTERPOLATE_BILINEAR)
+	var out := Image.create_empty(TILE, TILE, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	out.blit_rect(resized, Rect2i(0, 0, nw, nh), Vector2i((TILE - nw) / 2, TILE - nh))
+	return out
 
 func _load_tile_region(file_idx: int, variant: int, row: int, color_hex: String = "") -> Image:
 	var file_n := clampi(file_idx, 0, 4)
@@ -268,6 +431,7 @@ func save_map(path: String) -> bool:
 		"height": map_height,
 		"tiles": Array(tiles),
 		"tex_ids": Array(tex_ids),
+		"under_tiles": Array(under_tiles),
 		"texture_sets": texture_sets,
 	}
 	var f := FileAccess.open(path, FileAccess.WRITE)

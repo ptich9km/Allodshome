@@ -180,6 +180,9 @@ func cast_ability(index: int, target_position: Vector2):
 			if enemy:
 				_create_lightning_effect(global_position, enemy.global_position)
 				enemy.take_damage(ability.damage, self)
+			# Урон по объектам карты в радиусе удара
+			if alm_map and alm_map.has_method("damage_area"):
+				alm_map.damage_area(target_position, 60.0, ability.damage)
 
 func create_projectile(from: Vector2, to: Vector2, damage: int):
 	var projectile_scene = preload("res://scenes/projectile.tscn")

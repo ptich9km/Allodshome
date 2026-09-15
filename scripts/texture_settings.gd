@@ -3,12 +3,13 @@ extends CanvasLayer
 ## Окно настроек map editor: для каждой категории (типа terrain) собрать набор
 ## текстур {file, variant, row} из исходных тайлов. Клик по варианту в сетке —
 ## добавить/убрать текстуру из набора категории (вариант + выбранный ряд).
-## «Сохранить» применяет наборы к карте и пишет палитру в user://map_editor_palette.json.
-
+## «Сохранить» применяет наборы к карте и пишет палитру в
+## res://assets/maps/map_editor_palette.json (файл в git — наборы
+## синхронизируются между устройствами и используются игрой).
 signal applied
 signal closed
 
-const SAVE_PATH := "user://map_editor_palette.json"
+const SAVE_PATH := "res://assets/maps/map_editor_palette.json"
 const PANEL_W := 840.0
 const PANEL_H := 560.0
 
@@ -19,10 +20,16 @@ var active_file := 1
 var active_row := 0
 
 var type_buttons := {}      # тип -> Button
-var file_buttons := {}      # файл -> Button
+var file_buttons := {}      # файл -> Button (1..4 = tile, 0 = объекты)
 var variant_buttons := {}   # вариант -> Button
 var variant_markers := {}   # вариант -> ColorRect (индикатор «в наборе»)
 var variant_grid: GridContainer
+var object_buttons := {}    # путь -> Button (объекты map-objects)
+var object_markers := {}    # путь -> ColorRect
+var objects_scroll: ScrollContainer
+var objects_grid: GridContainer
+var object_list: Array = [] # [{name, path}] из map-objects
+var row_box: HBoxContainer
 var row_slider: HSlider
 var row_label: Label
 var set_grid: GridContainer
@@ -32,12 +39,29 @@ func setup(m: CustomMap) -> void:
 	map = m
 	working_sets = _copy_sets(map.texture_sets)
 	_build_ui()
+	_collect_objects()
 	_select_type(active_type)
 	_select_file(active_file)
 
+func _collect_objects() -> void:
+	object_list.clear()
+	var dir := DirAccess.open("res://assets/map-objects")
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if dir.current_is_dir() and not entry.begins_with("."):
+			var p := "res://assets/map-objects/%s/sprites-001.png" % entry
+			if ResourceLoader.exists(p):
+				object_list.append({"name": entry, "path": p})
+		entry = dir.get_next()
+	dir.list_dir_end()
+	object_list.sort_custom(func(a, b): return str(a["name"]) < str(b["name"]))
+
 func _copy_sets(sets: Dictionary) -> Dictionary:
 	var out := {}
-	for t in range(5):
+	for t in range(8):
 		var arr: Array = []
 		if sets.has(t):
 			arr = sets[t]
@@ -81,16 +105,16 @@ func _build_type_column(panel: Panel) -> void:
 	panel.add_child(left)
 
 	var ty := 8.0
-	for t in range(5):
+	for t in range(8):
 		var b := Button.new()
 		b.text = CustomMap.TYPE_NAMES[t]
 		b.toggle_mode = true
 		b.position = Vector2(8, ty)
-		b.size = Vector2(124, 36)
+		b.size = Vector2(124, 32)
 		b.pressed.connect(func(id=t): _select_type(id))
 		left.add_child(b)
 		type_buttons[t] = b
-		ty += 44.0
+		ty += 40.0
 
 	var hint := Label.new()
 	hint.text = "Выберите категорию,\nзатем соберите её\nнабор текстур справа."
@@ -108,10 +132,18 @@ func _build_variant_area(panel: Panel) -> void:
 		var b := Button.new()
 		b.text = "tile%d" % (f + 1)
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(80, 28)
+		b.custom_minimum_size = Vector2(62, 28)
 		b.pressed.connect(func(id=f+1): _select_file(id))
 		tabs.add_child(b)
 		file_buttons[f + 1] = b
+
+	var ob := Button.new()
+	ob.text = "Объекты"
+	ob.toggle_mode = true
+	ob.custom_minimum_size = Vector2(62, 28)
+	ob.pressed.connect(func(): _select_file(0))
+	tabs.add_child(ob)
+	file_buttons[0] = ob
 
 	variant_grid = GridContainer.new()
 	variant_grid.columns = 4
@@ -121,7 +153,19 @@ func _build_variant_area(panel: Panel) -> void:
 	variant_grid.add_theme_constant_override("v_separation", 6)
 	panel.add_child(variant_grid)
 
-	var row_box := HBoxContainer.new()
+	objects_scroll = ScrollContainer.new()
+	objects_scroll.position = Vector2(168, 78)
+	objects_scroll.size = Vector2(360, 360)
+	objects_scroll.visible = false
+	panel.add_child(objects_scroll)
+
+	objects_grid = GridContainer.new()
+	objects_grid.columns = 4
+	objects_grid.add_theme_constant_override("h_separation", 6)
+	objects_grid.add_theme_constant_override("v_separation", 6)
+	objects_scroll.add_child(objects_grid)
+
+	row_box = HBoxContainer.new()
 	row_box.position = Vector2(168, 452)
 	row_box.size = Vector2(360, 44)
 	panel.add_child(row_box)
@@ -209,6 +253,16 @@ func _select_file(f: int) -> void:
 	for k in file_buttons:
 		var b: Button = file_buttons[k]
 		b.button_pressed = (int(k) == f)
+	if f == 0:
+		# Режим объектов map-objects: ряд не нужен, показываем сетку объектов
+		row_box.visible = false
+		objects_scroll.visible = true
+		variant_grid.visible = false
+		_refresh_variants()
+		return
+	row_box.visible = true
+	objects_scroll.visible = false
+	variant_grid.visible = true
 	var nrows := _file_rows(f)
 	row_slider.max_value = maxf(1.0, float(nrows - 1))
 	if active_row >= nrows:
@@ -229,6 +283,9 @@ func _file_rows(file_idx: int) -> int:
 	return int(tex.get_height()) / 32
 
 func _refresh_variants() -> void:
+	if active_file == 0:
+		_build_object_grid()
+		return
 	for child in variant_grid.get_children():
 		child.queue_free()
 	variant_buttons.clear()
@@ -278,6 +335,71 @@ func _toggle_texture(file_idx: int, variant: int, row: int) -> void:
 	_refresh_variants()
 	_refresh_set_grid()
 
+## --- Объекты map-objects ---
+
+func _build_object_grid() -> void:
+	for child in objects_grid.get_children():
+		child.queue_free()
+	object_buttons.clear()
+	object_markers.clear()
+	for obj in object_list:
+		var name := str(obj["name"])
+		var path := str(obj["path"])
+		var tex: Variant = load(path)
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(83, 83)
+		b.expand_icon = true
+		if tex != null:
+			var img: Image = tex.get_image()
+			b.icon = ImageTexture.create_from_image(img)
+		b.pressed.connect(func(n := name): _toggle_object(n))
+		objects_grid.add_child(b)
+		object_buttons[name] = b
+
+		# Маркер «в наборе»
+		var marker := ColorRect.new()
+		marker.color = Color(0.2, 1.0, 0.2, 1.0)
+		marker.size = Vector2(12, 12)
+		marker.position = Vector2(68, 68)
+		marker.visible = _is_object_in_set(name)
+		b.add_child(marker)
+		object_markers[name] = marker
+
+		# Бейджи: A — анимированный, R — разрушаемый
+		var badges := ""
+		if ObjectDB.frame_count(name) > 1:
+			badges += "A"
+		if ObjectDB.is_destructible(name):
+			badges += "R"
+		if badges != "":
+			var bd := Label.new()
+			bd.text = badges
+			bd.position = Vector2(2, 2)
+			bd.add_theme_color_override("font_color", Color(1, 0.9, 0.2, 1))
+			b.add_child(bd)
+
+func _toggle_object(name: String) -> void:
+	var set: Array = working_sets.get(active_type, [])
+	for i in range(set.size()):
+		var item: Dictionary = set[i]
+		if str(item.get("kind", "")) == "object" and ObjectDB.object_name_from_spec(item) == name:
+			if set.size() > 1:
+				set.remove_at(i)
+				_refresh_variants()
+				_refresh_set_grid()
+			return
+	set.append({"kind": "object", "obj": name})
+	_refresh_variants()
+	_refresh_set_grid()
+
+func _is_object_in_set(name: String) -> bool:
+	var set: Array = working_sets.get(active_type, [])
+	for item in set:
+		if item is Dictionary:
+			if str(item.get("kind", "")) == "object" and ObjectDB.object_name_from_spec(item) == name:
+				return true
+	return false
+
 func _refresh_set_grid() -> void:
 	for child in set_grid.get_children():
 		child.queue_free()
@@ -285,8 +407,7 @@ func _refresh_set_grid() -> void:
 	set_count_label.text = "Текстур в наборе: %d (клик — убрать)" % set.size()
 	for i in range(set.size()):
 		var item: Dictionary = set[i]
-		var img: Image = map._load_tile_region(
-			int(item.get("file", 1)), int(item.get("variant", 0)), int(item.get("row", 0)))
+		var img: Image = map._load_spec_image(item)
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(44, 44)
 		b.expand_icon = true
@@ -304,7 +425,8 @@ func _remove_from_set(idx: int) -> void:
 
 func _on_add_default() -> void:
 	var def: Dictionary = CustomMap.DEFAULT_TEX[active_type]
-	if not _is_in_set(int(def["file"]), int(def["variant"]), int(def["row"])):
+	# У цветовых плейсхолдеров (строения/НПЦ/спавн) нет variant/row
+	if not _is_in_set(int(def.get("file", 1)), int(def.get("variant", -1)), int(def.get("row", -1))):
 		var set: Array = working_sets.get(active_type, [])
 		set.append(def.duplicate(true))
 		_refresh_set_grid()
