@@ -48,12 +48,9 @@ zoom = Vector2(2, 2)
 [node name="Player" type="CharacterBody2D" parent="."]
 position = Vector2(0, 0)
 script = ExtResource("2_player")
-max_hp = 100
-max_mana = 50
-strength = 10
+body = 10
 agility = 10
-intellect = 10
-endurance = 10
+mind = 10
 spirit = 10
 
 [node name="Sprite" type="Sprite2D" parent="Player"]

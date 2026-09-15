@@ -312,36 +312,43 @@ func _update_stats():
 	var p = player
 
 	# Производные значения (формулы как в оригинале)
-	var damage_min = p.strength
-	var damage_max = p.strength + 5
-	var defense = p.endurance / 2
-	var absorption = p.endurance / 3
-	var hp_regen = 1 + p.endurance / 10
-	var mana_regen = 1 + p.spirit / 10
+	var damage_min = p.get_damage_min()
+	var damage_max = p.get_damage_max()
+	var defense = p.get_defense()
+	var absorption = p.get_absorption()
+	var attack = p.get_attack()
+	var sight = p.get_sight()
+	var hp_regen = p._calc_hp_regen()
+	var mana_regen = p._calc_mana_regen()
 
 	var stats = "ИМЯ: ГЕРОЙ\n"
 	stats += "─────────────────\n"
-	stats += "СИЛА:        %d\n" % p.strength
-	stats += "РАЗУМ:       %d\n" % p.intellect
-	stats += "ЛОВКОСТЬ:    %d\n" % p.agility
-	stats += "ДУХ:         %d\n" % p.spirit
+	stats += "ТЕЛО:      %d\n" % p.body
+	stats += "ЛОВКОСТЬ:  %d\n" % p.agility
+	stats += "РАЗУМ:     %d\n" % p.mind
+	stats += "ДУХ:       %d\n" % p.spirit
 	stats += "─────────────────\n"
-	stats += "ЗДОРОВЬЕ:    %d/%d\n" % [p.current_hp, p.max_hp]
-	stats += "РЕГЕН HP:    %d\n" % hp_regen
-	stats += "МАНА:        %d/%d\n" % [p.current_mana, p.max_mana]
-	stats += "РЕГЕН МАНЫ:  %d\n" % mana_regen
+	stats += "ЗДОРОВЬЕ:  %d/%d\n" % [p.current_hp, p.max_hp]
+	stats += "РЕГЕН HP:  %d\n" % hp_regen
+	stats += "МАНА:      %d/%d\n" % [p.current_mana, p.max_mana]
+	stats += "РЕГЕН МАНЫ:%d\n" % mana_regen
 	stats += "─────────────────\n"
-	stats += "АТАКА:       %d\n" % p.strength
-	stats += "УРОН:        %d-%d\n" % [damage_min, damage_max]
-	stats += "ЗАЩИТА:      %d\n" % defense
-	stats += "ПОГЛОЩЕНИЕ:  %d\n" % absorption
-	stats += "СКОРОСТЬ:    %d\n" % int(p.move_speed)
+	stats += "ТОЧНОСТЬ:  %d\n" % attack
+	stats += "УРОН:      %d-%d\n" % [damage_min, damage_max]
+	stats += "ЗАЩИТА:    %d\n" % defense
+	stats += "ПОГЛОЩЕНИЕ:%d\n" % absorption
+	stats += "СКОРОСТЬ:  %d\n" % int(p.move_speed)
+	stats += "ОБЗОР:     %d\n" % sight
 	stats += "─────────────────\n"
-	stats += "ЗАЩИТА ОГОНЬ:  %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА ВОДА:   %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА ВОЗДУХ: %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА ЗЕМЛЯ:  %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА АСТРАЛ: %d\n" % (p.spirit / 2)
+	stats += "ОГОНЬ: %d  ВОДА: %d\n" % [p.get_protection_fire(), p.get_protection_water()]
+	stats += "ВОЗДУХ: %d  ЗЕМЛЯ: %d\n" % [p.get_protection_air(), p.get_protection_earth()]
+	stats += "АСТРАЛ: %d\n" % p.get_protection_astral()
+	stats += "─────────────────\n"
+	stats += "МЕЧ:%d  ТОПОР:%d\n" % [p.blade_skill, p.axe_skill]
+	stats += "ДУБИНА:%d  КОПЬЁ:%d\n" % [p.bludgeon_skill, p.pike_skill]
+	stats += "СТРЕЛЬБА:%d\n" % p.shooting_skill
+	stats += "МАГИЯ: ОГНЯ:%d ВОДЫ:%d\n" % [p.fire_skill, p.water_skill]
+	stats += "ВОЗДУХ:%d ЗЕМЛЯ:%d АСТРАЛ:%d\n" % [p.air_skill, p.earth_skill, p.astral_skill]
 	stats_label.text = stats
 
 func update_ui(p: Player):
