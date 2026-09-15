@@ -22,8 +22,8 @@ var _last_dir := 0
 
 var _sprite: Sprite2D
 
-## Настроить набор. anchor_offset - сдвиг спрайта (якорь CenterX/CenterY из базы) от клетки.
-func setup(name: String, anchor_offset: Vector2 = Vector2.ZERO) -> void:
+## Настроить набор. Переиспользует спрайт (не плодит новых при экипировке).
+func setup(name: String) -> void:
 	set_name = name
 	var db := UnitDB.get_set(name)
 	prefix = UnitDB.frame_prefix(name)
@@ -37,9 +37,11 @@ func setup(name: String, anchor_offset: Vector2 = Vector2.ZERO) -> void:
 		if tex != null:
 			frames.append(tex)
 
-	_sprite = Sprite2D.new()
-	_sprite.centered = false
-	add_child(_sprite)
+	if _sprite == null:
+		_sprite = Sprite2D.new()
+		_sprite.name = "Sprite"
+		_sprite.centered = false
+		add_child(_sprite)
 	_apply_frame()
 
 ## Направление по вектору скорости/взгляда (world coords).
@@ -104,7 +106,9 @@ func _times_for(kind: int) -> Array:
 
 func _block_offset() -> int:
 	var off := 0
-	match anim:
+	# IDLE показывает первый кадр движения (в блоке движения)
+	var kind := Anim.MOVE if anim == Anim.IDLE else anim
+	match kind:
 		Anim.MOVE:
 			off = 0
 		Anim.ATTACK:
@@ -116,11 +120,17 @@ func _block_offset() -> int:
 func _apply_frame() -> void:
 	if frames.is_empty() or _sprite == null:
 		return
+	# Раскладка направления-мажорная: в блоке подряд идут фазы одного направления:
+	# frame = block_start + dir*phases_in_block + phase
+	var kind := Anim.MOVE if anim == Anim.IDLE else anim
 	var off := _block_offset()
-	var idx := off + anim_idx * DIRS + dir
+	var phases: int = _phases_for(kind)
+	if phases < 1:
+		phases = 1
+	var idx := off + dir * phases + anim_idx
 	_last_dir = dir
 	if idx >= frames.size():
-		idx = off + anim_idx * DIRS  # если направлений меньше 8, берём первое
+		idx = off + dir * phases  # если блок не полный, берём первую фазу направления
 		if idx >= frames.size():
 			idx = off
 	var tex: Texture2D = frames[idx]
