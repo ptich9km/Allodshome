@@ -20,6 +20,7 @@ var tex_strip_buttons: Array = []
 var brush_size_buttons: Array = []
 var status_label: Label
 var settings_panel: TextureSettingsPanel = null
+var catalog_panel: InventoryCatalogPanel = null
 var _fill_mode := false
 var fill_btn: Button
 var _undo_stack: Array = []
@@ -55,6 +56,7 @@ func _build_ui() -> void:
 	x = _add_top_button(top, x, "Сохранить", _on_save)
 	x = _add_top_button(top, x, "Загрузить", _on_load)
 	x = _add_top_button(top, x, "Настройки…", _on_settings)
+	x = _add_top_button(top, x, "Предметы…", _on_catalog)
 	x = _add_top_button(top, x, "Назад в игру (F9)", _on_back)
 
 	# Размер новой карты
@@ -372,6 +374,23 @@ func _on_settings_applied() -> void:
 
 func _on_settings_closed() -> void:
 	settings_panel = null
+
+## --- Каталог предметов инвентаря ---
+
+func _on_catalog() -> void:
+	if is_instance_valid(catalog_panel):
+		return
+	catalog_panel = InventoryCatalogPanel.new()
+	catalog_panel.setup()
+	add_child(catalog_panel)
+	catalog_panel.applied.connect(_on_catalog_applied)
+	catalog_panel.closed.connect(_on_catalog_closed)
+
+func _on_catalog_applied() -> void:
+	status_label.text = "Каталог предметов сохранён"
+
+func _on_catalog_closed() -> void:
+	catalog_panel = null
 
 ## Глобальные наборы текстур (палитра редактора) — переживают перезапуск.
 func _load_global_sets() -> void:

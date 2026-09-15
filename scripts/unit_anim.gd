@@ -11,6 +11,12 @@ extends Node2D
 ## мировые направления 5,6,7 (вправо-вверх/вправо/вниз-вправо) показывают файловые
 ## 3,2,1 с flip_h=true. Наборы с dirs=8 (swordsman, монстры) — полные 8 направлений.
 
+## Раскладка кадров:
+## - 5 направлений (unarmed): направление-мажор, блоки idle→move→attack→dying→decay,
+##   правые направления = зеркало левых (flip_h).
+## - 8 направлений (swordsman и др.): фаза-мажор, кадр = block + phase*8 + dir;
+##   движение 8 фаз, атака 7, смерть 4 (по units.txt).
+
 enum Anim { IDLE, MOVE, ATTACK, DYING, DECAY }
 
 const FULL_DIRS := 8
@@ -149,22 +155,30 @@ func _apply_frame() -> void:
 	if frames.is_empty() or _sprite == null:
 		return
 	var kind := Anim.MOVE if anim == Anim.IDLE else anim
+	var idx := _frame_index(kind)
+	_last_dir = dir
+	if idx >= frames.size():
+		idx = _block_offset()  # защита от выхода за пределы
+	var tex: Texture2D = frames[idx]
+	_sprite.texture = tex
+	# Кадры обрезаны по содержимому: центрируем по X, низ спрайта = позиция узла
+	_sprite.position = Vector2(-tex.get_width() / 2.0, -float(tex.get_height()))
+
+## Индекс кадра: направление-мажор. frame = block_start + file_dir*phases + phase.
+## Для dirs=5 (unarmed) правые направления (5,6,7) = зеркало левых (3,2,1) flip_h.
+## Для dirs=8 (оружие, меч) все 8 направлений нарисованы — зеркало не нужно.
+func _frame_index(kind: int) -> int:
 	var fd := _file_dir_of(dir)
 	var file_dir: int = fd[0]
 	var flipped: bool = fd[1]
+	_sprite.flip_h = flipped
+	if anim == Anim.IDLE:
+		# Стойка: у оружия (8 напр) — отдельные кадры 001-008 (idle-блок в начале).
+		# У unarmed (5 напр) — первый кадр ходьбы направления (подтверждено).
+		if _file_dirs() >= FULL_DIRS:
+			return dir
+		return _block_offset()
 	var phases: int = _phases_for(kind)
 	if phases < 1:
 		phases = 1
-	var idx := _block_offset() + file_dir * phases + anim_idx
-	_last_dir = dir
-	if idx >= frames.size():
-		# блок не полный: берём первую фазу последнего нарисованного направления
-		var d := _file_dirs()
-		idx = _block_offset() + min(file_dir, d - 1) * phases
-		if idx >= frames.size():
-			idx = _block_offset()
-	var tex: Texture2D = frames[idx]
-	_sprite.texture = tex
-	_sprite.flip_h = flipped
-	# Кадры обрезаны по содержимому: центрируем по X, низ спрайта = позиция узла
-	_sprite.position = Vector2(-tex.get_width() / 2.0, -float(tex.get_height()))
+	return _block_offset() + file_dir * phases + anim_idx

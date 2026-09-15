@@ -85,31 +85,37 @@ func _setup_spells():
 var inventory_slots: Array = []
 var inventory_items: Array = []
 
-## Тестовые предметы: все виды оружия и брони по правилам игры.
+## Тестовые предметы: железо (раскладка пользователя, каталог inventory).
 ## slot: "armor"|"weapon"|"shield", armor: "light"|"heavy", weapon: тип,
-## two_handed/shield_useful — параметры анимации героя.
+## two_handed — параметры анимации героя. Железо = лёгкая броня.
 const TEST_GEAR := [
-	{"name": "Кожаная броня", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0006006-000.png"},
-	{"name": "Плотная кожа", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0006010-000.png"},
-	{"name": "Бронзовая броня", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0501202-000.png"},
-	{"name": "Железная броня", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0601202-000.png"},
-	{"name": "Драконья кожа", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0701302-000.png"},
-	{"name": "Стальная броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0502205-000.png"},
-	{"name": "Мифриловая броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0602305-000.png"},
-	{"name": "Адамантовая броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0701309-000.png"},
-	{"name": "Метеоритная броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0801013-000.png"},
-	{"name": "Кристальная броня", "slot": "armor", "armor": "heavy", "icon": "res://assets/inventory/0901214-000.png"},
-	{"name": "Меч", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001002-000.png"},
-	{"name": "Двуручный меч", "slot": "weapon", "weapon": "sword", "two_handed": true, "icon": "res://assets/inventory/0001003-000.png"},
-	{"name": "Топор", "slot": "weapon", "weapon": "axe", "two_handed": false, "icon": "res://assets/inventory/0101002-000.png"},
-	{"name": "Двуручный топор", "slot": "weapon", "weapon": "axe", "two_handed": true, "icon": "res://assets/inventory/0101006-000.png"},
-	{"name": "Булава", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0201102-000.png"},
-	{"name": "Копьё", "slot": "weapon", "weapon": "pike", "two_handed": false, "icon": "res://assets/inventory/0301202-000.png"},
-	{"name": "Лук", "slot": "weapon", "weapon": "bow", "icon": "res://assets/inventory/0005002-000.png"},
-	{"name": "Арбалет", "slot": "weapon", "weapon": "xbow", "icon": "res://assets/inventory/0008018-000.png"},
-	{"name": "Посох", "slot": "weapon", "weapon": "staff", "two_handed": true, "icon": "res://assets/inventory/0010026-000.png"},
-	{"name": "Кулаки", "slot": "weapon", "weapon": "unarmed", "icon": "res://assets/inventory/0001009-000.png"},
-	{"name": "Щит", "slot": "shield", "icon": "res://assets/inventory/0002001-000.png"},
+	{"name": "Меч железо", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001002-000.png"},
+	{"name": "Меч железо 1", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001003-000.png"},
+	{"name": "Меч железо 2", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001004-000.png"},
+	{"name": "Меч железо двуручный", "slot": "weapon", "weapon": "sword", "two_handed": true, "icon": "res://assets/inventory/0001006-000.png"},
+	{"name": "Булава железо", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0001008-000.png"},
+	{"name": "Булава железо 1", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0001009-000.png"},
+	{"name": "Булава железо 2", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0001010-000.png"},
+	{"name": "Булава железо двуручная", "slot": "weapon", "weapon": "club", "two_handed": true, "icon": "res://assets/inventory/0001011-000.png"},
+	{"name": "Булава железо двуручная 1", "slot": "weapon", "weapon": "club", "two_handed": true, "icon": "res://assets/inventory/0001012-000.png"},
+	{"name": "Копьё железо", "slot": "weapon", "weapon": "pike", "two_handed": false, "icon": "res://assets/inventory/0001015-000.png"},
+	{"name": "Копьё железо 1", "slot": "weapon", "weapon": "pike", "two_handed": false, "icon": "res://assets/inventory/0001017-000.png"},
+	{"name": "Топор железо", "slot": "weapon", "weapon": "axe", "two_handed": false, "icon": "res://assets/inventory/0001018-000.png"},
+	{"name": "Топор железо 1", "slot": "weapon", "weapon": "axe", "two_handed": false, "icon": "res://assets/inventory/0001518-000.png"},
+	{"name": "Топор двуручный", "slot": "weapon", "weapon": "axe", "two_handed": true, "icon": "res://assets/inventory/0001019-000.png"},
+	{"name": "Лук", "slot": "weapon", "weapon": "bow", "icon": "res://assets/inventory/0801020-000.png"},
+	{"name": "Арбалет железо", "slot": "weapon", "weapon": "xbow", "icon": "res://assets/inventory/0201122-000.png"},
+	{"name": "Посох двуручный", "slot": "weapon", "weapon": "staff", "two_handed": true, "icon": "res://assets/inventory/0801013-000.png"},
+	{"name": "Щит железо", "slot": "shield", "icon": "res://assets/inventory/0002001-000.png"},
+	{"name": "Щит железо 1", "slot": "shield", "icon": "res://assets/inventory/0002002-000.png"},
+	{"name": "Шлем железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0005002-000.png"},
+	{"name": "Шлем железо 1", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0006010-000.png"},
+	{"name": "Нагрудник железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0008018-000.png"},
+	{"name": "Нагрудник железо 1", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0008019-000.png"},
+	{"name": "Наручи железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0009020-000.png"},
+	{"name": "Наручи железо 1", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0009022-000.png"},
+	{"name": "Перчатки железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0010026-000.png"},
+	{"name": "Поножи железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0012030-000.png"},
 ]
 
 func _setup_inventory():
@@ -164,13 +170,15 @@ func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictio
 		var tex = load(icon_path)
 		var slot: TextureRect = inventory_slots[slot_idx]
 		if tex:
-			# Иконка предмета поверх фона слота
+			# Иконка предмета поверх фона слота (не перехватывает клики!)
 			var icon_rect = TextureRect.new()
 			icon_rect.texture = tex
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			slot.add_child(icon_rect)
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP
 
 		var item_data: Dictionary = gear.duplicate(true)
 		item_data["name"] = item_name

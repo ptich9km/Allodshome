@@ -27,7 +27,7 @@ var alm_map = null   # CustomMap или AlmMap из группы "alm_map"
 
 # --- Экипировка героя (определяет набор анимаций) ---
 var armor_kind: String = "heavy"   # "heavy" -> heroes/, "light" -> heroes_l/
-var weapon: String = "sword"       # unarmed, sword, axe, club, pike, bow, xbow, staff, magic
+var weapon: String = "unarmed"     # по умолчанию без оружия — отлаживаем его анимацию
 var two_handed: bool = false
 var has_shield: bool = false
 var _anim: UnitAnim = null
