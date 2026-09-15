@@ -5,6 +5,7 @@ class_name ObjectDB
 
 const DB_PATH := "res://assets/map-objects/object_db.json"
 const ANIM_TICK := 0.06  # множитель тайминга кадра (anim_time)
+const DEFAULT_FRAME_TIME := 0.1  # секунд на кадр, если расписания нет
 
 static var _db: Dictionary = {}
 static var _loaded := false
@@ -53,23 +54,34 @@ static func dead_path(name: String) -> String:
 static func is_destructible(name: String) -> bool:
 	return dead_path(name) != ""
 
-## Массив длительности кадров анимации (секунды), пустой если нет.
+## Массив длительности кадров анимации (секунды).
+## Если явного расписания нет, но кадров >1 — дефолтный тайминг на каждый кадр.
 static func anim_times(name: String) -> Array:
 	var o := get_obj(name)
-	if o.is_empty() or not o.has("anim_time"):
-		return []
-	var raw: Array = o.get("anim_time", [])
-	if raw.is_empty():
-		return []
-	var out: Array = []
-	for t in raw:
-		out.append(float(t) * ANIM_TICK)
-	return out
+	var raw: Variant = o.get("anim_time", null)
+	if raw is Array and not raw.is_empty():
+		var out: Array = []
+		for t in raw:
+			out.append(float(t) * ANIM_TICK)
+		return out
+	var frames: int = frame_count(name)
+	var def: Array = []
+	for i in range(maxi(frames, 1)):
+		def.append(DEFAULT_FRAME_TIME)
+	return def
 
 ## Массив порядка кадров анимации (индексы 0..N-1).
+## Если явного расписания нет, но кадров >1 — все кадры по порядку (зациклено).
 static func anim_frames(name: String) -> Array:
 	var o := get_obj(name)
-	return o.get("anim_frame", [])
+	var raw: Variant = o.get("anim_frame", null)
+	if raw is Array and not raw.is_empty():
+		return raw
+	var frames: int = frame_count(name)
+	var seq: Array = []
+	for i in range(frames):
+		seq.append(i)
+	return seq
 
 ## Из спецификации объекта получить имя (поддержка нового "obj" и старого "path").
 static func object_name_from_spec(spec: Dictionary) -> String:
