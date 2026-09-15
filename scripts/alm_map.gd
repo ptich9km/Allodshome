@@ -22,6 +22,8 @@ var solar_angle: float = 0.785398  # угол солнца из info (.alm), def
 var mesh: MeshInstance2D
 var _atlas: ImageTexture
 var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
+var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
+var obstacles_root: Node2D      # слой препятствий (y-sort)
 
 # Высотная сетка для движения (0/1: скала приподнята) — как раньше
 var _height_grid: Array = []
@@ -42,10 +44,49 @@ func _ready() -> void:
 	_obstacles = data["obstacles"]
 	var info: Dictionary = data.get("info", {})
 	solar_angle = float(info.get("solar_angle", 0.785398))
+	_load_obstacle_db()
 	_build_height_grid()
 	_build_atlas()
 	_build_relief_mesh()
+	_build_obstacles()
 	print("AlmMap: %s %dx%d клеток, солнце %s°" % [alm_path.get_file(), map_width, map_height, str(rad_to_deg(solar_angle))])
+
+## Таблица препятствий: .alm obstacle id -> параметры спрайта (из objects.txt/obj.reg).
+func _load_obstacle_db() -> void:
+	var f := FileAccess.open("res://assets/map-objects/alm_objects.json", FileAccess.READ)
+	if f == null:
+		push_warning("AlmMap: нет alm_objects.json — препятствия не будут показаны")
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		_obstacle_db = parsed
+
+## Препятствия (.alm obstacles): дерево/камень/статуя на клетках с id > 0.
+func _build_obstacles() -> void:
+	if obstacles_root == null:
+		obstacles_root = Node2D.new()
+		obstacles_root.name = "Obstacles"
+		obstacles_root.y_sort_enabled = true
+		obstacles_root.z_index = 1
+		add_child(obstacles_root)
+	for y in range(map_height):
+		for x in range(map_width):
+			var oid := _obstacles[y * map_width + x]
+			if oid == 0:
+				continue
+			var spec: Dictionary = _obstacle_db.get(str(oid), {})
+			if spec.is_empty():
+				continue
+			var folder := str(spec.get("folder", ""))
+			if folder.is_empty():
+				continue
+			var ob := AlmObstacle.new()
+			ob.setup(folder, int(spec.get("phases", 1)),
+				int(spec.get("w", 128)), int(spec.get("h", 128)),
+				int(spec.get("cx", 64)), int(spec.get("cy", 96)))
+			ob.place_at(Vector2i(x, y), TILE, relief_at_tile(x, y))
+			obstacles_root.add_child(ob)
 
 ## Высотная сетка для движения (как раньше): скала = 1, остальное 0.
 func _build_height_grid() -> void:
@@ -122,6 +163,10 @@ func _build_atlas() -> void:
 		_cell_uv[key] = Vector4(u0, v0, u1, v1)
 	_atlas = ImageTexture.create_from_image(atlas)
 	print("AlmMap: атлас %d ячеек" % cells.size())
+
+## Для отладки: сама текстура атласа.
+func get_atlas_texture() -> ImageTexture:
+	return _atlas
 
 func _uv_for_cell(file_n: int, variant: int, row: int) -> Vector4:
 	var key := "f%d-v%d-r%d" % [file_n, variant, row]
