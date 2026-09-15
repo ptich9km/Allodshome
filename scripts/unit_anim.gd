@@ -1,20 +1,24 @@
 class_name UnitAnim
 extends Node2D
 ## Анимированный юнит (герой/НПЦ/монстр) из наборов assets/units.
-## Раскладка кадров: blocks по фазам (move, attack, dying, ...), внутри блока
-## 8 кадров направлений: frame = block_start + phase*8 + direction.
 ##
-## Направления 0-7: 0=юг(анфас), 1=юго-запад, 2=запад, 3=северо-запад,
-## 4=север(спина), 5=северо-восток, 6=восток, 7=юго-восток (против часовой).
+## Раскладка кадров (по карте пользователя, набор unarmed 129 кадров):
+## блоки идут подряд: idle(9) → move(50) → attack(35) → dying(20) → decay(15);
+## внутри блока — направление-мажор: frame = block_start + file_dir*phases + phase.
+##
+## В файле нарисованы ФАЙЛОВЫЕ направления (dirs = 5 у героя): 0=вниз, 1=вниз-влево,
+## 2=влево, 3=влево-вверх, 4=вверх. Правая половина — зеркало левой:
+## мировые направления 5,6,7 (вправо-вверх/вправо/вниз-вправо) показывают файловые
+## 3,2,1 с flip_h=true. Наборы с dirs=8 (swordsman, монстры) — полные 8 направлений.
 
-enum Anim { IDLE, MOVE, ATTACK, DYING }
+enum Anim { IDLE, MOVE, ATTACK, DYING, DECAY }
 
-const DIRS := 8
+const FULL_DIRS := 8
 
 var set_name := ""            # "heroes/swordsman", "monsters/orc", ...
 var prefix := "sprites"       # префикс кадра в папке (sprites | swordsman | ...)
 var frames: Array = []        # Texture2D кадры sprites-001..N
-var dir := 0                  # текущее направление 0-7
+var dir := 0                  # текущее МИРОВОЕ направление 0-7
 var anim: int = Anim.IDLE
 var anim_idx := 0             # номер фазы в текущем блоке
 var anim_time := 0.0
@@ -42,7 +46,23 @@ func setup(name: String) -> void:
 		_sprite.name = "Sprite"
 		_sprite.centered = false
 		add_child(_sprite)
+	else:
+		_sprite.flip_h = false
 	_apply_frame()
+
+## Число нарисованных направлений в файле (5 или 8).
+func _file_dirs() -> int:
+	return UnitDB.dirs(set_name)
+
+## Мировое направление (0-7) -> файловый индекс направления (0..dirs-1) + зеркало.
+func _file_dir_of(world_dir: int) -> Array:
+	var d := _file_dirs()
+	if d >= FULL_DIRS:
+		return [world_dir, false]
+	# 5 направлений: правая половина (5,6,7) = зеркало (3,2,1)
+	if world_dir <= 4:
+		return [world_dir, false]
+	return [FULL_DIRS - world_dir, true]
 
 ## Направление по вектору скорости/взгляда (world coords).
 func set_direction_vec(dir_vec: Vector2) -> void:
@@ -50,9 +70,9 @@ func set_direction_vec(dir_vec: Vector2) -> void:
 		return
 	var ang := rad_to_deg(dir_vec.angle())  # -180..180, 0 = вправо
 	# карта: 0 = юг (вниз экрана = 90deg в Godot), против часовой
-	var d := int(round((ang - 90.0) / 45.0)) % DIRS
+	var d := int(round((ang - 90.0) / 45.0)) % FULL_DIRS
 	if d < 0:
-		d += DIRS
+		d += FULL_DIRS
 	dir = d
 
 func play(anim_kind: int, reset: bool = false) -> void:
@@ -92,6 +112,8 @@ func _phases_for(kind: int) -> int:
 			return UnitDB.attack_phases(set_name)
 		Anim.DYING:
 			return UnitDB.dying_phases(set_name)
+		Anim.DECAY:
+			return UnitDB.decay_phases(set_name)
 	return 1
 
 func _times_for(kind: int) -> Array:
@@ -104,36 +126,45 @@ func _times_for(kind: int) -> Array:
 			return UnitDB.block_times(set_name, "dying_t", _phases_for(kind))
 	return []
 
+## Смещение блока анимации в кадрах (0-based), с учётом предыдущих блоков.
 func _block_offset() -> int:
+	var d := _file_dirs()
 	var off := 0
-	# IDLE показывает первый кадр движения (в блоке движения)
 	var kind := Anim.MOVE if anim == Anim.IDLE else anim
+	# idle-блок (если есть) идёт первым
+	off = UnitDB.idle_phases(set_name)
 	match kind:
 		Anim.MOVE:
-			off = 0
+			return off
 		Anim.ATTACK:
-			off = UnitDB.move_phases(set_name) * DIRS
+			return off + UnitDB.move_phases(set_name) * d
 		Anim.DYING:
-			off = (UnitDB.move_phases(set_name) + UnitDB.attack_phases(set_name)) * DIRS
+			return off + (UnitDB.move_phases(set_name) + UnitDB.attack_phases(set_name)) * d
+		Anim.DECAY:
+			return off + (UnitDB.move_phases(set_name) + UnitDB.attack_phases(set_name) \
+				+ UnitDB.dying_phases(set_name)) * d
 	return off
 
 func _apply_frame() -> void:
 	if frames.is_empty() or _sprite == null:
 		return
-	# Раскладка направления-мажорная: в блоке подряд идут фазы одного направления:
-	# frame = block_start + dir*phases_in_block + phase
 	var kind := Anim.MOVE if anim == Anim.IDLE else anim
-	var off := _block_offset()
+	var fd := _file_dir_of(dir)
+	var file_dir: int = fd[0]
+	var flipped: bool = fd[1]
 	var phases: int = _phases_for(kind)
 	if phases < 1:
 		phases = 1
-	var idx := off + dir * phases + anim_idx
+	var idx := _block_offset() + file_dir * phases + anim_idx
 	_last_dir = dir
 	if idx >= frames.size():
-		idx = off + dir * phases  # если блок не полный, берём первую фазу направления
+		# блок не полный: берём первую фазу последнего нарисованного направления
+		var d := _file_dirs()
+		idx = _block_offset() + min(file_dir, d - 1) * phases
 		if idx >= frames.size():
-			idx = off
+			idx = _block_offset()
 	var tex: Texture2D = frames[idx]
 	_sprite.texture = tex
+	_sprite.flip_h = flipped
 	# Кадры обрезаны по содержимому: центрируем по X, низ спрайта = позиция узла
 	_sprite.position = Vector2(-tex.get_width() / 2.0, -float(tex.get_height()))

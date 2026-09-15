@@ -62,7 +62,14 @@ static func cast_phases(name: String) -> int:
 	return int(get_set(name).get("cast", 0))
 
 static func idle_phases(name: String) -> int:
-	return int(get_set(name).get("idle", 0))
+	return int(get_set(name).get("idle_phases", 0))
+
+static func decay_phases(name: String) -> int:
+	return int(get_set(name).get("decay", 0))
+
+## Число нарисованных направлений в файле (5 для героя с зеркалом правых).
+static func dirs(name: String) -> int:
+	return int(get_set(name).get("dirs", 8))
 
 ## Тайминги (секунды) по фазам блока. Если расписания нет — равномерный дефолт.
 static func block_times(name: String, key: String, phases: int) -> Array:
