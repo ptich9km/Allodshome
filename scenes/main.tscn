@@ -159,14 +159,14 @@ text = "Охранять"
 offset_left = 1075.0
 offset_top = 315.0
 offset_right = 1235.0
-offset_bottom = 557.0
+offset_bottom = 480.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
 [node name="PortraitBg" type="TextureRect" parent="UI/PortraitBorder"]
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 160.0
-offset_bottom = 242.0
+offset_bottom = 165.0
 texture = ExtResource("humanbackr_tex")
 expand_mode = 0
 stretch_mode = 0
@@ -175,14 +175,14 @@ stretch_mode = 0
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 160.0
-offset_bottom = 242.0
+offset_bottom = 165.0
 expand_mode = 1
 stretch_mode = 5
 texture = ExtResource("hero_portrait")
 
 [node name="StatsBorder" type="Panel" parent="UI"]
 offset_left = 1075.0
-offset_top = 560.0
+offset_top = 485.0
 offset_right = 1275.0
 offset_bottom = 800.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
@@ -191,7 +191,8 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 190.0
-offset_bottom = 275.0
+offset_bottom = 310.0
+theme_override_font_sizes/font_size = 10
 autowrap_mode = 3
 
 [node name="PauseLabel" type="Label" parent="UI"]

@@ -61,7 +61,7 @@ func _spawn_player_on_walkable():
 			for dx in range(-r, r + 1):
 				var tx := cx + dx
 				var ty := cy + dy
-				var ts := alm_map.tile_size()
+				var ts := alm_map.tile_size
 				var wx := tx * ts + ts / 2
 				var wy := ty * ts + ts / 2
 				if alm_map.is_walkable_world(Vector2(wx, wy)):

@@ -34,8 +34,8 @@ func setup_ui(p: Player):
 
 	_setup_inventory()
 
-	# AlmMap для миникарты (реальные данные карты)
-	alm_map = get_tree().get_first_node_in_group("alm_map") as AlmMap
+	# Карта для миникарты: CustomMap или AlmMap (группа "alm_map", без каста — они не родственники)
+	alm_map = get_tree().get_first_node_in_group("alm_map")
 
 	_setup_minimap()
 	_setup_action_buttons()
@@ -322,33 +322,23 @@ func _update_stats():
 	var mana_regen = p._calc_mana_regen()
 
 	var stats = "ИМЯ: ГЕРОЙ\n"
-	stats += "─────────────────\n"
-	stats += "ТЕЛО:      %d\n" % p.body
-	stats += "ЛОВКОСТЬ:  %d\n" % p.agility
-	stats += "РАЗУМ:     %d\n" % p.mind
-	stats += "ДУХ:       %d\n" % p.spirit
-	stats += "─────────────────\n"
-	stats += "ЗДОРОВЬЕ:  %d/%d\n" % [p.current_hp, p.max_hp]
-	stats += "РЕГЕН HP:  %d\n" % hp_regen
-	stats += "МАНА:      %d/%d\n" % [p.current_mana, p.max_mana]
-	stats += "РЕГЕН МАНЫ:%d\n" % mana_regen
-	stats += "─────────────────\n"
-	stats += "ТОЧНОСТЬ:  %d\n" % attack
-	stats += "УРОН:      %d-%d\n" % [damage_min, damage_max]
-	stats += "ЗАЩИТА:    %d\n" % defense
-	stats += "ПОГЛОЩЕНИЕ:%d\n" % absorption
-	stats += "СКОРОСТЬ:  %d\n" % int(p.move_speed)
-	stats += "ОБЗОР:     %d\n" % sight
-	stats += "─────────────────\n"
-	stats += "ОГОНЬ: %d  ВОДА: %d\n" % [p.get_protection_fire(), p.get_protection_water()]
-	stats += "ВОЗДУХ: %d  ЗЕМЛЯ: %d\n" % [p.get_protection_air(), p.get_protection_earth()]
-	stats += "АСТРАЛ: %d\n" % p.get_protection_astral()
-	stats += "─────────────────\n"
-	stats += "МЕЧ:%d  ТОПОР:%d\n" % [p.blade_skill, p.axe_skill]
-	stats += "ДУБИНА:%d  КОПЬЁ:%d\n" % [p.bludgeon_skill, p.pike_skill]
-	stats += "СТРЕЛЬБА:%d\n" % p.shooting_skill
-	stats += "МАГИЯ: ОГНЯ:%d ВОДЫ:%d\n" % [p.fire_skill, p.water_skill]
-	stats += "ВОЗДУХ:%d ЗЕМЛЯ:%d АСТРАЛ:%d\n" % [p.air_skill, p.earth_skill, p.astral_skill]
+	stats += "─────────────\n"
+	stats += "ТЕЛО:%d  ЛОВКОСТЬ:%d\n" % [p.body, p.agility]
+	stats += "РАЗУМ:%d  ДУХ:%d\n" % [p.mind, p.spirit]
+	stats += "─────────────\n"
+	stats += "HP:%d/%d  РЕГЕН:%d\n" % [p.current_hp, p.max_hp, hp_regen]
+	stats += "МАНА:%d/%d  РЕГЕН:%d\n" % [p.current_mana, p.max_mana, mana_regen]
+	stats += "─────────────\n"
+	stats += "АТАКА:%d  УРОН:%d-%d\n" % [attack, damage_min, damage_max]
+	stats += "ЗАЩИТА:%d  ПОГЛОЩ:%d\n" % [defense, absorption]
+	stats += "СКОРОСТЬ:%d  ОБЗОР:%d\n" % [int(p.move_speed), sight]
+	stats += "─────────────\n"
+	stats += "ОГОНЬ:%d  ВОДА:%d  ВОЗДУХ:%d\n" % [p.get_protection_fire(), p.get_protection_water(), p.get_protection_air()]
+	stats += "ЗЕМЛЯ:%d  АСТРАЛ:%d\n" % [p.get_protection_earth(), p.get_protection_astral()]
+	stats += "─────────────\n"
+	stats += "МЕЧ:%d  ТОПОР:%d  ДУБИНА:%d\n" % [p.blade_skill, p.axe_skill, p.bludgeon_skill]
+	stats += "КОПЬЁ:%d  СТРЕЛЬБА:%d\n" % [p.pike_skill, p.shooting_skill]
+	stats += "МАГИЯ: О:%d В:%d ВО:%d ЗЕ:%d А:%d\n" % [p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
 	stats_label.text = stats
 
 func update_ui(p: Player):
