@@ -1,9 +1,11 @@
 class_name AlmLoader
 ## Парсер карт Allods 2 (.alm). Читает бинарный формат напрямую.
-## Структура: 2 байта на тайл, ДВА слоя.
-## Layer A: byte[0] = вариант автайла (младший ниббл -> файл tileN-XX, старший -> ряд),
-##          byte[1] = ТИП terrain (0-3 -> tile1-4; 16-40=вода; >40=барьер).
-## Layer B: объекты/декор.
+## Структура: заголовок 0x14 + info-секция (размеры на 0x28/0x2c, солнце на 0x30),
+## затем uint16-тайлы и uint16-высоты... Уточнено по картам Nival (Beach/Kids3):
+##   tile uint16: биты 4-11 = индекс картинки (0x00..0x33, т.к. tile1-4 × 16 вариантов
+##   с 16 рядами; tile4 имеет 4), биты 12-15 = 0; byte[0] = вариант<<4 | ряд,
+##   byte[1] = (индекс>>4)&0xF = файл-1 (0-3).
+## За тайлами: высоты (int8), затем препятствия/объекты (uint8).
 
 const MAGIC := 0x4D375200  # "M7R\0"
 
@@ -13,31 +15,38 @@ enum TileFlag { GROUND, HILL, HIGH2, WATER, BARRIER }
 static func _u32le(data: PackedByteArray, off: int) -> int:
 	return data[off] | (data[off+1] << 8) | (data[off+2] << 16) | (data[off+3] << 24)
 
-## Найти offset Layer A (максимум пространственной связности byte[1]).
+## Найти offset Layer A. Основной способ — формальный: заголовок секции тайлов
+## это [skip8][size=W*H*2][id=1][skip4], само тело начинается сразу после.
+## Фолбэк — валидность тайлов (биты 12-15 = 0, byte[1] = 0..3).
 static func _find_tile_offset(data: PackedByteArray, width: int, height: int) -> int:
-	var best_off := 0x2c0
-	var best_score := -1.0
 	var n := width * height
-	for off in range(0x100, 0x400, 2):
-		var matches := 0
+	var want := n * 2
+	# 1) Формальный якорь: заголовок секции с id=1 и точным размером W*H*2
+	for off in range(0x14, maxi(0x14, data.size() - want - 64)):
+		if off + 24 + want > data.size():
+			break
+		var sz := _u32le(data, off + 8)
+		var sid := _u32le(data, off + 12)
+		if sid == 1 and sz == want:
+			return off + 20
+	# 2) Фолбэк: валидность тайлов
+	var best_off := 0x2d8
+	var best_score := -1.0
+	var probe: int = mini(n, 4000)
+	for off in range(0x100, 0x800, 2):
+		if off + probe * 2 >= data.size():
+			break
+		var good := 0
 		var total := 0
-		for i in range(0, n, 3):
-			var x := i % width
-			var y := i / width
-			var o := off + i * 2 + 1
-			if o + 2 >= data.size():
-				break
-			var v := data[o]
-			if x + 1 < width:
-				total += 1
-				if data[off + (i+1)*2 + 1] == v:
-					matches += 1
-			if y + 1 < height:
-				total += 1
-				if data[off + (i+width)*2 + 1] == v:
-					matches += 1
+		for i in range(0, probe, 2):
+			var o := off + i * 2
+			var hi := data[o + 1]
+			# byte[1] = 0..3 и биты 12-15 нулевые (file 1..4, у tile4 варианты 0-3)
+			if hi <= 3:
+				good += 1
+			total += 1
 		if total > 0:
-			var score := float(matches) / float(total)
+			var score := float(good) / float(total)
 			if score > best_score:
 				best_score = score
 				best_off = off
@@ -111,11 +120,43 @@ static func load_map(path: String) -> Dictionary:
 			terrain[i] = data[o]
 			hflags[i] = data[o + 1]
 
-	print("AlmLoader: %s -> %dx%d, data@0x%x" % [path.get_file(), width, height, offset])
+	# Рельеф: int8-сетка высот сразу после тайлов; препятствия (объекты) — после высот.
+	var heights := PackedByteArray()
+	var obstacles := PackedByteArray()
+	heights.resize(n)
+	obstacles.resize(n)
+	heights.fill(0)
+	obstacles.fill(0)
+	var h_off := offset + n * 2
+	if h_off + n <= data.size():
+		for i in range(n):
+			heights[i] = data[h_off + i]
+	var o_off := h_off + n
+	if o_off + n <= data.size():
+		for i in range(n):
+			obstacles[i] = data[o_off + i]
+
+	print("AlmLoader: %s -> %dx%d, data@0x%x, h@0x%x, o@0x%x" % [path.get_file(), width, height, offset, h_off, o_off])
 	return {
 		"width": width,
 		"height": height,
 		"terrain": terrain,
 		"hflags": hflags,
+		"heights": heights,
+		"obstacles": obstacles,
 		"offset": offset,
+		"info": {
+			"solar_angle": _f32le(data, 0x30) if data.size() >= 0x34 else 0.0,
+			"time_of_day": _u32le(data, 0x34) if data.size() >= 0x38 else 0,
+			"darkness": _u32le(data, 0x38) if data.size() >= 0x3c else 0,
+			"contrast": _u32le(data, 0x3c) if data.size() >= 0x40 else 0,
+		},
 	}
+
+static func _f32le(data: PackedByteArray, off: int) -> float:
+	if off + 4 > data.size():
+		return 0.0
+	var b := data
+	var i: int = b[off] | (b[off+1] << 8) | (b[off+2] << 16) | (b[off+3] << 24)
+	var bytes := PackedByteArray([b[off], b[off+1], b[off+2], b[off+3]])
+	return bytes.decode_float(0)
