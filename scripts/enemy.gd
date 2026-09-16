@@ -83,6 +83,7 @@ func _physics_process(delta):
 			elif attack_cooldown <= 0:
 				player.take_damage(damage, self)
 				attack_cooldown = 1.0
+				SoundDB.play(_unit_sound_at(0))
 		"flee":
 			var flee_direction = (global_position - player.global_position).normalized()
 			velocity = flee_direction * move_speed * 1.5
@@ -106,6 +107,7 @@ func _physics_process(delta):
 	_apply_relief_stand()
 
 ## Стоять на рельефе: поднять спрайт на высоту клетки (как в Allods16).
+## Летающие юниты (Z, монстры bat/dragon/succubus) парят над землёй.
 func _apply_relief_stand() -> void:
 	if _anim == null:
 		return
@@ -113,9 +115,11 @@ func _apply_relief_stand() -> void:
 	var map_node = get_tree().get_first_node_in_group("alm_map")
 	if map_node != null and map_node.has_method("relief_at_world"):
 		h = float(map_node.call("relief_at_world", global_position))
-	_anim.position = Vector2(_anim.position.x, -h)
+	# Высота полёта юнита (Z из units.txt; обычно 0 = ходит по земле)
+	var z := UnitDB.fly_z(anim_set)
+	_anim.position = Vector2(_anim.position.x, -(h + z))
 	if health_bar:
-		health_bar.position.y = -(h + 60.0)  # бар выше головы
+		health_bar.position.y = -(h + z + 60.0)  # бар выше головы
 
 func move_toward_target(target: Vector2, _delta):
 	var direction = (target - global_position).normalized()
@@ -128,8 +132,15 @@ func take_damage(dmg: int, attacker: Node2D):
 		state = "chase"
 		attack_target = attacker
 	if current_hp <= 0:
+		SoundDB.play(_unit_sound_at(4))  # смерть
 		_drop_loot()
 		queue_free()
+	else:
+		SoundDB.play_pain(UnitDB.unit_sound(anim_set))  # боль
+
+## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
+func _unit_sound_at(idx: int) -> int:
+	return SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx)
 
 func _drop_loot():
 	var num_items = 1

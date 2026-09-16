@@ -269,10 +269,27 @@ func attack_enemy(_delta):
 		if attack_cooldown <= 0:
 			var damage = get_damage_min() + randi() % (get_damage_max() - get_damage_min() + 1)
 			print("Атакуем! Урон: ", damage)
+			_sound_weapon_attack()
 			attack_target.take_damage(damage, self)
 			attack_cooldown = Game.ATTACK_COOLDOWN
 	else:
 		state = "idle"
+
+## Звук удара оружием героя (Sfx100-160: units\sword|axe|club|bow|cbow|pike|sling).
+func _sound_weapon_attack() -> void:
+	var id := 0
+	match weapon:
+		"sword": id = 100
+		"axe": id = 110
+		"club": id = 120
+		"bow": id = 130
+		"xbow": id = 140
+		"pike": id = 150
+		"staff": id = 160
+		_:
+			var s := UnitDB.unit_sound(anim_set_name())
+			id = SoundDB.sound_at(s, 0)
+	SoundDB.play(id)
 
 ## Магический урон (Mind -> сила магии) для заклинаний.
 func magic_damage(base: int) -> int:
@@ -291,10 +308,13 @@ func cast_ability(index: int, target_position: Vector2):
 
 	match ability.name:
 		"fireball":
+			SoundDB.play(512)  # magic\fireball
 			create_projectile(global_position, target_position, magic_damage(ability.damage))
 		"heal":
+			SoundDB.play(556)  # magic\heal
 			current_hp = min(max_hp, current_hp + ability.heal + mind / 5)
 		"lightning":
+			SoundDB.play(528)  # magic\lightning
 			var enemy = get_nearest_enemy(target_position, ability.range)
 			if enemy:
 				_create_lightning_effect(global_position, enemy.global_position)
@@ -360,9 +380,11 @@ func _create_lightning_effect(from: Vector2, to: Vector2):
 
 func take_damage(damage: int, _attacker: Node2D):
 	current_hp -= damage
+	SoundDB.play_pain([0, 0, 220, 221, 240])  # боль человека (easy1/easy2)
 	if current_hp <= 0:
 		# Смерть — не удаляем а показываем экран
 		velocity = Vector2.ZERO
 		state = "dead"
+		SoundDB.play(240)  # units\dead1
 		get_tree().paused = true
 		print("=== ВЫ ПОГИБЛИ! Нажмите R для рестарта ===")

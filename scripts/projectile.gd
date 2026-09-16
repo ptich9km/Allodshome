@@ -20,6 +20,7 @@ func _process(delta):
 		explode()
 
 func explode():
+	SoundDB.play(513)  # magic\explosion
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy) and enemy.global_position.distance_to(global_position) < 30.0:
 			enemy.take_damage(damage, projectile_owner)
