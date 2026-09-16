@@ -12,6 +12,7 @@ var destroyed := false
 var destructible := false
 
 var _sprite: Sprite2D
+var _shadow: Sprite2D
 var _frames: Array = []       # Texture2D кадры sprites-00N.png (1-based -> idx 0..)
 var _anim_order: Array = []   # порядок кадров из anim_frame (индексы в _frames)
 var _anim_times: Array = []   # длительность кадра в секундах
@@ -19,7 +20,8 @@ var _anim_idx := 0
 var _time := 0.0
 
 ## Создать объект: name из ObjectDB, cell - клетка, extra - смещение спрайта (якорь).
-func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = Vector2.ZERO) -> void:
+## variant — индекс кадра для статичных объектов с вариантами (камни/заборы, Index из objects.txt).
+func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = Vector2.ZERO, variant: int = 0) -> void:
 	obj_name = name
 	cell = cell_pos
 
@@ -41,9 +43,17 @@ func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = V
 	_sprite.offset = -anchor
 	add_child(_sprite)
 
+	# Тень spritesb-NNN.png (у объектов Allods2 есть отдельный слой-силуэт)
+	_shadow = Sprite2D.new()
+	_shadow.centered = false
+	_shadow.offset = -anchor
+	_shadow.z_index = -1
+	add_child(_shadow)
+	_apply_shadow(variant)
+
 	# Порядок и тайминги анимации. Анимируем ТОЛЬКО если в базе явно задан
 	# anim_frame (расписание). Если расписания нет — у объектов (ограды, камни,
-	# кактусы) кадры это разные фазы отрисовки, а не цикл: показываем первый.
+	# кактусы) кадры это разные фазы отрисовки, а не цикл: показываем вариант.
 	var raw_anim: Variant = o.get("anim_frame", null)
 	if raw_anim is Array and not raw_anim.is_empty():
 		_anim_order = ObjectDB.anim_frames(name)
@@ -54,14 +64,27 @@ func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = V
 			_apply_frame(_anim_order[0])
 		else:
 			_anim_order = []
-			_apply_frame(0)
+			_apply_frame(clampi(variant, 0, _frames.size() - 1))
 			set_process(false)
 	else:
-		# Статичный объект - первый кадр
+		# Статичный объект - кадр варианта (или первый)
 		_anim_order = []
-		_apply_frame(0)
+		_apply_frame(clampi(variant, 0, _frames.size() - 1))
 		set_process(false)
 	_process_enabled_check()
+
+## Тень spritesb-NNN.png — силуэт объекта (полупрозрачный, под спрайтом).
+func _apply_shadow(variant: int) -> void:
+	if _shadow == null:
+		return
+	var idx := clampi(variant, 0, maxi(_frames.size() - 1, 0))
+	var tex: Variant = load("res://assets/map-objects/%s/spritesb-%03d.png" % [obj_name, idx + 1])
+	if tex == null:
+		_shadow.visible = false
+		return
+	_shadow.visible = true
+	_shadow.texture = tex
+	_shadow.modulate = Color(0.15, 0.15, 0.2, 0.55)
 
 func _process_enabled_check() -> void:
 	pass

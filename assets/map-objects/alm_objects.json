@@ -1,1538 +1,1399 @@
 {
  "1": {
   "folder": "pine1",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 100,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Pine 1"
  },
- "2": {
-  "folder": "pine1/fire",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 17
- },
- "11": {
-  "folder": "elka1/fire",
+ "4": {
+  "folder": "vallen1",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 96,
-  "phases": 17
+  "phases": 7,
+  "frames": 7,
+  "desc": "Vallenwood 1"
  },
- "101": {
-  "folder": "cactus1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
+ "7": {
+  "folder": "bush1",
+  "index": 0,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 48,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Bush 1"
  },
- "102": {
-  "folder": "cactus2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "103": {
-  "folder": "cactus3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "104": {
-  "folder": "draz1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 105,
-  "phases": 1
- },
- "105": {
-  "folder": "draz1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 105,
-  "phases": 1
- },
- "106": {
-  "folder": "draz2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 105,
-  "phases": 1
- },
- "107": {
-  "folder": "draz2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 105,
-  "phases": 1
- },
- "108": {
-  "folder": "trbush1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "109": {
-  "folder": "trbush1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "110": {
-  "folder": "trbush2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "12": {
-  "folder": "elka1/dead",
+ "10": {
+  "folder": "elka1",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 96,
-  "phases": 7
- },
- "111": {
-  "folder": "trbush2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "112": {
-  "folder": "trbush3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "113": {
-  "folder": "trbush3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "114": {
-  "folder": "trbush4",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "115": {
-  "folder": "trbush4/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "116": {
-  "folder": "trbush5",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "117": {
-  "folder": "trbush5/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "118": {
-  "folder": "trbush6",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "119": {
-  "folder": "trbush6/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "120": {
-  "folder": "trbush7",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Fur 1"
  },
  "13": {
   "folder": "iva1",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "121": {
-  "folder": "trbush7/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "122": {
-  "folder": "trbush8",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "123": {
-  "folder": "trbush8/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "124": {
-  "folder": "trbush9",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "125": {
-  "folder": "trbush9/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "126": {
-  "folder": "trbush10",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "127": {
-  "folder": "trbush10/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "128": {
-  "folder": "palm1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 112,
-  "phases": 1
- },
- "129": {
-  "folder": "palm1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 112,
-  "phases": 1
- },
- "130": {
-  "folder": "palm2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 112,
-  "phases": 1
- },
- "14": {
-  "folder": "iva1/fire",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 17
- },
- "131": {
-  "folder": "palm2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 112,
-  "phases": 1
- },
- "132": {
-  "folder": "palm3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 85,
-  "phases": 1
- },
- "133": {
-  "folder": "palm3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 85,
-  "phases": 1
- },
- "134": {
-  "folder": "palm4",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 85,
-  "phases": 1
- },
- "135": {
-  "folder": "palm4/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 85,
-  "phases": 1
- },
- "136": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "137": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "138": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "139": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "140": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "15": {
-  "folder": "iva1/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
- },
- "141": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "142": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "143": {
-  "folder": "fence2",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "144": {
-  "folder": "drova",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "145": {
-  "folder": "drova",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "146": {
-  "folder": "drova",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "147": {
-  "folder": "drova",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "148": {
-  "folder": "seno",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
- },
- "149": {
-  "folder": "seno",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
- },
- "150": {
-  "folder": "seno",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Iva 1"
  },
  "16": {
   "folder": "maple1",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "151": {
-  "folder": "trollstone",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "152": {
-  "folder": "trollstone",
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "phases": 1
- },
- "153": {
-  "folder": "trollstone2",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
- },
- "154": {
-  "folder": "henge1",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 1
- },
- "155": {
-  "folder": "henge1",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 1
- },
- "156": {
-  "folder": "henge1",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 1
- },
- "157": {
-  "folder": "henge2",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 1
- },
- "158": {
-  "folder": "henge2",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 1
- },
- "159": {
-  "folder": "henge2",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 1
- },
- "160": {
-  "folder": "drtree1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 7
- },
- "17": {
-  "folder": "maple1/fire",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 17
- },
- "161": {
-  "folder": "drtree1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 1
- },
- "162": {
-  "folder": "drtree2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 7
- },
- "163": {
-  "folder": "drtree2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 1
- },
- "164": {
-  "folder": "drtree3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 7
- },
- "165": {
-  "folder": "drtree3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 1
- },
- "166": {
-  "folder": "fattree1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "phases": 7
- },
- "167": {
-  "folder": "fattree1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "phases": 1
- },
- "168": {
-  "folder": "fattree2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "phases": 7
- },
- "169": {
-  "folder": "fattree2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "phases": 1
- },
- "170": {
-  "folder": "fattree3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "phases": 7
- },
- "18": {
-  "folder": "maple1/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
- },
- "171": {
-  "folder": "fattree3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "phases": 1
- },
- "172": {
-  "folder": "pihta1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 7
- },
- "173": {
-  "folder": "pihta1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 1
- },
- "174": {
-  "folder": "pihta2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 7
- },
- "175": {
-  "folder": "pihta2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 1
- },
- "176": {
-  "folder": "pihta3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 7
- },
- "177": {
-  "folder": "pihta3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 1
- },
- "178": {
-  "folder": "teerose1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 7
- },
- "179": {
-  "folder": "teerose1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 1
- },
- "180": {
-  "folder": "teerose2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Maple 1"
  },
  "19": {
   "folder": "oak1",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "181": {
-  "folder": "teerose2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 1
- },
- "182": {
-  "folder": "teerose3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 7
- },
- "183": {
-  "folder": "teerose3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "phases": 1
- },
- "184": {
-  "folder": "tuya1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 7
- },
- "185": {
-  "folder": "tuya1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 1
- },
- "186": {
-  "folder": "tuya2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 7
- },
- "187": {
-  "folder": "tuya2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 1
- },
- "188": {
-  "folder": "tuya3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 7
- },
- "189": {
-  "folder": "tuya3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 1
- },
- "190": {
-  "folder": "tachka",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
- },
- "20": {
-  "folder": "oak1/fire",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 17
- },
- "191": {
-  "folder": "tachka",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
- },
- "192": {
-  "folder": "tachka",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "phases": 1
- },
- "3": {
-  "folder": "pine1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 7
- },
- "21": {
-  "folder": "oak1/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Oak 1"
  },
  "22": {
   "folder": "stones",
+  "index": 0,
   "w": 64,
   "h": 80,
   "cx": 32,
   "cy": 40,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Big stone 1"
  },
  "23": {
   "folder": "stones",
+  "index": 1,
   "w": 64,
   "h": 80,
   "cx": 32,
   "cy": 40,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Big stone 2"
  },
  "24": {
   "folder": "stones",
+  "index": 2,
   "w": 64,
   "h": 80,
   "cx": 32,
   "cy": 40,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Big stone 3"
  },
  "25": {
   "folder": "stones",
+  "index": 3,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 32,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Rock 1"
  },
  "26": {
   "folder": "stones",
+  "index": 4,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 32,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Rock 2"
  },
  "27": {
   "folder": "stones",
+  "index": 5,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 32,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Rock 3"
  },
  "28": {
   "folder": "stones",
+  "index": 6,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 34,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "Small Stone 1"
  },
  "29": {
   "folder": "stones",
+  "index": 7,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 32,
-  "phases": 1
+  "phases": 1,
+  "frames": 9,
+  "desc": "SmallStone 2"
  },
  "30": {
   "folder": "stones",
+  "index": 8,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 38,
-  "phases": 1
- },
- "4": {
-  "folder": "vallen1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 7
+  "phases": 1,
+  "frames": 9,
+  "desc": "SmallStone 3"
  },
  "31": {
   "folder": "pointer",
+  "index": 0,
   "w": 32,
   "h": 32,
   "cx": 16,
   "cy": 22,
-  "phases": 1
+  "phases": 1,
+  "frames": 6,
+  "desc": "Pointer 1"
  },
  "32": {
   "folder": "pointer",
+  "index": 1,
   "w": 32,
   "h": 32,
   "cx": 16,
   "cy": 22,
-  "phases": 1
+  "phases": 1,
+  "frames": 6,
+  "desc": "Pointer 2"
  },
  "33": {
   "folder": "pointer",
+  "index": 2,
   "w": 32,
   "h": 32,
   "cx": 16,
   "cy": 22,
-  "phases": 1
+  "phases": 1,
+  "frames": 6,
+  "desc": "Pointer 3"
  },
  "34": {
   "folder": "pointer",
+  "index": 3,
   "w": 32,
   "h": 32,
   "cx": 16,
   "cy": 22,
-  "phases": 1
+  "phases": 1,
+  "frames": 6,
+  "desc": "Pointer 4"
  },
  "35": {
   "folder": "pointer",
+  "index": 4,
   "w": 32,
   "h": 32,
   "cx": 16,
   "cy": 22,
-  "phases": 1
+  "phases": 1,
+  "frames": 6,
+  "desc": "Pointer 5"
  },
  "36": {
   "folder": "pointer",
+  "index": 5,
   "w": 32,
   "h": 32,
   "cx": 16,
   "cy": 22,
-  "phases": 1
+  "phases": 1,
+  "frames": 6,
+  "desc": "Pointer 6"
  },
  "37": {
   "folder": "palka",
+  "index": 0,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 54,
-  "phases": 3
+  "phases": 3,
+  "frames": 6,
+  "desc": "Strange Device (Palka from Well) 1"
  },
  "38": {
   "folder": "palka",
+  "index": 3,
   "w": 64,
   "h": 64,
   "cx": 28,
   "cy": 53,
-  "phases": 3
+  "phases": 3,
+  "frames": 6,
+  "desc": "Strange Device (Palka from Well) 2"
  },
  "39": {
   "folder": "totem",
+  "index": 0,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 62,
-  "phases": 1
+  "phases": 1,
+  "frames": 2,
+  "desc": "Totem 1"
  },
  "40": {
   "folder": "totem",
+  "index": 1,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 62,
-  "phases": 1
- },
- "5": {
-  "folder": "vallen1/fire",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 17
+  "phases": 1,
+  "frames": 2,
+  "desc": "Totem 2"
  },
  "41": {
   "folder": "pine2",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 100,
-  "phases": 7
- },
- "42": {
-  "folder": "pine2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Pine 2"
  },
  "43": {
   "folder": "pine3",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 100,
-  "phases": 7
- },
- "44": {
-  "folder": "pine3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Pine 3"
  },
  "45": {
   "folder": "vallen2",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 96,
-  "phases": 7
- },
- "46": {
-  "folder": "vallen2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Vallenwood 2"
  },
  "47": {
   "folder": "vallen3",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 96,
-  "phases": 7
- },
- "48": {
-  "folder": "vallen3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Vallenwood 3"
  },
  "49": {
   "folder": "bush2",
+  "index": 0,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 48,
-  "phases": 7
- },
- "50": {
-  "folder": "bush2/dead",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 7
- },
- "6": {
-  "folder": "vallen1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Bush 2"
  },
  "51": {
   "folder": "bush3",
+  "index": 0,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 48,
-  "phases": 7
- },
- "52": {
-  "folder": "bush3/dead",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Bush 3"
  },
  "53": {
   "folder": "elka2",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 96,
-  "phases": 7
- },
- "54": {
-  "folder": "elka2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Fur 2"
  },
  "55": {
   "folder": "elka3",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 96,
-  "phases": 7
- },
- "56": {
-  "folder": "elka3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Fur 3"
  },
  "57": {
   "folder": "iva2",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "58": {
-  "folder": "iva2/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Iva 2"
  },
  "59": {
   "folder": "iva3",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "60": {
-  "folder": "iva3/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
- },
- "7": {
-  "folder": "bush1",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Iva 3"
  },
  "61": {
   "folder": "maple2",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "62": {
-  "folder": "maple2/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Maple 2"
  },
  "63": {
   "folder": "maple3",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "64": {
-  "folder": "maple3/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Maple 3"
  },
  "65": {
   "folder": "oak2",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "66": {
-  "folder": "oak2/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Oak 2"
  },
  "67": {
   "folder": "oak3",
+  "index": 0,
   "w": 96,
   "h": 96,
   "cx": 48,
   "cy": 80,
-  "phases": 7
- },
- "68": {
-  "folder": "oak3/dead",
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "phases": 7
+  "phases": 7,
+  "frames": 7,
+  "desc": "Oak 3"
  },
  "69": {
   "folder": "statue",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 80,
-  "phases": 1
+  "phases": 1,
+  "frames": 2,
+  "desc": "Statue 1"
  },
  "70": {
   "folder": "statue",
+  "index": 1,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 80,
-  "phases": 1
- },
- "8": {
-  "folder": "bush1/fire",
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "phases": 7
+  "phases": 1,
+  "frames": 2,
+  "desc": "Statue 2"
  },
  "71": {
   "folder": "fence",
+  "index": 0,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 1"
  },
  "72": {
   "folder": "fence",
+  "index": 1,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 2"
  },
  "73": {
   "folder": "fence",
+  "index": 2,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 3"
  },
  "74": {
   "folder": "fence",
+  "index": 3,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 4"
  },
  "75": {
   "folder": "fence",
+  "index": 4,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 5"
  },
  "76": {
   "folder": "fence",
+  "index": 5,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 6"
  },
  "77": {
   "folder": "fence",
+  "index": 6,
   "w": 32,
   "h": 64,
   "cx": 16,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 7,
+  "desc": "Fence 7"
  },
  "78": {
   "folder": "bones",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 64,
-  "phases": 1
+  "phases": 1,
+  "frames": 5,
+  "desc": "Bones 1"
  },
  "79": {
   "folder": "bones",
+  "index": 1,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 64,
-  "phases": 1
+  "phases": 1,
+  "frames": 5,
+  "desc": "Bones 2"
  },
  "80": {
   "folder": "bones",
+  "index": 2,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 64,
-  "phases": 1
+  "phases": 1,
+  "frames": 5,
+  "desc": "Bones 3"
  },
- "9": {
-  "folder": "bush1/dead",
+ "81": {
+  "folder": "bones",
+  "index": 3,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 5,
+  "desc": "Bones 4"
+ },
+ "82": {
+  "folder": "bones",
+  "index": 4,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 5,
+  "desc": "Bones 5"
+ },
+ "83": {
+  "folder": "column",
+  "index": 0,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 2,
+  "desc": "Column 1"
+ },
+ "84": {
+  "folder": "column",
+  "index": 1,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 2,
+  "desc": "Column 2"
+ },
+ "85": {
+  "folder": "skulls",
+  "index": 0,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Skulls"
+ },
+ "86": {
+  "folder": "fence1",
+  "index": 0,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Dark fence 1"
+ },
+ "87": {
+  "folder": "fence1",
+  "index": 1,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Dark fence 2"
+ },
+ "88": {
+  "folder": "fence1",
+  "index": 2,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Dark fence 3"
+ },
+ "89": {
+  "folder": "scull",
+  "index": 0,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Scull fence 1"
+ },
+ "90": {
+  "folder": "scull",
+  "index": 1,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Scull fence 2"
+ },
+ "91": {
+  "folder": "scull",
+  "index": 2,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Scull fence 3"
+ },
+ "92": {
+  "folder": "bambuk1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 80,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Bambuk 1"
+ },
+ "93": {
+  "folder": "bambuk2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 80,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Bambuk 2"
+ },
+ "94": {
+  "folder": "bambuk3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 80,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Bambuk 3"
+ },
+ "98": {
+  "folder": "cactus1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Cactus 1"
+ },
+ "99": {
+  "folder": "cactus2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Cactus 2"
+ },
+ "100": {
+  "folder": "cactus3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Cactus 3"
+ },
+ "104": {
+  "folder": "draz1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 105,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Draz 1"
+ },
+ "106": {
+  "folder": "draz2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 105,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Draz 2"
+ },
+ "108": {
+  "folder": "trbush1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 1"
+ },
+ "110": {
+  "folder": "trbush2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 2"
+ },
+ "112": {
+  "folder": "trbush3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 3"
+ },
+ "114": {
+  "folder": "trbush4",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 4"
+ },
+ "116": {
+  "folder": "trbush5",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 5"
+ },
+ "118": {
+  "folder": "trbush6",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 6"
+ },
+ "120": {
+  "folder": "trbush7",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 7"
+ },
+ "122": {
+  "folder": "trbush8",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 8"
+ },
+ "124": {
+  "folder": "trbush9",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 9"
+ },
+ "126": {
+  "folder": "trbush10",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Tropic Bush 10"
+ },
+ "128": {
+  "folder": "palm1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 112,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Palm 1"
+ },
+ "130": {
+  "folder": "palm2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 112,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Palm 2"
+ },
+ "132": {
+  "folder": "palm3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 85,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Palm 3"
+ },
+ "134": {
+  "folder": "palm4",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 85,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Palm 4"
+ },
+ "136": {
+  "folder": "fence2",
+  "index": 0,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 1"
+ },
+ "137": {
+  "folder": "fence2",
+  "index": 1,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 2"
+ },
+ "138": {
+  "folder": "fence2",
+  "index": 2,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 3"
+ },
+ "139": {
+  "folder": "fence2",
+  "index": 3,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 4"
+ },
+ "140": {
+  "folder": "fence2",
+  "index": 4,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 5"
+ },
+ "141": {
+  "folder": "fence2",
+  "index": 5,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 6"
+ },
+ "142": {
+  "folder": "fence2",
+  "index": 6,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 7"
+ },
+ "143": {
+  "folder": "fence2",
+  "index": 7,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 8,
+  "desc": "Grave Fence 8"
+ },
+ "144": {
+  "folder": "drova",
+  "index": 0,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 4,
+  "desc": "Firewood 1"
+ },
+ "145": {
+  "folder": "drova",
+  "index": 1,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 4,
+  "desc": "Firewood 2"
+ },
+ "146": {
+  "folder": "drova",
+  "index": 2,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 4,
+  "desc": "Firewood 3"
+ },
+ "147": {
+  "folder": "drova",
+  "index": 3,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 16,
+  "phases": 1,
+  "frames": 4,
+  "desc": "Firewood 4"
+ },
+ "148": {
+  "folder": "seno",
+  "index": 0,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 3,
+  "desc": "CEHO 1"
+ },
+ "149": {
+  "folder": "seno",
+  "index": 1,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 3,
+  "desc": "CEHO 2"
+ },
+ "150": {
+  "folder": "seno",
+  "index": 2,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 3,
+  "desc": "CEHO 3"
+ },
+ "151": {
+  "folder": "trollstone",
+  "index": 0,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 2,
+  "desc": "Troll Stones 1"
+ },
+ "152": {
+  "folder": "trollstone",
+  "index": 1,
+  "w": 32,
+  "h": 64,
+  "cx": 16,
+  "cy": 48,
+  "phases": 1,
+  "frames": 2,
+  "desc": "Troll Stones 2"
+ },
+ "153": {
+  "folder": "trollstone2",
+  "index": 0,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Troll Stones 3"
+ },
+ "154": {
+  "folder": "henge1",
+  "index": 0,
   "w": 64,
   "h": 64,
   "cx": 32,
   "cy": 48,
-  "phases": 7
+  "phases": 1,
+  "frames": 3,
+  "desc": "Stonehenge 1-1"
  },
- "81": {
-  "folder": "bones",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "82": {
-  "folder": "bones",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "83": {
-  "folder": "column",
-  "w": 32,
+ "155": {
+  "folder": "henge1",
+  "index": 1,
+  "w": 64,
   "h": 64,
-  "cx": 16,
+  "cx": 32,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 3,
+  "desc": "Stonehenge 1-2"
  },
- "84": {
-  "folder": "column",
-  "w": 32,
+ "156": {
+  "folder": "henge1",
+  "index": 2,
+  "w": 64,
   "h": 64,
-  "cx": 16,
+  "cx": 32,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 3,
+  "desc": "Stonehenge 1-3"
  },
- "85": {
-  "folder": "skulls",
-  "w": 32,
+ "157": {
+  "folder": "henge2",
+  "index": 0,
+  "w": 64,
   "h": 64,
-  "cx": 16,
+  "cx": 32,
   "cy": 48,
-  "phases": 1
+  "phases": 1,
+  "frames": 3,
+  "desc": "Stonehenge 2-1"
  },
- "86": {
-  "folder": "fence1",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
+ "158": {
+  "folder": "henge2",
+  "index": 1,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 48,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Stonehenge 2-2"
  },
- "87": {
-  "folder": "fence1",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
+ "159": {
+  "folder": "henge2",
+  "index": 2,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 48,
+  "phases": 1,
+  "frames": 3,
+  "desc": "Stonehenge 2-3"
  },
- "88": {
-  "folder": "fence1",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "89": {
-  "folder": "scull",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "90": {
-  "folder": "scull",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
- },
- "10": {
-  "folder": "elka1",
+ "160": {
+  "folder": "drtree1",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
-  "cy": 96,
-  "phases": 7
+  "cy": 100,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Druid tree 1"
  },
- "91": {
-  "folder": "scull",
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "phases": 1
+ "162": {
+  "folder": "drtree2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 100,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Druid tree 2"
  },
- "92": {
-  "folder": "bambuk1",
+ "164": {
+  "folder": "drtree3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 100,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Druid tree 3"
+ },
+ "166": {
+  "folder": "fattree1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 73,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Fat tree 1"
+ },
+ "168": {
+  "folder": "fattree2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 73,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Fat tree 2"
+ },
+ "170": {
+  "folder": "fattree3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 73,
+  "phases": 7,
+  "frames": 7,
+  "desc": "Fat tree 3"
+ },
+ "172": {
+  "folder": "pihta1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 93,
+  "phases": 7,
+  "frames": 7,
+  "desc": "nuxTa 1"
+ },
+ "174": {
+  "folder": "pihta2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 93,
+  "phases": 7,
+  "frames": 7,
+  "desc": "nuxTa 2"
+ },
+ "176": {
+  "folder": "pihta3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 93,
+  "phases": 7,
+  "frames": 7,
+  "desc": "nuxTa 3"
+ },
+ "178": {
+  "folder": "teerose1",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 93,
+  "phases": 7,
+  "frames": 7,
+  "desc": "TeeRose 1"
+ },
+ "180": {
+  "folder": "teerose2",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 93,
+  "phases": 7,
+  "frames": 7,
+  "desc": "TeeRose 2"
+ },
+ "182": {
+  "folder": "teerose3",
+  "index": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 93,
+  "phases": 7,
+  "frames": 7,
+  "desc": "TeeRose 3"
+ },
+ "184": {
+  "folder": "tuya1",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 80,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Tuya 1"
  },
- "93": {
-  "folder": "bambuk2",
+ "186": {
+  "folder": "tuya2",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 80,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Tuya 2"
  },
- "94": {
-  "folder": "bambuk3",
+ "188": {
+  "folder": "tuya3",
+  "index": 0,
   "w": 128,
   "h": 128,
   "cx": 64,
   "cy": 80,
-  "phases": 1
+  "phases": 7,
+  "frames": 7,
+  "desc": "Tuya 3"
  },
- "95": {
-  "folder": "bambuk1/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 1
+ "190": {
+  "folder": "tachka",
+  "index": 0,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 3,
+  "desc": "TA4KA 1"
  },
- "96": {
-  "folder": "bambuk2/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 1
+ "191": {
+  "folder": "tachka",
+  "index": 1,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 3,
+  "desc": "TA4KA 2"
  },
- "97": {
-  "folder": "bambuk3/dead",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "phases": 1
- },
- "98": {
-  "folder": "cactus1",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "99": {
-  "folder": "cactus2",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
- },
- "100": {
-  "folder": "cactus3",
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "phases": 1
+ "192": {
+  "folder": "tachka",
+  "index": 2,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
+  "cy": 32,
+  "phases": 1,
+  "frames": 3,
+  "desc": "TA4KA 3"
  }
 }

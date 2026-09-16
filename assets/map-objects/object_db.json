@@ -344,7 +344,41 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Grave Fence 1"
+   },
+   {
+    "index": 1,
+    "desc": "Grave Fence 2"
+   },
+   {
+    "index": 2,
+    "desc": "Grave Fence 3"
+   },
+   {
+    "index": 3,
+    "desc": "Grave Fence 4"
+   },
+   {
+    "index": 4,
+    "desc": "Grave Fence 5"
+   },
+   {
+    "index": 5,
+    "desc": "Grave Fence 6"
+   },
+   {
+    "index": 6,
+    "desc": "Grave Fence 7"
+   },
+   {
+    "index": 7,
+    "desc": "Grave Fence 8"
+   }
+  ]
  },
  "drova": {
   "desc": "Firewood 1",
@@ -357,7 +391,25 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Firewood 1"
+   },
+   {
+    "index": 1,
+    "desc": "Firewood 2"
+   },
+   {
+    "index": 2,
+    "desc": "Firewood 3"
+   },
+   {
+    "index": 3,
+    "desc": "Firewood 4"
+   }
+  ]
  },
  "seno": {
   "desc": "CEHO 1",
@@ -370,7 +422,21 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "CEHO 1"
+   },
+   {
+    "index": 1,
+    "desc": "CEHO 2"
+   },
+   {
+    "index": 2,
+    "desc": "CEHO 3"
+   }
+  ]
  },
  "maple1": {
   "desc": "Maple 1",
@@ -412,7 +478,17 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Troll Stones 1"
+   },
+   {
+    "index": 1,
+    "desc": "Troll Stones 2"
+   }
+  ]
  },
  "trollstone2": {
   "desc": "Troll Stones 3",
@@ -438,7 +514,21 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Stonehenge 1-1"
+   },
+   {
+    "index": 1,
+    "desc": "Stonehenge 1-2"
+   },
+   {
+    "index": 2,
+    "desc": "Stonehenge 1-3"
+   }
+  ]
  },
  "henge2": {
   "desc": "Stonehenge 2-1",
@@ -451,7 +541,21 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Stonehenge 2-1"
+   },
+   {
+    "index": 1,
+    "desc": "Stonehenge 2-2"
+   },
+   {
+    "index": 2,
+    "desc": "Stonehenge 2-3"
+   }
+  ]
  },
  "drtree1": {
   "desc": "Druid tree 1",
@@ -928,7 +1032,21 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "TA4KA 1"
+   },
+   {
+    "index": 1,
+    "desc": "TA4KA 2"
+   },
+   {
+    "index": 2,
+    "desc": "TA4KA 3"
+   }
+  ]
  },
  "stones": {
   "desc": "Big stone 1",
@@ -941,7 +1059,45 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Big stone 1"
+   },
+   {
+    "index": 1,
+    "desc": "Big stone 2"
+   },
+   {
+    "index": 2,
+    "desc": "Big stone 3"
+   },
+   {
+    "index": 3,
+    "desc": "Rock 1"
+   },
+   {
+    "index": 4,
+    "desc": "Rock 2"
+   },
+   {
+    "index": 5,
+    "desc": "Rock 3"
+   },
+   {
+    "index": 6,
+    "desc": "Small Stone 1"
+   },
+   {
+    "index": 7,
+    "desc": "SmallStone 2"
+   },
+   {
+    "index": 8,
+    "desc": "SmallStone 3"
+   }
+  ]
  },
  "vallen1": {
   "desc": "Vallenwood 1",
@@ -983,7 +1139,33 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Pointer 1"
+   },
+   {
+    "index": 1,
+    "desc": "Pointer 2"
+   },
+   {
+    "index": 2,
+    "desc": "Pointer 3"
+   },
+   {
+    "index": 3,
+    "desc": "Pointer 4"
+   },
+   {
+    "index": 4,
+    "desc": "Pointer 5"
+   },
+   {
+    "index": 5,
+    "desc": "Pointer 6"
+   }
+  ]
  },
  "palka": {
   "desc": "Strange Device (Palka from Well) 1",
@@ -1019,7 +1201,17 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Totem 1"
+   },
+   {
+    "index": 1,
+    "desc": "Totem 2"
+   }
+  ]
  },
  "pine2": {
   "desc": "Pine 2",
@@ -1243,7 +1435,17 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Statue 1"
+   },
+   {
+    "index": 1,
+    "desc": "Statue 2"
+   }
+  ]
  },
  "fence": {
   "desc": "Fence 1",
@@ -1256,7 +1458,37 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Fence 1"
+   },
+   {
+    "index": 1,
+    "desc": "Fence 2"
+   },
+   {
+    "index": 2,
+    "desc": "Fence 3"
+   },
+   {
+    "index": 3,
+    "desc": "Fence 4"
+   },
+   {
+    "index": 4,
+    "desc": "Fence 5"
+   },
+   {
+    "index": 5,
+    "desc": "Fence 6"
+   },
+   {
+    "index": 6,
+    "desc": "Fence 7"
+   }
+  ]
  },
  "bones": {
   "desc": "Bones 1",
@@ -1269,7 +1501,29 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Bones 1"
+   },
+   {
+    "index": 1,
+    "desc": "Bones 2"
+   },
+   {
+    "index": 2,
+    "desc": "Bones 3"
+   },
+   {
+    "index": 3,
+    "desc": "Bones 4"
+   },
+   {
+    "index": 4,
+    "desc": "Bones 5"
+   }
+  ]
  },
  "column": {
   "desc": "Column 1",
@@ -1282,7 +1536,17 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Column 1"
+   },
+   {
+    "index": 1,
+    "desc": "Column 2"
+   }
+  ]
  },
  "skulls": {
   "desc": "Skulls",
@@ -1308,7 +1572,21 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Dark fence 1"
+   },
+   {
+    "index": 1,
+    "desc": "Dark fence 2"
+   },
+   {
+    "index": 2,
+    "desc": "Dark fence 3"
+   }
+  ]
  },
  "scull": {
   "desc": "Scull fence 1",
@@ -1321,7 +1599,21 @@
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
-  "fire": null
+  "fire": null,
+  "variants": [
+   {
+    "index": 0,
+    "desc": "Scull fence 1"
+   },
+   {
+    "index": 1,
+    "desc": "Scull fence 2"
+   },
+   {
+    "index": 2,
+    "desc": "Scull fence 3"
+   }
+  ]
  },
  "bambuk1": {
   "desc": "Bambuk 1",

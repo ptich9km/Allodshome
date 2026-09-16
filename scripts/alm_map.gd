@@ -90,7 +90,8 @@ func _build_obstacles() -> void:
 			var ob := AlmObstacle.new()
 			ob.setup(folder, int(spec.get("phases", 1)),
 				int(spec.get("w", 128)), int(spec.get("h", 128)),
-				int(spec.get("cx", 64)), int(spec.get("cy", 96)))
+				int(spec.get("cx", 64)), int(spec.get("cy", 96)),
+				int(spec.get("index", 0)))
 			ob.place_at(Vector2i(x, y), TILE, relief_at_tile(x, y))
 			obstacles_root.add_child(ob)
 
