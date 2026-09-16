@@ -41,11 +41,17 @@ func setup_ui(p: Player):
 
 	_setup_spells()
 
-	# Загружаем портрет героя из оригинала
-	var tex = load("res://assets/portraits/goodorc.png")
-	if tex:
-		portrait_texture.texture = tex
-		hero_portrait = tex
+	# Имя и портрет выбранного героя (из экрана старта)
+	hero_name_label.text = Game.hero_name
+	var hero_tex = load("res://assets/equipment/%s/1.png" % Game.hero_character_id)
+	if hero_tex:
+		portrait_texture.texture = hero_tex
+		hero_portrait = hero_tex
+	else:
+		var tex = load("res://assets/portraits/goodorc.png")
+		if tex:
+			portrait_texture.texture = tex
+			hero_portrait = tex
 
 	_setup_inventory()
 
@@ -409,7 +415,7 @@ func _update_stats():
 	var hp_regen = p._calc_hp_regen()
 	var mana_regen = p._calc_mana_regen()
 
-	var stats = "ИМЯ: ГЕРОЙ\n"
+	var stats = "ИМЯ: %s\n" % Game.hero_name
 	stats += "─────────────\n"
 	stats += "ТЕЛО:%d  ЛОВКОСТЬ:%d\n" % [p.body, p.agility]
 	stats += "РАЗУМ:%d  ДУХ:%d\n" % [p.mind, p.spirit]

@@ -65,7 +65,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "info_picture": "SwordsMan",
+  "sound": [
+   100,
+   200,
+   220,
+   221,
+   240
+  ]
  },
  "humans/swordsman_": {
   "desc": "Human Swordsman with shield",
@@ -133,7 +148,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "SwordsManSh",
+  "sound": [
+   100,
+   202,
+   220,
+   221,
+   240
+  ]
  },
  "monsters/goblin": {
   "desc": "Goblin",
@@ -207,7 +238,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 24,
-  "expected_frames": 192
+  "expected_frames": 192,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Goblin",
+  "sound": [
+   150,
+   210,
+   311,
+   311,
+   312
+  ]
  },
  "monsters/orc": {
   "desc": "Orc Archer",
@@ -281,7 +328,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 25,
-  "expected_frames": 200
+  "expected_frames": 200,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 20,
+  "bone": 3,
+  "info_picture": "Orc",
+  "shoot_delay": 22,
+  "sound": [
+   130,
+   210,
+   300,
+   301,
+   302
+  ]
  },
  "monsters/troll": {
   "desc": "Fat troll",
@@ -349,7 +413,25 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 24,
-  "expected_frames": 192
+  "expected_frames": 192,
+  "sel_box": [
+   34,
+   30,
+   94,
+   100
+  ],
+  "attack_delay": 6,
+  "tile_size": 2,
+  "flip": 1,
+  "bone": 3,
+  "info_picture": "Troll",
+  "sound": [
+   323,
+   212,
+   320,
+   321,
+   322
+  ]
  },
  "monsters/bat": {
   "desc": "Sonic Bat",
@@ -404,10 +486,45 @@
   ],
   "picture": "Bat",
   "dirs": 8,
-  "idle_phases": 0,
+  "idle_phases": 6,
   "decay": 0,
   "blocks": 20,
-  "expected_frames": 160
+  "expected_frames": 160,
+  "sel_box": [
+   48,
+   44,
+   80,
+   80
+  ],
+  "attack_delay": 2,
+  "tile_size": 1,
+  "flip": 1,
+  "z": 96,
+  "info_picture": "Bat",
+  "shoot_delay": 2,
+  "sound": [
+   333,
+   0,
+   330,
+   331,
+   332
+  ],
+  "idle_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "idle_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5
+  ]
  },
  "monsters/legg": {
   "desc": "Snake",
@@ -471,7 +588,25 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 18,
-  "expected_frames": 144
+  "expected_frames": 144,
+  "sel_box": [
+   48,
+   40,
+   80,
+   66
+  ],
+  "attack_delay": 2,
+  "tile_size": 1,
+  "flip": 1,
+  "bone": 3,
+  "info_picture": "Leg",
+  "sound": [
+   363,
+   0,
+   360,
+   361,
+   362
+  ]
  },
  "monsters/bee": {
   "desc": "Bee",
@@ -522,10 +657,39 @@
   ],
   "picture": "Bee",
   "dirs": 8,
-  "idle_phases": 0,
+  "idle_phases": 4,
   "decay": 0,
   "blocks": 16,
-  "expected_frames": 128
+  "expected_frames": 128,
+  "sel_box": [
+   48,
+   44,
+   80,
+   80
+  ],
+  "attack_delay": 2,
+  "tile_size": 1,
+  "flip": 1,
+  "info_picture": "Bee",
+  "sound": [
+   343,
+   0,
+   340,
+   341,
+   342
+  ],
+  "idle_t": [
+   1,
+   1,
+   1,
+   1
+  ],
+  "idle_f": [
+   0,
+   1,
+   2,
+   3
+  ]
  },
  "humans/mage_st": {
   "desc": "Human Mage",
@@ -591,7 +755,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 20,
-  "expected_frames": 160
+  "expected_frames": 160,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 8,
+  "bone": 3,
+  "info_picture": "Mage",
+  "shoot_delay": 8,
+  "sound": [
+   510,
+   211,
+   222,
+   223,
+   241
+  ]
  },
  "humans/catapult1": {
   "desc": "Catapult 1",
@@ -651,7 +832,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 15,
-  "expected_frames": 120
+  "expected_frames": 120,
+  "sel_box": [
+   32,
+   32,
+   96,
+   96
+  ],
+  "attack_delay": 4,
+  "tile_size": 2,
+  "bone": 3,
+  "info_picture": "Catapult1",
+  "sound": [
+   120,
+   0,
+   0,
+   0,
+   243
+  ]
  },
  "monsters/ogre": {
   "desc": "Ogre (Lord)",
@@ -715,7 +913,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 17,
-  "expected_frames": 136
+  "expected_frames": 136,
+  "sel_box": [
+   34,
+   30,
+   94,
+   100
+  ],
+  "attack_delay": 6,
+  "tile_size": 2,
+  "bone": 3,
+  "info_picture": "Ogre",
+  "sound": [
+   110,
+   212,
+   350,
+   351,
+   352
+  ]
  },
  "humans/catapult2": {
   "desc": "Catapult 2",
@@ -773,7 +988,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 14,
-  "expected_frames": 112
+  "expected_frames": 112,
+  "sel_box": [
+   32,
+   32,
+   96,
+   96
+  ],
+  "attack_delay": 4,
+  "tile_size": 2,
+  "bone": 3,
+  "info_picture": "Catap2",
+  "sound": [
+   120,
+   0,
+   0,
+   0,
+   243
+  ]
  },
  "humans/swordsman2": {
   "desc": "Human Two-Handed Swordsman",
@@ -841,7 +1073,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "info_picture": "2HSwordsMan",
+  "sound": [
+   100,
+   200,
+   220,
+   221,
+   240
+  ]
  },
  "humans/mage": {
   "desc": "Unarmed Mage",
@@ -907,7 +1154,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 18,
-  "expected_frames": 144
+  "expected_frames": 144,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 8,
+  "info_picture": "Mage",
+  "shoot_delay": 8,
+  "sound": [
+   0,
+   211,
+   222,
+   223,
+   241
+  ]
  },
  "humans/unarmed": {
   "desc": "Unarmed Fighter with Shield",
@@ -976,7 +1239,24 @@
   "idle_phases": 9,
   "decay": 3,
   "blocks": 22,
-  "expected_frames": 110
+  "expected_frames": 110,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 0,
+  "flip": 1,
+  "bone": 3,
+  "info_picture": "Bee",
+  "sound": [
+   0,
+   211,
+   220,
+   221,
+   240
+  ]
  },
  "monsters/dragon": {
   "desc": "Dragon",
@@ -1041,10 +1321,47 @@
   ],
   "picture": "Dragon",
   "dirs": 8,
-  "idle_phases": 0,
+  "idle_phases": 7,
   "decay": 0,
   "blocks": 28,
-  "expected_frames": 224
+  "expected_frames": 224,
+  "sel_box": [
+   32,
+   32,
+   128,
+   128
+  ],
+  "attack_delay": 8,
+  "tile_size": 3,
+  "flip": 1,
+  "z": 96,
+  "info_picture": "Dragon",
+  "shoot_delay": 8,
+  "sound": [
+   512,
+   0,
+   400,
+   401,
+   402
+  ],
+  "idle_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "idle_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ]
  },
  "monsters/squirrel": {
   "desc": "Squirrel",
@@ -1102,7 +1419,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 15,
-  "expected_frames": 120
+  "expected_frames": 120,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 0,
+  "flip": 1,
+  "bone": 3,
+  "info_picture": "Squirrel",
+  "sound": [
+   383,
+   0,
+   380,
+   380,
+   382
+  ]
  },
  "monsters/ghost": {
   "desc": "Ghost",
@@ -1157,10 +1491,38 @@
   ],
   "picture": "ghost",
   "dirs": 8,
-  "idle_phases": 0,
+  "idle_phases": 3,
   "decay": 0,
   "blocks": 18,
-  "expected_frames": 144
+  "expected_frames": 144,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 0,
+  "flip": 1,
+  "info_picture": "ghost",
+  "sound": [
+   373,
+   0,
+   370,
+   370,
+   372
+  ],
+  "idle_t": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "idle_f": [
+   0,
+   1,
+   2,
+   1
+  ]
  },
  "monsters/turtle": {
   "desc": "Turtle",
@@ -1222,7 +1584,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 14,
-  "expected_frames": 112
+  "expected_frames": 112,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 0,
+  "flip": 1,
+  "bone": 3,
+  "info_picture": "Turtle",
+  "sound": [
+   410,
+   0,
+   411,
+   411,
+   412
+  ]
  },
  "heroes/pikeman": {
   "desc": "Human Pikeman (Snowballs)",
@@ -1286,7 +1665,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 17,
-  "expected_frames": 136
+  "expected_frames": 136,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "info_picture": "PikeMan",
+  "sound": [
+   150,
+   200,
+   220,
+   221,
+   240
+  ]
  },
  "humans/pikeman_": {
   "desc": "Human Pikeman with shield",
@@ -1350,7 +1744,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 17,
-  "expected_frames": 136
+  "expected_frames": 136,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "info_picture": "PikemanSh",
+  "sound": [
+   150,
+   202,
+   220,
+   221,
+   240
+  ]
  },
  "humans/cavalrypike": {
   "desc": "Hero of the Lance",
@@ -1416,7 +1825,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   40,
+   40,
+   88,
+   88
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "PikeMan",
+  "sound": [
+   150,
+   201,
+   220,
+   221,
+   242
+  ]
  },
  "humans/cavalrysword": {
   "desc": "Hero of the Sword",
@@ -1481,7 +1906,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   40,
+   40,
+   88,
+   88
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "PikeMan",
+  "sound": [
+   100,
+   201,
+   220,
+   221,
+   242
+  ]
  },
  "humans/axeman": {
   "desc": "Human AxeMan",
@@ -1549,7 +1990,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 5,
+  "info_picture": "AxeMan",
+  "sound": [
+   110,
+   201,
+   221,
+   223,
+   240
+  ]
  },
  "monsters/mainnecro": {
   "desc": "Very Bad Guy (Urd)",
@@ -1617,7 +2073,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "bone": 3,
+  "info_picture": "mainnecro",
+  "shoot_delay": 6,
+  "sound": [
+   490,
+   0,
+   491,
+   492,
+   493
+  ]
  },
  "monsters/goblin_s": {
   "desc": "Goblin slinger",
@@ -1685,7 +2158,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "bone": 3,
+  "info_picture": "Goblins",
+  "shoot_delay": 10,
+  "sound": [
+   160,
+   210,
+   311,
+   311,
+   312
+  ]
  },
  "monsters/orc_s": {
   "desc": "Orc with sabre",
@@ -1751,7 +2241,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Orcsabre",
+  "sound": [
+   100,
+   200,
+   300,
+   301,
+   302
+  ]
  },
  "monsters/orc_sh": {
   "desc": "Orc shaman",
@@ -1821,7 +2327,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 23,
-  "expected_frames": 184
+  "expected_frames": 184,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Orcshaman",
+  "shoot_delay": 6,
+  "sound": [
+   0,
+   210,
+   300,
+   301,
+   302
+  ]
  },
  "monsters/zombie_f1": {
   "desc": "Zombie Fighter 1",
@@ -1887,7 +2410,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Zombie_f1",
+  "sound": [
+   110,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "monsters/zombie_f2": {
   "desc": "Zombie Fighter 2",
@@ -1953,7 +2492,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 20,
-  "expected_frames": 160
+  "expected_frames": 160,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Zombie_f2",
+  "sound": [
+   110,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "monsters/zombie_f3": {
   "desc": "Zombie Fighter 3",
@@ -2021,7 +2576,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Zombie_f3",
+  "sound": [
+   110,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "monsters/zombie_f4": {
   "desc": "Zombie Fighter 4",
@@ -2089,7 +2660,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "Zombie_f4",
+  "sound": [
+   110,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "monsters/zombie_a2": {
   "desc": "Zombie Archer 2",
@@ -2161,7 +2748,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 23,
-  "expected_frames": 184
+  "expected_frames": 184,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 7,
+  "bone": 3,
+  "info_picture": "Zombie_a2",
+  "shoot_delay": 9,
+  "sound": [
+   140,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "humans/axeman_sh": {
   "desc": "Human AxeMan with shield",
@@ -2229,7 +2833,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 5,
+  "info_picture": "AxeManSh",
+  "sound": [
+   110,
+   202,
+   221,
+   223,
+   240
+  ]
  },
  "monsters/zombie_a3": {
   "desc": "Zombie Archer 3",
@@ -2301,7 +2920,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 7,
+  "bone": 3,
+  "info_picture": "Zombie_a3",
+  "shoot_delay": 9,
+  "sound": [
+   140,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "monsters/zombie_a4": {
   "desc": "Zombie Archer 4",
@@ -2373,7 +3009,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 7,
+  "bone": 3,
+  "info_picture": "Zombie_a4",
+  "shoot_delay": 9,
+  "sound": [
+   140,
+   210,
+   471,
+   472,
+   473
+  ]
  },
  "monsters/skeleton_f1": {
   "desc": "Skeleton Fighter 1",
@@ -2441,7 +3094,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "skeleton_f",
+  "sound": [
+   100,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_f2": {
   "desc": "Skeleton Fighter 2",
@@ -2509,7 +3178,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "skeleton_f2",
+  "sound": [
+   100,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_f3": {
   "desc": "Skeleton Fighter 3",
@@ -2577,7 +3262,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "skeleton_f3",
+  "sound": [
+   100,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_f4": {
   "desc": "Skeleton Fighter 4",
@@ -2645,7 +3346,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "bone": 3,
+  "info_picture": "sk_f4",
+  "sound": [
+   100,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_a1": {
   "desc": "Skeleton Archer 1",
@@ -2717,7 +3434,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 23,
-  "expected_frames": 184
+  "expected_frames": 184,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 19,
+  "bone": 3,
+  "info_picture": "skeleton_a",
+  "shoot_delay": 21,
+  "sound": [
+   130,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_a2": {
   "desc": "Skeleton Archer 2",
@@ -2789,7 +3523,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 23,
-  "expected_frames": 184
+  "expected_frames": 184,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 19,
+  "bone": 3,
+  "info_picture": "skeleton_a2",
+  "shoot_delay": 21,
+  "sound": [
+   130,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_a3": {
   "desc": "Skeleton Archer 3",
@@ -2861,7 +3612,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 23,
-  "expected_frames": 184
+  "expected_frames": 184,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 19,
+  "bone": 3,
+  "info_picture": "skeleton_a3",
+  "shoot_delay": 21,
+  "sound": [
+   130,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "monsters/skeleton_a4": {
   "desc": "Skeleton Archer 4",
@@ -2933,7 +3701,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 23,
-  "expected_frames": 184
+  "expected_frames": 184,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 19,
+  "bone": 3,
+  "info_picture": "sk_a4",
+  "shoot_delay": 21,
+  "sound": [
+   130,
+   211,
+   461,
+   462,
+   463
+  ]
  },
  "humans/axeman_2hd": {
   "desc": "Human AxeMan with 2-handed axe",
@@ -3001,7 +3786,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "info_picture": "2HAxeMan",
+  "sound": [
+   110,
+   201,
+   221,
+   223,
+   240
+  ]
  },
  "monsters/skeleton_m3": {
   "desc": "Skeleton Mage 3",
@@ -3069,7 +3869,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 22,
-  "expected_frames": 176
+  "expected_frames": 176,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "bone": 3,
+  "info_picture": "skeleton_m3",
+  "shoot_delay": 6,
+  "sound": [
+   0,
+   212,
+   481,
+   482,
+   483
+  ]
  },
  "monsters/skeleton_m4": {
   "desc": "Skeleton Mage 4",
@@ -3137,7 +3954,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 22,
-  "expected_frames": 176
+  "expected_frames": 176,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "bone": 3,
+  "info_picture": "sk_m4",
+  "shoot_delay": 6,
+  "sound": [
+   0,
+   212,
+   481,
+   482,
+   483
+  ]
  },
  "monsters/necromant": {
   "desc": "Necromancer",
@@ -3205,7 +4039,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "bone": 3,
+  "info_picture": "necro",
+  "shoot_delay": 6,
+  "sound": [
+   0,
+   210,
+   491,
+   492,
+   493
+  ]
  },
  "monsters/druid": {
   "desc": "Druid",
@@ -3273,7 +4124,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 6,
+  "bone": 3,
+  "info_picture": "druid",
+  "shoot_delay": 6,
+  "sound": [
+   0,
+   211,
+   496,
+   497,
+   498
+  ]
  },
  "monsters/orc_good": {
   "desc": "Good Orc",
@@ -3347,7 +4215,24 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 25,
-  "expected_frames": 200
+  "expected_frames": 200,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 20,
+  "bone": 3,
+  "info_picture": "goodorc",
+  "shoot_delay": 22,
+  "sound": [
+   100,
+   200,
+   300,
+   301,
+   302
+  ]
  },
  "monsters/troll_good": {
   "desc": "Mercenary troll",
@@ -3415,7 +4300,25 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 24,
-  "expected_frames": 192
+  "expected_frames": 192,
+  "sel_box": [
+   34,
+   30,
+   94,
+   100
+  ],
+  "attack_delay": 6,
+  "tile_size": 2,
+  "flip": 1,
+  "bone": 3,
+  "info_picture": "Troll",
+  "sound": [
+   323,
+   212,
+   320,
+   321,
+   322
+  ]
  },
  "monsters/succubus": {
   "desc": "Succubus",
@@ -3482,10 +4385,50 @@
   ],
   "picture": "succubus",
   "dirs": 8,
-  "idle_phases": 0,
+  "idle_phases": 9,
   "decay": 0,
   "blocks": 30,
-  "expected_frames": 240
+  "expected_frames": 240,
+  "sel_box": [
+   48,
+   41,
+   80,
+   77
+  ],
+  "attack_delay": 6,
+  "tile_size": 1,
+  "z": 96,
+  "info_picture": "succubus",
+  "shoot_delay": 6,
+  "sound": [
+   440,
+   0,
+   441,
+   442,
+   443
+  ],
+  "idle_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "idle_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8
+  ]
  },
  "monsters/wolf": {
   "desc": "Wolf",
@@ -3547,7 +4490,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 18,
-  "expected_frames": 144
+  "expected_frames": 144,
+  "sel_box": [
+   48,
+   45,
+   80,
+   87
+  ],
+  "attack_delay": 0,
+  "bone": 3,
+  "info_picture": "wolf",
+  "sound": [
+   420,
+   0,
+   421,
+   422,
+   423
+  ]
  },
  "monsters/spider": {
   "desc": "Spider",
@@ -3601,7 +4560,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 12,
-  "expected_frames": 96
+  "expected_frames": 96,
+  "sel_box": [
+   48,
+   43,
+   80,
+   85
+  ],
+  "attack_delay": 0,
+  "bone": 3,
+  "info_picture": "spider",
+  "sound": [
+   430,
+   0,
+   431,
+   432,
+   433
+  ]
  },
  "monsters/dino": {
   "desc": "Dino",
@@ -3673,7 +4648,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 25,
-  "expected_frames": 200
+  "expected_frames": 200,
+  "sel_box": [
+   48,
+   34,
+   80,
+   76
+  ],
+  "attack_delay": 0,
+  "bone": 3,
+  "info_picture": "dino",
+  "sound": [
+   450,
+   0,
+   451,
+   452,
+   453
+  ]
  },
  "humans/clubman": {
   "desc": "Human ClubMan",
@@ -3741,7 +4732,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "info_picture": "ClubMan",
+  "sound": [
+   120,
+   200,
+   220,
+   223,
+   240
+  ]
  },
  "monsters/sheep": {
   "desc": "WarSheep",
@@ -3793,7 +4799,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 16,
-  "expected_frames": 128
+  "expected_frames": 128,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 0,
+  "bone": 3,
+  "info_picture": "sheep",
+  "sound": [
+   499,
+   0,
+   499,
+   499,
+   499
+  ]
  },
  "humans/clubman_sh": {
   "desc": "Human Clubman with shield",
@@ -3861,7 +4883,22 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 19,
-  "expected_frames": 152
+  "expected_frames": 152,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 4,
+  "info_picture": "ClubManSh",
+  "sound": [
+   120,
+   202,
+   220,
+   223,
+   240
+  ]
  },
  "humans/archer": {
   "desc": "Human Archer",
@@ -3933,7 +4970,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 19,
+  "info_picture": "Archer",
+  "shoot_delay": 21,
+  "sound": [
+   130,
+   211,
+   225,
+   235,
+   245
+  ]
  },
  "humans/xbowman": {
   "desc": "Human CrossBowMan",
@@ -4005,7 +5058,23 @@
   "idle_phases": 0,
   "decay": 0,
   "blocks": 21,
-  "expected_frames": 168
+  "expected_frames": 168,
+  "sel_box": [
+   48,
+   48,
+   80,
+   90
+  ],
+  "attack_delay": 7,
+  "info_picture": "XBowMan",
+  "shoot_delay": 9,
+  "sound": [
+   140,
+   212,
+   222,
+   223,
+   240
+  ]
  },
  "heroes/archer": {
   "desc": "Hero: archer",

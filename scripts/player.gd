@@ -44,6 +44,7 @@ var has_shield: bool = false
 var _anim: UnitAnim = null
 
 func _ready():
+	_apply_hero_choice()
 	max_hp = _calc_max_hp()
 	max_mana = _calc_max_mana()
 	current_hp = max_hp
@@ -52,6 +53,31 @@ func _ready():
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	_ensure_sprite()
 	_create_health_bar()
+
+## Применить выбор персонажа с экрана старта (character_select): характеристики,
+## стартовая экипировка. Без выбора (запуск main.tscn напрямую) — значения по умолчанию.
+func _apply_hero_choice() -> void:
+	var st: Dictionary = Game.hero_stats
+	if st.is_empty():
+		return
+	body = int(st.get("body", body))
+	agility = int(st.get("agility", agility))
+	mind = int(st.get("mind", mind))
+	spirit = int(st.get("spirit", spirit))
+	blade_skill = int(st.get("blade", blade_skill))
+	axe_skill = int(st.get("axe", axe_skill))
+	bludgeon_skill = int(st.get("bludgeon", bludgeon_skill))
+	pike_skill = int(st.get("pike", pike_skill))
+	shooting_skill = int(st.get("shooting", shooting_skill))
+	fire_skill = int(st.get("fire", fire_skill))
+	water_skill = int(st.get("water", water_skill))
+	air_skill = int(st.get("air", air_skill))
+	earth_skill = int(st.get("earth", earth_skill))
+	astral_skill = int(st.get("astral", astral_skill))
+	weapon = str(st.get("weapon", weapon))
+	has_shield = bool(st.get("shield", false))
+	armor_kind = str(st.get("armor", armor_kind))
+	# Маг: стартовые заклинания уже в abilities (fireball/heal/lightning)
 
 # --- Производные характеристики (связи из оригинального main.txt) ---
 func _calc_max_hp() -> int:

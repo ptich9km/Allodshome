@@ -54,6 +54,9 @@ func setup(name: String) -> void:
 		add_child(_sprite)
 	else:
 		_sprite.flip_h = false
+	# Масштаб крупных юнитов (TileSize: тролль/огр/катапульта 2x, дракон 3x)
+	var ts: int = UnitDB.tile_size(name)
+	_sprite.scale = Vector2.ONE * float(ts)
 	_apply_frame()
 
 ## Число нарисованных направлений в файле (5 или 8).

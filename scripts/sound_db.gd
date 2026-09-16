@@ -41,6 +41,8 @@ static func play(id: int, volume_db: float = 0.0) -> bool:
 	var stream: Variant = load(SFX_ROOT + rel)
 	if stream == null:
 		return false
+	if not _ensure_bus():
+		return false
 	var player := _borrow_player()
 	if player == null:
 		return false
@@ -81,13 +83,13 @@ static func _borrow_player() -> AudioStreamPlayer:
 	_round_robin += 1
 	return p2
 
-static func _ensure_bus() -> void:
+static func _ensure_bus() -> bool:
 	if _bus != null and is_instance_valid(_bus):
-		return
+		return true
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null:
 		_bus = null
-		return
+		return false
 	_bus = Node.new()
 	_bus.name = "SoundBus"
 	tree.root.add_child(_bus)
@@ -97,3 +99,4 @@ static func _ensure_bus() -> void:
 		p.name = "Sfx%02d" % i
 		_bus.add_child(p)
 		_pool.append(p)
+	return true

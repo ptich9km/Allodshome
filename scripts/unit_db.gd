@@ -113,5 +113,68 @@ static func block_frames(name: String, key: String, phases: int) -> Array:
 		seq.append(i)
 	return seq
 
+# --- Поля, перенесённые из units.txt (полный порт) ---
+
+## Хитбокс выделения юнита [x1,y1,x2,y2] (для клика/выбора).
+static func sel_box(name: String) -> Rect2i:
+	var o := get_set(name)
+	var raw: Variant = o.get("sel_box", null)
+	if raw is Array and raw.size() == 4:
+		return Rect2i(int(raw[0]), int(raw[1]), int(raw[2]) - int(raw[0]), int(raw[3]) - int(raw[1]))
+	# дефолт: почти весь спрайт
+	return Rect2i(16, 16, 96, 96)
+
+## Задержка атаки в тиках (из units.txt AttackDelay).
+static func attack_delay(name: String) -> float:
+	return float(get_set(name).get("attack_delay", 4)) * TICK
+
+## Номер палитры спрайта (0..7; монстры 5, скелеты 1-2, люди 0).
+static func palette(name: String) -> int:
+	return int(get_set(name).get("palette", 0))
+
+## Портрет юнита (имя из units.txt InfoPicture).
+static func info_picture(name: String) -> String:
+	return str(get_set(name).get("info_picture", ""))
+
+## Размер юнита в клетках (1 = обычный, 2 = тролль/огр/катапульта, 3 = дракон).
+static func tile_size(name: String) -> int:
+	return int(get_set(name).get("tile_size", 1))
+
+## Зеркалить ли спрайт юнита (Flip=1 — тролли, дракон, летающие).
+static func flip(name: String) -> bool:
+	return int(get_set(name).get("flip", 0)) != 0
+
+## Высота полёта в пикселях (Z — бат/дракон/саккуб парят над землёй).
+static func fly_z(name: String) -> int:
+	return int(get_set(name).get("z", 0))
+
+## Фазы анимации костей после смерти (BonePhases — у нежити).
+static func bone_phases(name: String) -> int:
+	return int(get_set(name).get("bone", 0))
+
+## Тип снаряда дальнобойного юнита (-1 = не стреляет; 1.. = снаряд из проекта).
+static func projectile(name: String) -> int:
+	return int(get_set(name).get("projectile", -1))
+
+## Задержка выстрела (ShootDelay в тиках).
+static func shoot_delay(name: String) -> float:
+	return float(get_set(name).get("shoot_delay", 8)) * TICK
+
+## Точка вылета снаряда [x0,y0,x1,y1,...] — 8 пар на каждое направление.
+static func shoot_offset(name: String) -> Array:
+	var o := get_set(name)
+	var raw: Variant = o.get("shoot_offset", null)
+	if raw is Array:
+		return raw
+	return []
+
+## Звуки юнита [атака, ?, ?, смерть, ...] — ID из sfx (assets/audio/sfx/monsters|magic).
+static func unit_sound(name: String) -> Array:
+	var o := get_set(name)
+	var raw: Variant = o.get("sound", null)
+	if raw is Array:
+		return raw
+	return []
+
 func _unused() -> void:
 	pass

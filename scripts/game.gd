@@ -13,6 +13,13 @@ static var mana_regen_accum: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
 
+# --- Выбор героя на старте (сцена character_select) ---
+static var hero_class: String = "warrior"   # warrior | mage
+static var hero_gender: String = "male"     # male | female
+static var hero_name: String = "Герой"
+static var hero_character_id: String = "mfighter"  # id из character_select
+static var hero_stats: Dictionary = {}      # стартовые характеристики
+
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
 const ATTACK_COOLDOWN: float = 1.0
