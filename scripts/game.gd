@@ -29,6 +29,12 @@ const DEAGGRO_RADIUS: float = 200.0
 func _ready():
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
 
+	# Страховка: если main.tscn запущен напрямую (F6, отладка) без выбора
+	# персонажа на старте — уходим на экран выбора героя.
+	if Game.hero_stats.is_empty():
+		get_tree().call_deferred("change_scene_to_file", "res://scenes/character_select.tscn")
+		return
+
 	# Спавним игрока на проходимом тайле в центре карты
 	_spawn_player_on_walkable()
 
