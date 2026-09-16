@@ -103,6 +103,19 @@ func _physics_process(delta):
 				_anim.play(UnitAnim.Anim.IDLE)
 
 	move_and_slide()
+	_apply_relief_stand()
+
+## Стоять на рельефе: поднять спрайт на высоту клетки (как в Allods16).
+func _apply_relief_stand() -> void:
+	if _anim == null:
+		return
+	var h := 0.0
+	var map_node = get_tree().get_first_node_in_group("alm_map")
+	if map_node != null and map_node.has_method("relief_at_world"):
+		h = float(map_node.call("relief_at_world", global_position))
+	_anim.position = Vector2(_anim.position.x, -h)
+	if health_bar:
+		health_bar.position.y = -(h + 60.0)  # бар выше головы
 
 func move_toward_target(target: Vector2, _delta):
 	var direction = (target - global_position).normalized()

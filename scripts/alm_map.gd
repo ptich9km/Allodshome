@@ -1,72 +1,94 @@
 extends Node2D
 class_name AlmMap
-## Карта из .alm: секции info/tiles/heights/obstacles + structures (здания).
-## Тайлы — tile id (uint16): файл tile{1-4}-XX.bmp, кадр = tile&0xF.
-## Здания (секция id=4) — кадры house-NNN.png из assets/structures/<папка>/.
-## Дороги (tile4) дают ускорение; горы (tile2) и вода (tile3) — барьер.
+## Карта разработчиков из .alm: рельефный меш с высотами и освещением от солнца
+## (методика Allods16/repo jewalky): каждый тайл-квад поднят на высоту углов,
+## текстура растягивается, яркость считается от нормали квада и угла солнца.
 
 @export var alm_path: String = ""
 @export var tile_px := 32
 
+const TILE := 32
+# Высота меша на 1 единицу высоты карты (оригинал рисует 1:1)
+const HEIGHT_SCALE := 1.0
+
 var map_width: int = 0
 var map_height: int = 0
-var _tiles: PackedInt32Array = PackedInt32Array()
-var _heights: PackedByteArray = PackedByteArray()
-var _obstacles: PackedByteArray = PackedByteArray()
-var _structures: Array = []
+var _terrain: PackedByteArray   # byte[0] — вариант автайла
+var _hflags: PackedByteArray    # byte[1] — тип terrain (файл-1: 0..3)
+var _heights: PackedByteArray   # int8 — рельеф (0..127)
+var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объект)
+var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
+
+var mesh: MeshInstance2D
+var _atlas: ImageTexture
+var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
+var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
+var obstacles_root: Node2D      # слой препятствий (y-sort)
+
+# Высотная сетка для движения (0/1: скала приподнята) — как раньше
 var _height_grid: Array = []
-var tilemap: TileMapLayer
-var buildings: Node2D          # слой зданий (спрайты)
-var obstacles_root: Node2D     # слой препятствий (деревья/камни/ограды)
-var _max_rows: Dictionary = {} # sid -> число рядов в атласе тайла
-var barrier_cells := {}        # клетки, заблокированные зданиями/растительностью
-var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
-
-## Множитель скорости: дорога (tile4) = 1.5, обычная = 1.0.
-const ROAD_SPEED := 1.5
-
-## Совместимость с CustomMap: размер клетки в пикселях.
-func tile_size() -> int:
-	return tile_px
 
 func _ready() -> void:
 	add_to_group("alm_map")
-	_build()
-
-## Путь к карте: явный alm_path, либо последняя карта, открытая в редакторе
-## (user://last_alm_path.txt), либо kids3.alm по умолчанию.
-func _effective_alm_path() -> String:
-	if not alm_path.is_empty():
-		return alm_path
-	var p := "user://last_alm_path.txt"
-	if FileAccess.file_exists(p):
-		var f := FileAccess.open(p, FileAccess.READ)
-		if f != null:
-			var saved := f.get_as_text().strip_edges()
-			f.close()
-			if saved != "" and FileAccess.file_exists(saved):
-				return saved
-	return "res://assets/maps/kids3.alm"
-
-func _build() -> void:
-	var path := _effective_alm_path()
-	var data := AlmLoader.load_map(path)
+	if alm_path.is_empty():
+		push_warning("AlmMap: alm_path не задан")
+		return
+	var data := AlmLoader.load_map(alm_path)
 	if data.is_empty():
 		return
 	map_width = data["width"]
 	map_height = data["height"]
-	_tiles = data["tiles"]
-	_heights = data.get("heights", PackedByteArray())
-	_obstacles = data.get("obstacles", PackedByteArray())
-	_structures = data.get("structures", [])
+	_terrain = data["terrain"]
+	_hflags = data["hflags"]
+	_heights = data["heights"]
+	_obstacles = data["obstacles"]
+	var info: Dictionary = data.get("info", {})
+	solar_angle = float(info.get("solar_angle", 0.785398))
+	_load_obstacle_db()
 	_build_height_grid()
-	_collect_barriers()
-	_build_tilemap()
-	_build_structures()
+	_build_atlas()
+	_build_relief_mesh()
 	_build_obstacles()
-	print("AlmMap: %s %dx%d, структур %d" % [path.get_file(), map_width, map_height, _structures.size()])
+	print("AlmMap: %s %dx%d клеток, солнце %s°" % [alm_path.get_file(), map_width, map_height, str(rad_to_deg(solar_angle))])
 
-## Высоты (int8 signed).
+## Таблица препятствий: .alm obstacle id -> параметры спрайта (из objects.txt/obj.reg).
+func _load_obstacle_db() -> void:
+	var f := FileAccess.open("res://assets/map-objects/alm_objects.json", FileAccess.READ)
+	if f == null:
+		push_warning("AlmMap: нет alm_objects.json — препятствия не будут показаны")
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		_obstacle_db = parsed
+
+## Препятствия (.alm obstacles): дерево/камень/статуя на клетках с id > 0.
+func _build_obstacles() -> void:
+	if obstacles_root == null:
+		obstacles_root = Node2D.new()
+		obstacles_root.name = "Obstacles"
+		obstacles_root.y_sort_enabled = true
+		obstacles_root.z_index = 1
+		add_child(obstacles_root)
+	for y in range(map_height):
+		for x in range(map_width):
+			var oid := _obstacles[y * map_width + x]
+			if oid == 0:
+				continue
+			var spec: Dictionary = _obstacle_db.get(str(oid), {})
+			if spec.is_empty():
+				continue
+			var folder := str(spec.get("folder", ""))
+			if folder.is_empty():
+				continue
+			var ob := AlmObstacle.new()
+			ob.setup(folder, int(spec.get("phases", 1)),
+				int(spec.get("w", 128)), int(spec.get("h", 128)),
+				int(spec.get("cx", 64)), int(spec.get("cy", 96)))
+			ob.place_at(Vector2i(x, y), TILE, relief_at_tile(x, y))
+			obstacles_root.add_child(ob)
+
+## Высотная сетка для движения (как раньше): скала = 1, остальное 0.
 func _build_height_grid() -> void:
 	_height_grid = []
 	if _heights.size() != map_width * map_height:
@@ -75,303 +97,193 @@ func _build_height_grid() -> void:
 		var row: Array = []
 		row.resize(map_width)
 		for x in range(map_width):
-			var v := _heights[y * map_width + x]
-			row[x] = v if v < 128 else v - 256
+			row[x] = 1 if AlmLoader.terrain_type(_hflags[y * map_width + x]) == 3 else 0
 		_height_grid.append(row)
 
-## Заблокированные клетки: растительность (obstacles>0) + площадь зданий.
-func _collect_barriers() -> void:
-	barrier_cells = {}
-	var n := map_width * map_height
-	if _obstacles.size() == n:
-		for i in range(n):
-			if _obstacles[i] > 0:
-				barrier_cells[Vector2i(i % map_width, i / map_width)] = true
+## Рельеф: настоящие высоты (для визуала и скорости движения).
+func relief_at_tile(x: int, y: int) -> float:
+	if x < 0 or y < 0 or x >= map_width or y >= map_height:
+		return 0.0
+	return float(_heights[y * map_width + x]) * HEIGHT_SCALE
 
-func _build_tilemap() -> void:
-	tilemap = TileMapLayer.new()
-	tilemap.name = "TileMap"
-	add_child(tilemap)
+func relief_at_world(pos: Vector2) -> float:
+	return relief_at_tile(int(pos.x) / TILE, int(pos.y) / TILE)
 
-	var ts := TileSet.new()
-	ts.tile_size = Vector2i(tile_px, tile_px)
-	ts.tile_layout = TileSet.TILE_LAYOUT_STACKED
+# --- Текстуры: атлас всех используемых (файл, вариант, ряд) ---
 
-	# Источники: файл 0..51 -> tile{(n>>4)+1}-{(n&0xF):02}.bmp, внутри — ряды-кадры
-	for n in range(52):
-		var path := "res://assets/terrain/tile%d-%02d.bmp" % [n / 16 + 1, n % 16]
-		var tex: Variant = load(path)
-		if tex == null:
-			continue
-		var nrows: int = tex.get_height() / tile_px
-		var src := TileSetAtlasSource.new()
-		src.texture = tex
-		src.texture_region_size = Vector2i(tile_px, tile_px)
-		for r in range(nrows):
-			src.create_tile(Vector2i(0, r))
-		ts.add_source(src, n)
-		_max_rows[n] = nrows
+func _used_cells() -> Dictionary:
+	## Ключ "f{file}-v{variant}-r{row}" -> true. file 1..4, variant 0..15, row 0..nrows-1
+	var used := {}
+	for i in range(map_width * map_height):
+		var file_n := (_hflags[i] & 0xF) + 1
+		var vmax := 4 if file_n == 4 else 16
+		var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
+		var row := _terrain[i] & 0xF
+		# ряд может превышать реальную высоту файла — проверка позже в _build_atlas
+		used["f%d-v%d-r%d" % [file_n, variant, row]] = true
+	return used
 
-	tilemap.tile_set = ts
+func _build_atlas() -> void:
+	var used := _used_cells()
+	# Соберём фактические (файл, вариант, ряд) с реальным числом рядов в файле
+	var cells: Array = []  # [key, Image32]
+	var key_to_cell := {}
+	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4}
+	# Порядок: сначала все ряды файла 1, потом файла 2 ... (для обхода файлов)
+	for file_n in [1, 2, 3, 4]:
+		var vmax: int = vmax_by_file[file_n]
+		for variant in range(vmax):
+			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
+			if not ResourceLoader.exists(path):
+				continue
+			var tex: Texture2D = load(path)
+			var img: Image = tex.get_image()
+			img.convert(Image.FORMAT_RGBA8)
+			var nrows: int = img.get_height() / TILE
+			for row in range(nrows):
+				var key := "f%d-v%d-r%d" % [file_n, variant, row]
+				if not used.has(key) and not key_to_cell.has(key):
+					continue
+				var cell_img: Image = img.get_region(Rect2i(0, row * TILE, TILE, TILE))
+				cells.append([key, cell_img])
+				key_to_cell[key] = cells.size() - 1
 
+	# Собираем атлас 64x64 ячейки (до 4096)
+	var atlas := Image.create(64 * TILE, 64 * TILE, false, Image.FORMAT_RGBA8)
+	atlas.fill(Color(0, 0, 0, 0))
+	_cell_uv.clear()
+	for idx in range(cells.size()):
+		var key: String = cells[idx][0]
+		var cimg: Image = cells[idx][1]
+		var cx := idx % 64
+		var cy := idx / 64
+		atlas.blit_rect(cimg, Rect2i(0, 0, TILE, TILE), Vector2i(cx * TILE, cy * TILE))
+		var u0 := float(cx * TILE) / float(64 * TILE)
+		var v0 := float(cy * TILE) / float(64 * TILE)
+		var u1 := u0 + 1.0 / 64.0
+		var v1 := v0 + 1.0 / 64.0
+		_cell_uv[key] = Vector4(u0, v0, u1, v1)
+	_atlas = ImageTexture.create_from_image(atlas)
+	print("AlmMap: атлас %d ячеек" % cells.size())
+
+## Для отладки: сама текстура атласа.
+func get_atlas_texture() -> ImageTexture:
+	return _atlas
+
+func _uv_for_cell(file_n: int, variant: int, row: int) -> Vector4:
+	var key := "f%d-v%d-r%d" % [file_n, variant, row]
+	var r: Vector4 = _cell_uv.get(key, Vector4(0, 0, 0, 0))
+	return r
+
+# --- Рельефный меш с освещением ---
+
+func _node_h(nx: int, ny: int) -> float:
+	## Высота узла сетки (угла клетки), с клампом к границам карты.
+	var cx := clampi(nx, 0, map_width - 1)
+	var cy := clampi(ny, 0, map_height - 1)
+	return float(_heights[cy * map_width + cx]) * HEIGHT_SCALE
+
+func _cell_normal(x: int, y: int) -> Vector3:
+	## Нормаль квада (Allods16): u=(32,0,uz), v=(0,32,vz),
+	## где uz = h(x+1,y)-h(x,y), vz = h(x,y+1)-h(x,y). n = cross(u,v).
+	var uz := _node_h(x + 1, y) - _node_h(x, y)
+	var vz := _node_h(x, y + 1) - _node_h(x, y)
+	# cross((32,0,uz),(0,32,vz)) = (-32*uz, -32*vz, 1024)
+	var n := Vector3(-32.0 * uz, -32.0 * vz, 1024.0)
+	return n.normalized()
+
+func _sun_dir() -> Vector3:
+	var a := solar_angle
+	var s := Vector3(cos(a), sin(a), -0.75)
+	return s.normalized()
+
+func _brightness(x: int, y: int) -> float:
+	## Яркость клетки: |n·sun|*64+96, затем контраст (как в Allods16).
+	## В оригинале shade/4 — индекс яркостной палитры (0..64, 32 = норма),
+	## поэтому нормируем на 128: плоский террейн ~1.0, склоны темнее.
+	var n := _cell_normal(x, y)
+	var sun := _sun_dir()
+	var dot := absf(n.dot(sun))
+	var b := dot * 64.0 + 96.0
+	b = (b - 128.0) * 0.75 + 128.0
+	return clampf(b / 128.0, 0.25, 1.0)
+
+func _build_relief_mesh() -> void:
+	if mesh == null:
+		mesh = MeshInstance2D.new()
+		mesh.name = "ReliefMesh"
+		mesh.z_index = -1
+		add_child(mesh)
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var sun := _sun_dir()
 	for y in range(map_height):
 		for x in range(map_width):
-			var tile := _tiles[y * map_width + x] if _tiles.size() > 0 else 0
-			var n := AlmLoader.tile_file(tile)
-			if not _max_rows.has(n):
+			var i := y * map_width + x
+			var file_n := (_hflags[i] & 0xF) + 1
+			var vmax := 4 if file_n == 4 else 16
+			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
+			var row := _terrain[i] & 0xF
+			var uv := _uv_for_cell(file_n, variant, row)
+			if uv == Vector4(0, 0, 0, 0):
 				continue
-			var maxr: int = _max_rows[n]
-			var frame := clampi(AlmLoader.tile_frame(tile), 0, maxr - 1)
-			tilemap.set_cell(Vector2i(x, y), n, Vector2i(0, frame))
 
-## Здания из секции id=4: спрайты assets/structures/<папка>/house-NNN.png.
-## Сетка кадров 32x32: fw=TileWidth, fh=FullHeight; верхние (fh-th) рядов — выше земли.
-func _build_structures() -> void:
-	buildings = Node2D.new()
-	buildings.name = "Buildings"
-	buildings.y_sort_enabled = true
-	buildings.z_index = 5
-	add_child(buildings)
+			# Углы квада: (x,y) вверх-влево, (x+1,y) вправо, (x,y+1) вниз, (x+1,y+1)
+			var h00 := _node_h(x, y)
+			var h10 := _node_h(x + 1, y)
+			var h01 := _node_h(x, y + 1)
+			var h11 := _node_h(x + 1, y + 1)
+			var p00 := Vector3(x * TILE, y * TILE - h00, 0)
+			var p10 := Vector3((x + 1) * TILE, y * TILE - h10, 0)
+			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
+			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
 
-	var placed := 0
-	var missing := 0
-	for st in _structures:
-		var type_id := int(st.get("type_id", 0))
-		var x: float = st.get("x", 0.0)
-		var y: float = st.get("y", 0.0)
-		if type_id <= 0:
-			continue
-		var fj := _structure_frame_job(type_id, st)
-		if fj.is_empty():
-			missing += 1
-			continue
-		var node := _make_structure(fj)
-		if node == null:
-			missing += 1
-			continue
-		# Позиция: клетка (X, Y) = левый-нижний угол корпуса; верх поднят на (fh-th) клеток
-		var dir := int(fj.get("fh", 1)) - int(fj.get("th", 1))
-		node.position = Vector2(x * tile_px, (y - dir) * tile_px)
-		buildings.add_child(node)
-		placed += 1
-		# Хитбокс здания в клетках (корпус th рядов + верхние (fh-th) визуальные ряды)
-		var fw := int(fj.get("fw", 1))
-		var th := int(fj.get("th", 1))
-		var fh := int(fj.get("fh", th))
-		_structure_hits.append({
-			"x0": int(x), "x1": int(x) + fw - 1,
-			"y0": int(y) - (fh - th), "y1": int(y) + th - 1,
-			"picture": str(fj.get("picture", "")),
-			"type_id": type_id,
-		})
-	print("AlmMap: зданий создано %d, пропущено %d" % [placed, missing])
+			# Яркость: средняя из 4 угловых клеток (гладкий свет), по нормали самой клетки
+			var br := _brightness(x, y)
+			var c := Color(br, br, br, 1.0)
 
-## Растительность и декорации из секции id=3 (obstacles): байт на клетку = тип
-## объекта (+1). Спавним анимированные MapObject из assets/map-objects.
-func _build_obstacles() -> void:
-	obstacles_root = Node2D.new()
-	obstacles_root.name = "Obstacles"
-	obstacles_root.y_sort_enabled = true
-	obstacles_root.z_index = 4
-	add_child(obstacles_root)
+			var u0 := uv.x
+			var v0 := uv.y
+			var u1 := uv.z
+			var v1 := uv.w
+			# Треугольник 1: p00 (u0,v0), p10 (u1,v0), p01 (u0,v1)
+			_add_vert(st, p00, u0, v0, c)
+			_add_vert(st, p10, u1, v0, c)
+			_add_vert(st, p01, u0, v1, c)
+			# Треугольник 2: p10 (u1,v0), p11 (u1,v1), p01 (u0,v1)
+			_add_vert(st, p10, u1, v0, c)
+			_add_vert(st, p11, u1, v1, c)
+			_add_vert(st, p01, u0, v1, c)
 
-	if _obstacles.size() != map_width * map_height:
-		return
-	_load_object_registry()
-	var placed := 0
-	var missing := 0
-	for i in range(_obstacles.size()):
-		var b := _obstacles[i]
-		if b <= 0:
-			continue
-		var tid := b - 1  # в .alm ID объекта записан со сдвигом +1
-		var folder := str(_obstacle_folders.get(tid, ""))
-		if folder.is_empty() or not ObjectDB.has(folder):
-			missing += 1
-			continue
-		var cell := Vector2i(i % map_width, i / map_width)
-		var o := ObjectDB.get_obj(folder)
-		var anchor := Vector2(int(o.get("cx", 0)), int(o.get("cy", 0)))
-		var mo := MapObject.new()
-		mo.setup(folder, cell, tile_px, anchor)
-		mo.position = Vector2(cell.x * tile_px + tile_px / 2, cell.y * tile_px + tile_px)
-		obstacles_root.add_child(mo)
-		placed += 1
-	print("AlmMap: препятствий создано %d, пропущено %d" % [placed, missing])
+	var arr: Array = st.commit_to_arrays()
+	var amesh := ArrayMesh.new()
+	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 
-## Реестр объектов из assets/map-objects/objects.txt: obstacle typeId -> папка.
-var _obstacle_folders := {}
-var _object_registry_loaded := false
-func _load_object_registry() -> void:
-	if _object_registry_loaded:
-		return
-	_object_registry_loaded = true
-	var f := FileAccess.open("res://assets/map-objects/objects.txt", FileAccess.READ)
-	if f == null:
-		push_warning("AlmMap: не открыть objects.txt")
-		return
-	var txt := f.get_as_text()
-	f.close()
+	var mat := ShaderMaterial.new()
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform sampler2D u_atlas;
+void fragment() {
+	COLOR = texture(u_atlas, UV) * COLOR;
+}
+"""
+	mat.shader = shader
+	mat.set_shader_parameter("u_atlas", _atlas)
+	mesh.mesh = amesh
+	mesh.material = mat
+	print("AlmMap: меш собран (%d клеток)" % (map_width * map_height))
 
-	var files := {}
-	# object Files { string File0 = "папка\\sprites" ... }
-	var files_match := RegEx.new()
-	files_match.compile("object\\s+Files\\s*\\{([^}]*)\\}")
-	var fm := files_match.search(txt)
-	if fm:
-		var file_lines := fm.get_string(1).split("\n")
-		for line in file_lines:
-			var t: String = line.strip_edges()
-			var parts := t.split("=", true, 1)
-			if parts.size() < 2 or not parts[0].strip_edges().begins_with("string File"):
-				continue
-			var idx_str := parts[0].strip_edges().trim_prefix("string File")
-			var idx := int(idx_str.strip_edges())
-			var dir_path := parts[1].strip_edges().trim_prefix("\"").trim_suffix("\"")
-			files[idx] = dir_path.split("\\")[0]  # "pine1\sprites" -> "pine1"
+func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
+	st.set_uv(Vector2(u, v))
+	st.set_color(c)
+	st.add_vertex(p)
 
-	# object ObjectN { int ID = X, int File = Y, ... } — связываем ID с File
-	var obj_re := RegEx.new()
-	obj_re.compile("object\\s+Object\\d+\\s*\\{([^}]*)\\}")
-	for om_ in obj_re.search_all(txt):
-		var body := om_.get_string(1)
-		var id_v := -1
-		var file_v := -1
-		for line in body.split("\n"):
-			var t: String = line.strip_edges()
-			if not t.contains("="):
-				continue
-			var parts := t.split("=", true, 1)
-			var key := parts[0].strip_edges()
-			var key_last := key.split(" ", false)[-1]
-			var val := parts[1].strip_edges()
-			if key_last == "ID":
-				id_v = int(val)
-			elif key_last == "File":
-				file_v = int(val)
-		if id_v >= 0 and files.has(file_v):
-			_obstacle_folders[id_v] = files[file_v]
-	print("AlmMap: реестр объектов: %d файлов, %d связей ID->папка" % [files.size(), _obstacle_folders.size()])
-
-## Собрать Node2D-здание из кадров house-001.. под TypeID.
-func _make_structure(job: Dictionary) -> Node2D:
-	var node := Node2D.new()
-	var fw := int(job["fw"])
-	var fh := int(job["fh"])
-	var dir_name := str(job["dir"])
-	var prefix := str(job.get("prefix", "house"))
-	for ly in range(fh):
-		for lx in range(fw):
-			var idx := fw * ly + lx
-			var path := "res://assets/structures/%s/%s-%03d.png" % [dir_name, prefix, idx + 1]
-			var tex: Variant = load(path)
-			if tex == null:
-				continue
-			var s := Sprite2D.new()
-			s.texture = tex
-			s.position = Vector2(lx * tile_px, ly * tile_px)
-			node.add_child(s)
-	return node
-
-## Описание здания: папка/префикс кадров, сетка fw x fh (из structures.txt).
-var _structure_jobs := {}
-func _structure_frame_job(type_id: int, st: Dictionary) -> Dictionary:
-	if _structure_jobs.has(type_id):
-		var cached: Dictionary = _structure_jobs[type_id]
-		return cached
-	var def := _structure_def(type_id)
-	if def.is_empty():
-		_structure_jobs[type_id] = {}
-		return {}
-	var parts := str(def.get("file", "")).split("\\")
-	var dir_name := (parts[0] if parts.size() > 0 else "").to_lower()
-	if dir_name.is_empty():
-		_structure_jobs[type_id] = {}
-		return {}
-	# File = "hut1\\house" — двойной backslash (экранирование reg); префикс = последний элемент
-	var prefix := parts[parts.size() - 1] if parts.size() > 1 else "house"
-	if prefix.is_empty():
-		prefix = "house"
-	var fw := int(def.get("tile_width", 1))
-	var th := int(def.get("tile_height", 1))
-	var fh := int(def.get("full_height", th))
-	var job := {
-		"dir": dir_name, "prefix": prefix, "fw": fw, "th": th, "fh": fh,
-		"picture": str(def.get("picture", "")),
-	}
-	_structure_jobs[type_id] = job
-	return job
-
-## Здание под курсором (клетка cell) — для ховера; возвращает Dictionary или {}.
-func structure_at(cell: Vector2i) -> Dictionary:
-	for h in _structure_hits:
-		if cell.x >= int(h["x0"]) and cell.x <= int(h["x1"]) \
-				and cell.y >= int(h["y0"]) and cell.y <= int(h["y1"]):
-			return h
-	return {}
-
-## Данные структуры из structures.txt по TypeID (кэш).
-var _structure_defs := {}
-func _structure_def(type_id: int) -> Dictionary:
-	if _structure_defs.has(type_id):
-		return _structure_defs[type_id]
-	var f := FileAccess.open("res://assets/structures/structures.txt", FileAccess.READ)
-	if f == null:
-		push_warning("AlmMap: не открыть structures.txt")
-		return {}
-	var txt := f.get_as_text()
-	f.close()
-	var def := _parse_def_for_id(txt, type_id)
-	_structure_defs[type_id] = def
-	return def
-
-func _parse_def_for_id(txt: String, type_id: int) -> Dictionary:
-	var lines := txt.split("\n")
-	var in_block := false
-	var depth := 0
-	var block: Array = []
-	for line in lines:
-		var t: String = line.strip_edges()
-		if t.begins_with("object Structure"):
-			if not in_block:
-				in_block = true
-				depth = 0
-				block = [line]
-				continue  # строка-заголовок: скобки считаем со следующей строки
-		if in_block:
-			block.append(line)
-			depth += line.count("{") - line.count("}")
-			if depth <= 0:
-				# Конец блока: проверить ID
-				var id_val := -1
-				for bl in block:
-					var b: String = bl.strip_edges()
-					if b.begins_with("int ID"):
-						id_val = int(b.split("=")[1].strip_edges())
-				if id_val == type_id:
-					return _parse_block(block)
-				in_block = false
-	return {}
-
-func _parse_block(block: Array) -> Dictionary:
-	var def := {}
-	for line in block:
-		var t: String = line.strip_edges()
-		if not t.contains("="):
-			continue
-		var parts := t.split("=", true, 1)
-		if parts.size() < 2:
-			continue
-		var key: String = parts[0].strip_edges()
-		var val: String = parts[1].strip_edges().trim_prefix("\"").trim_suffix("\"")
-		var k: String = key.split(" ", false)[-1]
-		match k:
-			"File": def["file"] = val
-			"TileWidth": def["tile_width"] = int(val)
-			"TileHeight": def["tile_height"] = int(val)
-			"FullHeight": def["full_height"] = int(val)
-			"Picture": def["picture"] = val
-	return def
+## Мировая позиция спавна: центр карты (game.gd сам ищет проходимый тайл рядом).
+func get_spawn_pos() -> Vector2:
+	return Vector2(map_width * TILE / 2, map_height * TILE / 2)
 
 ## --- Запросы для движения и миникарты ---
 
@@ -386,16 +298,18 @@ func height_at_tile(tx: int, ty: int) -> int:
 	return _height_grid[ty][tx]
 
 func height_at_world(pos: Vector2) -> int:
-	return height_at_tile(int(pos.x) / tile_px, int(pos.y) / tile_px)
+	return height_at_tile(int(pos.x) / TILE, int(pos.y) / TILE)
 
 func flag_at_world(pos: Vector2) -> int:
-	var c := _cell_of(pos)
-	if c.x < 0 or c.y < 0 or c.x >= map_width or c.y >= map_height:
+	var tx := int(pos.x) / TILE
+	var ty := int(pos.y) / TILE
+	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return AlmLoader.TileFlag.BARRIER
 	return AlmLoader.classify(_tiles[c.y * map_width + c.x])
 
-## Тип тайла (0..3) для миникарты, по клетке.
-func cell_type_at(tx: int, ty: int) -> int:
+func is_walkable_world(pos: Vector2) -> bool:
+	var tx := int(pos.x) / TILE
+	var ty := int(pos.y) / TILE
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return 0
 	return AlmLoader.terrain_type(_tiles[ty * map_width + tx])
@@ -405,50 +319,33 @@ func is_walkable_world(pos: Vector2) -> bool:
 	var c := _cell_of(pos)
 	if c.x < 0 or c.y < 0 or c.x >= map_width or c.y >= map_height:
 		return false
-	var tile := _tiles[c.y * map_width + c.x]
-	if not AlmLoader.is_walkable_type(AlmLoader.terrain_type(tile)):
+	var i := ty * map_width + tx
+	if not AlmLoader.is_walkable(_hflags[i]):
 		return false
-	if barrier_cells.has(c):
+	# Объект (дерево/камень из obstacles) — непроходимо
+	if _obstacles[i] > 0:
 		return false
 	return true
 
-## Множитель скорости на клетке: дорога (tile4) ускоряет.
+## Множитель скорости по типу клетки: дороги (tile4) быстрее травы.
 func speed_factor_at_world(pos: Vector2) -> float:
-	var c := _cell_of(pos)
-	if c.x < 0 or c.y < 0 or c.x >= map_width or c.y >= map_height:
+	var tx := int(pos.x) / TILE
+	var ty := int(pos.y) / TILE
+	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return 1.0
-	var t := AlmLoader.terrain_type(_tiles[c.y * map_width + c.x])
-	return ROAD_SPEED if t == 3 else 1.0
+	return AlmLoader.speed_factor_type(AlmLoader.terrain_type(_hflags[ty * map_width + tx]))
 
 func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var min_x := margin
 	var min_y := margin
-	var max_x := map_width * tile_px - margin
-	var max_y := map_height * tile_px - margin
+	var max_x := map_width * TILE - margin
+	var max_y := map_height * TILE - margin
 	return pos.x >= min_x and pos.y >= min_y and pos.x <= max_x and pos.y <= max_y
 
-## Точка спавна: если рядом с .alm есть файл-якорь "<имя>.spawn.json" (ставится в
-## редакторе карт), берём его клетку; иначе центр карты (game.gd найдёт рядом).
-func get_spawn_pos() -> Vector2:
-	var anchor := _load_spawn_anchor()
-	if anchor.x >= 0:
-		return Vector2(anchor.x * tile_px + tile_px / 2, anchor.y * tile_px + tile_px / 2)
-	return Vector2(map_width * tile_px / 2, map_height * tile_px / 2)
+func tile_id_at(cell: Vector2i) -> int:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
+		return -1
+	return _hflags[cell.y * map_width + cell.x]
 
-## Клетка спавна из файла-якоря рядом с .alm, или (-1,-1).
-func _load_spawn_anchor() -> Vector2i:
-	var anchor_path := _effective_alm_path().get_basename() + ".spawn.json"
-	if not FileAccess.file_exists(anchor_path):
-		return Vector2i(-1, -1)
-	var f := FileAccess.open(anchor_path, FileAccess.READ)
-	if f == null:
-		return Vector2i(-1, -1)
-	var json: Variant = JSON.parse_string(f.get_as_text())
-	f.close()
-	if json is not Dictionary:
-		return Vector2i(-1, -1)
-	return Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
-
-## .alm-карта содержит только здания — урон по ним не реализован (заглушка).
 func damage_area(_world_pos: Vector2, _radius: float, _dmg: int) -> void:
 	pass

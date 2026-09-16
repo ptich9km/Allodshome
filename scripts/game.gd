@@ -1,7 +1,7 @@
 extends Node2D
 class_name Game
 
-@onready var alm_map = $Map
+@onready var alm_map: Node2D = $Map
 @onready var player: CharacterBody2D = $Player
 @onready var camera: Camera2D = $Camera2D
 @onready var ui: CanvasLayer = $UI
@@ -46,28 +46,27 @@ func _ready():
 		ui.setup_ui(player)
 
 func _spawn_player_on_walkable():
-	if not alm_map or alm_map.map_width == 0:
+	var mw: int = int(alm_map.get("map_width"))
+	var mh: int = int(alm_map.get("map_height"))
+	if not alm_map or mw == 0:
 		return
-	var ts: int = alm_map.tile_size()
-	# 1) Точка спавна из карты (тип «Спавн» / файл-якорь). Ставим, только если
-	#    рядом есть проходимые соседи — иначе персонаж застрянет в закутке.
-	var spawn_pos: Vector2 = alm_map.get_spawn_pos()
-	var c0 := Vector2i(int(spawn_pos.x) / ts, int(spawn_pos.y) / ts)
-	var spot := _find_open_spot(c0, ts)
-	if spot.x >= 0:
-		player.global_position = spot
+	# 1) Точка спавна, заданная в карте (тип «Спавн»)
+	var spawn_pos: Vector2 = alm_map.call("get_spawn_pos")
+	if alm_map.call("is_walkable_world", spawn_pos):
+		player.global_position = spawn_pos
 		return
-	# 2) Запасной вариант — поиск по спирали от центра
-	var cx: int = alm_map.map_width / 2
-	var cy: int = alm_map.map_height / 2
-	for r in range(0, 30):
+	# 2) Запасной вариант — проходимый тайл от центра
+	var cx := mw / 2
+	var cy := mh / 2
+	for r in range(0, 20):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
-				var tx: int = cx + dx
-				var ty: int = cy + dy
-				var wx: int = tx * ts + ts / 2
-				var wy: int = ty * ts + ts / 2
-				if _is_open_spot(tx, ty):
+				var tx := cx + dx
+				var ty := cy + dy
+				var ts: int = int(alm_map.get("tile_size"))
+				var wx := tx * ts + ts / 2
+				var wy := ty * ts + ts / 2
+				if alm_map.call("is_walkable_world", Vector2(wx, wy)):
 					player.global_position = Vector2(wx, wy)
 					return
 

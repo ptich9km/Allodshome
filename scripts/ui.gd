@@ -49,8 +49,8 @@ func setup_ui(p: Player):
 
 	_setup_inventory()
 
-	# AlmMap для миникарты (реальные данные карты)
-	alm_map = get_tree().get_first_node_in_group("alm_map") as AlmMap
+	# Карта для миникарты: CustomMap или AlmMap (группа "alm_map", без каста — они не родственники)
+	alm_map = get_tree().get_first_node_in_group("alm_map")
 
 	_setup_minimap()
 	_setup_action_buttons()
@@ -127,46 +127,14 @@ func _setup_spells():
 var inventory_slots: Array = []
 var inventory_items: Array = []
 
-## Тестовые предметы: железо (раскладка пользователя, каталог inventory).
-## slot: "armor"|"weapon"|"shield", armor: "light"|"heavy", weapon: тип,
-## two_handed — параметры анимации героя. Железо = лёгкая броня.
-const TEST_GEAR := [
-	{"name": "Меч железо", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001002-000.png"},
-	{"name": "Меч железо 1", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001003-000.png"},
-	{"name": "Меч железо 2", "slot": "weapon", "weapon": "sword", "two_handed": false, "icon": "res://assets/inventory/0001004-000.png"},
-	{"name": "Меч железо двуручный", "slot": "weapon", "weapon": "sword", "two_handed": true, "icon": "res://assets/inventory/0001006-000.png"},
-	{"name": "Булава железо", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0001008-000.png"},
-	{"name": "Булава железо 1", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0001009-000.png"},
-	{"name": "Булава железо 2", "slot": "weapon", "weapon": "club", "two_handed": false, "icon": "res://assets/inventory/0001010-000.png"},
-	{"name": "Булава железо двуручная", "slot": "weapon", "weapon": "club", "two_handed": true, "icon": "res://assets/inventory/0001011-000.png"},
-	{"name": "Булава железо двуручная 1", "slot": "weapon", "weapon": "club", "two_handed": true, "icon": "res://assets/inventory/0001012-000.png"},
-	{"name": "Копьё железо", "slot": "weapon", "weapon": "pike", "two_handed": false, "icon": "res://assets/inventory/0001015-000.png"},
-	{"name": "Копьё железо 1", "slot": "weapon", "weapon": "pike", "two_handed": false, "icon": "res://assets/inventory/0001017-000.png"},
-	{"name": "Топор железо", "slot": "weapon", "weapon": "axe", "two_handed": false, "icon": "res://assets/inventory/0001018-000.png"},
-	{"name": "Топор железо 1", "slot": "weapon", "weapon": "axe", "two_handed": false, "icon": "res://assets/inventory/0001518-000.png"},
-	{"name": "Топор двуручный", "slot": "weapon", "weapon": "axe", "two_handed": true, "icon": "res://assets/inventory/0001019-000.png"},
-	{"name": "Лук", "slot": "weapon", "weapon": "bow", "icon": "res://assets/inventory/0801020-000.png"},
-	{"name": "Арбалет железо", "slot": "weapon", "weapon": "xbow", "icon": "res://assets/inventory/0201122-000.png"},
-	{"name": "Посох двуручный", "slot": "weapon", "weapon": "staff", "two_handed": true, "icon": "res://assets/inventory/0801013-000.png"},
-	{"name": "Щит железо", "slot": "shield", "icon": "res://assets/inventory/0002001-000.png"},
-	{"name": "Щит железо 1", "slot": "shield", "icon": "res://assets/inventory/0002002-000.png"},
-	{"name": "Шлем железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0005002-000.png"},
-	{"name": "Шлем железо 1", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0006010-000.png"},
-	{"name": "Нагрудник железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0008018-000.png"},
-	{"name": "Нагрудник железо 1", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0008019-000.png"},
-	{"name": "Наручи железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0009020-000.png"},
-	{"name": "Наручи железо 1", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0009022-000.png"},
-	{"name": "Перчатки железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0010026-000.png"},
-	{"name": "Поножи железо", "slot": "armor", "armor": "light", "icon": "res://assets/inventory/0012030-000.png"},
-]
-
 func _setup_inventory():
-	# Один ряд слотов со скроллом влево/вправо
-	inventory_grid.columns = 40
+	# Сетка с вертикальным скроллом: по 12 слотов в ряд, показываем все
+	# экипируемые предметы настоящей базы (assets/items/item_db.json).
+	inventory_grid.columns = 12
 
 	var slot_bg = load("res://assets/interface/myitem.png")
 
-	for i in range(40):
+	for item in ItemDB.equippable_items():
 		var slot = TextureRect.new()
 		slot.custom_minimum_size = Vector2(68, 68)
 		slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -175,17 +143,17 @@ func _setup_inventory():
 			slot.texture = slot_bg
 		else:
 			slot.modulate = Color(0.15, 0.15, 0.15, 1.0)
-
 		inventory_grid.add_child(slot)
 		inventory_slots.append(slot)
-		inventory_items.append(null)
+		inventory_items.append(item)
 
-	var idx := 0
-	for gear in TEST_GEAR:
-		if idx >= inventory_slots.size():
-			break
-		_add_item(idx, str(gear["icon"]), str(gear["name"]), gear)
-		idx += 1
+		var gear := {
+			"slot": ItemDB.slot_of(item),
+			"weapon": ItemDB.weapon_kind(item),
+			"two_handed": ItemDB.is_two_handed(item),
+			"armor": ItemDB.armor_kind(item),
+		}
+		_add_item(inventory_slots.size() - 1, str(item.get("icon", "")), str(item.get("name_ru", "")), gear)
 
 ## Обработчик клика по предмету — экипировать героя.
 func _on_item_clicked(item: Dictionary):
@@ -380,80 +348,34 @@ func _update_stats():
 	var p = player
 
 	# Производные значения (формулы как в оригинале)
-	# Панель характеристик в две колонки (как в оригинале на скриншоте)
-	var damage_min = p.strength
-	var damage_max = p.strength + 5
-	var defense = p.endurance / 2
-	var absorption = p.endurance / 3
-	var hp_regen = 1 + p.endurance / 10
-	var mana_regen = 1 + p.spirit / 10
+	var damage_min = p.get_damage_min()
+	var damage_max = p.get_damage_max()
+	var defense = p.get_defense()
+	var absorption = p.get_absorption()
+	var attack = p.get_attack()
+	var sight = p.get_sight()
+	var hp_regen = p._calc_hp_regen()
+	var mana_regen = p._calc_mana_regen()
 
-	stats_label.text = "%s\n" % "ГЕРОЙ"
-	stats_label.text += "─────────────────\n"
-	stats_label.text += "СИЛА:   %d    ЖИЗНЬ:     %d/%d\n" % [p.strength, p.current_hp, p.max_hp]
-	stats_label.text += "РАЗУМ:  %d    МАНА:      %d/%d\n" % [p.intellect, p.current_mana, p.max_mana]
-	stats_label.text += "ЛОВКОСТЬ:%d    РЕГЕН HP:  %d\n" % [p.agility, hp_regen]
-	stats_label.text += "ДУХ:    %d    РЕГЕН МАНЫ:%d\n" % [p.spirit, mana_regen]
-	stats_label.text += "АТАКА:  %d    УРОН:      %d-%d\n" % [p.strength, damage_min, damage_max]
-	stats_label.text += "ЗАЩИТА: %d    ПОГЛОЩЕНИЕ:%d\n" % [defense, absorption]
-	stats_label.text += "СКОРОСТЬ:%d    БРОНЯ:     %d\n" % [int(p.move_speed), absorption]
-	stats_label.text += "─────────────────\n"
-	stats_label.text += "УСТОЙЧИВОСТИ:\n"
-	stats_label.text += "ОГОНЬ:  %d    ВОДА:      %d\n" % [p.spirit / 2, p.spirit / 2]
-	stats_label.text += "ВОЗДУХ: %d    ЗЕМЛЯ:     %d\n" % [p.spirit / 2, p.spirit / 2]
-	stats_label.text += "АСТРАЛ: %d\n" % (p.spirit / 2)
-
-func _toggle_coords():
-	show_coords = not show_coords
-	coords_btn.button_pressed = show_coords
-	coords_label.visible = show_coords
-
-## Портрет под курсором: враг-юнит (UnitDB picture) или здание (structures Picture).
-## Если нет — портрет героя. Файлы assets/portraits/<имя>.png (lowercase).
-var _portrait_cache := {}
-func _hover_portrait() -> void:
-	if not is_instance_valid(player):
-		return
-	var world := player.get_global_mouse_position()
-	var pic := ""
-
-	# 1) Враг под курсором (юнит): радиуc 32px вокруг центра юнита
-	for e in Game.enemies:
-		if is_instance_valid(e) and e.global_position.distance_to(world) < 32.0:
-			var set_name: String = e.get("anim_set", "") if "anim_set" in e else ""
-			if set_name != "":
-				pic = str(UnitDB.get_set(set_name).get("picture", ""))
-			break
-
-	# 2) Иначе здание под курсором (хитбокс структуры)
-	if pic == "" and alm_map and alm_map.map_width > 0:
-		var ts: int = alm_map.tile_size()
-		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
-		if alm_map.has_method("structure_at"):
-			var h: Dictionary = alm_map.structure_at(cell)
-			if not h.is_empty():
-				pic = str(h.get("picture", ""))
-
-	if pic == "":
-		# Сброс на портрет героя
-		if _hover_name != "":
-			_hover_name = ""
-			portrait_texture.texture = hero_portrait
-		return
-
-	var lower := pic.to_lower()
-	if lower == _hover_name:
-		return
-	_hover_name = lower
-	var tex: Texture2D = _portrait_cache.get(lower)
-	if tex == null:
-		tex = load("res://assets/portraits/%s.png" % lower)
-		if tex != null:
-			_portrait_cache[lower] = tex
-	if tex != null:
-		portrait_texture.texture = tex
-	else:
-		portrait_texture.texture = hero_portrait
+	var stats = "ИМЯ: ГЕРОЙ\n"
+	stats += "─────────────\n"
+	stats += "ТЕЛО:%d  ЛОВКОСТЬ:%d\n" % [p.body, p.agility]
+	stats += "РАЗУМ:%d  ДУХ:%d\n" % [p.mind, p.spirit]
+	stats += "─────────────\n"
+	stats += "HP:%d/%d  РЕГЕН:%d\n" % [p.current_hp, p.max_hp, hp_regen]
+	stats += "МАНА:%d/%d  РЕГЕН:%d\n" % [p.current_mana, p.max_mana, mana_regen]
+	stats += "─────────────\n"
+	stats += "АТАКА:%d  УРОН:%d-%d\n" % [attack, damage_min, damage_max]
+	stats += "ЗАЩИТА:%d  ПОГЛОЩ:%d\n" % [defense, absorption]
+	stats += "СКОРОСТЬ:%d  ОБЗОР:%d\n" % [int(p.move_speed), sight]
+	stats += "─────────────\n"
+	stats += "ОГОНЬ:%d  ВОДА:%d  ВОЗДУХ:%d\n" % [p.get_protection_fire(), p.get_protection_water(), p.get_protection_air()]
+	stats += "ЗЕМЛЯ:%d  АСТРАЛ:%d\n" % [p.get_protection_earth(), p.get_protection_astral()]
+	stats += "─────────────\n"
+	stats += "МЕЧ:%d  ТОПОР:%d  ДУБИНА:%d\n" % [p.blade_skill, p.axe_skill, p.bludgeon_skill]
+	stats += "КОПЬЁ:%d  СТРЕЛЬБА:%d\n" % [p.pike_skill, p.shooting_skill]
+	stats += "МАГИЯ: О:%d В:%d ВО:%d ЗЕ:%d А:%d\n" % [p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
+	stats_label.text = stats
 
 func update_ui(p: Player):
 	if not is_instance_valid(p):
@@ -539,7 +461,7 @@ func _update_bottom_panel_visibility():
 
 	# Высота секций
 	var spell_h = 90.0
-	var inv_h = 80.0
+	var inv_h = 95.0
 	var gap = 5.0
 
 	if spells_visible and inventory_visible:

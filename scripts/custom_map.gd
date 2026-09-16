@@ -31,6 +31,7 @@ var object_layer: TileMapLayer # слой объектов (типы 5-7) пов
 var objects_root: Node2D       # слой анимированных спрайтов объектов (y-sort)
 var map_objects := {}          # клетка (Vector2i) -> MapObject
 var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (тип 7)
+var tile_size: int = TILE      # свойство как у AlmMap (для миникарты и др.)
 
 # (тип, индекс в наборе) -> source_id в TileSet
 var _src_for := {}
@@ -559,9 +560,6 @@ func is_walkable_world(pos: Vector2) -> bool:
 	if t < 0 or t >= TYPE_WALKABLE.size():
 		return false
 	return TYPE_WALKABLE[t]
-
-func tile_size() -> int:
-	return TILE
 
 func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var min_x := margin
