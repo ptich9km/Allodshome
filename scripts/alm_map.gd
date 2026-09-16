@@ -97,6 +97,7 @@ func _build_obstacles() -> void:
 
 ## Здания из секции id=4 (structures): спрайты assets/structures/<папка>/house-NNN.png.
 ## Сетка кадров 32x32: fw=TileWidth, fh=FullHeight; верхние (fh-th) рядов — выше земли.
+## Тень (houseb) и анимация фаз (Phases>1) — через StructureNode / StructureDB.
 func _build_structures() -> void:
 	if _structures.is_empty():
 		return
@@ -127,36 +128,46 @@ func _build_structures() -> void:
 		node.position = Vector2(x * TILE, (y - dir) * TILE)
 		buildings.add_child(node)
 		placed += 1
-		# Хитбокс здания в клетках (корпус th рядов + верхние (fh-th) визуальные ряды)
+		# Хитбокс здания в клетках: база — Selection-бокс (пиксели структуры),
+		# иначе корпус th рядов (+верхние (fh-th) визуальные ряды).
 		var fw := int(fj.get("fw", 1))
 		var th := int(fj.get("th", 1))
 		var fh := int(fj.get("fh", th))
-		_structure_hits.append({
-			"x0": int(x), "x1": int(x) + fw - 1,
-			"y0": int(y) - (fh - th), "y1": int(y) + th - 1,
-			"picture": str(fj.get("picture", "")),
-			"type_id": type_id,
-		})
+		var sel: Rect2i = fj.get("sel", Rect2i())
+		if sel.size.x > 0 and sel.size.y > 0:
+			# Selection в пикселях исходного спрайта (fw*fh*32): переводим в клетки
+			var tw := int(fj.get("fw", 1)) * 32
+			var thh := int(fj.get("fh", th)) * 32
+			var sx := int(x) + sel.position.x * fw / tw
+			var sy := int(y) - (fh - th) + (sel.position.y * fh / thh)
+			var sw := maxi(1, int(ceil(sel.size.x * fw / float(tw))))
+			var sh := maxi(1, int(ceil(sel.size.y * fh / float(thh))))
+			_structure_hits.append({
+				"x0": sx, "x1": sx + sw - 1,
+				"y0": sy, "y1": sy + sh - 1,
+				"picture": str(fj.get("picture", "")),
+				"type_id": type_id,
+			})
+		else:
+			_structure_hits.append({
+				"x0": int(x), "x1": int(x) + fw - 1,
+				"y0": int(y) - (fh - th), "y1": int(y) + th - 1,
+				"picture": str(fj.get("picture", "")),
+				"type_id": type_id,
+			})
 	print("AlmMap: зданий создано %d, пропущено %d" % [placed, missing])
 
-## Собрать Node2D-здание из кадров house-001.. под TypeID.
+## Собрать Node2D-здание: сетка house-NNN + тень houseb + анимация фаз.
 func _make_structure(job: Dictionary) -> Node2D:
-	var node := Node2D.new()
-	var fw := int(job["fw"])
-	var fh := int(job["fh"])
-	var dir_name := str(job["dir"])
-	var prefix := str(job.get("prefix", "house"))
-	for ly in range(fh):
-		for lx in range(fw):
-			var idx := fw * ly + lx
-			var path := "res://assets/structures/%s/%s-%03d.png" % [dir_name, prefix, idx + 1]
-			var tex: Variant = load(path)
-			if tex == null:
-				continue
-			var s := Sprite2D.new()
-			s.texture = tex
-			s.position = Vector2(lx * TILE, ly * TILE)
-			node.add_child(s)
+	var node := StructureNode.new()
+	node.folder = str(job["dir"])
+	node.fw = int(job["fw"])
+	node.th = int(job["th"])
+	node.fh = int(job["fh"])
+	var anim_times: Array = job.get("anim_times", [])
+	node.set_anim_times(anim_times)
+	node.use_anim = int(job.get("phases", 1)) > 1
+	node.build()
 	return node
 
 ## Описание здания: папка/префикс кадров, сетка fw x fh (из structures.txt).
@@ -169,86 +180,37 @@ func _structure_frame_job(type_id: int, st: Dictionary) -> Dictionary:
 	if def.is_empty():
 		_structure_jobs[type_id] = {}
 		return {}
-	var parts := str(def.get("file", "")).split("\\")
-	var dir_name := (parts[0] if parts.size() > 0 else "").to_lower()
+	var dir_name := str(def.get("folder", "")).to_lower()
 	if dir_name.is_empty():
 		_structure_jobs[type_id] = {}
 		return {}
-	# File = "hut1\\house" — двойной backslash (экранирование reg); префикс = последний элемент
-	var prefix := parts[parts.size() - 1] if parts.size() > 1 else "house"
+	var prefix := str(def.get("prefix", "house"))
 	if prefix.is_empty():
 		prefix = "house"
 	var fw := int(def.get("tile_width", 1))
 	var th := int(def.get("tile_height", 1))
 	var fh := int(def.get("full_height", th))
+	var sel := Rect2i(0, 0, 0, 0)
+	if def.has("sel") and (def["sel"] as Array).size() == 4:
+		var s: Array = def["sel"]
+		sel = Rect2i(int(s[0]), int(s[2]), int(s[1]) - int(s[0]), int(s[3]) - int(s[2]))
 	var job := {
 		"dir": dir_name, "prefix": prefix, "fw": fw, "th": th, "fh": fh,
 		"picture": str(def.get("picture", "")),
+		"phases": int(def.get("phases", 1)),
+		"anim_times": StructureDB.anim_time(dir_name, int(def.get("phases", 1))),
+		"sel": sel,
 	}
 	_structure_jobs[type_id] = job
 	return job
 
-## Данные структуры из structures.txt по TypeID (кэш).
+## Данные структуры по TypeID: из структурированной БД (structure_db.json).
 var _structure_defs := {}
 func _structure_def(type_id: int) -> Dictionary:
 	if _structure_defs.has(type_id):
 		return _structure_defs[type_id]
-	var f := FileAccess.open("res://assets/structures/structures.txt", FileAccess.READ)
-	if f == null:
-		push_warning("AlmMap: не открыть structures.txt")
-		return {}
-	var txt := f.get_as_text()
-	f.close()
-	var def := _parse_def_for_id(txt, type_id)
+	var def := StructureDB.get_by_id(type_id)
 	_structure_defs[type_id] = def
-	return def
-
-func _parse_def_for_id(txt: String, type_id: int) -> Dictionary:
-	var lines := txt.split("\n")
-	var in_block := false
-	var depth := 0
-	var block: Array = []
-	for line in lines:
-		var t: String = line.strip_edges()
-		if t.begins_with("object Structure"):
-			if not in_block:
-				in_block = true
-				depth = 0
-				block = [line]
-				continue  # строка-заголовок: скобки считаем со следующей строки
-		if in_block:
-			block.append(line)
-			depth += line.count("{") - line.count("}")
-			if depth <= 0:
-				# Конец блока: проверить ID
-				var id_val := -1
-				for bl in block:
-					var b: String = bl.strip_edges()
-					if b.begins_with("int ID"):
-						id_val = int(b.split("=")[1].strip_edges())
-				if id_val == type_id:
-					return _parse_block(block)
-				in_block = false
-	return {}
-
-func _parse_block(block: Array) -> Dictionary:
-	var def := {}
-	for line in block:
-		var t: String = line.strip_edges()
-		if not t.contains("="):
-			continue
-		var parts := t.split("=", true, 1)
-		if parts.size() < 2:
-			continue
-		var key: String = parts[0].strip_edges()
-		var val: String = parts[1].strip_edges().trim_prefix("\"").trim_suffix("\"")
-		var k: String = key.split(" ", false)[-1]
-		match k:
-			"File": def["file"] = val
-			"TileWidth": def["tile_width"] = int(val)
-			"TileHeight": def["tile_height"] = int(val)
-			"FullHeight": def["full_height"] = int(val)
-			"Picture": def["picture"] = val
 	return def
 
 ## Здание под курсором (клетка cell) — для ховера; возвращает Dictionary или {}.
