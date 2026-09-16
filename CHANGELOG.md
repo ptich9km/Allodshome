@@ -4,6 +4,56 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.11.0] — 2026-09-16
+
+Объединение двух параллельных веток разработки (рабочий ПК + домашний ПК) в
+одну: ручной reconciliation-merge после `git merge origin/master` —
+домашние коммиты (характеристики оригинала, item_db.json 491 предмет,
+рельеф + свет, alm_objects.json + AlmObstacle, Kids3.alm) взяты за основу,
+сверху пересобраны мои локальные доработки (здания секции id=4, ховер-портреты,
+адаптивная раскладка, .alm-редактор, юнит id).
+
+### Added
+- **Рендер зданий из секции id=4** (.alm structures): structures.txt → спрайты
+  `house-NNN.png` по сетке TileWidth×FullHeight, верхние ряды подняты над землёй;
+  деревня Kids3 отрисована полностью — **19 зданий построено, 0 пропущено**
+  (церковь, трактир, магазин, колодец, мост, хижины, руины, костёр)
+- `structure_at()` — хитбокс здания под курсором (для ховера портрета)
+- `cell_type_at()` — тип клетки 0..3 для миникарты (.alm)
+- **Спавн-якорь .spawn.json**: редактор карт сохраняет клетку спавна рядом с .alm,
+  AlmMap читает её (fallback — центр карты с поиском проходимой клетки)
+- `tile_size` как свойство — единообразно с CustomMap (было: метод/переменная в разных местах)
+- Универсальный `AlmLoader.load_map()`: возвращает и byte-виды (terrain/hflags по
+  byte[0]/byte[1] тайла — для рельефного меша), и `tiles` (uint16 — для редактора),
+  и секции structures/units/players + `raw`/`tiles_off` (для .alm-редактора);
+  tile-функции вынесены в `tile_type()/tile_file()/tile_frame()` без конфликта
+  с домашним `terrain_type(hf)`
+
+### Changed
+- `scenes/main.tscn`: вычищены остатки склейки — удалены дубль PortraitBorder
+  (1075..1235) и плоские ActionPanel/FollowBtn/AttackBtn/GuardBtn; единый набор:
+  HeadBarL/HeadBarR + HeroName, PortraitBorder (PortraitL/Bg/PortraitTexture),
+  StatsBorder, CommandL/CommandBar, SpellPanel (spellbook) + InventoryPanel (invframe)
+- Инвентарь — из настоящей базы `ItemDB` (491 предмет), сетка 12 колонок со скроллом
+- Характеристики игрока в сцене — Body/Agility/Mind/Spirit (система оригинала)
+
+### Fixed
+- `alm_loader.gd` был обрезан merge'ом (потеряны `_u32le`, половина `load_map`,
+  ссылки на необъявленные `n`/`offset`) — функция восстановлена полностью
+- `alm_map.gd`: дубль `is_walkable_world` и ссылки на удалённый `_tiles`
+  (была смесь двух веток) — единая логика проходимости: `hflags` +
+  препятствия (obstacles) + здания (structures)
+- `ui.gd`: потерянные при merge `_hover_portrait()` и `_toggle_coords()`
+  восстановлены; ссылки на узлы сцены приведены в соответствие
+  (PortraitTexture/HeadBarL); вызовы `tile_size()` заменены на свойство
+- `custom_map.gd`: вызов `terrain_type(tile)` переведён на `tile_type(tile)`
+  (семантика полного tile id)
+
+### Verified (headless)
+- Компиляция и загрузка всех сцен — без ошибок
+- Runtime Kids3.alm: 80×80 клеток, атлас 258 ячеек, меш 6400 квадов,
+  здания 19/19, ItemDB 491, миникарта/UI инициализируются
+
 ## [0.10.0] — 2026-09-15 (вечерняя сессия)
 
 ### Added — Карты разработчиков: рельеф, свет, препятствия
