@@ -41,19 +41,27 @@ func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = V
 	_sprite.offset = -anchor
 	add_child(_sprite)
 
-	# Порядок и тайминги анимации
-	_anim_order = ObjectDB.anim_frames(name)
-	_anim_times = ObjectDB.anim_times(name)
-	if _anim_order.size() > 1 and _anim_times.size() == _anim_order.size():
-		_anim_idx = 0
-		_time = 0.0
-		_apply_frame(_anim_order[0])
+	# Порядок и тайминги анимации. Анимируем ТОЛЬКО если в базе явно задан
+	# anim_frame (расписание). Если расписания нет — у объектов (ограды, камни,
+	# кактусы) кадры это разные фазы отрисовки, а не цикл: показываем первый.
+	var raw_anim: Variant = o.get("anim_frame", null)
+	if raw_anim is Array and not raw_anim.is_empty():
+		_anim_order = ObjectDB.anim_frames(name)
+		_anim_times = ObjectDB.anim_times(name)
+		if _anim_times.size() == _anim_order.size():
+			_anim_idx = 0
+			_time = 0.0
+			_apply_frame(_anim_order[0])
+		else:
+			_anim_order = []
+			_apply_frame(0)
+			set_process(false)
 	else:
 		# Статичный объект - первый кадр
 		_anim_order = []
 		_apply_frame(0)
 		set_process(false)
-		_process_enabled_check()
+	_process_enabled_check()
 
 func _process_enabled_check() -> void:
 	pass

@@ -57,6 +57,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   3
+  ],
+  "picture": "SwordsMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -69,13 +73,31 @@
   "frames": 208,
   "prefix": "swordsman_",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -88,7 +110,7 @@
   "attack_t": [
    2,
    2,
-   2,
+   1,
    1,
    1,
    2,
@@ -96,18 +118,22 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   4
+  ],
+  "picture": "SwordsManSh",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
+  "blocks": 19,
+  "expected_frames": 152
  },
  "monsters/goblin": {
   "desc": "Goblin",
@@ -173,6 +199,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   64
+  ],
+  "picture": "Goblin",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -243,6 +273,10 @@
   "tile": null,
   "projectile": 3,
   "palette": 5,
+  "ids": [
+   65
+  ],
+  "picture": "Orc",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -307,6 +341,10 @@
   "tile": 2,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   68
+  ],
+  "picture": "Troll",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -361,6 +399,10 @@
   "tile": 1,
   "projectile": 7,
   "palette": 5,
+  "ids": [
+   70
+  ],
+  "picture": "Bat",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -421,6 +463,10 @@
   "tile": 1,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   75
+  ],
+  "picture": "Leg",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -471,6 +517,10 @@
   "tile": 1,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   73
+  ],
+  "picture": "Bee",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -483,13 +533,31 @@
   "frames": 216,
   "prefix": "mage_st",
   "move": 8,
-  "move_begin": null,
+  "move_begin": 2,
   "attack": 6,
   "dying": 6,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -508,13 +576,17 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": 10,
   "palette": 0,
+  "ids": [
+   24
+  ],
+  "picture": "Mage",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -571,6 +643,10 @@
   "tile": 2,
   "projectile": 5,
   "palette": 1,
+  "ids": [
+   26
+  ],
+  "picture": "Catapult1",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -631,6 +707,10 @@
   "tile": 2,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   66
+  ],
+  "picture": "Ogre",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -642,9 +722,67 @@
   "folder": "humans/catapult2",
   "frames": 152,
   "prefix": "sprites",
+  "move": 2,
+  "move_begin": null,
+  "attack": 8,
+  "dying": 4,
+  "cast": 0,
+  "idle": 0,
+  "move_f": [
+   0,
+   1
+  ],
+  "move_t": [
+   2,
+   2
+  ],
+  "attack_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "attack_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "die_f": [],
+  "dying_t": [],
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 64,
+  "tile": 2,
+  "projectile": 6,
+  "palette": 1,
+  "ids": [
+   27
+  ],
+  "picture": "Catap2",
+  "dirs": 8,
+  "idle_phases": 0,
+  "decay": 0,
+  "blocks": 14,
+  "expected_frames": 112
+ },
+ "humans/swordsman2": {
+  "desc": "Human Two-Handed Swordsman",
+  "folder": "humans/swordsman2",
+  "frames": 152,
+  "prefix": "swordsman2",
   "move": 8,
   "move_begin": 2,
-  "attack": 8,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
@@ -675,11 +813,9 @@
    3,
    4,
    5,
-   6,
-   7
+   6
   ],
   "attack_t": [
-   2,
    2,
    2,
    2,
@@ -694,38 +830,42 @@
   "h": 128,
   "cx": 64,
   "cy": 78,
-  "tile": 2,
-  "projectile": 6,
-  "palette": 1,
+  "tile": null,
+  "projectile": -1,
+  "palette": 0,
+  "ids": [
+   5
+  ],
+  "picture": "2HSwordsMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 20,
-  "expected_frames": 160
+  "blocks": 19,
+  "expected_frames": 152
  },
- "humans/swordsman2": {
-  "desc": "Human Two-Handed Swordsman",
-  "folder": "humans/swordsman2",
-  "frames": 152,
-  "prefix": "swordsman2",
+ "humans/mage": {
+  "desc": "Unarmed Mage",
+  "folder": "humans/mage",
+  "frames": 144,
+  "prefix": "sprites",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 6,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
-  "attack_f": [
+  "move_f": [
    0,
    1,
    2,
    3,
    4,
    5,
-   6
+   6,
+   7
   ],
-  "attack_t": [
+  "move_t": [
+   2,
    2,
    2,
    2,
@@ -734,34 +874,6 @@
    2,
    2
   ],
-  "die_f": [],
-  "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
-  "tile": null,
-  "projectile": -1,
-  "palette": 0,
-  "dirs": 8,
-  "idle_phases": 0,
-  "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
- },
- "humans/mage": {
-  "desc": "Unarmed Mage",
-  "folder": "humans/mage",
-  "frames": 144,
-  "prefix": "sprites",
-  "move": 8,
-  "move_begin": null,
-  "attack": 6,
-  "dying": 4,
-  "cast": 0,
-  "idle": 0,
-  "move_f": [],
-  "move_t": [],
   "attack_f": [
    0,
    1,
@@ -780,13 +892,17 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   23
+  ],
+  "picture": "Mage",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -799,13 +915,31 @@
   "frames": 129,
   "prefix": "sprites",
   "move": 10,
-  "move_begin": null,
+  "move_begin": 2,
   "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -818,7 +952,7 @@
   "attack_t": [
    2,
    2,
-   2,
+   1,
    1,
    1,
    2,
@@ -826,13 +960,18 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   1,
+   2
+  ],
+  "picture": "Bee",
   "dirs": 5,
   "idle_phases": 9,
   "decay": 3,
@@ -897,6 +1036,10 @@
   "tile": 3,
   "projectile": 12,
   "palette": 5,
+  "ids": [
+   71
+  ],
+  "picture": "Dragon",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -951,6 +1094,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   74
+  ],
+  "picture": "Squirrel",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1005,6 +1152,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   69
+  ],
+  "picture": "ghost",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1063,6 +1214,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   76
+  ],
+  "picture": "Turtle",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1123,6 +1278,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   12
+  ],
+  "picture": "PikeMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1135,9 +1294,9 @@
   "frames": 136,
   "prefix": "sprites",
   "move": 8,
-  "move_begin": 4,
-  "attack": 7,
-  "dying": 9,
+  "move_begin": 2,
+  "attack": 5,
+  "dying": 4,
   "cast": 0,
   "idle": 0,
   "move_f": [
@@ -1179,15 +1338,19 @@
   "w": 128,
   "h": 128,
   "cx": 64,
-  "cy": 80,
-  "tile": 2,
+  "cy": 78,
+  "tile": null,
   "projectile": -1,
-  "palette": 5,
+  "palette": 0,
+  "ids": [
+   13
+  ],
+  "picture": "PikemanSh",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 24,
-  "expected_frames": 192
+  "blocks": 17,
+  "expected_frames": 136
  },
  "humans/cavalrypike": {
   "desc": "Hero of the Lance",
@@ -1245,6 +1408,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   21
+  ],
+  "picture": "PikeMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1256,14 +1423,30 @@
   "folder": "humans/cavalrysword",
   "frames": 224,
   "prefix": "sprites",
-  "move": 8,
-  "move_begin": null,
+  "move": 7,
+  "move_begin": 2,
   "attack": 7,
-  "dying": 4,
+  "dying": 7,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -1284,18 +1467,21 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   19
+  ],
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 19,
-  "expected_frames": 152
+  "blocks": 21,
+  "expected_frames": 168
  },
  "humans/axeman": {
   "desc": "Human AxeMan",
@@ -1303,13 +1489,31 @@
   "frames": 152,
   "prefix": "axeman",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -1330,18 +1534,22 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   7
+  ],
+  "picture": "AxeMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
+  "blocks": 19,
+  "expected_frames": 152
  },
  "monsters/mainnecro": {
   "desc": "Very Bad Guy (Urd)",
@@ -1401,6 +1609,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   72
+  ],
+  "picture": "mainnecro",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1465,6 +1677,10 @@
   "tile": null,
   "projectile": 4,
   "palette": 5,
+  "ids": [
+   79
+  ],
+  "picture": "Goblins",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1527,6 +1743,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   80
+  ],
+  "picture": "Orcsabre",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1593,6 +1813,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   81
+  ],
+  "picture": "Orcshaman",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1655,6 +1879,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   82
+  ],
+  "picture": "Zombie_f1",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1717,6 +1945,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   83
+  ],
+  "picture": "Zombie_f2",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1781,6 +2013,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   84
+  ],
+  "picture": "Zombie_f3",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1845,6 +2081,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 2,
+  "ids": [
+   85
+  ],
+  "picture": "Zombie_f4",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1913,6 +2153,10 @@
   "tile": null,
   "projectile": 2,
   "palette": 1,
+  "ids": [
+   86
+  ],
+  "picture": "Zombie_a2",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -1925,13 +2169,31 @@
   "frames": 152,
   "prefix": "axeman_sh",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -1952,18 +2214,22 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   8
+  ],
+  "picture": "AxeManSh",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
+  "blocks": 19,
+  "expected_frames": 152
  },
  "monsters/zombie_a3": {
   "desc": "Zombie Archer 3",
@@ -2027,6 +2293,10 @@
   "tile": null,
   "projectile": 2,
   "palette": 1,
+  "ids": [
+   87
+  ],
+  "picture": "Zombie_a3",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2095,6 +2365,10 @@
   "tile": null,
   "projectile": 2,
   "palette": 2,
+  "ids": [
+   88
+  ],
+  "picture": "Zombie_a4",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2159,6 +2433,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 2,
+  "ids": [
+   89
+  ],
+  "picture": "skeleton_f",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2223,6 +2501,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   90
+  ],
+  "picture": "skeleton_f2",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2287,6 +2569,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   91
+  ],
+  "picture": "skeleton_f3",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2351,6 +2637,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 2,
+  "ids": [
+   92
+  ],
+  "picture": "sk_f4",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2419,6 +2709,10 @@
   "tile": null,
   "projectile": 1,
   "palette": 1,
+  "ids": [
+   93
+  ],
+  "picture": "skeleton_a",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2487,6 +2781,10 @@
   "tile": null,
   "projectile": 1,
   "palette": 1,
+  "ids": [
+   94
+  ],
+  "picture": "skeleton_a2",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2555,6 +2853,10 @@
   "tile": null,
   "projectile": 1,
   "palette": 1,
+  "ids": [
+   95
+  ],
+  "picture": "skeleton_a3",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2623,6 +2925,10 @@
   "tile": null,
   "projectile": 1,
   "palette": 2,
+  "ids": [
+   96
+  ],
+  "picture": "sk_a4",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2635,13 +2941,31 @@
   "frames": 152,
   "prefix": "axeman_2hd",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -2662,18 +2986,22 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   9
+  ],
+  "picture": "2HAxeMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
+  "blocks": 19,
+  "expected_frames": 152
  },
  "monsters/skeleton_m3": {
   "desc": "Skeleton Mage 3",
@@ -2733,6 +3061,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   97
+  ],
+  "picture": "skeleton_m3",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2797,6 +3129,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 2,
+  "ids": [
+   98
+  ],
+  "picture": "sk_m4",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2861,6 +3197,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 3,
+  "ids": [
+   99
+  ],
+  "picture": "necro",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2925,6 +3265,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 7,
+  "ids": [
+   100
+  ],
+  "picture": "druid",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -2995,6 +3339,10 @@
   "tile": null,
   "projectile": 3,
   "palette": 1,
+  "ids": [
+   101
+  ],
+  "picture": "goodorc",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3059,6 +3407,10 @@
   "tile": 2,
   "projectile": -1,
   "palette": 4,
+  "ids": [
+   102
+  ],
+  "picture": "Troll",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3125,6 +3477,10 @@
   "tile": 1,
   "projectile": 7,
   "palette": 5,
+  "ids": [
+   105
+  ],
+  "picture": "succubus",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3183,6 +3539,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   103
+  ],
+  "picture": "wolf",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3233,6 +3593,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   104
+  ],
+  "picture": "spider",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3301,6 +3665,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+  "ids": [
+   106
+  ],
+  "picture": "dino",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3313,13 +3681,31 @@
   "frames": 152,
   "prefix": "clubman",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -3340,18 +3726,22 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   10
+  ],
+  "picture": "ClubMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
+  "blocks": 19,
+  "expected_frames": 152
  },
  "monsters/sheep": {
   "desc": "WarSheep",
@@ -3395,6 +3785,10 @@
   "tile": null,
   "projectile": -1,
   "palette": 1,
+  "ids": [
+   107
+  ],
+  "picture": "sheep",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3407,13 +3801,31 @@
   "frames": 152,
   "prefix": "clubman_sh",
   "move": 8,
-  "move_begin": null,
-  "attack": 4,
+  "move_begin": 2,
+  "attack": 7,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -3434,18 +3846,22 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": -1,
   "palette": 0,
+  "ids": [
+   11
+  ],
+  "picture": "ClubManSh",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
-  "blocks": 16,
-  "expected_frames": 128
+  "blocks": 19,
+  "expected_frames": 152
  },
  "humans/archer": {
   "desc": "Human Archer",
@@ -3453,13 +3869,31 @@
   "frames": 168,
   "prefix": "archer",
   "move": 8,
-  "move_begin": null,
+  "move_begin": 2,
   "attack": 9,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -3484,13 +3918,17 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": 1,
   "palette": 0,
+  "ids": [
+   14
+  ],
+  "picture": "Archer",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,
@@ -3503,13 +3941,31 @@
   "frames": 168,
   "prefix": "xbowman",
   "move": 8,
-  "move_begin": null,
+  "move_begin": 2,
   "attack": 9,
   "dying": 4,
   "cast": 0,
   "idle": 0,
-  "move_f": [],
-  "move_t": [],
+  "move_f": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "move_t": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
   "attack_f": [
    0,
    1,
@@ -3534,13 +3990,17 @@
   ],
   "die_f": [],
   "dying_t": [],
-  "w": 0,
-  "h": 0,
-  "cx": 0,
-  "cy": 0,
+  "w": 128,
+  "h": 128,
+  "cx": 64,
+  "cy": 78,
   "tile": null,
   "projectile": 2,
   "palette": 0,
+  "ids": [
+   15
+  ],
+  "picture": "XBowMan",
   "dirs": 8,
   "idle_phases": 0,
   "decay": 0,

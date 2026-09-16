@@ -8,6 +8,7 @@ const TICK := 0.05  # множитель тайминга (единицы "ти�
 
 static var _db: Dictionary = {}
 static var _loaded := false
+static var _by_id := {}
 
 static func ensure_loaded() -> void:
 	if _loaded:
@@ -21,11 +22,27 @@ static func ensure_loaded() -> void:
 	f.close()
 	if parsed is Dictionary:
 		_db = parsed
+	# Индекс: ID юнита (из units.txt) -> имя набора (для спавна НПЦ из .alm)
+	_by_id = {}
+	for name in _db:
+		var ids: Variant = _db[name].get("ids", null)
+		if ids is Array:
+			for uid in ids:
+				_by_id[int(uid)] = name
 
 ## Данные набора по имени ("heroes/swordsman") или {}.
 static func get_set(name: String) -> Dictionary:
 	ensure_loaded()
 	return _db.get(name, {})
+
+## Имя набора по ID юнита (type_id из секции units .alm) или "".
+static func set_name_for_id(unit_id: int) -> String:
+	ensure_loaded()
+	return str(_by_id.get(unit_id, ""))
+
+## Данные набора по ID юнита или {} (если ID неизвестен).
+static func get_set_by_id(unit_id: int) -> Dictionary:
+	return get_set(set_name_for_id(unit_id))
 
 static func has(name: String) -> bool:
 	ensure_loaded()

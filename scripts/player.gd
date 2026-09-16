@@ -69,16 +69,19 @@ func refresh_animation() -> void:
 	_anim.setup(set)
 	_anim.play(UnitAnim.Anim.MOVE, true)
 
-## Множитель скорости с учётом высоты: подъём замедляет, спуск/равнина — норма.
+## Множитель скорости с учётом высоты и дорог: подъём замедляет, дорога ускоряет.
 func _height_speed_factor(target_pos: Vector2) -> float:
 	if not alm_map:
 		return 1.0
 	var cur_h: int = alm_map.height_at_world(global_position)
 	var tgt_h: int = alm_map.height_at_world(target_pos)
+	var factor := 1.0
 	if tgt_h > cur_h:
 		# Подъём — замедление (каждый уровень -30%)
-		return maxf(0.4, 1.0 - 0.3 * (tgt_h - cur_h))
-	return 1.0
+		factor = maxf(0.4, 1.0 - 0.3 * (tgt_h - cur_h))
+	if alm_map.has_method("speed_factor_at_world"):
+		factor *= alm_map.speed_factor_at_world(target_pos)
+	return factor
 
 ## Можно ли двигаться в точку: проходимость (вода/барьер) + границы карты.
 func _can_move_to(pos: Vector2) -> bool:

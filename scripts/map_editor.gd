@@ -27,6 +27,12 @@ var _undo_stack: Array = []
 var map_w_spin: SpinBox
 var map_h_spin: SpinBox
 
+# Открытый .alm: сырые байты + смещение tiles-секции для обратной записи
+var _alm_raw: PackedByteArray = PackedByteArray()
+var _alm_tiles_off: int = -1
+var _alm_path := ""
+var _alm_original_tiles: PackedInt32Array = PackedInt32Array()
+
 func _ready() -> void:
 	camera = Camera2D.new()
 	camera.zoom = Vector2(1, 1)
@@ -48,13 +54,15 @@ func _build_ui() -> void:
 
 	# Верхняя панель
 	var top := Panel.new()
-	top.offset_left = 0; top.offset_top = 0; top.offset_right = 900; top.offset_bottom = 44
+	top.offset_left = 0; top.offset_top = 0; top.offset_right = 1180; top.offset_bottom = 44
 	ui.add_child(top)
 
 	var x := 8.0
 	x = _add_top_button(top, x, "Новая", _on_new)
 	x = _add_top_button(top, x, "Сохранить", _on_save)
 	x = _add_top_button(top, x, "Загрузить", _on_load)
+	x = _add_top_button(top, x, "Открыть .alm…", _on_open_alm)
+	x = _add_top_button(top, x, "Сохранить .alm", _on_save_alm)
 	x = _add_top_button(top, x, "Настройки…", _on_settings)
 	x = _add_top_button(top, x, "Предметы…", _on_catalog)
 	x = _add_top_button(top, x, "Назад в игру (F9)", _on_back)
@@ -350,6 +358,93 @@ func _on_load() -> void:
 		status_label.text = "Загружено: " + SAVE_PATH
 	else:
 		status_label.text = "Файл не найден: " + SAVE_PATH
+
+## Открыть .alm с диска (FileDialog).
+func _on_open_alm() -> void:
+	var fd := FileDialog.new()
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.filters = PackedStringArray(["*.alm ; Карта Allods 2 (.alm)", "*.json ; Карта редактора (.json)"])
+	fd.file_selected.connect(_open_alm_file)
+	add_child(fd)
+	fd.popup_centered(Vector2i(700, 500))
+
+func _open_alm_file(path: String) -> void:
+	var data := AlmLoader.load_map(path)
+	if data.is_empty():
+		status_label.text = "Не удалось открыть .alm: " + path
+		return
+	map.import_alm(data)
+	_alm_raw = data["raw"]
+	_alm_tiles_off = int(data["tiles_off"])
+	_alm_path = path
+	_alm_original_tiles = data["tiles"].duplicate()
+	_remember_last_alm(path)
+	_restore_spawn_anchor()
+	map_w_spin.value = map.map_width
+	map_h_spin.value = map.map_height
+	brush_tex_idx = 0
+	_update_palette_icons()
+	_build_texture_strip()
+	_center_camera()
+	status_label.text = "Открыт .alm: %s (%dx%d)" % [path.get_file(), map.map_width, map.map_height]
+
+## Восстановить спавн из файла-якоря "<имя>.spawn.json" (если есть): ставим
+## клетке тип 7 (запоминает землю под собой), чтобы точка была видна и сохранялась.
+func _restore_spawn_anchor() -> void:
+	if _alm_path.is_empty():
+		return
+	var anchor_path := _alm_path.get_basename() + ".spawn.json"
+	if not FileAccess.file_exists(anchor_path):
+		return
+	var f := FileAccess.open(anchor_path, FileAccess.READ)
+	if f == null:
+		return
+	var json: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if json is not Dictionary:
+		return
+	var cell := Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
+	if cell.x < 0 or cell.y < 0:
+		return
+	if cell.x < map.map_width and cell.y < map.map_height:
+		map.set_tile(cell, 7)
+
+## Сохранить текущую карту обратно в .alm (перезаписать только секцию tiles) +
+## якорь спавна в файле "<имя>.spawn.json" рядом с картой.
+func _on_save_alm() -> void:
+	if _alm_tiles_off < 0 or _alm_path.is_empty():
+		status_label.text = "Сначала откройте .alm"
+		return
+	var new_tiles := map.export_alm_tiles(_alm_original_tiles)
+	if AlmLoader.write_tiles(_alm_path, _alm_raw, _alm_tiles_off, new_tiles):
+		_alm_original_tiles = new_tiles.duplicate()
+		_save_spawn_anchor()
+		status_label.text = "Сохранено в .alm: " + _alm_path
+	else:
+		status_label.text = "ОШИБКА записи .alm!"
+
+## Запомнить, какую карту открыл пользователь: игра (main.tscn) грузит её при F9.
+func _remember_last_alm(path: String) -> void:
+	var f := FileAccess.open("user://last_alm_path.txt", FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(path)
+	f.close()
+
+## Спавн (тип 7) -> файл-якорь "<имя>.spawn.json" рядом с .alm (его читает AlmMap).
+func _save_spawn_anchor() -> void:
+	if _alm_path.is_empty():
+		return
+	var cell := map.spawn_cell
+	if cell.x < 0:
+		return
+	var anchor_path := _alm_path.get_basename() + ".spawn.json"
+	var f := FileAccess.open(anchor_path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"x": cell.x, "y": cell.y}))
+	f.close()
 
 func _on_back() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")

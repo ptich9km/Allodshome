@@ -3,16 +3,30 @@ class_name GameUI
 
 @onready var spell_grid: GridContainer = $BottomPanel/SpellPanel/SpellGrid
 @onready var bottom_panel: Control = $BottomPanel
-@onready var spell_panel: Panel = $BottomPanel/SpellPanel
-@onready var inventory_panel: Panel = $BottomPanel/InventoryPanel
+@onready var spell_panel: Control = $BottomPanel/SpellPanel
+@onready var inventory_panel: Control = $BottomPanel/InventoryPanel
 @onready var inventory_grid: GridContainer = $BottomPanel/InventoryPanel/InventoryScroll/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
+@onready var hero_name_label: Label = $HeroName
 @onready var minimap_rect: ColorRect = $MinimapBorder/MinimapRect
-@onready var follow_btn: Button = $ActionPanel/FollowBtn
-@onready var attack_btn: Button = $ActionPanel/AttackBtn
-@onready var guard_btn: Button = $ActionPanel/GuardBtn
+@onready var coords_label: Label = $CoordsLabel
+
+# Правые панели — двигаем при смене размера окна (колонка 176px у правого края)
+@onready var right_panels: Array = [
+	$MinimapBorder, $HeadBarL, $HeadBarR, $HeroName,
+	$PortraitBorder, $StatsBorder, $CommandL, $CommandBar,
+]
+const COL_W := 176  # ширина правой колонки (кромка 16 + поле 160)
+const COL_HGAPS := [[5, 175], [180, 260], [265, 507], [512, 754]]  # y-диапазоны панелей
+const CMD_Y := [690, 770]  # команды внизу по центру
+
+var show_coords := false
+var hero_portrait: Texture2D = null   # дефолтный портрет героя (сброс ховера)
+var _hover_name := ""
+var cmd_buttons: Array = []          # кнопки команд поверх commandbarr.bmp (0-3 команды, 4 координаты)
+var coords_btn: Button = null
 
 var minimap_camera: Camera2D
 var alm_map = null   # CustomMap или AlmMap (группа "alm_map")
@@ -31,6 +45,7 @@ func setup_ui(p: Player):
 	var tex = load("res://assets/portraits/goodorc.png")
 	if tex:
 		portrait_texture.texture = tex
+		hero_portrait = tex
 
 	_setup_inventory()
 
@@ -39,8 +54,35 @@ func setup_ui(p: Player):
 
 	_setup_minimap()
 	_setup_action_buttons()
+	_layout_panels()
+	# При изменении размера окна — перераскладка панелей
+	get_tree().root.size_changed.connect(_layout_panels)
 	_update_stats()
 	_update_bottom_panel_visibility()
+
+## Адаптивная раскладка: правая колонка 176px прижата к правому краю,
+## команды 2×4 — внизу по центру. На любом разрешении (1280×800, 1920×1080).
+func _layout_panels() -> void:
+	var vw := get_viewport().get_visible_rect().size.x
+	var x0 := maxf(0.0, vw - COL_W)
+	# Правые панели: меняем только X, Y из tscn остаются
+	for p in right_panels:
+		if is_instance_valid(p):
+			p.set_anchor(SIDE_LEFT, 1.0)
+			p.set_anchor(SIDE_RIGHT, 1.0)
+			p.offset_left = -COL_W
+			p.offset_right = 0.0
+	# Команды — по центру горизонтали
+	var cmd_w := 16 + 160.0
+	var cmd_x := (vw - cmd_w) / 2.0
+	$CommandL.set_anchor(SIDE_LEFT, 0.0)
+	$CommandL.set_anchor(SIDE_RIGHT, 0.0)
+	$CommandL.offset_left = cmd_x
+	$CommandL.offset_right = cmd_x + 16.0
+	$CommandBar.set_anchor(SIDE_LEFT, 0.0)
+	$CommandBar.set_anchor(SIDE_RIGHT, 0.0)
+	$CommandBar.offset_left = cmd_x + 16.0
+	$CommandBar.offset_right = cmd_x + cmd_w
 
 # Панель заклинаний с иконками
 var spell_buttons: Array = []
@@ -191,26 +233,52 @@ func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictio
 				_on_item_clicked(data))
 
 func _setup_action_buttons():
-	follow_btn.pressed.connect(func(): _set_action_mode("follow"))
-	attack_btn.pressed.connect(func(): _set_action_mode("attack"))
-	guard_btn.pressed.connect(func(): _set_action_mode("guard"))
+	# Кнопки команд поверх commandbarr.bmp: 2 ряда x 4 (40x40), прозрачные,
+	# с tooltip-подписями (надписи не влезают в ячейки, как в оригинале).
+	var labels := [
+		"Следовать", "Атаковать", "Охранять", "Стоп",
+		"Координаты", "Патруль", "Разговор", "Отдых",
+	]
+	for i in range(labels.size()):
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(39, 39)
+		b.position = Vector2(6 + (i % 4) * 40, 5 + (i / 4) * 40)
+		b.size = Vector2(39, 39)
+		b.flat = true
+		b.tooltip_text = labels[i]
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		$CommandBar.add_child(b)
+		cmd_buttons.append(b)
+		match i:
+			0: b.pressed.connect(func(): _set_action_mode("follow"))
+			1: b.pressed.connect(func(): _set_action_mode("attack"))
+			2: b.pressed.connect(func(): _set_action_mode("guard"))
+			3: b.pressed.connect(func(): _set_action_mode("stop"))
+			4:
+				b.toggle_mode = true
+				coords_btn = b
+				b.pressed.connect(func(): _toggle_coords())
+			_:
+				b.disabled = true  # остальные — заглушки (в разработке)
+	coords_label.visible = false
 
 func _set_action_mode(mode: String):
-	# Сбрасываем подсветку всех кнопок
-	follow_btn.modulate = Color.WHITE
-	attack_btn.modulate = Color.WHITE
-	guard_btn.modulate = Color.WHITE
-	
+	# Сбрасываем подсветку всех командных кнопок
+	for i in range(4):
+		cmd_buttons[i].modulate = Color.WHITE
+
 	match mode:
 		"follow":
-			follow_btn.modulate = Color.YELLOW
+			cmd_buttons[0].modulate = Color.YELLOW
 			Game.action_mode = "follow"
 		"attack":
-			attack_btn.modulate = Color.RED
+			cmd_buttons[1].modulate = Color.RED
 			Game.action_mode = "attack"
 		"guard":
-			guard_btn.modulate = Color.GREEN
+			cmd_buttons[2].modulate = Color.GREEN
 			Game.action_mode = "guard"
+		"stop":
+			Game.action_mode = "none"
 
 func _setup_minimap():
 	# Создаём изображение миникарты (190x190)
@@ -237,8 +305,8 @@ func _draw_minimap():
 	if mw == 0:
 		return
 
-	var ptx: int = int(player.global_position.x) / alm_map.tile_size
-	var pty: int = int(player.global_position.y) / alm_map.tile_size
+	var ptx: int = int(player.global_position.x) / alm_map.tile_size()
+	var pty: int = int(player.global_position.y) / alm_map.tile_size()
 	var scale_x := 190.0 / float(mw)
 	var scale_y := 190.0 / float(mh)
 
@@ -270,8 +338,8 @@ func _draw_minimap():
 	# Враги (красные точки)
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
-			var etx: int = int(enemy.global_position.x) / alm_map.tile_size
-			var ety: int = int(enemy.global_position.y) / alm_map.tile_size
+			var etx: int = int(enemy.global_position.x) / alm_map.tile_size()
+			var ety: int = int(enemy.global_position.y) / alm_map.tile_size()
 			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
 			if exx >= 0 and exx < 190 and eyy >= 0 and eyy < 190:
 				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))
@@ -295,16 +363,16 @@ func _minimap_color_at(tx: int, ty: int) -> Color:
 			7: return Color(1.0, 0.85, 0.2, 1.0)      # спавн
 			0: return Color(0.25, 0.55, 0.25, 1.0)    # трава
 			_: return Color(0, 0, 0, 0)                # пусто
-	var t2 := AlmLoader.terrain_type(alm_map._hflags[ty * alm_map.map_width + tx])
+	var t2: int = alm_map.cell_type_at(tx, ty)
 	match t2:
-		2, -1:
-			return Color(0.15, 0.35, 0.75, 1.0)  # вода
-		3, -2:
-			return Color(0.5, 0.45, 0.38, 1.0)   # скала/барьер
+		2:
+			return Color(0.15, 0.35, 0.75, 1.0)  # вода (tile3)
 		1:
-			return Color(0.55, 0.45, 0.3, 1.0)   # земля
+			return Color(0.5, 0.45, 0.38, 1.0)   # горы/холмы (tile2)
+		3:
+			return Color(0.7, 0.65, 0.55, 1.0)   # дорога (tile4)
 		_:
-			return Color(0.25, 0.55, 0.25, 1.0)   # трава
+			return Color(0.25, 0.55, 0.25, 1.0)   # трава (tile1)
 
 func _update_stats():
 	if not is_instance_valid(player):
@@ -312,6 +380,7 @@ func _update_stats():
 	var p = player
 
 	# Производные значения (формулы как в оригинале)
+	# Панель характеристик в две колонки (как в оригинале на скриншоте)
 	var damage_min = p.strength
 	var damage_max = p.strength + 5
 	var defense = p.endurance / 2
@@ -319,34 +388,103 @@ func _update_stats():
 	var hp_regen = 1 + p.endurance / 10
 	var mana_regen = 1 + p.spirit / 10
 
-	var stats = "ИМЯ: ГЕРОЙ\n"
-	stats += "─────────────────\n"
-	stats += "СИЛА:        %d\n" % p.strength
-	stats += "РАЗУМ:       %d\n" % p.intellect
-	stats += "ЛОВКОСТЬ:    %d\n" % p.agility
-	stats += "ДУХ:         %d\n" % p.spirit
-	stats += "─────────────────\n"
-	stats += "ЗДОРОВЬЕ:    %d/%d\n" % [p.current_hp, p.max_hp]
-	stats += "РЕГЕН HP:    %d\n" % hp_regen
-	stats += "МАНА:        %d/%d\n" % [p.current_mana, p.max_mana]
-	stats += "РЕГЕН МАНЫ:  %d\n" % mana_regen
-	stats += "─────────────────\n"
-	stats += "АТАКА:       %d\n" % p.strength
-	stats += "УРОН:        %d-%d\n" % [damage_min, damage_max]
-	stats += "ЗАЩИТА:      %d\n" % defense
-	stats += "ПОГЛОЩЕНИЕ:  %d\n" % absorption
-	stats += "СКОРОСТЬ:    %d\n" % int(p.move_speed)
-	stats += "─────────────────\n"
-	stats += "ЗАЩИТА ОГОНЬ:  %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА ВОДА:   %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА ВОЗДУХ: %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА ЗЕМЛЯ:  %d\n" % (p.spirit / 2)
-	stats += "ЗАЩИТА АСТРАЛ: %d\n" % (p.spirit / 2)
-	stats_label.text = stats
+	stats_label.text = "%s\n" % "ГЕРОЙ"
+	stats_label.text += "─────────────────\n"
+	stats_label.text += "СИЛА:   %d    ЖИЗНЬ:     %d/%d\n" % [p.strength, p.current_hp, p.max_hp]
+	stats_label.text += "РАЗУМ:  %d    МАНА:      %d/%d\n" % [p.intellect, p.current_mana, p.max_mana]
+	stats_label.text += "ЛОВКОСТЬ:%d    РЕГЕН HP:  %d\n" % [p.agility, hp_regen]
+	stats_label.text += "ДУХ:    %d    РЕГЕН МАНЫ:%d\n" % [p.spirit, mana_regen]
+	stats_label.text += "АТАКА:  %d    УРОН:      %d-%d\n" % [p.strength, damage_min, damage_max]
+	stats_label.text += "ЗАЩИТА: %d    ПОГЛОЩЕНИЕ:%d\n" % [defense, absorption]
+	stats_label.text += "СКОРОСТЬ:%d    БРОНЯ:     %d\n" % [int(p.move_speed), absorption]
+	stats_label.text += "─────────────────\n"
+	stats_label.text += "УСТОЙЧИВОСТИ:\n"
+	stats_label.text += "ОГОНЬ:  %d    ВОДА:      %d\n" % [p.spirit / 2, p.spirit / 2]
+	stats_label.text += "ВОЗДУХ: %d    ЗЕМЛЯ:     %d\n" % [p.spirit / 2, p.spirit / 2]
+	stats_label.text += "АСТРАЛ: %d\n" % (p.spirit / 2)
+
+func _toggle_coords():
+	show_coords = not show_coords
+	coords_btn.button_pressed = show_coords
+	coords_label.visible = show_coords
+
+## Портрет под курсором: враг-юнит (UnitDB picture) или здание (structures Picture).
+## Если нет — портрет героя. Файлы assets/portraits/<имя>.png (lowercase).
+var _portrait_cache := {}
+func _hover_portrait() -> void:
+	if not is_instance_valid(player):
+		return
+	var world := player.get_global_mouse_position()
+	var pic := ""
+
+	# 1) Враг под курсором (юнит): радиуc 32px вокруг центра юнита
+	for e in Game.enemies:
+		if is_instance_valid(e) and e.global_position.distance_to(world) < 32.0:
+			var set_name: String = e.get("anim_set", "") if "anim_set" in e else ""
+			if set_name != "":
+				pic = str(UnitDB.get_set(set_name).get("picture", ""))
+			break
+
+	# 2) Иначе здание под курсором (хитбокс структуры)
+	if pic == "" and alm_map and alm_map.map_width > 0:
+		var ts: int = alm_map.tile_size()
+		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
+		if alm_map.has_method("structure_at"):
+			var h: Dictionary = alm_map.structure_at(cell)
+			if not h.is_empty():
+				pic = str(h.get("picture", ""))
+
+	if pic == "":
+		# Сброс на портрет героя
+		if _hover_name != "":
+			_hover_name = ""
+			portrait_texture.texture = hero_portrait
+		return
+
+	var lower := pic.to_lower()
+	if lower == _hover_name:
+		return
+	_hover_name = lower
+	var tex: Texture2D = _portrait_cache.get(lower)
+	if tex == null:
+		tex = load("res://assets/portraits/%s.png" % lower)
+		if tex != null:
+			_portrait_cache[lower] = tex
+	if tex != null:
+		portrait_texture.texture = tex
+	else:
+		portrait_texture.texture = hero_portrait
 
 func update_ui(p: Player):
 	if not is_instance_valid(p):
 		return
+	_hover_portrait()
+
+	# Отладочные координаты: позиция героя, курсора, клетки, тайл и проходимость.
+	if show_coords:
+		var lines := "КООРДИНАТЫ\n"
+		lines += "Герой: %d, %d px\n" % [int(p.global_position.x), int(p.global_position.y)]
+		var mouse := get_viewport().get_mouse_position()
+		var world := p.get_global_mouse_position() if p.has_method("get_global_mouse_position") else Vector2.ZERO
+		lines += "Мышь: %d, %d px\n" % [int(mouse.x), int(mouse.y)]
+		if alm_map:
+			var ts: int = alm_map.tile_size()
+			var tc := Vector2i(int(p.global_position.x) / ts, int(p.global_position.y) / ts)
+			var mc := Vector2i(int(world.x) / ts, int(world.y) / ts)
+			lines += "Клетка героя: %d, %d\n" % [tc.x, tc.y]
+			lines += "Клетка мыши: %d, %d\n" % [mc.x, mc.y]
+			var walk_h: bool = alm_map.is_walkable_world(p.global_position)
+			lines += "Проход героя: %s\n" % ("да" if walk_h else "НЕТ")
+			var walk_m: bool = alm_map.is_walkable_world(world)
+			lines += "Проход мыши: %s\n" % ("да" if walk_m else "НЕТ")
+			if mc.x >= 0 and mc.y >= 0 and mc.x < alm_map.map_width and mc.y < alm_map.map_height:
+				var t: int = alm_map.cell_type_at(mc.x, mc.y)
+				var names := ["Трава (tile1)", "Земля (tile2)", "Вода (tile3)", "Дорога (tile4)"]
+				lines += "Тайл мыши: %s\n" % (names[t] if t >= 0 and t < names.size() else str(t))
+				if alm_map.has_method("flag_at_world"):
+					var fl: int = alm_map.flag_at_world(world)
+					lines += "Флаг: %d (0 зем/1 холм/2 вода/3 выс/4 барьер)\n" % fl
+		coords_label.text = lines
 
 	for i in range(spell_buttons.size()):
 		var button = spell_buttons[i] as Button

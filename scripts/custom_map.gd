@@ -110,6 +110,80 @@ func new_map(w: int, h: int) -> void:
 	_refresh_spawn()
 	_build_tilemap()
 
+## Импорт карты из .alm (данные AlmLoader.load_map): tile id -> категории
+## редактора (0-4) + наборы текстур с реальными спеками каждого тайла.
+func import_alm(data: Dictionary) -> void:
+	map_width = int(data["width"])
+	map_height = int(data["height"])
+	var alm_tiles: PackedInt32Array = data["tiles"]
+	var sets := {}
+	var idx_of := {}   # "cat:file:variant:row" -> индекс в наборе категории
+	var specs := {}    # tile id -> спек
+	for i in range(alm_tiles.size()):
+		var tile := alm_tiles[i]
+		var cat := _alm_cat_for(tile)
+		var spec := _alm_spec_for(tile)
+		var key := "%d:%d:%d:%d" % [cat, int(spec["file"]), int(spec["variant"]), int(spec["row"])]
+		if not idx_of.has(key):
+			var arr: Array = sets.get(cat, [])
+			idx_of[key] = arr.size()
+			arr.append(spec)
+			sets[cat] = arr
+		specs[i] = {"cat": cat, "idx": idx_of[key]}
+	texture_sets = _alm_sets_normalized(sets)
+	_sync_text_spec()
+	tiles = PackedInt32Array()
+	tiles.resize(map_width * map_height)
+	tex_ids = PackedInt32Array()
+	tex_ids.resize(map_width * map_height)
+	under_tiles = PackedInt32Array()
+	under_tiles.resize(map_width * map_height)
+	under_tiles.fill(-1)
+	for i in range(alm_tiles.size()):
+		var s: Dictionary = specs[i]
+		tiles[i] = int(s["cat"])
+		tex_ids[i] = int(s["idx"])
+	_refresh_spawn()
+	_build_tilemap()
+
+## Категория редактора для tile id: 0=tile1 трава, 1=tile2 земля,
+## 2=tile3 вода, 3=tile4 дорога/камень (категории редактора 0..4).
+func _alm_cat_for(tile: int) -> int:
+	var t := AlmLoader.terrain_type(tile)
+	match t:
+		1: return 1   # tile2 -> Земля
+		2: return 3   # tile3 -> Вода
+		3: return 4   # tile4 -> Скала/дорога
+		_: return 0   # tile1 -> Трава
+
+## Спек текстуры редактора для tile id: {file 1-4, variant, row кадр}.
+func _alm_spec_for(tile: int) -> Dictionary:
+	var n := AlmLoader.tile_file(tile)
+	return {
+		"file": n / 16 + 1,
+		"variant": n % 16,
+		"row": AlmLoader.tile_frame(tile),
+	}
+
+## Спеки, собранные импортом: поправить ключи (int), пустые категории -> дефолт.
+func _alm_sets_normalized(sets: Dictionary) -> Dictionary:
+	var out := {}
+	for cat in range(8):
+		var arr: Array = []
+		if sets.has(cat):
+			for it in sets[cat]:
+				var spec: Dictionary = it
+				arr.append({
+					"file": int(spec.get("file", 1)),
+					"variant": int(spec.get("variant", 0)),
+					"row": int(spec.get("row", 0)),
+				})
+		if arr.is_empty():
+			var def: Dictionary = DEFAULT_TEX[cat]
+			arr.append(def.duplicate(true))
+		out[cat] = arr
+	return out
+
 ## Применить наборы текстур (из настроек редактора или из JSON карты).
 func set_texture_sets(sets: Dictionary) -> void:
 	texture_sets = _normalize_sets(sets)
@@ -408,6 +482,33 @@ func _load_tile_region(file_idx: int, variant: int, row: int, color_hex: String 
 	var cell: Image = img2.get_region(Rect2i(0, r * 32, 32, 32))
 	cell.convert(Image.FORMAT_RGBA8)
 	return cell
+
+## Экспорт тайлов в tile id (.alm): земля (0-4) берётся из спеков текстур,
+## объекты (5-7) возвращают землю из under_tiles, иначе оригинальный тайл.
+func export_alm_tiles(original_tiles: PackedInt32Array = PackedInt32Array()) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(map_width * map_height)
+	for i in range(map_width * map_height):
+		var t := tiles[i]
+		if t >= 0 and t <= 4:
+			var cell := Vector2i(i % map_width, i / map_width)
+			var spec := texture_spec_at(cell)
+			out[i] = AlmLoader.tile_from_spec(spec)
+		elif t >= 5 and under_tiles[i] >= 0:
+			# Земля под объектом (тип 0-4) — её первая текстура из набора
+			var under := under_tiles[i]
+			var set: Array = texture_sets.get(under, [])
+			if set.size() > 0:
+				out[i] = AlmLoader.tile_from_spec(set[0])
+			elif i < original_tiles.size():
+				out[i] = original_tiles[i]
+			else:
+				out[i] = 0
+		elif i < original_tiles.size():
+			out[i] = original_tiles[i]
+		else:
+			out[i] = 0
+	return out
 
 ## Мировая позиция спавна героя (тип 7) или центр карты если не задан.
 func get_spawn_pos() -> Vector2:

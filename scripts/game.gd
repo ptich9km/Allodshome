@@ -1,7 +1,7 @@
 extends Node2D
 class_name Game
 
-@onready var alm_map: CustomMap = $Map
+@onready var alm_map = $Map
 @onready var player: CharacterBody2D = $Player
 @onready var camera: Camera2D = $Camera2D
 @onready var ui: CanvasLayer = $UI
@@ -48,25 +48,62 @@ func _ready():
 func _spawn_player_on_walkable():
 	if not alm_map or alm_map.map_width == 0:
 		return
-	# 1) Точка спавна, заданная в карте (тип «Спавн»)
-	var spawn_pos := alm_map.get_spawn_pos()
-	if alm_map.is_walkable_world(spawn_pos):
-		player.global_position = spawn_pos
+	var ts: int = alm_map.tile_size()
+	# 1) Точка спавна из карты (тип «Спавн» / файл-якорь). Ставим, только если
+	#    рядом есть проходимые соседи — иначе персонаж застрянет в закутке.
+	var spawn_pos: Vector2 = alm_map.get_spawn_pos()
+	var c0 := Vector2i(int(spawn_pos.x) / ts, int(spawn_pos.y) / ts)
+	var spot := _find_open_spot(c0, ts)
+	if spot.x >= 0:
+		player.global_position = spot
 		return
-	# 2) Запасной вариант — проходимый тайл от центра
-	var cx := alm_map.map_width / 2
-	var cy := alm_map.map_height / 2
-	for r in range(0, 20):
+	# 2) Запасной вариант — поиск по спирали от центра
+	var cx: int = alm_map.map_width / 2
+	var cy: int = alm_map.map_height / 2
+	for r in range(0, 30):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
-				var tx := cx + dx
-				var ty := cy + dy
-				var ts := alm_map.tile_size()
-				var wx := tx * ts + ts / 2
-				var wy := ty * ts + ts / 2
-				if alm_map.is_walkable_world(Vector2(wx, wy)):
+				var tx: int = cx + dx
+				var ty: int = cy + dy
+				var wx: int = tx * ts + ts / 2
+				var wy: int = ty * ts + ts / 2
+				if _is_open_spot(tx, ty):
 					player.global_position = Vector2(wx, wy)
 					return
+
+## Ищем проходимую клетку рядом со спавном, у которой есть проходимые соседи
+## (минимум 2 из 4) — чтобы персонаж не оказался в тупике. Возвращаем центр
+## клетки в мировых координатах или Vector2(-1,-1), если в радиусе 6 нет места.
+func _find_open_spot(start: Vector2i, ts: int) -> Vector2:
+	if _is_open_spot(start.x, start.y):
+		return Vector2(start.x * ts + ts / 2, start.y * ts + ts / 2)
+	for r in range(1, 7):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if abs(dx) != r and abs(dy) != r:
+					continue  # только кольцо на расстоянии r
+				var tx := start.x + dx
+				var ty := start.y + dy
+				if _is_open_spot(tx, ty):
+					return Vector2(tx * ts + ts / 2, ty * ts + ts / 2)
+	return Vector2(-1, -1)
+
+## Клетка проходима и имеет >=2 проходимых соседей (не закуток).
+func _is_open_spot(tx: int, ty: int) -> bool:
+	var ts: int = alm_map.tile_size()
+	var wx: int = tx * ts + ts / 2
+	var wy: int = ty * ts + ts / 2
+	if not alm_map.is_walkable_world(Vector2(wx, wy)):
+		return false
+	var open_neighbors := 0
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nx: int = tx + d.x
+		var ny: int = ty + d.y
+		if nx < 0 or ny < 0 or nx >= alm_map.map_width or ny >= alm_map.map_height:
+			continue
+		if alm_map.is_walkable_world(Vector2(nx * ts + ts / 2, ny * ts + ts / 2)):
+			open_neighbors += 1
+	return open_neighbors >= 2
 
 func _input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
