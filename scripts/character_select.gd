@@ -139,6 +139,7 @@ func _make_card(c: Dictionary, pos: Vector2) -> Control:
 	img.texture = tex
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.mouse_filter = Control.MOUSE_FILTER_IGNORE  # не перехватывать клик
 	img.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	img.offset_top = 8.0
 	img.offset_bottom = 250.0
@@ -150,6 +151,7 @@ func _make_card(c: Dictionary, pos: Vector2) -> Control:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.8))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_top = -64.0
 	label.offset_bottom = -20.0
@@ -163,16 +165,19 @@ func _make_card(c: Dictionary, pos: Vector2) -> Control:
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.add_theme_font_size_override("font_size", 11)
 	desc.add_theme_color_override("font_color", Color(0.85, 0.82, 0.75))
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	desc.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	desc.offset_top = -18.0
 	desc.offset_bottom = 0.0
 	panel.add_child(desc)
 
-	# Клик по карточке
-	panel.gui_input.connect(func(event: InputEvent, idx := _cards.size()):
+	# Клик по карточке. idx фиксируем на момент создания (в GDScript default-аргументы
+	# лямбды пересчитываются на каждый вызов — _cards.size() к моменту клика уже 4).
+	var card_idx := _cards.size()
+	panel.gui_input.connect(func(event: InputEvent, idx := card_idx):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_select(idx))
-	panel.mouse_entered.connect(func(idx := _cards.size()):
+	panel.mouse_entered.connect(func(idx := card_idx):
 		panel.modulate = Color(1.06, 1.06, 1.02))
 	panel.mouse_exited.connect(func():
 		_update_card_style(panel))
