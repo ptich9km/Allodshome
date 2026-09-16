@@ -150,7 +150,7 @@ func import_alm(data: Dictionary) -> void:
 ## Категория редактора для tile id: 0=tile1 трава, 1=tile2 земля,
 ## 2=tile3 вода, 3=tile4 дорога/камень (категории редактора 0..4).
 func _alm_cat_for(tile: int) -> int:
-	var t := AlmLoader.terrain_type(tile)
+	var t := AlmLoader.tile_type(tile)
 	match t:
 		1: return 1   # tile2 -> Земля
 		2: return 3   # tile3 -> Вода

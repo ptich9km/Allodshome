@@ -248,6 +248,58 @@ func _set_action_mode(mode: String):
 		"stop":
 			Game.action_mode = "none"
 
+func _toggle_coords():
+	show_coords = not show_coords
+	coords_btn.button_pressed = show_coords
+	coords_label.visible = show_coords
+
+## Портрет под курсором: враг-юнит (UnitDB picture) или здание (structures Picture).
+## Если нет — портрет героя. Файлы assets/portraits/<имя>.png (lowercase).
+var _portrait_cache := {}
+func _hover_portrait() -> void:
+	if not is_instance_valid(player):
+		return
+	var world := player.get_global_mouse_position()
+	var pic := ""
+
+	# 1) Враг под курсором (юнит): радиус 32px вокруг центра юнита
+	for e in Game.enemies:
+		if is_instance_valid(e) and e.global_position.distance_to(world) < 32.0:
+			var set_name: String = str(e.get("anim_set", "")) if "anim_set" in e else ""
+			if set_name != "":
+				pic = str(UnitDB.get_set(set_name).get("picture", ""))
+			break
+
+	# 2) Иначе здание под курсором (хитбокс структуры)
+	if pic == "" and alm_map and alm_map.map_width > 0:
+		var ts: int = alm_map.tile_size
+		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
+		if alm_map.has_method("structure_at"):
+			var h: Dictionary = alm_map.structure_at(cell)
+			if not h.is_empty():
+				pic = str(h.get("picture", ""))
+
+	if pic == "":
+		# Сброс на портрет героя
+		if _hover_name != "":
+			_hover_name = ""
+			portrait_texture.texture = hero_portrait
+		return
+
+	var lower := pic.to_lower()
+	if lower == _hover_name:
+		return
+	_hover_name = lower
+	var tex: Texture2D = _portrait_cache.get(lower)
+	if tex == null:
+		tex = load("res://assets/portraits/%s.png" % lower)
+		if tex != null:
+			_portrait_cache[lower] = tex
+	if tex != null:
+		portrait_texture.texture = tex
+	else:
+		portrait_texture.texture = hero_portrait
+
 func _setup_minimap():
 	# Создаём изображение миникарты (190x190)
 	minimap_image = Image.create(190, 190, false, Image.FORMAT_RGBA8)
@@ -273,8 +325,8 @@ func _draw_minimap():
 	if mw == 0:
 		return
 
-	var ptx: int = int(player.global_position.x) / alm_map.tile_size()
-	var pty: int = int(player.global_position.y) / alm_map.tile_size()
+	var ptx: int = int(player.global_position.x) / alm_map.tile_size
+	var pty: int = int(player.global_position.y) / alm_map.tile_size
 	var scale_x := 190.0 / float(mw)
 	var scale_y := 190.0 / float(mh)
 
@@ -306,8 +358,8 @@ func _draw_minimap():
 	# Враги (красные точки)
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
-			var etx: int = int(enemy.global_position.x) / alm_map.tile_size()
-			var ety: int = int(enemy.global_position.y) / alm_map.tile_size()
+			var etx: int = int(enemy.global_position.x) / alm_map.tile_size
+			var ety: int = int(enemy.global_position.y) / alm_map.tile_size
 			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
 			if exx >= 0 and exx < 190 and eyy >= 0 and eyy < 190:
 				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))
@@ -390,7 +442,7 @@ func update_ui(p: Player):
 		var world := p.get_global_mouse_position() if p.has_method("get_global_mouse_position") else Vector2.ZERO
 		lines += "Мышь: %d, %d px\n" % [int(mouse.x), int(mouse.y)]
 		if alm_map:
-			var ts: int = alm_map.tile_size()
+			var ts: int = alm_map.tile_size
 			var tc := Vector2i(int(p.global_position.x) / ts, int(p.global_position.y) / ts)
 			var mc := Vector2i(int(world.x) / ts, int(world.y) / ts)
 			lines += "Клетка героя: %d, %d\n" % [tc.x, tc.y]

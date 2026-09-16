@@ -89,7 +89,7 @@ func _find_open_spot(start: Vector2i, ts: int) -> Vector2:
 
 ## Клетка проходима и имеет >=2 проходимых соседей (не закуток).
 func _is_open_spot(tx: int, ty: int) -> bool:
-	var ts: int = alm_map.tile_size()
+	var ts: int = alm_map.tile_size
 	var wx: int = tx * ts + ts / 2
 	var wy: int = ty * ts + ts / 2
 	if not alm_map.is_walkable_world(Vector2(wx, wy)):
