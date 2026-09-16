@@ -27,12 +27,14 @@ var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
 var move_speed: float = 120.0
 
-var abilities = [
-	{"name": "fireball", "damage": 12, "mana_cost": 8, "cooldown": 1.2, "range": 200},
-	{"name": "heal", "heal": 15, "mana_cost": 10, "cooldown": 4.0},
-	{"name": "lightning", "damage": 20, "mana_cost": 15, "cooldown": 2.5, "range": 150}
-]
-var ability_cooldowns = [0.0, 0.0, 0.0]
+## Магия героя: выученные заклинания (книги) и заряды свитков.
+## known_spells: "Fire_Ball" -> {"charges": -1} — выучено навсегда (маг, из книги);
+## "Heal" -> {"charges": 2} — заряды свитков (может кастовать, тратя свиток).
+## Воины не имеют маны (max_mana = 0) и не читают книги — только свитки.
+var known_spells: Dictionary = {}
+var sphere_books: Dictionary = {}   # "Fire" -> true (книга стихии изучена магом)
+var cast_cooldowns: Dictionary = {} # имя -> оставшееся время кд
+var has_mana: bool = true
 var health_bar: HealthBar
 var alm_map = null   # CustomMap или AlmMap из группы "alm_map"
 
@@ -45,6 +47,8 @@ var _anim: UnitAnim = null
 
 func _ready():
 	_apply_hero_choice()
+	# Только маги имеют ману и читают книги магии; воины — свитки (заряды).
+	has_mana = Game.hero_class == "mage"
 	max_hp = _calc_max_hp()
 	max_mana = _calc_max_mana()
 	current_hp = max_hp
@@ -53,6 +57,21 @@ func _ready():
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	_ensure_sprite()
 	_create_health_bar()
+	_setup_starter_magic()
+
+## Стартовая магия: маг уже знает по одному заклинанию сферы (по книге), воин — ничего.
+## У магов шт обеспечить базовые заклинания для старта игры.
+func _setup_starter_magic() -> void:
+	if not has_mana:
+		return
+	# Книги стихий у мага изначально: Огонь, Вода, Воздух, Земля, Астрал
+	for sphere in ["Fire", "Water", "Air", "Earth", "Astral"]:
+		sphere_books[sphere] = true
+	# Базовые заклинания доступны сразу (как в оригинале — из стартовых книг)
+	for sphere in sphere_books:
+		for spell in SpellDB.spells_of_sphere(sphere):
+			if not known_spells.has(spell):
+				known_spells[spell] = {"charges": -1}
 
 ## Применить выбор персонажа с экрана старта (character_select): характеристики,
 ## стартовая экипировка. Без выбора (запуск main.tscn напрямую) — значения по умолчанию.
@@ -84,6 +103,8 @@ func _calc_max_hp() -> int:
 	return 20 + body * 8          # Body -> здоровье; body=10 -> 100
 
 func _calc_max_mana() -> int:
+	if not has_mana:
+		return 0                  # воины не имеют маны вовсе
 	return 10 + spirit * 4        # Spirit -> мана (по манифесту); spirit=10 -> 50
 
 func _calc_hp_regen() -> int:
@@ -193,7 +214,7 @@ func _create_health_bar():
 	health_bar = preload("res://scripts/health_bar.gd").new()
 	health_bar.max_hp = max_hp
 	health_bar.max_mana = max_mana
-	health_bar.has_mana = true
+	health_bar.has_mana = has_mana
 	add_child(health_bar)
 
 func _ensure_sprite():
@@ -211,20 +232,21 @@ func _physics_process(delta):
 		return
 
 	attack_cooldown = max(0, attack_cooldown - delta)
-	for i in range(ability_cooldowns.size()):
-		ability_cooldowns[i] = max(0, ability_cooldowns[i] - delta)
+	# Кулдауны заклинаний
+	for spell in cast_cooldowns:
+		cast_cooldowns[spell] = max(0.0, float(cast_cooldowns[spell]) - delta)
 
 	# Обновляем бар здоровья
 	if health_bar:
 		health_bar.update_bars(current_hp, current_mana)
 
-	# Обработка заклинаний
-	if Input.is_action_just_pressed("cast_1"):
-		cast_ability(0, get_global_mouse_position())
-	elif Input.is_action_just_pressed("cast_2"):
-		cast_ability(1, get_global_mouse_position())
-	elif Input.is_action_just_pressed("cast_3"):
-		cast_ability(2, get_global_mouse_position())
+	# Быстрые клавиши каста (зар-1/2/3 — первые известные атакующие заклинания)
+	var cast_keys := ["cast_1", "cast_2", "cast_3"]
+	var castable := _attack_spells()
+	for i in range(cast_keys.size()):
+		if Input.is_action_just_pressed(cast_keys[i]):
+			if i < castable.size():
+				cast_spell(castable[i], get_global_mouse_position())
 
 	match state:
 		"idle":
@@ -317,47 +339,209 @@ func _sound_weapon_attack() -> void:
 			id = SoundDB.sound_at(s, 0)
 	SoundDB.play(id)
 
-## Магический урон (Mind -> сила магии) для заклинаний.
-func magic_damage(base: int) -> int:
-	return base + get_magic_power()
+## Магический урон: база + Mind + навык сферы (как в Allods2).
+## Урон растёт с Mind (разумом) и навыком соответствующей сферы магии.
+func magic_damage(base: int, sphere: String) -> int:
+	var skill := 0
+	match sphere:
+		"Fire": skill = fire_skill
+		"Water": skill = water_skill
+		"Air": skill = air_skill
+		"Earth": skill = earth_skill
+		"Astral": skill = astral_skill
+	return base + get_magic_power() + skill * 2 / 5
 
-func cast_ability(index: int, target_position: Vector2):
-	if index < 0 or index >= abilities.size():
-		return
+## Навык сферы (для UI/урона): 0-100.
+func sphere_skill(sphere: String) -> int:
+	match sphere:
+		"Fire": return fire_skill
+		"Water": return water_skill
+		"Air": return air_skill
+		"Earth": return earth_skill
+		"Astral": return astral_skill
+	return 0
 
-	var ability = abilities[index]
-	if ability_cooldowns[index] > 0 or current_mana < ability.mana_cost:
-		return
+## Заклинания героя (для книги заклинаний): выученные + свитки с зарядами.
+func known_spell_list() -> Array:
+	var out: Array = []
+	for name in known_spells:
+		out.append(name)
+	out.sort()
+	return out
 
-	current_mana -= ability.mana_cost
-	ability_cooldowns[index] = ability.cooldown
+## Атакующие заклинания (для быстрых клавиш) в порядке базы.
+func _attack_spells() -> Array:
+	var out: Array = []
+	for name in known_spell_list():
+		var kind := SpellDB.kind_of(name)
+		if kind in ["attack", "area"]:
+			out.append(name)
+	return out
 
-	match ability.name:
-		"fireball":
-			SoundDB.play(512)  # magic\fireball
-			create_projectile(global_position, target_position, magic_damage(ability.damage))
+## Есть ли у героя заклинание (книга/свиток) и можно ли кастовать сейчас.
+func has_spell(name: String) -> bool:
+	return known_spells.has(name)
+
+## Заряды заклинания: -1 = выучено (маг, из книги), 0 = нет, N = свитки.
+func spell_charges(name: String) -> int:
+	if not known_spells.has(name):
+		return 0
+	return int(known_spells[name].get("charges", 0))
+
+## Стоимость каста: маг платит ману, воин — заряд свитка.
+func can_cast(name: String) -> bool:
+	if not known_spells.has(name):
+		return false
+	if float(cast_cooldowns.get(name, 0.0)) > 0.0:
+		return false
+	var charges := spell_charges(name)
+	if charges != 0:
+		return true  # есть заряд свитка
+	if has_mana and current_mana >= SpellDB.mana_cost(name):
+		return true  # маг за ману
+	return false
+
+## Использовать заклинание по имени. Возвращает true, если кастован.
+func cast_spell(name: String, target_position: Vector2) -> bool:
+	if not can_cast(name):
+		return false
+	var spell: Dictionary = SpellDB.get_spell(name)
+	if spell.is_empty():
+		return false
+	# Стоимость: заряды свитка тратятся первыми; маг платит ману.
+	var charges := spell_charges(name)
+	if charges > 0:
+		known_spells[name]["charges"] = charges - 1
+	elif has_mana:
+		current_mana = maxi(0, current_mana - SpellDB.mana_cost(name))
+	cast_cooldowns[name] = 0.8  # универсальный КД ~0.8 с
+
+	var sphere := str(spell.get("sphere", ""))
+	var kind := str(spell.get("kind", "buff"))
+	var dmg := int(spell.get("damage", 0))
+	var area := float(spell.get("area", 0))
+	var range_f := float(spell.get("range", 0))
+
+	# Звук заклинания по сфере (magic\*.wav)
+	match sphere:
+		"Fire": SoundDB.play(512)      # fireball
+		"Water": SoundDB.play(518)     # icemissile
+		"Air": SoundDB.play(528)       # lightning
+		"Earth": SoundDB.play(546)     # pearth
+		"Astral": SoundDB.play(556)    # heal
+		_: SoundDB.play(512)
+
+	match kind:
+		"attack", "area":
+			_fire_spell_projectile(name, sphere, dmg, area, range_f, target_position)
 		"heal":
-			SoundDB.play(556)  # magic\heal
-			current_hp = min(max_hp, current_hp + ability.heal + mind / 5)
-		"lightning":
-			SoundDB.play(528)  # magic\lightning
-			var enemy = get_nearest_enemy(target_position, ability.range)
-			if enemy:
-				_create_lightning_effect(global_position, enemy.global_position)
-				enemy.take_damage(magic_damage(ability.damage), self)
-			# Урон по объектам карты в радиусе удара
-			if alm_map and alm_map.has_method("damage_area"):
-				alm_map.damage_area(target_position, 60.0, ability.damage)
+			_apply_heal(name, dmg, sphere)
+		"buff":
+			_apply_buff(sphere, target_position)
+		"wall":
+			_create_wall(target_position)
+		"self":
+			match name:
+				"Teleport": _teleport_to(target_position)
+				"Light": print("Свет")
+				"Shield": print("Щит (задел)")
+				"Summon": print("Призыв (задел)")
+	return true
 
-func create_projectile(from: Vector2, to: Vector2, damage: int):
-	var projectile_scene = preload("res://scenes/projectile.tscn")
-	if projectile_scene:
-		var projectile = projectile_scene.instantiate()
-		projectile.start_pos = from
-		projectile.target_pos = to
-		projectile.damage = damage
-		projectile.projectile_owner = self
-		get_tree().root.add_child(projectile)
+## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).
+func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float, range_f: float, target_position: Vector2) -> void:
+	var final_dmg := magic_damage(dmg, sphere)
+	if area > 0.0:
+		# Областное: летит к точке, взрывается (урон по радиусу)
+		create_spell_projectile(name, global_position, target_position, final_dmg, area)
+		if range_f <= 0.0:
+			_damage_area_at(target_position, area, final_dmg)
+	else:
+		# Одиночная цель: снаряд летит до врага у точки прицела
+		var enemy := get_nearest_enemy(target_position, 200.0)
+		var to := enemy.global_position if enemy != null else target_position
+		create_spell_projectile(name, global_position, to, final_dmg, 0.0)
+
+## Создать снаряд с анимацией фаз из папки снаряда.
+func create_spell_projectile(name: String, from: Vector2, to: Vector2, damage: int, area: float) -> void:
+	var scene := preload("res://scenes/projectile.tscn")
+	if scene == null:
+		return
+	var p: Projectile = scene.instantiate()
+	p.start_pos = from
+	p.target_pos = to
+	p.damage = damage
+	p.projectile_owner = self
+	p.spell_name = name
+	p.spell_area = area
+	get_tree().root.add_child(p)
+	if p.has_method("set_spell_anim"):
+		p.set_spell_anim(name)
+
+## Лечение: восстановить HP герою (максимум).
+func _apply_heal(name: String, dmg: int, _sphere: String) -> void:
+	var heal_amount := -dmg + mind / 5
+	current_hp = mini(max_hp, current_hp + heal_amount)
+	print("Лечение: +%d HP (итого %d/%d)" % [heal_amount, current_hp, max_hp])
+
+## Бафф: пока просто накладываем положительный эффект и печатаем.
+func _apply_buff(sphere: String, _target_position: Vector2) -> void:
+	print("Бафф сферы %s применён (задел)" % sphere)
+
+## Стена (Wall of Fire / Wall of Earth): метка у точки прицела в радиусе.
+func _create_wall(target_position: Vector2) -> void:
+	var marker := ColorRect.new()
+	marker.color = Color(0.9, 0.3, 0.1, 0.35)
+	marker.position = target_position - Vector2(16, 16)
+	marker.size = Vector2(32, 32)
+	get_tree().root.add_child(marker)
+	var timer := get_tree().create_timer(2.0)
+	timer.timeout.connect(func():
+		if is_instance_valid(marker):
+			marker.queue_free())
+
+## Телепорт к точке (в пределах карты).
+func _teleport_to(target_position: Vector2) -> void:
+	if alm_map and alm_map.has_method("is_walkable_world") and not alm_map.is_walkable_world(target_position):
+		return
+	global_position = target_position
+	if health_bar:
+		health_bar.update_bars(current_hp, current_mana)
+
+## Урон по области вокруг точки (объектам карты и врагам).
+func _damage_area_at(pos: Vector2, radius: float, dmg: int) -> void:
+	if alm_map and alm_map.has_method("damage_area"):
+		alm_map.damage_area(pos, radius, dmg)
+	for enemy in Game.enemies:
+		if is_instance_valid(enemy) and enemy.global_position.distance_to(pos) <= radius:
+			enemy.take_damage(dmg, self)
+
+## Изучить книгу стихии (только маг): открывает все заклинания сферы.
+func learn_sphere_book(item_name: String) -> bool:
+	if not has_mana:
+		return false  # воин не может читать книги магии
+	var sphere := SpellDB.sphere_of_book(item_name)
+	if sphere == "":
+		return false
+	sphere_books[sphere] = true
+	var gained: Array = []
+	for spell in SpellDB.spells_of_sphere(sphere):
+		if not known_spells.has(spell):
+			known_spells[spell] = {"charges": -1}
+			gained.append(spell)
+	print("Изучена книга %s: +%d заклинаний" % [sphere, gained.size()])
+	return true
+
+## Прочитать свиток: +1 заряд заклинания (любой персонаж).
+func read_scroll(item_name: String) -> bool:
+	var spell := SpellDB.spell_from_scroll(item_name)
+	if spell == "":
+		return false
+	if not known_spells.has(spell):
+		known_spells[spell] = {"charges": 0}
+	known_spells[spell]["charges"] = int(known_spells[spell]["charges"]) + 1
+	print("Прочитан свиток: %s, зарядов: %d" % [spell, known_spells[spell]["charges"]])
+	return true
 
 func get_nearest_enemy(click_pos: Vector2, attack_range: float) -> Node2D:
 	var nearest = null

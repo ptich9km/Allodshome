@@ -54,6 +54,7 @@ func setup_ui(p: Player):
 			hero_portrait = tex
 
 	_setup_inventory()
+	refresh_spell_book()
 
 	# Карта для миникарты: CustomMap или AlmMap (группа "alm_map", без каста — они не родственники)
 	alm_map = get_tree().get_first_node_in_group("alm_map")
@@ -99,72 +100,173 @@ func _setup_spells():
 	if not spell_grid:
 		print("WARNING: SpellGrid not found, skipping spell setup")
 		return
-	
-	# 2 ряда по 12 = 24 иконки заклинаний
-	spell_grid.columns = 12
-	
-	for i in range(24):
-		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(40, 40)
-		btn.flat = true
-		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		btn.expand_icon = true
-		
-		# Загружаем иконку
-		var icon_path = "res://assets/spells/spell_%02d.png" % i
-		var tex = load(icon_path)
-		if tex:
-			btn.icon = tex
-		else:
-			# Заглушка если файл не найден
-			var icon = Image.create(48, 48, false, Image.FORMAT_RGBA8)
-			icon.fill(Color(0.2, 0.2, 0.3, 1.0))
-			btn.icon = ImageTexture.create_from_image(icon)
-		
-		btn.pressed.connect(func(idx=i): cast_ability(idx))
-		spell_grid.add_child(btn)
-		spell_buttons.append(btn)
-	
+
+	# Книга заклинаний: одна строка на заклинание; строится динамически
+	# по известным заклинаниям героя (книги магов / свитки с зарядами).
+	spell_grid.columns = 1
+
+	# Заглушки пока нет героя: 1 ячейка
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(44, 44)
+	btn.flat = true
+	btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.expand_icon = true
+	btn.disabled = true
+	spell_grid.add_child(btn)
+	spell_buttons.append(btn)
+
 	_setup_minimap()
 	_setup_action_buttons()
+	_update_stats()
+
+## Перестроить книгу заклинаний по изученным заклинаниям героя.
+func refresh_spell_book() -> void:
+	if not is_instance_valid(player):
+		return
+	# Очищаем старые кнопки
+	for b in spell_buttons:
+		if is_instance_valid(b):
+			b.queue_free()
+	spell_buttons.clear()
+	_spell_button_names.clear()
+	spell_grid.columns = 1
+
+	var spells := player.known_spell_list()
+	if spells.is_empty():
+		var stub = Button.new()
+		stub.custom_minimum_size = Vector2(44, 44)
+		stub.flat = true
+		stub.text = "—"
+		stub.disabled = true
+		stub.tooltip_text = "Книга заклинаний пуста.\nМаги учат заклинания из книг стихий,\nвсе персонажи — из свитков."
+		spell_grid.add_child(stub)
+		spell_buttons.append(stub)
+		return
+
+	for name in spells:
+		var spell: Dictionary = SpellDB.get_spell(name)
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(44, 44)
+		b.flat = true
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.expand_icon = true
+
+		# Иконка из базы заклинаний (inventory scroll icon)
+		var icon_path := SpellDB.icon_of(name)
+		var tex: Variant = null
+		if icon_path != "":
+			tex = load(icon_path)
+		if tex == null:
+			var fallback = load("res://assets/spells/spell_%02d.png" % (spells.find(name) % 24))
+			if fallback:
+				tex = fallback
+		if tex != null:
+			b.icon = tex
+
+		var charges := player.spell_charges(name)
+		var sphere := SpellDB.sphere_of(name)
+		var mana := SpellDB.mana_cost(name)
+		var title := str(spell.get("ru", name))
+		if charges != 0:
+			b.tooltip_text = "%s\n%s · зарядов: %d%s" % [title, sphere, charges,
+				("\nмана: %d" % mana) if player.has_mana else ""]
+		else:
+			b.tooltip_text = "%s\n%s · мана: %d" % [title, sphere, mana]
+		# Подпись количества под иконкой (charges, если свиток)
+		if charges > 0:
+			var lbl := Label.new()
+			lbl.text = str(charges)
+			lbl.add_theme_font_size_override("font_size", 10)
+			lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
+			lbl.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+			lbl.offset_left = -16.0
+			lbl.offset_top = -16.0
+			lbl.offset_right = -2.0
+			lbl.offset_bottom = -2.0
+			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(lbl)
+
+		b.pressed.connect(func(sn: String = name): _cast_spell_button(sn))
+		spell_grid.add_child(b)
+		spell_buttons.append(b)
+		_spell_button_names.append(name)
+
+## Клик по заклинанию в книге: каст по курсору.
+func _cast_spell_button(name: String) -> void:
+	if not is_instance_valid(player):
+		return
+	var target := player.get_global_mouse_position()
+	player.cast_spell(name, target)
+	# обновить подписи зарядов
+	refresh_spell_book()
 	_update_stats()
 
 # Инвентарь
 var inventory_slots: Array = []
 var inventory_items: Array = []
+var inventory_items_meta: Array = []  # исходные Dictionary предметов (для key/quality)
 
 func _setup_inventory():
-	# Сетка с вертикальным скроллом: по 12 слотов в ряд, показываем все
-	# экипируемые предметы настоящей базы (assets/items/item_db.json).
+	# Сетка с вертикальным скроллом: по 12 слотов в ряд.
+	# Показываем экипируемые предметы + магические книги и свитки.
 	inventory_grid.columns = 12
 
 	var slot_bg = load("res://assets/interface/myitem.png")
 
 	for item in ItemDB.equippable_items():
-		var slot = TextureRect.new()
-		slot.custom_minimum_size = Vector2(68, 68)
-		slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		slot.stretch_mode = TextureRect.STRETCH_SCALE
-		if slot_bg:
-			slot.texture = slot_bg
-		else:
-			slot.modulate = Color(0.15, 0.15, 0.15, 1.0)
-		inventory_grid.add_child(slot)
-		inventory_slots.append(slot)
-		inventory_items.append(item)
+		_add_inventory_slot(item, slot_bg)
 
-		var gear := {
-			"slot": ItemDB.slot_of(item),
-			"weapon": ItemDB.weapon_kind(item),
-			"two_handed": ItemDB.is_two_handed(item),
-			"armor": ItemDB.armor_kind(item),
-		}
-		_add_item(inventory_slots.size() - 1, str(item.get("icon", "")), str(item.get("name_ru", "")), gear)
+	# Книги стихий (для магов) и свитки (для всех) — в конце инвентаря
+	for item in ItemDB.all():
+		var q := str(item.get("quality", ""))
+		if q in ["Book", "Scroll", "SuperScroll"]:
+			_add_inventory_slot(item, slot_bg)
 
-## Обработчик клика по предмету — экипировать героя.
+## Создать слот инвентаря для предмета item (экипировка или магия).
+func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D) -> void:
+	var slot = TextureRect.new()
+	slot.custom_minimum_size = Vector2(68, 68)
+	slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	slot.stretch_mode = TextureRect.STRETCH_SCALE
+	if slot_bg:
+		slot.texture = slot_bg
+	else:
+		slot.modulate = Color(0.15, 0.15, 0.15, 1.0)
+	inventory_grid.add_child(slot)
+	inventory_slots.append(slot)
+	inventory_items.append(item)
+	inventory_items_meta.append(item)
+
+	var gear := {
+		"slot": ItemDB.slot_of(item),
+		"weapon": ItemDB.weapon_kind(item),
+		"two_handed": ItemDB.is_two_handed(item),
+		"armor": ItemDB.armor_kind(item),
+	}
+	_add_item(inventory_slots.size() - 1, str(item.get("icon", "")), str(item.get("name_ru", "")), gear)
+
+## Обработчик клика по предмету — экипировать героя / изучить магию.
 func _on_item_clicked(item: Dictionary):
 	if not is_instance_valid(player):
 		return
+	var quality := str(item.get("quality", ""))
+	var item_key := str(item.get("key", ""))
+
+	# Магические предметы: книга стихии (маг) или свиток (любой).
+	# Имена в item_db: key="Book Fire", name_ru="Book Огонь" — используем key.
+	if quality == "Book":
+		if player.learn_sphere_book(item_key):
+			SoundDB.play(7)  # ibook
+			refresh_spell_book()
+			_update_stats()
+		return
+	if quality in ["Scroll", "SuperScroll"]:
+		if player.read_scroll(item_key):
+			SoundDB.play(7)  # ibook
+			refresh_spell_book()
+			_update_stats()
+		return
+
 	var slot := str(item.get("slot", ""))
 	if slot == "armor":
 		player.armor_kind = str(item.get("armor", "light"))
@@ -179,7 +281,7 @@ func _on_item_clicked(item: Dictionary):
 		player.has_shield = true
 	player.refresh_animation()
 	_update_stats()
-	print("Экипировано: " + str(item.get("name", "?")))
+	print("Экипировано: " + str(item.get("name_ru", item_key)))
 
 func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictionary = {}):
 	if slot_idx >= 0 and slot_idx < inventory_slots.size():
@@ -199,6 +301,11 @@ func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictio
 		var item_data: Dictionary = gear.duplicate(true)
 		item_data["name"] = item_name
 		item_data["icon"] = icon_path
+		# Магический предмет (книга/свиток): ключ и качество для обработки
+		var src: Dictionary = inventory_items_meta[slot_idx] if slot_idx < inventory_items_meta.size() else {}
+		if not src.is_empty():
+			item_data["key"] = str(src.get("key", ""))
+			item_data["quality"] = str(src.get("quality", ""))
 		inventory_items[slot_idx] = item_data
 
 		# Кликабельный слот: наводим и нажимаем для экипировки
@@ -466,30 +573,30 @@ func update_ui(p: Player):
 					lines += "Флаг: %d (0 зем/1 холм/2 вода/3 выс/4 барьер)\n" % fl
 		coords_label.text = lines
 
+	# Подсветка кнопок книги заклинаний: доступно/недостаточно маны или зарядов
 	for i in range(spell_buttons.size()):
 		var button = spell_buttons[i] as Button
-		if i < p.abilities.size():
-			var ability = p.abilities[i]
-			var ability_ready = p.ability_cooldowns[i] <= 0 and p.current_mana >= ability.mana_cost
-			button.disabled = not ability_ready
-			button.modulate = Color(1, 1, 1, 0.4) if not ability_ready else Color.WHITE
+		if button == null:
+			continue
+		# Ищем заклинание по tooltip? — проще хранить список имён кнопок
+		if i < _spell_button_names.size():
+			var sn: String = str(_spell_button_names[i])
+			if player.can_cast(sn):
+				button.modulate = Color.WHITE
+				button.disabled = false
+			else:
+				button.modulate = Color(1, 1, 1, 0.45)
+				button.disabled = true
 		else:
-			# Заглушки — всегда disabled
-			button.disabled = true
 			button.modulate = Color(1, 1, 1, 0.3)
 
 	_draw_minimap()
 
+var _spell_button_names: Array = []
+
 func cast_ability(index: int):
-	if not player:
-		return
-	# Первые 3 — реальные заклинания
-	if index < 3:
-		var target_pos = get_viewport().get_mouse_position()
-		player.cast_ability(index, target_pos)
-	else:
-		# Остальные 21 — заглушки
-		print("Заклинание #%d — в разработке" % (index + 1))
+	# Больше не используется (кнопки кастуют через _cast_spell_button)
+	pass
 
 func _process(_delta):
 	if Game.is_paused:
