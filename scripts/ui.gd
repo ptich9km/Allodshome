@@ -765,6 +765,28 @@ func _on_panel_closed() -> void:
 func is_editor_open() -> bool:
 	return is_instance_valid(_shop) or is_instance_valid(_school) or is_instance_valid(_inn)
 
+## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
+## Клик по UI не должен читаться как движение/атака по карте.
+func is_pointer_over_ui(screen_pos: Vector2) -> bool:
+	for child in get_children():
+		if child is Control and _control_contains(child, screen_pos):
+			return true
+	return false
+
+func _control_contains(c: Control, p: Vector2) -> bool:
+	# Вся цепочка родителей должна быть видимой (скрытые панели не блокируют)
+	var cur: Control = c
+	while cur is Control:
+		if not cur.visible:
+			return false
+		cur = cur.get_parent() as Control
+	if Rect2(c.global_position, c.size).has_point(p):
+		return true
+	for ch in c.get_children():
+		if ch is Control and _control_contains(ch, p):
+			return true
+	return false
+
 ## Магазин: купля/продажа (клик по зданию Shop).
 func open_shop() -> void:
 	if _shop != null and is_instance_valid(_shop):

@@ -181,8 +181,11 @@ func _is_open_spot(tx: int, ty: int) -> bool:
 
 func _input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# В магазине/таверне/школе клик по товару не должен двигать героя по карте
+		# Клики по интерфейсу (книга заклинаний, инвентарь, панели, магазин/таверна)
+		# не должны двигать/атаковать героя по карте
 		if ui != null and ui.has_method("is_editor_open") and ui.is_editor_open():
+			return
+		if ui != null and ui.has_method("is_pointer_over_ui") and ui.is_pointer_over_ui(event.position):
 			return
 		var world_position = get_global_mouse_position()
 		handle_click(world_position)
