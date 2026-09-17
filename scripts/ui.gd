@@ -79,17 +79,7 @@ func _layout_panels() -> void:
 			p.set_anchor(SIDE_RIGHT, 1.0)
 			p.offset_left = -COL_W
 			p.offset_right = 0.0
-	# Команды — по центру горизонтали
-	var cmd_w := 16 + 160.0
-	var cmd_x := (vw - cmd_w) / 2.0
-	$CommandL.set_anchor(SIDE_LEFT, 0.0)
-	$CommandL.set_anchor(SIDE_RIGHT, 0.0)
-	$CommandL.offset_left = cmd_x
-	$CommandL.offset_right = cmd_x + 16.0
-	$CommandBar.set_anchor(SIDE_LEFT, 0.0)
-	$CommandBar.set_anchor(SIDE_RIGHT, 0.0)
-	$CommandBar.offset_left = cmd_x + 16.0
-	$CommandBar.offset_right = cmd_x + cmd_w
+	# Команды — фиксированы внизу слева (позиции из main.tscn), не центрируются
 
 # Панель заклинаний с иконками
 var spell_buttons: Array = []
@@ -716,17 +706,14 @@ func _update_bottom_panel_visibility():
 	var inv_h = 95.0
 	var gap = 5.0
 
-	# Панель по центру горизонтали для ЛЮБОГО размера окна; ширина по секциям:
-	# только магия — 480, иначе 720 (книга не «прилипает» к краю и без чёрного
-	# «хвоста» справа). Низ панели прижат к низу окна.
-	var vw := get_viewport().get_visible_rect().size.x
+	# Панель внизу СЛЕВА (0..720), как в оригинале; магия — книгой по центру
+	# панели (без чёрного «хвоста» слева/справа), инвентарь — полосой на всю панель.
 	var vh := get_viewport().get_visible_rect().size.y
-	var panel_w := 720.0
-	if spells_visible and not inventory_visible:
-		panel_w = 480.0
-	var px := (vw - panel_w) / 2.0
-	bottom_panel.offset_left = px
-	bottom_panel.offset_right = px + panel_w
+	bottom_panel.offset_left = 0.0
+	bottom_panel.offset_right = 720.0
+	var book_w := 480.0
+	spell_panel.offset_left = (720.0 - book_w) / 2.0
+	spell_panel.offset_right = spell_panel.offset_left + book_w
 
 	if spells_visible and inventory_visible:
 		# Магия сверху, инвентарь снизу
