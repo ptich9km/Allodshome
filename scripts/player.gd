@@ -152,7 +152,12 @@ func _calc_mana_regen() -> int:
 	return 1 + spirit / 10        # реген маны от Spirit
 
 func _calc_speed() -> float:
-	return float(100 + agility * 2)   # Agility -> скорость; agility=10 -> 120
+	# Скорость героя по формуле оригинала (UnityAllods MapHuman):
+	# Speed = min(Reaction/5 + 12, 255); Реакция ≈ 2·Ловкость (производная).
+	# В наших пикселях: base × 7.5 (при agility=10 — те же 120 px/с, что и раньше).
+	var reaction := 2 * agility
+	var base := clampf(float(reaction) / 5.0 + 12.0, 12.0, 255.0)
+	return base * 7.5
 
 func get_damage_min() -> int:
 	return body / 2 + blade_skill / 10     # Body + навык меча -> урон
@@ -211,6 +216,7 @@ func refresh_animation() -> void:
 	var set := anim_set_name()
 	_anim.setup(set)
 	_anim.play(UnitAnim.Anim.MOVE, true)
+	move_speed = _calc_speed()   # скорость обновляется вместе с экипировкой
 
 ## Множитель скорости с учётом высоты: подъём замедляет, спуск/равнина — норма.
 ## Дороги (tile4) — быстрее травы.
