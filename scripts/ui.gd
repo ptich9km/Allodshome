@@ -207,9 +207,8 @@ var inventory_items: Array = []
 var inventory_items_meta: Array = []  # исходные Dictionary предметов (для key/quality)
 
 func _setup_inventory():
-	# Сетка с вертикальным скроллом: по 12 слотов в ряд.
-	# Склад владений героя + магическая витрина (книги/свитки) в конце.
-	inventory_grid.columns = 12
+	# Сетка в ОДИН ряд (горизонтальный скролл), как в оригинале.
+	inventory_grid.columns = 100
 	var slot_bg = load("res://assets/interface/myitem.png")
 	build_inventory_grid(slot_bg)
 
@@ -227,11 +226,16 @@ func refresh_inventory() -> void:
 func build_inventory_grid(slot_bg: Texture2D) -> void:
 	if not is_instance_valid(player):
 		return
-	# Склад: предметы, которыми владеет герой
+	inventory_grid.columns = 100   # один ряд (скролл вправо)
+	# Склад: подсчёт одинаковых предметов (стак) для счётчика в углу
+	var counts := {}
+	for key in player.inventory:
+		var k := str(key)
+		counts[k] = int(counts.get(k, 0)) + 1
 	for key in player.inventory:
 		var item := ItemDB.find(str(key))
 		if not item.is_empty():
-			_add_inventory_slot(item, slot_bg)
+			_add_inventory_slot(item, slot_bg, int(counts[str(key)]))
 	# Витрина магии: книги стихий (маг) и свитки (для всех) — учить/читать
 	for item in ItemDB.all():
 		var q := str(item.get("quality", ""))
@@ -245,7 +249,8 @@ func build_inventory_grid(slot_bg: Texture2D) -> void:
 		inventory_grid.add_child(lab)
 
 ## Создать слот инвентаря для предмета item (экипировка или магия).
-func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D) -> void:
+## count>1 — показать количество стека в правом верхнем углу (как у разработчиков).
+func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D, count: int = 0) -> void:
 	var slot = TextureRect.new()
 	slot.custom_minimum_size = Vector2(68, 68)
 	slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -266,6 +271,23 @@ func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D) -> void:
 		"armor": ItemDB.armor_kind(item),
 	}
 	_add_item(inventory_slots.size() - 1, str(item.get("icon", "")), str(item.get("name_ru", "")), gear)
+
+	# Счётчик количества (стак/деньги) в правом верхнем углу слота
+	if count > 1:
+		var cnt := Label.new()
+		cnt.text = str(count)
+		cnt.add_theme_font_size_override("font_size", 12)
+		cnt.add_theme_color_override("font_color", Color(1, 0.9, 0.45))
+		cnt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+		cnt.add_theme_constant_override("outline_size", 4)
+		cnt.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		cnt.offset_left = -24.0
+		cnt.offset_top = 0.0
+		cnt.offset_right = -2.0
+		cnt.offset_bottom = 18.0
+		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(cnt)
 
 ## Обработчик клика по предмету — экипировать героя / изучить магию.
 func _on_item_clicked(item: Dictionary):
@@ -694,21 +716,34 @@ func _update_bottom_panel_visibility():
 	var inv_h = 95.0
 	var gap = 5.0
 
+	# Панель по центру горизонтали для ЛЮБОГО размера окна; ширина по секциям:
+	# только магия — 480, иначе 720 (книга не «прилипает» к краю и без чёрного
+	# «хвоста» справа). Низ панели прижат к низу окна.
+	var vw := get_viewport().get_visible_rect().size.x
+	var vh := get_viewport().get_visible_rect().size.y
+	var panel_w := 720.0
+	if spells_visible and not inventory_visible:
+		panel_w = 480.0
+	var px := (vw - panel_w) / 2.0
+	bottom_panel.offset_left = px
+	bottom_panel.offset_right = px + panel_w
+
 	if spells_visible and inventory_visible:
 		# Магия сверху, инвентарь снизу
 		spell_panel.offset_top = 0.0
 		spell_panel.offset_bottom = spell_h
 		inventory_panel.offset_top = spell_h + gap
 		inventory_panel.offset_bottom = spell_h + gap + inv_h
-		bottom_panel.offset_top = 800.0 - (spell_h + gap + inv_h)
+		bottom_panel.offset_top = vh - (spell_h + gap + inv_h)
 	elif spells_visible:
 		spell_panel.offset_top = 0.0
 		spell_panel.offset_bottom = spell_h
-		bottom_panel.offset_top = 800.0 - spell_h
+		bottom_panel.offset_top = vh - spell_h
 	else:
 		inventory_panel.offset_top = 0.0
 		inventory_panel.offset_bottom = inv_h
-		bottom_panel.offset_top = 800.0 - inv_h
+		bottom_panel.offset_top = vh - inv_h
+	bottom_panel.offset_bottom = vh
 
 # --- Экономика (P0): панели магазина / школы / таверны ---
 

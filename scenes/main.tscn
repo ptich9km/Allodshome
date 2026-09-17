@@ -120,10 +120,11 @@ offset_left = 5.0
 offset_top = 5.0
 offset_right = 715.0
 offset_bottom = 90.0
-vertical_scroll_mode = 2
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
 
 [node name="InventoryGrid" type="GridContainer" parent="UI/BottomPanel/InventoryPanel/InventoryScroll"]
-columns = 12
+columns = 1
 
 [node name="MinimapBorder" type="Panel" parent="UI"]
 offset_left = 1104.0
