@@ -328,8 +328,8 @@ func _change_stat(name: String, delta: int) -> void:
 	var total := 0
 	for n in STATS_ORDER:
 		total += int(_edit[n])
-	var preset := _edit.get("_preset_total", total)
-	var pool := preset - total
+	var preset: int = int(_edit.get("_preset_total", total))
+	var pool: int = preset - total
 	if delta < 0:
 		if v <= 4:
 			return
