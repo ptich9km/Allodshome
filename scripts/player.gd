@@ -358,6 +358,13 @@ func begin_path(path: Array) -> void:
 	_path = path
 	_stuck_frames = 0
 
+## Полная остановка (используется при входе в здание/паузах).
+func stop_movement() -> void:
+	state = "idle"
+	velocity = Vector2.ZERO
+	_path.clear()
+	Game.player_target = global_position
+
 ## Идти по маршруту: к очередной точке; при упоре 12 кадров — остановиться.
 func _follow_path(delta: float) -> void:
 	if _path.is_empty():

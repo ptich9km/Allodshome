@@ -39,11 +39,21 @@ func _collect() -> void:
 	queue_free()
 
 func _draw() -> void:
-	# Золотой мешок: ромб с тенью
-	draw_circle(Vector2.ZERO, 10.0, Color(0.1, 0.08, 0.05, 0.9))
+	# Мешочек с добычей (как в оригинале): тёмный корпус со стянутым верхом и узелком
+	draw_circle(Vector2(0, 4), 8.0, Color(0.1, 0.07, 0.05, 0.7))                       # тень
 	draw_polygon(
-		PackedVector2Array([Vector2(0, -10), Vector2(9, 0), Vector2(0, 10), Vector2(-9, 0)]),
-		PackedColorArray([Color(1.0, 0.8, 0.2, 1.0)]))
+		PackedVector2Array([
+			Vector2(-6, 0), Vector2(-7, 4), Vector2(-4, 8), Vector2(4, 8),
+			Vector2(7, 4), Vector2(6, 0), Vector2(3, -3), Vector2(-3, -3),
+		]),
+		PackedColorArray([Color(0.45, 0.34, 0.2, 1.0)]))                               # корпус
 	draw_polyline(
-		PackedVector2Array([Vector2(0, -10), Vector2(9, 0), Vector2(0, 10), Vector2(-9, 0), Vector2(0, -10)]),
-		Color(0.4, 0.3, 0.05, 1.0), 1.5)
+		PackedVector2Array([
+			Vector2(-6, 0), Vector2(-7, 4), Vector2(-4, 8), Vector2(4, 8),
+			Vector2(7, 4), Vector2(6, 0), Vector2(3, -3), Vector2(-3, -3), Vector2(-6, 0),
+		]),
+		Color(0.28, 0.2, 0.12, 1.0), 1.2)
+	draw_circle(Vector2(-2, 2), 2.0, Color(0.6, 0.48, 0.3, 1.0))                       # блик
+	draw_line(Vector2(-5, -3), Vector2(5, -3), Color(0.33, 0.24, 0.14, 1.0), 2.0)      # завязка
+	draw_line(Vector2(0, -4), Vector2(0, -8), Color(0.33, 0.24, 0.14, 1.0), 2.0)       # узелок
+	draw_circle(Vector2(0, -8), 1.8, Color(0.85, 0.7, 0.35, 1.0))                      # золотой узел

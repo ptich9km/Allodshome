@@ -719,6 +719,7 @@ func _enter_interior() -> void:
 	if not is_instance_valid(player):
 		return
 	_interior_pos = player.global_position
+	player.stop_movement()          # не «ускакивает» по старой цели, пока в меню
 	player.visible = false
 	_in_interior = true
 
@@ -728,7 +729,26 @@ func _exit_interior() -> void:
 	_in_interior = false
 	if is_instance_valid(player):
 		player.visible = true
-		player.global_position = _interior_pos
+		# Точка выхода: исходная позиция, но на ПРОХОДИМОЙ клетке (не «в здании»)
+		player.global_position = _clamp_to_walkable(_interior_pos)
+
+## Ближайшая проходимая точка рядом с запрошенной (спираль по клеткам).
+func _clamp_to_walkable(from: Vector2) -> Vector2:
+	var map_node = get_tree().get_first_node_in_group("alm_map")
+	if map_node == null or not map_node.has_method("is_walkable_world"):
+		return from
+	if map_node.is_walkable_world(from):
+		return from
+	var cell := Vector2i(int(from.x) / 32, int(from.y) / 32)
+	for r in range(1, 5):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if abs(dx) != r and abs(dy) != r:
+					continue
+				var p := Vector2((cell.x + dx) * 32 + 16, (cell.y + dy) * 32 + 16)
+				if map_node.is_walkable_world(p):
+					return p
+	return from
 
 ## Общий обработчик закрытия любой панели: показать героя у здания.
 func _on_panel_closed() -> void:

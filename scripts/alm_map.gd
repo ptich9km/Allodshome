@@ -169,6 +169,7 @@ func _build_structures() -> void:
 				"y0": sy, "y1": sy + sh - 1,
 				"picture": str(fj.get("picture", "")),
 				"type_id": type_id,
+				"ax": int(x), "ay": int(y),
 			})
 		else:
 			_structure_hits.append({
@@ -176,6 +177,7 @@ func _build_structures() -> void:
 				"y0": int(y) - (fh - th), "y1": int(y) + th - 1,
 				"picture": str(fj.get("picture", "")),
 				"type_id": type_id,
+				"ax": int(x), "ay": int(y),
 			})
 	print("AlmMap: зданий создано %d, пропущено %d" % [placed, missing])
 

@@ -16,6 +16,10 @@ static var mana_regen_accum: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
 
+var _select_ring: SelectRing = null       # подсветка цели (ховер/атака)
+var _pending_building := ""               # здание, к которому герой подходит («вход»)
+var _pending_s: Dictionary = {}           # структура-цель ожидающего входа
+
 # --- Выбор героя на старте (сцена character_select) ---
 static var hero_class: String = "warrior"   # warrior | mage
 static var hero_gender: String = "male"     # male | female
@@ -65,6 +69,12 @@ func _ready():
 
 	if ui:
 		ui.setup_ui(player)
+
+	_select_ring = SelectRing.new()
+	_select_ring.name = "SelectRing"
+	_select_ring.z_index = 9
+	add_child(_select_ring)
+	_select_ring.visible = false
 
 func _spawn_player_on_walkable():
 	var mw: int = int(alm_map.get("map_width"))
@@ -198,22 +208,15 @@ func _input(event):
 func handle_click(world_position: Vector2):
 	print("Клик в: ", world_position)
 
-	# Клик по функциональному зданию: магазин / таверна / школа (без движения)
+	# Клик по функциональному зданию: магазин / таверна / школа (подход к двери)
 	var cell := Vector2i(int(world_position.x) / 32, int(world_position.y) / 32)
 	if alm_map != null and alm_map.has_method("structure_at"):
 		var s: Dictionary = alm_map.call("structure_at", cell)
 		if not s.is_empty():
 			var kind := _structure_kind(int(s.get("type_id", 0)))
-			match kind:
-				"shop":
-					if ui: ui.open_shop()
-					return
-				"inn":
-					if ui: ui.open_inn()
-					return
-				"school":
-					if ui: ui.open_school()
-					return
+			if kind != "":
+				_building_click(kind, s)
+				return
 
 	var enemy = get_enemy_at_position(world_position)
 	if enemy:
@@ -240,6 +243,87 @@ func _structure_kind(type_id: int) -> String:
 	if folder.contains("train") or folder.contains("school"):
 		return "school"
 	return ""
+
+## Клик по функциональному зданию: если герой далеко — сначала идёт к двери,
+## открыть панель («войти») только при подходе.
+func _building_click(kind: String, s: Dictionary) -> void:
+	if ui == null:
+		return
+	var door := _door_point(s)
+	if player.global_position.distance_to(door) <= 90.0:
+		_pending_building = ""
+		match kind:
+			"shop": ui.open_shop()
+			"inn": ui.open_inn()
+			"school": ui.open_school()
+		return
+	_pending_building = kind
+	_pending_s = s
+	player_target = door
+	player.state = "move"
+	player.attack_target = null
+	if alm_map != null and alm_map.has_method("find_path"):
+		player.begin_path(alm_map.find_path(player.global_position, door))
+
+## Точка входа (дверь): проходимая клетка под южным краем корпуса здания.
+func _door_point(s: Dictionary) -> Vector2:
+	var def := StructureDB.get_by_id(int(s.get("type_id", 0)))
+	var fw := int(def.get("tile_width", 1))
+	var th := int(def.get("tile_height", 1))
+	var x := int(s.get("ax", 0))
+	var y := int(s.get("ay", 0))
+	var base := Vector2i(x + fw / 2, y + th)
+	for r in range(3):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if abs(dx) != r and abs(dy) != r:
+					continue
+				var c := base + Vector2i(dx, dy)
+				var p := Vector2(c.x * 32.0 + 16.0, c.y * 32.0 + 16.0)
+				if alm_map != null and alm_map.has_method("is_walkable_world") \
+						and alm_map.is_walkable_world(p):
+					return p
+	return Vector2(x * 32.0 + fw * 16.0, (y + th) * 32.0)
+
+## Когда герой подошёл к двери — «входим»: открываем панель здания.
+func _process_pending_building() -> void:
+	if _pending_building == "" or not is_instance_valid(player) or not is_instance_valid(ui):
+		return
+	var door := _door_point(_pending_s)
+	if player.global_position.distance_to(door) <= 80.0:
+		var k := _pending_building
+		_pending_building = ""
+		_pending_s = {}
+		match k:
+			"shop": ui.open_shop()
+			"inn": ui.open_inn()
+			"school": ui.open_school()
+
+## Враг под курсором (по видимой области корпуса).
+func _hover_enemy() -> Node2D:
+	if not is_instance_valid(player):
+		return null
+	var mouse := player.get_global_mouse_position()
+	for e in enemies:
+		if is_instance_valid(e) and unit_hit_rect(e).grow(4.0).has_point(mouse):
+			return e
+	return null
+
+## Подсветка цели: враг под курсором или текущая цель атаки (красное кольцо).
+func _update_target_ring() -> void:
+	var target: Node2D = null
+	if is_instance_valid(player) and is_instance_valid(player.attack_target) \
+			and player.state in ["chase", "attack"]:
+		target = player.attack_target
+	else:
+		target = _hover_enemy()
+	if _select_ring == null:
+		return
+	if is_instance_valid(target):
+		_select_ring.visible = true
+		_select_ring.global_position = target.global_position + Vector2(0, 10)
+	else:
+		_select_ring.visible = false
 
 func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 	for enemy in enemies:
@@ -298,6 +382,8 @@ func _process(delta):
 	
 	# Обработка режимов действий
 	_process_action_mode()
+	_update_target_ring()
+	_process_pending_building()
 
 func _process_action_mode():
 	if action_mode == "none" or not is_instance_valid(player):
