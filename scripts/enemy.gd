@@ -120,7 +120,7 @@ func _apply_relief_stand() -> void:
 	var z := UnitDB.fly_z(anim_set)
 	_anim.position = Vector2(_anim.position.x, -(h + z))
 	if health_bar:
-		health_bar.position.y = -(h + z + 60.0)  # бар выше головы
+		health_bar.position.y = -(h + z + _anim.sprite_height() + 6.0)  # над головой
 
 func move_toward_target(target: Vector2, _delta):
 	var direction = (target - global_position).normalized()

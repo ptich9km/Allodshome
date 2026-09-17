@@ -240,9 +240,28 @@ func _structure_kind(type_id: int) -> String:
 
 func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 	for enemy in enemies:
-		if is_instance_valid(enemy) and enemy.global_position.distance_to(click_pos) < 30.0:
+		if is_instance_valid(enemy) and unit_hit_rect(enemy).grow(8.0).has_point(click_pos):
 			return enemy
 	return null
+
+## Хит-бокс юнита в мире: по sel_box спрайта — кликабельная ВИДИМАЯ область
+## (раньше цель считалась в точке пола — «враг был ниже, чем его видно»).
+static func unit_hit_rect(u: Node2D) -> Rect2:
+	if not is_instance_valid(u):
+		return Rect2()
+	var set_name := ""
+	if "anim_set" in u:
+		set_name = str(u.get("anim_set"))
+	var w := 128
+	var h := 128
+	var sel := Rect2i(16, 16, 96, 96)
+	if set_name != "":
+		var o := UnitDB.get_set(set_name)
+		w = int(o.get("w", 128))
+		h = int(o.get("h", 128))
+		sel = UnitDB.sel_box(set_name)
+	var base := u.global_position + Vector2(-w / 2.0, -h)
+	return Rect2(base + Vector2(sel.position.x, sel.position.y), Vector2(sel.size.x, sel.size.y))
 
 func _process(delta):
 	if is_paused:

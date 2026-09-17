@@ -333,7 +333,7 @@ func _apply_relief_stand() -> void:
 		h = float(alm_map.call("relief_at_world", global_position))
 	_anim.position = Vector2(_anim.position.x, -h)
 	if health_bar:
-		health_bar.position.y = -(h + 60.0)  # бар выше головы
+		health_bar.position.y = -(h + _anim.sprite_height() + 6.0)  # над головой
 
 func move_to_target(delta):
 	if _path.size() > 0:

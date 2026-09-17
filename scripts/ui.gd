@@ -428,9 +428,9 @@ func _hover_portrait() -> void:
 	var world := player.get_global_mouse_position()
 	var pic := ""
 
-	# 1) Юнит под курсором (монстр или житель): радиус 32px вокруг центра
+	# 1) Юнит под курсором (монстр или житель): хит-бокс спрайта (видимая область)
 	for e in Game.enemies + Game.npcs:
-		if is_instance_valid(e) and e.global_position.distance_to(world) < 32.0:
+		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(6.0).has_point(world):
 			var set_name := ""
 			if e is Enemy or e is Npc:
 				set_name = str(e.anim_set)
