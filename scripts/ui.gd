@@ -460,7 +460,13 @@ func _hover_portrait() -> void:
 	_hover_name = lower
 	var tex: Texture2D = _portrait_cache.get(lower)
 	if tex == null:
-		tex = load("res://assets/portraits/%s.png" % lower)
+		var path := "res://assets/portraits/%s.png" % lower
+		if not ResourceLoader.exists(path):
+			# Портрета нет (не у всех юнитов/структур есть картинка) — герой
+			_hover_name = ""
+			portrait_texture.texture = hero_portrait
+			return
+		tex = load(path)
 		if tex != null:
 			_portrait_cache[lower] = tex
 	if tex != null:

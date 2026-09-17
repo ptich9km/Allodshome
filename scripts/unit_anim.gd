@@ -160,8 +160,8 @@ func _apply_frame() -> void:
 	var kind := Anim.MOVE if anim == Anim.IDLE else anim
 	var idx := _frame_index(kind)
 	_last_dir = dir
-	if idx >= frames.size():
-		idx = _block_offset()  # защита от выхода за пределы
+	if idx < 0 or idx >= frames.size():
+		return  # блока нет в наборе (неполные/другие раскладки) — не падаем
 	var tex: Texture2D = frames[idx]
 	_sprite.texture = tex
 	# Кадры обрезаны по содержимому: центрируем по X, низ спрайта = позиция узла
