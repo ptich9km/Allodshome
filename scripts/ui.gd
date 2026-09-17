@@ -78,6 +78,27 @@ func _layout_panels() -> void:
 			p.offset_left = -COL_W
 			p.offset_right = 0.0
 	# Команды — фиксированы внизу слева (позиции из main.tscn), не центрируются
+	_apply_stats_mm_offset()
+
+## Сдвиг текста характеристик в ФИЗИЧЕСКИХ миллиметрах (как отмерено линейкой
+## на мониторе): 5 мм вправо, 3 мм вниз от базовой позиции (8, 6 из .tscn).
+## px = мм * DPI / 25.4 — на 96 DPI это ~19px и ~11px.
+func _apply_stats_mm_offset() -> void:
+	if not is_instance_valid(stats_label):
+		return
+	var dpi := DisplayServer.screen_get_dpi()
+	if dpi <= 0:
+		dpi = 96
+	var px_per_mm := dpi / 25.4
+	var dx := int(round(5.0 * px_per_mm))
+	var dy := int(round(3.0 * px_per_mm))
+	var base_left := 8.0
+	var base_top := 6.0
+	stats_label.offset_left = base_left + dx
+	stats_label.offset_top = base_top + dy
+	# Не выходить за рамку панели: ширина 176, высота 288
+	stats_label.offset_right = minf(176.0, stats_label.offset_left + 164.0)
+	stats_label.offset_bottom = minf(288.0, stats_label.offset_top + 290.0)
 
 # Панель заклинаний с иконками
 var spell_buttons: Array = []
