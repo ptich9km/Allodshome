@@ -81,8 +81,8 @@ func _layout_panels() -> void:
 	_apply_stats_mm_offset()
 
 ## Сдвиг текста характеристик в ФИЗИЧЕСКИХ миллиметрах (как отмерено линейкой
-## на мониторе): 5 мм вправо, 3 мм вниз от базовой позиции (8, 6 из .tscn).
-## px = мм * DPI / 25.4 — на 96 DPI это ~19px и ~11px.
+## на мониторе): 9 мм вправо, 3 мм вниз от базовой позиции (8, 6 из .tscn).
+## px = мм * DPI / 25.4 — на 96 DPI это ~34px вправо и ~11px вниз.
 func _apply_stats_mm_offset() -> void:
 	if not is_instance_valid(stats_label):
 		return
@@ -90,7 +90,7 @@ func _apply_stats_mm_offset() -> void:
 	if dpi <= 0:
 		dpi = 96
 	var px_per_mm := dpi / 25.4
-	var dx := int(round(5.0 * px_per_mm))
+	var dx := int(round(9.0 * px_per_mm))
 	var dy := int(round(3.0 * px_per_mm))
 	var base_left := 8.0
 	var base_top := 6.0
@@ -612,7 +612,7 @@ func _update_stats():
 	var attack = p.get_attack()
 	var sight = p.get_sight()
 
-	var stats = "%s\n" % Game.hero_name
+	var stats = "      %s\n" % Game.hero_name
 	stats += "СИЛА     %d  ЖИЗНЬ\n" % [p.body]
 	stats += "ЛОВКОСТЬ %d  %d/%d\n" % [p.agility, p.current_hp, p.max_hp]
 	stats += "РАЗУМ    %d  МАНА\n" % [p.mind]
@@ -620,21 +620,13 @@ func _update_stats():
 	stats += "УРОН %d-%d  ЗАЩИТА %d\n" % [damage_min, damage_max, defense]
 	stats += "АТАКА   %d  ПОГЛОЩ %d\n" % [attack, absorption]
 	stats += "НАВЫКИ       СОПРОТИВЛ.\n"
-	if Game.hero_class == "mage":
-		# Маг: вместо навыков оружия — сферы магии (как в оригинале)
-		stats += "ОГОНЬ    %d  ОГОНЬ   %d\n" % [p.fire_skill, p.get_protection_fire()]
-		stats += "ВОДА     %d  ВОДА    %d\n" % [p.water_skill, p.get_protection_water()]
-		stats += "ВОЗДУХ   %d  ВОЗДУХ  %d\n" % [p.air_skill, p.get_protection_air()]
-		stats += "ЗЕМЛЯ    %d  ЗЕМЛЯ   %d\n" % [p.earth_skill, p.get_protection_earth()]
-		stats += "АСТРАЛ   %d  АСТРАЛ  %d\n" % [p.astral_skill, p.get_protection_astral()]
-	else:
-		stats += "МЕЧ      %d  ОГОНЬ   %d\n" % [p.blade_skill, p.get_protection_fire()]
-		stats += "ТОПОР    %d  ВОДА    %d\n" % [p.axe_skill, p.get_protection_water()]
-		stats += "ДУБИНА   %d  ВОЗДУХ  %d\n" % [p.bludgeon_skill, p.get_protection_air()]
-		stats += "КОПЬЁ    %d  ЗЕМЛЯ   %d\n" % [p.pike_skill, p.get_protection_earth()]
-		stats += "СТРЕЛЬБА %d  АСТРАЛ  %d\n" % [p.shooting_skill, p.get_protection_astral()]
-	stats += "ОБЗОР     %d\n" % [sight]
-	stats += "СКОРОСТЬ  %d\n" % [int(p.move_speed)]
+	stats += "МЕЧ      %d  ОГОНЬ   %d\n" % [p.blade_skill, p.get_protection_fire()]
+	stats += "ТОПОР    %d  ВОДА    %d\n" % [p.axe_skill, p.get_protection_water()]
+	stats += "ДУБИНА   %d  ВОЗДУХ  %d\n" % [p.bludgeon_skill, p.get_protection_air()]
+	stats += "КОПЬЁ    %d  ЗЕМЛЯ   %d\n" % [p.pike_skill, p.get_protection_earth()]
+	stats += "СТРЕЛЬБА %d  АСТРАЛ  %d\n" % [p.shooting_skill, p.get_protection_astral()]
+	stats += "      ОБЗОР     %d\n" % [sight]
+	stats += "      СКОРОСТЬ  %d\n" % [int(p.move_speed)]
 	stats_label.text = stats
 
 func update_ui(p: Player):
