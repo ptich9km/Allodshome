@@ -210,10 +210,10 @@ expand_mode = 0
 stretch_mode = 3
 
 [node name="StatsLabel" type="Label" parent="UI/StatsBorder"]
-offset_left = 8.0
-offset_top = 6.0
-offset_right = 172.0
-offset_bottom = 296.0
+offset_left = 13.0
+offset_top = 9.0
+offset_right = 176.0
+offset_bottom = 299.0
 theme_override_fonts/font = SubResource("SystemFont_mono")
 theme_override_font_sizes/font_size = 10
 autowrap_mode = 3
