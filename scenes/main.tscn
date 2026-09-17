@@ -41,6 +41,9 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.3, 0.24, 0.17, 1)
 
+[sub_resource type="SystemFont" id="SystemFont_mono"]
+font_names = PackedStringArray("Consolas", "Courier New", "DejaVu Sans Mono", "Liberation Mono", "monospace")
+
 [node name="Main" type="Node2D"]
 script = ExtResource("1_game")
 
@@ -211,6 +214,7 @@ offset_left = 8.0
 offset_top = 6.0
 offset_right = 172.0
 offset_bottom = 296.0
+theme_override_fonts/font = SubResource("SystemFont_mono")
 theme_override_font_sizes/font_size = 10
 autowrap_mode = 3
 
@@ -245,6 +249,7 @@ offset_left = 8.0
 offset_top = 50.0
 offset_right = 320.0
 offset_bottom = 300.0
+theme_override_fonts/font = SubResource("SystemFont_mono")
 theme_override_colors/font_color = Color(1, 1, 0.6, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
