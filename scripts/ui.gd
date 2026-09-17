@@ -601,9 +601,14 @@ func _update_stats():
 	stats += "СКОРОСТЬ:%d  ОБЗОР:%d\n" % [int(p.move_speed), sight]
 	stats += "ОГОНЬ:%d  ВОДА:%d  ВОЗДУХ:%d\n" % [p.get_protection_fire(), p.get_protection_water(), p.get_protection_air()]
 	stats += "ЗЕМЛЯ:%d  АСТРАЛ:%d\n" % [p.get_protection_earth(), p.get_protection_astral()]
-	stats += "МЕЧ:%d  ТОПОР:%d  ДУБИНА:%d\n" % [p.blade_skill, p.axe_skill, p.bludgeon_skill]
-	stats += "КОПЬЁ:%d  СТРЕЛЬБА:%d\n" % [p.pike_skill, p.shooting_skill]
-	stats += "МАГИЯ: О:%d В:%d ВО:%d ЗЕ:%d А:%d\n" % [p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
+	if Game.hero_class == "mage":
+		# Маг: вместо навыков оружия — сферы магии (как в оригинале)
+		stats += "ОГОНЬ:%d  ВОДА:%d  ВОЗДУХ:%d\n" % [p.fire_skill, p.water_skill, p.air_skill]
+		stats += "ЗЕМЛЯ:%d  АСТРАЛ:%d\n" % [p.earth_skill, p.astral_skill]
+	else:
+		stats += "МЕЧ:%d  ТОПОР:%d  ДУБИНА:%d\n" % [p.blade_skill, p.axe_skill, p.bludgeon_skill]
+		stats += "КОПЬЁ:%d  СТРЕЛЬБА:%d\n" % [p.pike_skill, p.shooting_skill]
+		stats += "МАГИЯ: О:%d В:%d ВО:%d ЗЕ:%d А:%d\n" % [p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
 	stats_label.text = stats
 
 func update_ui(p: Player):
