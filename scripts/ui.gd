@@ -627,8 +627,12 @@ func update_ui(p: Player):
 			lines += "Проход мыши: %s\n" % ("да" if walk_m else "НЕТ")
 			if mc.x >= 0 and mc.y >= 0 and mc.x < alm_map.map_width and mc.y < alm_map.map_height:
 				var t: int = alm_map.cell_type_at(mc.x, mc.y)
-				var names := ["Трава (tile1)", "Земля (tile2)", "Вода (tile3)", "Дорога (tile4)"]
+				var names := ["Трава (tile1)", "Горы (tile2 — проходимо, медленно)", "Вода (tile3)", "Дорога (tile4)"]
 				lines += "Тайл мыши: %s\n" % (names[t] if t >= 0 and t < names.size() else str(t))
+				if not walk_m and alm_map.has_method("blocked_reason"):
+					var reason: String = alm_map.call("blocked_reason", mc)
+					if reason != "":
+						lines += "Занято: %s\n" % reason
 				if alm_map.has_method("flag_at_world"):
 					var fl: int = alm_map.flag_at_world(world)
 					lines += "Флаг: %d (0 зем/1 холм/2 вода/3 выс/4 барьер)\n" % fl

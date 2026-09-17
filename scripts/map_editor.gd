@@ -164,6 +164,16 @@ func _build_ui() -> void:
 	tool_buttons[3] = pick_btn
 	py += 32
 
+	var nw_btn := Button.new()
+	nw_btn.text = "Нельзя пройти"
+	nw_btn.toggle_mode = true
+	nw_btn.position = Vector2(8, py)
+	nw_btn.size = Vector2(150, 26)
+	nw_btn.pressed.connect(func(): _select_tool(4))
+	pal.add_child(nw_btn)
+	tool_buttons[4] = nw_btn
+	py += 32
+
 	var tlabel := Label.new()
 	tlabel.text = "Текстура:"
 	tlabel.position = Vector2(8, py)
@@ -223,14 +233,14 @@ func _select_brush(t: int) -> void:
 		palette_buttons[k].button_pressed = (k == t)
 	_build_texture_strip()
 
-## Переключение инструмента: 0 тайлы, 1 структуры, 2 НПЦ, 3 выбор.
+## Переключение инструмента: 0 тайлы, 1 структуры, 2 НПЦ, 3 выбор, 4 «Нельзя пройти».
 func _select_tool(mode: int) -> void:
 	tool_mode = mode
 	_inspect_msg = ""
 	for m in tool_buttons:
 		tool_buttons[m].button_pressed = (m == mode)
-	if mode == 3:
-		# Режим выбора: кисть/структура/НПЦ неактивны (защита от случайных кликов)
+	if mode == 3 or mode == 4:
+		# Режимы выбора/разметки: кисть/структура/НПЦ неактивны
 		for k in palette_buttons:
 			palette_buttons[k].button_pressed = false
 		fill_btn.button_pressed = false
@@ -385,6 +395,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if cell.x >= 0 and cell.y >= 0:
 				if tool_mode == 3:
 					_inspect(cell)
+				elif tool_mode == 4:
+					_toggle_nowalk(cell)
 				elif tool_mode == 1 and structure_id > 0:
 					_place_structure(cell)
 				elif tool_mode == 2 and npc_set != "":
@@ -426,6 +438,9 @@ func _paint(center: Vector2i, type_id: int, size: int) -> void:
 ## Инструмент «Выбор»: показать в статусе, что стоит на клетке — НПЦ, структура
 ## или объект-препятствие (по слоям данных, без изменения карты).
 func _inspect(cell: Vector2i) -> void:
+	if map.has_nowalk(cell):
+		_inspect_msg = "Клетка %d,%d — ЗАПРЕТ ПРОХОДА (разметка)" % [cell.x, cell.y]
+		return
 	for rec in map.npcs:
 		if int(rec.get("x", -1)) == cell.x and int(rec.get("y", -1)) == cell.y:
 			var set_name := str(rec.get("set", ""))
@@ -476,6 +491,14 @@ func _place_npc(cell: Vector2i) -> void:
 	map.npcs.append({"x": cell.x, "y": cell.y, "set": npc_set})
 	map._rebuild_entities()
 	status_label.text = "НПЦ %s на %d,%d" % [npc_set, cell.x, cell.y]
+
+## Инструмент «Нельзя пройти»: отметить/снять запрет прохода на клетке.
+func _toggle_nowalk(cell: Vector2i) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map.map_width or cell.y >= map.map_height:
+		return
+	var on: bool = map.toggle_nowalk(cell)
+	_inspect_msg = "Запрет прохода %d,%d: %s" % [cell.x, cell.y, "ВКЛ" if on else "снят"]
+	status_label.text = _inspect_msg
 
 ## Ластик также снимает структуру/НПЦ, якорь которых — на этой клетке.
 func _erase_entity(cell: Vector2i) -> void:
@@ -665,7 +688,15 @@ func _populate_entities_from_alm(data: Dictionary) -> void:
 		map.npcs = _copy_recs(u)
 	else:
 		map.npcs = _npcs_from_alm(data)
+	# Ручная разметка «Нельзя пройти» (sidecar рядом с .alm)
+	map.nowalk.clear()
+	var nw: Variant = _read_sidecar_file(base + ".nowalk.json")
+	if nw is Array:
+		for pair in nw:
+			if pair is Array and pair.size() >= 2:
+				map.nowalk[Vector2i(int(pair[0]), int(pair[1]))] = true
 	map._rebuild_entities()
+	map._refresh_nowalk()
 
 func _structures_from_alm(data: Dictionary) -> Array:
 	var out: Array = []
@@ -702,6 +733,8 @@ func _read_sidecar_file(path: String) -> Variant:
 			return parsed["structures"]
 		if parsed.has("npcs") and parsed["npcs"] is Array:
 			return parsed["npcs"]
+		if parsed.has("nowalk") and parsed["nowalk"] is Array:
+			return parsed["nowalk"]
 		return []
 	if parsed is Array:
 		return parsed
@@ -720,6 +753,14 @@ func _write_entity_sidecars() -> void:
 	if fn != null:
 		fn.store_string(JSON.stringify({"npcs": map.npcs}))
 		fn.close()
+	# Разметка «Нельзя пройти»
+	var nw_list: Array = []
+	for cell in map.nowalk:
+		nw_list.append([cell.x, cell.y])
+	var fnw := FileAccess.open(base + ".nowalk.json", FileAccess.WRITE)
+	if fnw != null:
+		fnw.store_string(JSON.stringify({"nowalk": nw_list}))
+		fnw.close()
 
 ## Запомнить, какую карту открыл пользователь: игра (main.tscn) грузит её при F9.
 func _remember_last_alm(path: String) -> void:

@@ -13,7 +13,9 @@ var current_hp: int
 var state: String = "idle"
 var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
-var can_flee: bool = true
+var can_flee: bool = false        # по умолчанию монстр дерётся до конца, не убегает
+var _path: Array = []             # маршрут к игроку (обход препятствий)
+var _repath := 0.0
 var health_bar: HealthBar
 var _anim: UnitAnim = null
 
@@ -78,7 +80,7 @@ func _physics_process(delta):
 			elif hp_percent < 0.15 and can_flee:
 				state = "flee"
 			else:
-				_move_checked((player.global_position - global_position).normalized(), move_speed, delta)
+				_chase_move(delta)
 		"attack":
 			if distance_to_player > 50.0:
 				state = "chase"
@@ -139,6 +141,31 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+
+## Погоня с обходом препятствий (как у героя): перепланировка пути раз в 0.7 с.
+func _chase_move(delta: float) -> void:
+	var p = get_tree().get_first_node_in_group("player")
+	if not is_instance_valid(p):
+		return
+	var target: Vector2 = p.global_position
+	if _path.is_empty():
+		_repath -= delta
+		if _repath <= 0.0:
+			_repath = 0.7
+			var map_node = get_tree().get_first_node_in_group("alm_map")
+			if map_node != null and map_node.has_method("find_path"):
+				_path = map_node.find_path(global_position, target)
+	if _path.size() > 0:
+		var wp: Vector2 = _path[0]
+		if global_position.distance_to(wp) <= 8.0:
+			_path.pop_front()
+		if _path.size() > 0:
+			wp = _path[0]
+			_move_checked((wp - global_position).normalized(), move_speed, delta)
+		else:
+			velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+	else:
+		_move_checked((target - global_position).normalized(), move_speed, delta)
 
 func take_damage(dmg: int, attacker: Node2D):
 	current_hp -= dmg

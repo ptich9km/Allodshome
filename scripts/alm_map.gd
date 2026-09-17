@@ -20,6 +20,7 @@ var _heights: PackedByteArray   # int8 — рельеф (0..127)
 var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объект)
 var _structures: Array = []     # секция id=4 — здания (или sidecar .structures.json)
 var map_units: Array = []       # секция id=6 — юниты (или sidecar .npcs.json)
+var _nowalk: Dictionary = {}    # клетки «Нельзя пройти» (ручная разметка в редакторе)
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
 
 # Вода: анимация кадрами-рядами вариантов tile3 (отдельный стрип + шейдер)
@@ -576,6 +577,13 @@ func _load_sidecars() -> void:
 	var u: Variant = _read_sidecar(base + ".npcs.json")
 	if u != null and u is Array:
 		map_units = u
+	# Ручная разметка «Нельзя пройти» — редактор пишет её рядом с .alm
+	var n: Variant = _read_sidecar(base + ".nowalk.json")
+	_nowalk.clear()
+	if n != null and n is Array:
+		for pair in n:
+			if pair is Array and pair.size() >= 2:
+				_nowalk[Vector2i(int(pair[0]), int(pair[1]))] = true
 
 ## Прочитать sidecar: null — файла нет (использовать секции .alm),
 ## иначе массив записей (пустой — сущностей нет).
@@ -629,6 +637,9 @@ func is_walkable_world(pos: Vector2) -> bool:
 	var ty := int(pos.y) / TILE
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return false
+	# Ручная разметка «Нельзя пройти» (редактор) — приоритет над автоматикой
+	if _nowalk.has(Vector2i(tx, ty)):
+		return false
 	var i := ty * map_width + tx
 	if not AlmLoader.is_walkable(_hflags[i]):
 		return false
@@ -656,6 +667,25 @@ func cell_type_at(tx: int, ty: int) -> int:
 	if t == -1 or t == -2:
 		return 2
 	return t
+
+## Причина непроходимости клетки («», если проходима) — для подсказки координат.
+## «Трава» может быть занята деревом/камнем (obstacles), зданием или разметкой.
+func blocked_reason(cell: Vector2i) -> String:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
+		return "вне карты"
+	if _nowalk.has(cell):
+		return "запрет разметки"
+	var i := cell.y * map_width + cell.x
+	var t := AlmLoader.terrain_type(_hflags[i])
+	if t == -1 or t == -2:
+		return "барьер"
+	if t == 2:
+		return "вода (tile3)"
+	if _obstacles.size() > i and _obstacles[i] > 0:
+		return "дерево/камень"
+	if not structure_at(cell).is_empty():
+		return "здание"
+	return ""
 
 func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var min_x := margin
