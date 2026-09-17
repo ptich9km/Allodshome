@@ -46,13 +46,12 @@ func _physics_process(delta: float) -> void:
 	var d := global_position.distance_to(_target)
 	if d > 4.0:
 		var dir := (_target - global_position).normalized()
-		velocity = dir * walk_speed
-		move_and_slide()
+		_move_checked(dir, walk_speed, delta)
 		_anim.play(UnitAnim.Anim.MOVE)
 		_anim.set_direction_vec(velocity)
 		_anim.advance(delta)
 	else:
-		velocity = Vector2.ZERO
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 		_waiting = true
 		_pause_timer = randf_range(pause_min, pause_max)
 		_anim.play(UnitAnim.Anim.IDLE)
@@ -82,3 +81,14 @@ func _apply_relief_stand() -> void:
 	if alm_map != null and alm_map.has_method("relief_at_world"):
 		h = float(alm_map.call("relief_at_world", global_position))
 	_anim.position = Vector2(_anim.position.x, -h)
+
+## Плавное движение с проверкой проходимости (без «льда» и «сквозь стены»).
+func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
+	var wanted := direction * speed
+	var can_step := true
+	if alm_map != null and alm_map.has_method("is_walkable_world"):
+		can_step = alm_map.is_walkable_world(global_position + wanted * delta)
+	if can_step:
+		velocity = velocity.move_toward(wanted, 1100.0 * delta)
+	else:
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)

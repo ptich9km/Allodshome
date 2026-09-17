@@ -65,14 +65,13 @@ func _nearest_enemy(radius: float) -> Node2D:
 
 func _move_toward(p: Vector2, delta: float) -> void:
 	var dir := (p - global_position).normalized()
-	var step: Vector2 = dir * move_speed * delta
-	var next := global_position + step
+	var wanted := dir * move_speed
 	var map_node := get_tree().get_first_node_in_group("alm_map")
 	if map_node != null and map_node.has_method("is_walkable_world") \
-			and not map_node.is_walkable_world(next):
-		velocity = Vector2.ZERO   # упёрлись в непроходимое — стоим
+			and not map_node.is_walkable_world(global_position + wanted * delta):
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)   # упёрлись — стоп
 		return
-	velocity = dir * move_speed
+	velocity = velocity.move_toward(wanted, 1100.0 * delta)
 
 func _attack(target: Node2D) -> void:
 	if attack_cooldown > 0.0:

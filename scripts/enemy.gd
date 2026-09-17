@@ -78,7 +78,7 @@ func _physics_process(delta):
 			elif hp_percent < 0.15 and can_flee:
 				state = "flee"
 			else:
-				move_toward_target(player.global_position, delta)
+				_move_checked((player.global_position - global_position).normalized(), move_speed, delta)
 		"attack":
 			if distance_to_player > 50.0:
 				state = "chase"
@@ -88,7 +88,7 @@ func _physics_process(delta):
 				SoundDB.play(_unit_sound_at(0))
 		"flee":
 			var flee_direction = (global_position - player.global_position).normalized()
-			velocity = flee_direction * move_speed * 1.5
+			_move_checked(flee_direction, move_speed * 1.5, delta)
 			if distance_to_player > deaggro_radius * 1.5:
 				queue_free()
 
@@ -123,9 +123,22 @@ func _apply_relief_stand() -> void:
 	if health_bar:
 		health_bar.position.y = -(h + z + _anim.sprite_height() + 6.0)  # над головой
 
-func move_toward_target(target: Vector2, _delta):
-	var direction = (target - global_position).normalized()
-	velocity = direction * move_speed
+# --- Физика движения (плавный разгон/торможение + проходимость) ---
+const MOVE_ACCEL := 1100.0
+const MOVE_DECEL := 1800.0
+
+## Движение с проверкой проходимости карты (летающие игнорируют землю).
+func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
+	var wanted := direction * speed
+	var next := global_position + wanted * delta
+	var can_step := true
+	var map_node = get_tree().get_first_node_in_group("alm_map")
+	if UnitDB.fly_z(anim_set) <= 0 and map_node != null and map_node.has_method("is_walkable_world"):
+		can_step = map_node.is_walkable_world(next)
+	if can_step:
+		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
+	else:
+		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 
 func take_damage(dmg: int, attacker: Node2D):
 	current_hp -= dmg

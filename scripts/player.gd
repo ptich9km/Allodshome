@@ -242,18 +242,19 @@ func _can_move_to(pos: Vector2) -> bool:
 		return false
 	return alm_map.is_within_bounds(pos)
 
-## Движение с проверкой проходимости: если цель непроходима — скользим вдоль.
+# --- Физика движения тела (плавный разгон/торможение, без «льда») ---
+const MOVE_ACCEL := 1100.0   # px/s² — разгон до 120 px/s за ~0.11 с
+const MOVE_DECEL := 1800.0   # px/s² — тормоз с 120 px/s за ~0.07 с
+
+## Движение с проверкой проходимости: если цель непроходима — мягкий стоп
+## (без «скольжения вдоль стен», которое выглядело как лёд).
 func _move_checked(direction: Vector2, speed: float, delta: float):
-	var step := direction * speed * delta
-	var next := global_position + step
+	var wanted := direction * speed
+	var next := global_position + wanted * delta
 	if _can_move_to(next):
-		velocity = direction * speed
-	elif _can_move_to(global_position + Vector2(step.x, 0)):
-		velocity = Vector2(direction.x, 0) * speed   # скользим по X
-	elif _can_move_to(global_position + Vector2(0, step.y)):
-		velocity = Vector2(0, direction.y) * speed   # скользим по Y
+		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
 	else:
-		velocity = Vector2.ZERO
+		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 
 func _create_health_bar():
 	health_bar = preload("res://scripts/health_bar.gd").new()
