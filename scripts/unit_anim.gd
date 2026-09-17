@@ -27,6 +27,9 @@ var frames: Array = []        # Texture2D кадры sprites-001..N
 var dir := 0                  # текущее МИРОВОЕ направление 0-7
 var anim: int = Anim.IDLE
 var anim_idx := 0             # номер фазы в текущем блоке
+var target_dir := -1             # направление, к которому доворачиваем (плавный поворот)
+var _rot_acc := 0.0
+const ROT_STEP_TIME := 0.05      # сек на шаг направления при повороте
 var anim_time := 0.0
 var speed_scale := 1.0        # множитель темпа (движение быстрее — шаги быстрее)
 var _last_dir := 0
@@ -83,7 +86,28 @@ func set_direction_vec(dir_vec: Vector2) -> void:
 	var d := int(round((ang - 90.0) / 45.0)) % FULL_DIRS
 	if d < 0:
 		d += FULL_DIRS
-	dir = d
+	# Плавный поворот: к цельному направлению крутимся через промежуточные
+	if d != target_dir:
+		target_dir = d
+
+func _process(delta: float) -> void:
+	if target_dir >= 0 and target_dir != dir:
+		_advance_rotation(delta)
+
+## Один шаг поворота к target_dir (кратчайшая дуга по 8 направлениям).
+func _advance_rotation(delta: float) -> void:
+	if target_dir < 0:
+		return
+	_rot_acc += delta
+	if _rot_acc < ROT_STEP_TIME:
+		return
+	_rot_acc = 0.0
+	var diff := wrapi(target_dir - dir, 0, FULL_DIRS)
+	var step := 1 if diff <= FULL_DIRS / 2 else -1
+	dir = wrapi(dir + step, 0, FULL_DIRS)
+	_apply_frame()
+	if dir == target_dir:
+		target_dir = -1
 
 func play(anim_kind: int, reset: bool = false) -> void:
 	if anim == anim_kind and not reset:
