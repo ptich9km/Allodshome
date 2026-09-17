@@ -72,21 +72,6 @@ static func tile_file(tile: int) -> int:
 static func tile_frame(tile: int) -> int:
 	return tile & 0xF
 
-## Проходимость (по опыту пользователя и таблице стоимостей разработчиков):
-## трава (0) и дорога (3) — быстро; ГОРЫ/холмы (1) — ПРОХОДИМЫ (как песчаные
-## горы/холмы оригинала; у разработчиков CostMountain=16 — не блок), вода (2) и
-## спец-барьеры (-1 вода, -2 барьер) — непроходимы.
-static func is_walkable_type(t: int) -> bool:
-	return t == 0 or t == 1 or t == 3
-
-## Скорость по типу клетки: дорога (3) быстрее, горы (1) медленнее, остальное 1.0.
-static func speed_factor_type(t: int) -> float:
-	if t == 3:
-		return 1.4
-	elif t == 1:
-		return 0.75
-	return 1.0
-
 static func classify(hf: int) -> int:
 	var t := terrain_type(hf)
 	if t == 2:
@@ -96,16 +81,6 @@ static func classify(hf: int) -> int:
 	elif t == 3:
 		return TileFlag.GROUND  # дорога
 	return TileFlag.GROUND
-
-## Высота для визуала: горы (тип 1) приподняты на 1 уровень.
-static func height_level(hf: int) -> int:
-	if classify(hf) == TileFlag.HILL:
-		return 1
-	return 0
-
-static func is_walkable(hf: int) -> bool:
-	var t := terrain_type(hf)
-	return t == 0 or t == 3
 
 ## Найти offset Layer A (фолбэк для файлов без распознанных секций).
 ## Основной способ — формальный: заголовок секции тайлов это

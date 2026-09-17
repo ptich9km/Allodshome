@@ -183,6 +183,16 @@ func _build_ui() -> void:
 	tool_buttons[4] = nw_btn
 	py += 32
 
+	var aw_btn := Button.new()
+	aw_btn.text = "Разрешить проход"
+	aw_btn.toggle_mode = true
+	aw_btn.position = Vector2(8, py)
+	aw_btn.size = Vector2(150, 26)
+	aw_btn.pressed.connect(func(): _select_tool(5))
+	pal.add_child(aw_btn)
+	tool_buttons[5] = aw_btn
+	py += 32
+
 	var tlabel := Label.new()
 	tlabel.text = "Текстура:"
 	tlabel.position = Vector2(8, py)
@@ -248,7 +258,7 @@ func _select_tool(mode: int) -> void:
 	_inspect_msg = ""
 	for m in tool_buttons:
 		tool_buttons[m].button_pressed = (m == mode)
-	if mode == 3 or mode == 4:
+	if mode == 3 or mode == 4 or mode == 5:
 		# Режимы выбора/разметки: кисть/структура/НПЦ неактивны
 		for k in palette_buttons:
 			palette_buttons[k].button_pressed = false
@@ -406,6 +416,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					_inspect(cell)
 				elif tool_mode == 4:
 					_toggle_nowalk(cell)
+				elif tool_mode == 5:
+					_toggle_allowwalk(cell)
 				elif tool_mode == 1 and structure_id > 0:
 					_place_structure(cell)
 				elif tool_mode == 2 and npc_set != "":
@@ -447,6 +459,9 @@ func _paint(center: Vector2i, type_id: int, size: int) -> void:
 ## Инструмент «Выбор»: показать в статусе, что стоит на клетке — НПЦ, структура
 ## или объект-препятствие (по слоям данных, без изменения карты).
 func _inspect(cell: Vector2i) -> void:
+	if map.has_allowwalk(cell):
+		_inspect_msg = "Клетка %d,%d — РАЗРЕШЁН ПРОХОД (поверх препятствия)" % [cell.x, cell.y]
+		return
 	if map.has_nowalk(cell):
 		_inspect_msg = "Клетка %d,%d — ЗАПРЕТ ПРОХОДА (разметка)" % [cell.x, cell.y]
 		return
@@ -507,6 +522,15 @@ func _toggle_nowalk(cell: Vector2i) -> void:
 		return
 	var on: bool = map.toggle_nowalk(cell)
 	_inspect_msg = "Запрет прохода %d,%d: %s" % [cell.x, cell.y, "ВКЛ" if on else "снят"]
+	status_label.text = _inspect_msg
+
+## Инструмент «Разрешить проход»: пустить юнита сквозь препятствие (дерево/камень),
+## поверх таблицы цен текстур (WalkTable). Вода/барьер остаются непроходимыми.
+func _toggle_allowwalk(cell: Vector2i) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map.map_width or cell.y >= map.map_height:
+		return
+	var on: bool = map.toggle_allowwalk(cell)
+	_inspect_msg = "Разрешить проход %d,%d: %s" % [cell.x, cell.y, "ВКЛ" if on else "снят"]
 	status_label.text = _inspect_msg
 
 ## Ластик также снимает структуру/НПЦ, якорь которых — на этой клетке.
@@ -704,8 +728,16 @@ func _populate_entities_from_alm(data: Dictionary) -> void:
 		for pair in nw:
 			if pair is Array and pair.size() >= 2:
 				map.nowalk[Vector2i(int(pair[0]), int(pair[1]))] = true
+	# Ручная разметка «Разрешить проход» (sidecar рядом с .alm)
+	map.allowwalk.clear()
+	var aw: Variant = _read_sidecar_file(base + ".allowwalk.json")
+	if aw is Array:
+		for pair in aw:
+			if pair is Array and pair.size() >= 2:
+				map.allowwalk[Vector2i(int(pair[0]), int(pair[1]))] = true
 	map._rebuild_entities()
 	map._refresh_nowalk()
+	map._refresh_allowwalk()
 
 func _structures_from_alm(data: Dictionary) -> Array:
 	var out: Array = []
@@ -744,6 +776,8 @@ func _read_sidecar_file(path: String) -> Variant:
 			return parsed["npcs"]
 		if parsed.has("nowalk") and parsed["nowalk"] is Array:
 			return parsed["nowalk"]
+		if parsed.has("allowwalk") and parsed["allowwalk"] is Array:
+			return parsed["allowwalk"]
 		return []
 	if parsed is Array:
 		return parsed
@@ -770,6 +804,14 @@ func _write_entity_sidecars() -> void:
 	if fnw != null:
 		fnw.store_string(JSON.stringify({"nowalk": nw_list}))
 		fnw.close()
+	# Разметка «Разрешить проход»
+	var aw_list: Array = []
+	for cell in map.allowwalk:
+		aw_list.append([cell.x, cell.y])
+	var faw := FileAccess.open(base + ".allowwalk.json", FileAccess.WRITE)
+	if faw != null:
+		faw.store_string(JSON.stringify({"allowwalk": aw_list}))
+		faw.close()
 
 ## Запомнить, какую карту открыл пользователь: игра (main.tscn) грузит её при F9.
 func _remember_last_alm(path: String) -> void:

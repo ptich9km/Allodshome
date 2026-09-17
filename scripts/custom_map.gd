@@ -34,12 +34,14 @@ var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (т�
 var structures: Array = []     # записи {"x","y","type_id"} — здания (сетка тайлов)
 var npcs: Array = []           # записи {"x","y","set"} — жители/монстры
 var nowalk: Dictionary = {}    # клетка Vector2i -> true — «Нельзя пройти» (ручная разметка)
+var allowwalk: Dictionary = {} # клетка -> true — «Разрешить проход» (сквозь препятствие)
 var structures_root: Node2D    # слой структур (StructureNode, статичные)
 var npcs_root: Node2D          # слой НПЦ (статические спрайты)
 var nowalk_root: Node2D        # маркеры запрета прохода (красные клетки)
+var allowwalk_root: Node2D     # маркеры «Разрешить проход» (зелёные клетки)
 var tile_size: int = TILE      # свойство как у AlmMap (для миникарты и др.)
 
-## --- Ручная разметка «Нельзя пройти» ---
+## --- Ручная разметка проходимости ---
 
 func has_nowalk(cell: Vector2i) -> bool:
 	return nowalk.has(cell)
@@ -54,7 +56,20 @@ func toggle_nowalk(cell: Vector2i) -> bool:
 	_refresh_nowalk()
 	return nowalk.has(cell)
 
-## Маркеры запрета поверх карты (полупрозрачный красный квадрат).
+func has_allowwalk(cell: Vector2i) -> bool:
+	return allowwalk.has(cell)
+
+func toggle_allowwalk(cell: Vector2i) -> bool:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
+		return allowwalk.has(cell)
+	if allowwalk.has(cell):
+		allowwalk.erase(cell)
+	else:
+		allowwalk[cell] = true
+	_refresh_allowwalk()
+	return allowwalk.has(cell)
+
+## Маркер запрета прохода (полупрозрачный красный квадрат).
 func _refresh_nowalk() -> void:
 	if nowalk_root == null:
 		nowalk_root = Node2D.new()
@@ -69,6 +84,22 @@ func _refresh_nowalk() -> void:
 		m.position = Vector2(cell.x * TILE + 1, cell.y * TILE + 1)
 		m.color = Color(0.9, 0.15, 0.1, 0.35)
 		nowalk_root.add_child(m)
+
+## Маркер «Разрешить проход» (полупрозрачный зелёный квадрат).
+func _refresh_allowwalk() -> void:
+	if allowwalk_root == null:
+		allowwalk_root = Node2D.new()
+		allowwalk_root.name = "AllowWalk"
+		allowwalk_root.z_index = 9
+		add_child(allowwalk_root)
+	for c in allowwalk_root.get_children():
+		c.queue_free()
+	for cell in allowwalk:
+		var m := ColorRect.new()
+		m.size = Vector2(TILE - 2, TILE - 2)
+		m.position = Vector2(cell.x * TILE + 1, cell.y * TILE + 1)
+		m.color = Color(0.25, 0.9, 0.25, 0.35)
+		allowwalk_root.add_child(m)
 
 # (тип, индекс в наборе) -> source_id в TileSet
 var _src_for := {}
@@ -108,6 +139,12 @@ func load_map(path: String) -> bool:
 		for pair in nw:
 			if pair is Array and pair.size() >= 2:
 				nowalk[Vector2i(int(pair[0]), int(pair[1]))] = true
+	allowwalk.clear()
+	var aw: Variant = json.get("allowwalk", null)
+	if aw is Array:
+		for pair in aw:
+			if pair is Array and pair.size() >= 2:
+				allowwalk[Vector2i(int(pair[0]), int(pair[1]))] = true
 	_load_tex_ids(json)
 	_load_under_tiles(json)
 	if json.has("texture_sets"):
@@ -163,11 +200,13 @@ func new_map(w: int, h: int) -> void:
 	structures = []
 	npcs = []
 	nowalk.clear()
+	allowwalk.clear()
 	texture_sets = _default_sets()
 	_sync_text_spec()
 	_refresh_spawn()
 	_build_tilemap()
 	_refresh_nowalk()
+	_refresh_allowwalk()
 
 ## Импорт карты из .alm (данные AlmLoader.load_map): tile id -> категории
 ## редактора (0-4) + наборы текстур с реальными спеками каждого тайла.
@@ -201,6 +240,7 @@ func import_alm(data: Dictionary) -> void:
 	structures = []
 	npcs = []
 	nowalk.clear()
+	allowwalk.clear()
 	for i in range(alm_tiles.size()):
 		var s: Dictionary = specs[i]
 		tiles[i] = int(s["cat"])
@@ -510,6 +550,7 @@ func _build_tilemap() -> void:
 			_refresh_cell(Vector2i(x, y))
 	_rebuild_entities()
 	_refresh_nowalk()
+	_refresh_allowwalk()
 
 ## Структуры (здания) и НПЦ — отдельные слои поверх тайлов. Статичные
 ## (в редакторе без анимации): StructureNode use_anim=false, спрайты кадром 1.
@@ -704,6 +745,9 @@ func save_map(path: String) -> bool:
 	var nw_list: Array = []
 	for cell in nowalk:
 		nw_list.append([cell.x, cell.y])
+	var aw_list: Array = []
+	for cell in allowwalk:
+		aw_list.append([cell.x, cell.y])
 	var data := {
 		"width": map_width,
 		"height": map_height,
@@ -714,6 +758,7 @@ func save_map(path: String) -> bool:
 		"structures": structures,
 		"npcs": npcs,
 		"nowalk": nw_list,
+		"allowwalk": aw_list,
 	}
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:

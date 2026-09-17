@@ -21,6 +21,7 @@ var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объ�
 var _structures: Array = []     # секция id=4 — здания (или sidecar .structures.json)
 var map_units: Array = []       # секция id=6 — юниты (или sidecar .npcs.json)
 var _nowalk: Dictionary = {}    # клетки «Нельзя пройти» (ручная разметка в редакторе)
+var _allowwalk: Dictionary = {} # клетки «Разрешить проход» — пускать сквозь препятствие
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
 
 # Вода: анимация кадрами-рядами вариантов tile3 (отдельный стрип + шейдер)
@@ -584,6 +585,13 @@ func _load_sidecars() -> void:
 		for pair in n:
 			if pair is Array and pair.size() >= 2:
 				_nowalk[Vector2i(int(pair[0]), int(pair[1]))] = true
+	# Ручная разметка «Разрешить проход» — пускать сквозь препятствие (дерево/камень)
+	var a: Variant = _read_sidecar(base + ".allowwalk.json")
+	_allowwalk.clear()
+	if a != null and a is Array:
+		for pair in a:
+			if pair is Array and pair.size() >= 2:
+				_allowwalk[Vector2i(int(pair[0]), int(pair[1]))] = true
 
 ## Прочитать sidecar: null — файла нет (использовать секции .alm),
 ## иначе массив записей (пустой — сущностей нет).
@@ -600,6 +608,10 @@ func _read_sidecar(path: String) -> Variant:
 			return parsed["structures"]
 		if parsed.has("npcs") and parsed["npcs"] is Array:
 			return parsed["npcs"]
+		if parsed.has("nowalk") and parsed["nowalk"] is Array:
+			return parsed["nowalk"]
+		if parsed.has("allowwalk") and parsed["allowwalk"] is Array:
+			return parsed["allowwalk"]
 		return []
 	if parsed is Array:
 		return parsed
@@ -641,23 +653,33 @@ func is_walkable_world(pos: Vector2) -> bool:
 	if _nowalk.has(Vector2i(tx, ty)):
 		return false
 	var i := ty * map_width + tx
-	if not AlmLoader.is_walkable(_hflags[i]):
+	var hf := _hflags[i]
+	# Спец-значения Nival (16..40 — вода/барьер в byte[1]) — всегда непроходимы
+	if hf >= 16 and hf <= 40:
 		return false
-	# Объект (дерево/камень из obstacles) — непроходимо
-	if _obstacles.size() > i and _obstacles[i] > 0:
+	var file_n := (hf & 0xF) + 1
+	var variant := clampi((_terrain[i] >> 4) & 0xF, 0, 15)
+	# Таблица «цены прохода по текстуре» (WalkTable): вода (tile3) и
+	# переопределённые варианты с ценой 0 — непроходимы; горы/песок — проходимы
+	if not WalkTable.walkable(file_n, variant):
 		return false
-	# Здания (секция id=4) — непроходимы
-	if not structure_at(Vector2i(tx, ty)).is_empty():
+	var allow := _allowwalk.has(Vector2i(tx, ty))
+	# Объект (дерево/камень из obstacles) — непроходимо (кроме allowwalk-разметки)
+	if not allow and _obstacles.size() > i and _obstacles[i] > 0:
+		return false
+	# Здания (секция id=4) — непроходимы (кроме allowwalk-разметки)
+	if not allow and not structure_at(Vector2i(tx, ty)).is_empty():
 		return false
 	return true
 
-## Множитель скорости по типу клетки: дороги (tile4) быстрее травы.
+## Множитель скорости по текстуре клетки (WalkTable, как у разработчиков:
+## скорость = 8 / цена прохода). Дорога быстрее травы, песок/горы медленнее.
 func speed_factor_at_world(pos: Vector2) -> float:
 	var tx := int(pos.x) / TILE
 	var ty := int(pos.y) / TILE
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return 1.0
-	return AlmLoader.speed_factor_type(AlmLoader.terrain_type(_hflags[ty * map_width + tx]))
+	return WalkTable.speed_at(_hflags[ty * map_width + tx], _terrain[ty * map_width + tx])
 
 ## Тип клетки 0..3 для миникарты: 0 трава, 1 горы, 2 вода/барьер, 3 дорога.
 func cell_type_at(tx: int, ty: int) -> int:
@@ -676,11 +698,15 @@ func blocked_reason(cell: Vector2i) -> String:
 	if _nowalk.has(cell):
 		return "запрет разметки"
 	var i := cell.y * map_width + cell.x
-	var t := AlmLoader.terrain_type(_hflags[i])
-	if t == -1 or t == -2:
-		return "барьер"
-	if t == 2:
-		return "вода (tile3)"
+	var hf := _hflags[i]
+	if hf >= 16 and hf <= 40:
+		return "барьер (спец-тайл)"
+	var file_n := (hf & 0xF) + 1
+	var variant := clampi((_terrain[i] >> 4) & 0xF, 0, 15)
+	if not WalkTable.walkable(file_n, variant):
+		if file_n == 3:
+			return "вода (tile3)"
+		return "непроходимая текстура (tile%d-%02d)" % [file_n, variant]
 	if _obstacles.size() > i and _obstacles[i] > 0:
 		return "дерево/камень"
 	if not structure_at(cell).is_empty():
