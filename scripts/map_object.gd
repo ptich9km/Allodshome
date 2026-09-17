@@ -21,7 +21,8 @@ var _time := 0.0
 
 ## Создать объект: name из ObjectDB, cell - клетка, extra - смещение спрайта (якорь).
 ## variant — индекс кадра для статичных объектов с вариантами (камни/заборы, Index из objects.txt).
-func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = Vector2.ZERO, variant: int = 0) -> void:
+## animated=false — редактор: показываем один кадр, без анимации (не грузит расписание).
+func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = Vector2.ZERO, variant: int = 0, animated: bool = true) -> void:
 	obj_name = name
 	cell = cell_pos
 
@@ -52,10 +53,9 @@ func setup(name: String, cell_pos: Vector2i, tile_size: int, anchor: Vector2 = V
 	_apply_shadow(variant)
 
 	# Порядок и тайминги анимации. Анимируем ТОЛЬКО если в базе явно задан
-	# anim_frame (расписание). Если расписания нет — у объектов (ограды, камни,
-	# кактусы) кадры это разные фазы отрисовки, а не цикл: показываем вариант.
+	# anim_frame (расписание) И объект не в "статичном" режиме (редактор).
 	var raw_anim: Variant = o.get("anim_frame", null)
-	if raw_anim is Array and not raw_anim.is_empty():
+	if animated and raw_anim is Array and not raw_anim.is_empty():
 		_anim_order = ObjectDB.anim_frames(name)
 		_anim_times = ObjectDB.anim_times(name)
 		if _anim_times.size() == _anim_order.size():

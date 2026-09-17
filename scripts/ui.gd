@@ -375,8 +375,8 @@ func _hover_portrait() -> void:
 	var world := player.get_global_mouse_position()
 	var pic := ""
 
-	# 1) Враг под курсором (юнит): радиус 32px вокруг центра юнита
-	for e in Game.enemies:
+	# 1) Юнит под курсором (монстр или житель): радиус 32px вокруг центра
+	for e in Game.enemies + Game.npcs:
 		if is_instance_valid(e) and e.global_position.distance_to(world) < 32.0:
 			var set_name: String = str(e.get("anim_set", "")) if "anim_set" in e else ""
 			if set_name != "":

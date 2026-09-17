@@ -33,6 +33,12 @@ var _alm_tiles_off: int = -1
 var _alm_path := ""
 var _alm_original_tiles: PackedInt32Array = PackedInt32Array()
 
+# Инструменты: 0 = тайлы (кисть), 1 = структуры (здания), 2 = НПЦ (юниты)
+var tool_mode := 0
+var tool_buttons := {}           # режим -> Button
+var structure_id := -1           # выбранный тип структуры (StructureDB id)
+var npc_set := ""                # выбранный набор юнита (units_db)
+
 func _ready() -> void:
 	camera = Camera2D.new()
 	camera.zoom = Vector2(1, 1)
@@ -124,6 +130,26 @@ func _build_ui() -> void:
 	fill_btn = fill
 	py += 32
 
+	var st_btn := Button.new()
+	st_btn.text = "Структуры"
+	st_btn.toggle_mode = true
+	st_btn.position = Vector2(8, py)
+	st_btn.size = Vector2(150, 26)
+	st_btn.pressed.connect(func(): _select_tool(1))
+	pal.add_child(st_btn)
+	tool_buttons[1] = st_btn
+	py += 32
+
+	var npc_btn := Button.new()
+	npc_btn.text = "НПЦ"
+	npc_btn.toggle_mode = true
+	npc_btn.position = Vector2(8, py)
+	npc_btn.size = Vector2(150, 26)
+	npc_btn.pressed.connect(func(): _select_tool(2))
+	pal.add_child(npc_btn)
+	tool_buttons[2] = npc_btn
+	py += 32
+
 	var tlabel := Label.new()
 	tlabel.text = "Текстура:"
 	tlabel.position = Vector2(8, py)
@@ -182,6 +208,99 @@ func _select_brush(t: int) -> void:
 		palette_buttons[k].button_pressed = (k == t)
 	_build_texture_strip()
 
+## Переключение инструмента: 0 тайлы, 1 структуры, 2 НПЦ.
+func _select_tool(mode: int) -> void:
+	tool_mode = mode
+	for m in tool_buttons:
+		tool_buttons[m].button_pressed = (m == mode)
+	if mode == 1:
+		_open_structure_picker()
+	elif mode == 2:
+		_open_npc_picker()
+
+func _open_structure_picker() -> void:
+	var pop := PopupPanel.new()
+	pop.title = "Структуры"
+	pop.size = Vector2i(430, 500)
+	pop.position = Vector2i(220, 90)
+	add_child(pop)
+	var sc := ScrollContainer.new()
+	sc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sc.offset_top = 28
+	pop.add_child(sc)
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	sc.add_child(grid)
+	for sid in StructureDB.ids():
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(62, 56)
+		b.expand_icon = true
+		var tex: Texture2D = StructureDB.preview_texture(sid)
+		if tex != null:
+			b.icon = tex
+		b.tooltip_text = "%d: %s" % [sid, StructureDB.display_name_by_id(sid)]
+		b.pressed.connect(func(id=sid, pp=pop):
+			structure_id = id
+			npc_set = ""
+			status_label.text = "Структура: %s" % StructureDB.display_name_by_id(id)
+			pp.queue_free())
+		grid.add_child(b)
+	pop.popup_centered()
+
+func _open_npc_picker() -> void:
+	var pop := PopupPanel.new()
+	pop.title = "НПЦ (юниты)"
+	pop.size = Vector2i(430, 500)
+	pop.position = Vector2i(220, 90)
+	add_child(pop)
+	var sc := ScrollContainer.new()
+	sc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sc.offset_top = 28
+	pop.add_child(sc)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	sc.add_child(vbox)
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	vbox.add_child(_npc_section_label("Жители (humans)"))
+	vbox.add_child(grid)
+	for name in UnitDB.all_names("humans/"):
+		_add_npc_button(grid, name, pop)
+	var grid2 := GridContainer.new()
+	grid2.columns = 6
+	grid2.add_theme_constant_override("h_separation", 4)
+	grid2.add_theme_constant_override("v_separation", 4)
+	vbox.add_child(_npc_section_label("Монстры (monsters)"))
+	vbox.add_child(grid2)
+	for name in UnitDB.all_names("monsters/"):
+		_add_npc_button(grid2, name, pop)
+	pop.popup_centered()
+
+func _npc_section_label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 13)
+	return l
+
+func _add_npc_button(grid: GridContainer, name: String, pop: PopupPanel) -> void:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(62, 56)
+	b.expand_icon = true
+	var tex: Texture2D = UnitDB.preview_frame(name)
+	if tex != null:
+		b.icon = tex
+	b.tooltip_text = name
+	b.pressed.connect(func(set_name=name, pp=pop):
+		npc_set = set_name
+		structure_id = -1
+		status_label.text = "НПЦ: %s" % set_name
+		pp.queue_free())
+	grid.add_child(b)
+
 func _select_tex(idx: int) -> void:
 	brush_tex_idx = idx
 	for i in range(tex_strip_buttons.size()):
@@ -238,7 +357,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			var cell := _mouse_to_cell()
 			if cell.x >= 0 and cell.y >= 0:
-				if _fill_mode and brush_type >= 0:
+				if tool_mode == 1 and structure_id > 0:
+					_place_structure(cell)
+				elif tool_mode == 2 and npc_set != "":
+					_place_npc(cell)
+				elif _fill_mode and brush_type >= 0:
 					_flood_fill(cell, brush_type, brush_tex_idx)
 					fill_btn.button_pressed = false
 					_fill_mode = false
@@ -268,7 +391,41 @@ func _paint(center: Vector2i, type_id: int, size: int) -> void:
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			var cell := center + Vector2i(dx, dy)
+			if type_id == -1:
+				_erase_entity(cell)
 			_set_cell_undo(cell, type_id)
+
+## Поставить структуру (здание) с якорем-клеткой (левый-нижний угол корпуса).
+func _place_structure(cell: Vector2i) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map.map_width or cell.y >= map.map_height:
+		return
+	map.structures.append({"x": cell.x, "y": cell.y, "type_id": structure_id})
+	map._rebuild_entities()
+	status_label.text = "Структура %s на %d,%d" % [StructureDB.display_name_by_id(structure_id), cell.x, cell.y]
+
+## Поставить НПЦ (жителя/монстра) на клетку.
+func _place_npc(cell: Vector2i) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map.map_width or cell.y >= map.map_height:
+		return
+	map.npcs.append({"x": cell.x, "y": cell.y, "set": npc_set})
+	map._rebuild_entities()
+	status_label.text = "НПЦ %s на %d,%d" % [npc_set, cell.x, cell.y]
+
+## Ластик также снимает структуру/НПЦ, якорь которых — на этой клетке.
+func _erase_entity(cell: Vector2i) -> void:
+	var changed := false
+	for i in range(map.structures.size() - 1, -1, -1):
+		var rec: Dictionary = map.structures[i]
+		if int(rec.get("x", -1)) == cell.x and int(rec.get("y", -1)) == cell.y:
+			map.structures.remove_at(i)
+			changed = true
+	for i in range(map.npcs.size() - 1, -1, -1):
+		var rec: Dictionary = map.npcs[i]
+		if int(rec.get("x", -1)) == cell.x and int(rec.get("y", -1)) == cell.y:
+			map.npcs.remove_at(i)
+			changed = true
+	if changed:
+		map._rebuild_entities()
 
 ## Записать изменение в undo-стек и применить.
 func _set_cell_undo(cell: Vector2i, type_id: int) -> void:
@@ -381,6 +538,7 @@ func _open_alm_file(path: String) -> void:
 	_alm_original_tiles = data["tiles"].duplicate()
 	_remember_last_alm(path)
 	_restore_spawn_anchor()
+	_populate_entities_from_alm(data)
 	map_w_spin.value = map.map_width
 	map_h_spin.value = map.map_height
 	brush_tex_idx = 0
@@ -420,9 +578,80 @@ func _on_save_alm() -> void:
 	if AlmLoader.write_tiles(_alm_path, _alm_raw, _alm_tiles_off, new_tiles):
 		_alm_original_tiles = new_tiles.duplicate()
 		_save_spawn_anchor()
+		_write_entity_sidecars()
 		status_label.text = "Сохранено в .alm: " + _alm_path
 	else:
 		status_label.text = "ОШИБКА записи .alm!"
+
+## Структуры/НПЦ после открытия .alm: если есть sidecar-файлы (полное состояние,
+## писал редактор) — берём их; иначе секции 4/6 самого .alm.
+func _populate_entities_from_alm(data: Dictionary) -> void:
+	var base := _alm_path.get_basename()
+	var s: Variant = _read_sidecar_file(base + ".structures.json")
+	if s is Array:
+		map.structures = _copy_recs(s)
+	else:
+		map.structures = _structures_from_alm(data)
+	var u: Variant = _read_sidecar_file(base + ".npcs.json")
+	if u is Array:
+		map.npcs = _copy_recs(u)
+	else:
+		map.npcs = _npcs_from_alm(data)
+	map._rebuild_entities()
+
+func _structures_from_alm(data: Dictionary) -> Array:
+	var out: Array = []
+	for rec in data.get("structures", []):
+		out.append({"x": rec.get("x", 0), "y": rec.get("y", 0), "type_id": rec.get("type_id", 0)})
+	return out
+
+func _npcs_from_alm(data: Dictionary) -> Array:
+	var out: Array = []
+	for rec in data.get("units", []):
+		var set_name := UnitDB.set_name_for_id(int(rec.get("type_id", 0)))
+		if set_name != "":
+			out.append({"x": rec.get("x", 0), "y": rec.get("y", 0), "set": set_name})
+	return out
+
+func _copy_recs(src: Array) -> Array:
+	var out: Array = []
+	for r in src:
+		if r is Dictionary:
+			out.append(r.duplicate(true))
+	return out
+
+## Прочитать sidecar: null — файла нет, иначе массив записей ({"structures"/"npcs"}).
+func _read_sidecar_file(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return null
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		if parsed.has("structures") and parsed["structures"] is Array:
+			return parsed["structures"]
+		if parsed.has("npcs") and parsed["npcs"] is Array:
+			return parsed["npcs"]
+		return []
+	if parsed is Array:
+		return parsed
+	return null
+
+## Сохранить полное состояние структур/НПЦ рядом с .alm (сам .alm не трогаем).
+func _write_entity_sidecars() -> void:
+	if _alm_path.is_empty():
+		return
+	var base := _alm_path.get_basename()
+	var fs := FileAccess.open(base + ".structures.json", FileAccess.WRITE)
+	if fs != null:
+		fs.store_string(JSON.stringify({"structures": map.structures}))
+		fs.close()
+	var fn := FileAccess.open(base + ".npcs.json", FileAccess.WRITE)
+	if fn != null:
+		fn.store_string(JSON.stringify({"npcs": map.npcs}))
+		fn.close()
 
 ## Запомнить, какую карту открыл пользователь: игра (main.tscn) грузит её при F9.
 func _remember_last_alm(path: String) -> void:

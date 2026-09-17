@@ -31,6 +31,10 @@ var object_layer: TileMapLayer # слой объектов (типы 5-7) пов
 var objects_root: Node2D       # слой анимированных спрайтов объектов (y-sort)
 var map_objects := {}          # клетка (Vector2i) -> MapObject
 var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (тип 7)
+var structures: Array = []     # записи {"x","y","type_id"} — здания (сетка тайлов)
+var npcs: Array = []           # записи {"x","y","set"} — жители/монстры
+var structures_root: Node2D    # слой структур (StructureNode, статичные)
+var npcs_root: Node2D          # слой НПЦ (статические спрайты)
 var tile_size: int = TILE      # свойство как у AlmMap (для миникарты и др.)
 
 # (тип, индекс в наборе) -> source_id в TileSet
@@ -63,6 +67,8 @@ func load_map(path: String) -> bool:
 	tiles.resize(raw.size())
 	for i in range(raw.size()):
 		tiles[i] = int(raw[i])
+	structures = _load_entity_list(json.get("structures", []))
+	npcs = _load_entity_list(json.get("npcs", []))
 	_load_tex_ids(json)
 	_load_under_tiles(json)
 	if json.has("texture_sets"):
@@ -83,6 +89,15 @@ func _load_tex_ids(json: Dictionary) -> void:
 	if raw is Array and raw.size() == map_width * map_height:
 		for i in range(raw.size()):
 			tex_ids[i] = int(raw[i])
+
+## Список структур/НПЦ из JSON: копия записей (словарей).
+func _load_entity_list(raw: Variant) -> Array:
+	var out: Array = []
+	if raw is Array:
+		for rec in raw:
+			if rec is Dictionary:
+				out.append(rec.duplicate(true))
+	return out
 
 ## Земля под объектами (типы 5-7). У старых карт поля нет — всё -1.
 func _load_under_tiles(json: Dictionary) -> void:
@@ -106,6 +121,8 @@ func new_map(w: int, h: int) -> void:
 	under_tiles = PackedInt32Array()
 	under_tiles.resize(w * h)
 	under_tiles.fill(-1)
+	structures = []
+	npcs = []
 	texture_sets = _default_sets()
 	_sync_text_spec()
 	_refresh_spawn()
@@ -140,6 +157,8 @@ func import_alm(data: Dictionary) -> void:
 	under_tiles = PackedInt32Array()
 	under_tiles.resize(map_width * map_height)
 	under_tiles.fill(-1)
+	structures = []
+	npcs = []
 	for i in range(alm_tiles.size()):
 		var s: Dictionary = specs[i]
 		tiles[i] = int(s["cat"])
@@ -395,6 +414,65 @@ func _build_tilemap() -> void:
 	for y in range(map_height):
 		for x in range(map_width):
 			_refresh_cell(Vector2i(x, y))
+	_rebuild_entities()
+
+## Структуры (здания) и НПЦ — отдельные слои поверх тайлов. Статичные
+## (в редакторе без анимации): StructureNode use_anim=false, спрайты кадром 1.
+func _rebuild_entities() -> void:
+	if structures_root == null:
+		structures_root = Node2D.new()
+		structures_root.name = "Structures"
+		structures_root.y_sort_enabled = true
+		structures_root.z_index = 7
+		add_child(structures_root)
+	if npcs_root == null:
+		npcs_root = Node2D.new()
+		npcs_root.name = "Npcs"
+		npcs_root.y_sort_enabled = true
+		npcs_root.z_index = 8
+		add_child(npcs_root)
+	for c in structures_root.get_children():
+		c.queue_free()
+	for c in npcs_root.get_children():
+		c.queue_free()
+
+	for rec in structures:
+		if not rec.has("type_id"):
+			continue
+		var def := StructureDB.get_by_id(int(rec["type_id"]))
+		if def.is_empty():
+			continue
+		var sd := StructureNode.new()
+		sd.folder = str(def.get("folder", ""))
+		sd.fw = int(def.get("tile_width", 1))
+		sd.th = int(def.get("tile_height", 1))
+		sd.fh = int(def.get("full_height", sd.th))
+		sd.use_anim = false   # редактор: без анимации
+		var x: float = rec.get("x", 0.0)
+		var y: float = rec.get("y", 0.0)
+		sd.position = Vector2(x * TILE, (y - (sd.fh - sd.th)) * TILE)
+		sd.build()
+		structures_root.add_child(sd)
+
+	for rec in npcs:
+		var set_name := str(rec.get("set", ""))
+		if set_name == "" or not UnitDB.has(set_name):
+			continue
+		var tex: Texture2D = UnitDB.preview_frame(set_name)
+		if tex == null:
+			continue
+		var o := UnitDB.get_set(set_name)
+		var sc := 0.5
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.centered = false
+		s.scale = Vector2(sc, sc)
+		var cx := int(o.get("cx", 0))
+		var cy := int(o.get("cy", 0))
+		var x: float = rec.get("x", 0.0)
+		var y: float = rec.get("y", 0.0)
+		s.position = Vector2(x * TILE + TILE / 2 - cx * sc, y * TILE + TILE - cy * sc)
+		npcs_root.add_child(s)
 
 ## Создать (или обновить) спрайт объекта на клетке.
 func _ensure_map_object(cell: Vector2i, obj_name: String) -> void:
@@ -408,7 +486,7 @@ func _ensure_map_object(cell: Vector2i, obj_name: String) -> void:
 	var o := ObjectDB.get_obj(obj_name)
 	if not o.is_empty():
 		anchor = Vector2(int(o.get("cx", 0)), int(o.get("cy", 0)))
-	mo.setup(obj_name, cell, TILE, anchor)
+	mo.setup(obj_name, cell, TILE, anchor, 0, false)  # редактор: без анимации
 	# Точка якоря (cx,cy) спрайта = центр-низ клетки (объект "стоит" на клетке)
 	mo.position = Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE)
 	objects_root.add_child(mo)
@@ -535,6 +613,8 @@ func save_map(path: String) -> bool:
 		"tex_ids": Array(tex_ids),
 		"under_tiles": Array(under_tiles),
 		"texture_sets": texture_sets,
+		"structures": structures,
+		"npcs": npcs,
 	}
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:

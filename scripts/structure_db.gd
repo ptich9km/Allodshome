@@ -28,6 +28,28 @@ static func get_by_id(id: int) -> Dictionary:
 	ensure_loaded()
 	return _db.get(str(id), _db.get(id, {}))
 
+## Все ID структур (для палитры редактора), по возрастанию.
+static func ids() -> Array:
+	ensure_loaded()
+	var out: Array = []
+	for k in _db:
+		out.append(int(k))
+	out.sort()
+	return out
+
+## Статичный превью-кадр структуры по ID (первый кадр house-001.png) или null.
+static func preview_texture(id: int) -> Texture2D:
+	var o := get_by_id(id)
+	var folder := str(o.get("folder", ""))
+	var prefix := str(o.get("prefix", "house"))
+	if folder == "":
+		return null
+	return load("res://assets/structures/%s/%s-%03d.png" % [folder, prefix, 1])
+
+## Подпись здания по ID (DescText) для интерфейса.
+static func display_name_by_id(id: int) -> String:
+	return str(get_by_id(id).get("desc", ""))
+
 ## Данные строения по имени папки ("church") — первое совпадение или {}.
 ## Для папок с несколькими записями (церковь/дом) это неоднозначно,
 ## в рендере используйте get_by_id.

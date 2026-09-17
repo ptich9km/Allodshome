@@ -18,6 +18,7 @@ var health_bar: HealthBar
 var _anim: UnitAnim = null
 
 func _ready():
+	add_to_group("enemy")
 	current_hp = max_hp
 	home_position = global_position
 	_create_sprite()

@@ -44,6 +44,32 @@ static func set_name_for_id(unit_id: int) -> String:
 static func get_set_by_id(unit_id: int) -> Dictionary:
 	return get_set(set_name_for_id(unit_id))
 
+## Агрессивный ли юнит: наборы монстров с палитрой 5 (орки, гоблины, звери)
+## атакуют игрока. Мирные жители/животные (палитра != 5) — не нападают.
+static func is_hostile(name: String) -> bool:
+	if not str(name).begins_with("monsters/"):
+		return false
+	return int(get_set(name).get("palette", 0)) == 5
+
+## Первый кадр набора (для статичного превью в редакторе/палитре).
+static func preview_frame(name: String) -> Texture2D:
+	var o := get_set(name)
+	var folder := str(o.get("folder", name))
+	var prefix := str(o.get("prefix", "sprites"))
+	if prefix == "" or prefix == "null":
+		prefix = "sprites"
+	return load(frame_path(folder, prefix, 1))
+
+## Все имена наборов с указанным префиксом ("humans/", "monsters/"), по алфавиту.
+static func all_names(prefix: String = "") -> Array:
+	ensure_loaded()
+	var out: Array = []
+	for name in _db:
+		if prefix == "" or str(name).begins_with(prefix):
+			out.append(name)
+	out.sort()
+	return out
+
 static func has(name: String) -> bool:
 	ensure_loaded()
 	return _db.has(name)

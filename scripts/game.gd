@@ -9,6 +9,7 @@ class_name Game
 static var is_paused: bool = false
 static var player_target: Vector2 = Vector2.ZERO
 static var enemies: Array = []
+static var npcs: Array = []               # мирные жители (Npc) вне Game.enemies
 static var mana_regen_accum: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
@@ -37,6 +38,8 @@ func _ready():
 
 	# Спавним игрока на проходимом тайле в центре карты
 	_spawn_player_on_walkable()
+	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
+	_spawn_map_units()
 
 	if camera and player:
 		camera.position = player.position
@@ -44,9 +47,10 @@ func _ready():
 
 	await get_tree().process_frame
 
-	# Находим врагов и игрока
+	# Находим врагов (группа "enemy": враг из сцены + спавн из карты)
+	enemies.clear()
 	for child in get_children():
-		if child is CharacterBody2D and child != player:
+		if child.is_in_group("enemy"):
 			enemies.append(child)
 			print("  Враг найден: ", child.name, " HP=", child.max_hp if "max_hp" in child else "?")
 
@@ -82,6 +86,50 @@ func _spawn_player_on_walkable():
 				if alm_map.call("is_walkable_world", Vector2(wx, wy)):
 					player.global_position = Vector2(wx, wy)
 					return
+
+## Спавн НПЦ/монстров из данных карты: .alm секция units (type_id) или
+## sidecar .npcs.json (set). Агрессия — UnitDB.is_hostile (монстры palette=5).
+func _spawn_map_units() -> void:
+	if alm_map == null or not alm_map.has_method("get_units"):
+		return
+	var recs: Array = alm_map.call("get_units")
+	var spawned := 0
+	for rec in recs:
+		var set_name := ""
+		if rec.has("set"):
+			set_name = str(rec["set"])
+		elif rec.has("type_id"):
+			set_name = UnitDB.set_name_for_id(int(rec["type_id"]))
+		if set_name == "" or not UnitDB.has(set_name):
+			continue
+		var pos := Vector2(float(rec["x"]) * 32.0 + 16.0, float(rec["y"]) * 32.0 + 16.0)
+		if UnitDB.is_hostile(set_name):
+			_spawn_monster(set_name, pos, rec)
+		else:
+			_spawn_npc(set_name, pos)
+		spawned += 1
+	print("Карта: спавн юнитов %d" % spawned)
+
+func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
+	var e := Enemy.new()
+	e.name = "Monster_" + set_name.get_file()
+	e.anim_set = set_name
+	var hp := int(rec.get("hp_max", 0))
+	if hp > 0:
+		e.max_hp = hp
+	e.position = pos
+	e.home_position = pos
+	add_child(e)
+	enemies.append(e)
+
+func _spawn_npc(set_name: String, pos: Vector2) -> void:
+	var n := Npc.new()
+	n.name = "Npc_" + set_name.get_file()
+	n.anim_set = set_name
+	n.position = pos
+	n.home = pos
+	add_child(n)
+	npcs.append(n)
 
 ## Ищем проходимую клетку рядом со спавном, у которой есть проходимые соседи
 ## (минимум 2 из 4) — чтобы персонаж не оказался в тупике. Возвращаем центр

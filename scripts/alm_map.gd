@@ -18,8 +18,18 @@ var _terrain: PackedByteArray   # byte[0] — вариант автайла
 var _hflags: PackedByteArray    # byte[1] — тип terrain (файл-1: 0..3)
 var _heights: PackedByteArray   # int8 — рельеф (0..127)
 var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объект)
-var _structures: Array = []     # секция id=4 — здания
+var _structures: Array = []     # секция id=4 — здания (или sidecar .structures.json)
+var map_units: Array = []       # секция id=6 — юниты (или sidecar .npcs.json)
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
+
+# Вода: анимация кадрами-рядами вариантов tile3 (отдельный стрип + шейдер)
+const WATER_ANIM_PERIOD := 0.18  # секунд на кадр воды
+var _water_tex: ImageTexture = null
+var _water_mat: ShaderMaterial = null
+var _water_rows := 0             # кадров на вариант
+var _water_total := 0            # всего рядов в стрипе
+var _water_vidx := {}            # вариант -> индекс в стрипе
+var _water_phase := 0.0
 
 var mesh: MeshInstance2D
 var _atlas: ImageTexture
@@ -47,6 +57,8 @@ func _ready() -> void:
 	_heights = data["heights"]
 	_obstacles = data["obstacles"]
 	_structures = data.get("structures", [])
+	map_units = data.get("units", [])
+	_load_sidecars()
 	var info: Dictionary = data.get("info", {})
 	solar_angle = float(info.get("solar_angle", 0.785398))
 	_load_obstacle_db()
@@ -298,6 +310,55 @@ func _build_atlas() -> void:
 		_cell_uv[key] = Vector4(u0, v0, u1, v1)
 	_atlas = ImageTexture.create_from_image(atlas)
 	print("AlmMap: атлас %d ячеек" % cells.size())
+	_build_water_strip(used)
+
+## Вода (tile3) анимируется кадрами-рядами варианта. Собираем отдельный стрип:
+## колонка 32px, варианты воды — друг под другом, ряды внутри варианта — кадры.
+func _build_water_strip(used: Dictionary) -> void:
+	_water_tex = null
+	_water_rows = 0
+	_water_total = 0
+	_water_vidx.clear()
+	var variants_used: Array = []
+	for key in used:
+		if str(key).begins_with("f3-v"):
+			var v := int(str(key).split("-")[1].trim_prefix("v").split("-")[0])
+			if not variants_used.has(v):
+				variants_used.append(v)
+	variants_used.sort()
+	if variants_used.is_empty():
+		return
+	var rows := 0
+	var first_tex: Texture2D = null
+	for v in variants_used:
+		var tex: Texture2D = load("res://assets/terrain/tile3-%02d.bmp" % v)
+		if tex == null:
+			continue
+		first_tex = tex
+		var img: Image = tex.get_image()
+		rows = maxi(1, img.get_height() / TILE)
+		break
+	if first_tex == null:
+		return
+	_water_rows = rows
+	_water_total = rows * variants_used.size()
+	var strip := Image.create(TILE, _water_total * TILE, false, Image.FORMAT_RGBA8)
+	strip.fill(Color(0, 0, 0, 0))
+	for vi in range(variants_used.size()):
+		var v: int = variants_used[vi]
+		_water_vidx[v] = vi
+		var tex: Texture2D = load("res://assets/terrain/tile3-%02d.bmp" % v)
+		if tex == null:
+			continue
+		var img: Image = tex.get_image()
+		img.convert(Image.FORMAT_RGBA8)
+		var nrows := maxi(1, img.get_height() / TILE)
+		for r in range(nrows):
+			var cell_img := img.get_region(Rect2i(0, min(r, rows - 1) * TILE, TILE, TILE))
+			strip.blit_rect(cell_img, Rect2i(0, 0, TILE, TILE),
+				Vector2i(0, (vi * rows + r) * TILE))
+	_water_tex = ImageTexture.create_from_image(strip)
+	print("AlmMap: вода %d варианта(ов) x %d кадров" % [variants_used.size(), rows])
 
 ## Для отладки: сама текстура атласа.
 func get_atlas_texture() -> ImageTexture:
@@ -351,6 +412,11 @@ func _build_relief_mesh() -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
+	var st_water: SurfaceTool = null
+	if _water_tex != null and _water_total > 0:
+		st_water = SurfaceTool.new()
+		st_water.begin(Mesh.PRIMITIVE_TRIANGLES)
+
 	var sun := _sun_dir()
 	for y in range(map_height):
 		for x in range(map_width):
@@ -359,8 +425,9 @@ func _build_relief_mesh() -> void:
 			var vmax := 4 if file_n == 4 else 16
 			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
 			var row := _terrain[i] & 0xF
-			var uv := _uv_for_cell(file_n, variant, row)
-			if uv == Vector4(0, 0, 0, 0):
+			var is_water := file_n == 3 and st_water != null
+			var uv := Vector4(0, 0, 0, 0) if is_water else _uv_for_cell(file_n, variant, row)
+			if not is_water and uv == Vector4(0, 0, 0, 0):
 				continue
 
 			# Углы квада: (x,y) вверх-влево, (x+1,y) вправо, (x,y+1) вниз, (x+1,y+1)
@@ -381,14 +448,22 @@ func _build_relief_mesh() -> void:
 			var v0 := uv.y
 			var u1 := uv.z
 			var v1 := uv.w
+			if is_water:
+				# Вода: UV в стрипе — колонка 32px (u 0..1), ряд = кадр варианта
+				var vi: int = int(_water_vidx.get(variant, 0))
+				u0 = 0.0
+				u1 = 1.0
+				v0 = float(vi * _water_rows + row) / float(_water_total)
+				v1 = v0 + 1.0 / float(_water_total)
+			var target := st_water if is_water else st
 			# Треугольник 1: p00 (u0,v0), p10 (u1,v0), p01 (u0,v1)
-			_add_vert(st, p00, u0, v0, c)
-			_add_vert(st, p10, u1, v0, c)
-			_add_vert(st, p01, u0, v1, c)
+			_add_vert(target, p00, u0, v0, c)
+			_add_vert(target, p10, u1, v0, c)
+			_add_vert(target, p01, u0, v1, c)
 			# Треугольник 2: p10 (u1,v0), p11 (u1,v1), p01 (u0,v1)
-			_add_vert(st, p10, u1, v0, c)
-			_add_vert(st, p11, u1, v1, c)
-			_add_vert(st, p01, u0, v1, c)
+			_add_vert(target, p10, u1, v0, c)
+			_add_vert(target, p11, u1, v1, c)
+			_add_vert(target, p01, u0, v1, c)
 
 	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
@@ -408,6 +483,41 @@ void fragment() {
 	mesh.mesh = amesh
 	mesh.material = mat
 	print("AlmMap: меш собран (%d клеток)" % (map_width * map_height))
+
+	# Вторая поверхность: вода со своей текстурой-стрипом и анимацией рядов
+	if st_water != null:
+		var warr: Array = st_water.commit_to_arrays()
+		amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, warr)
+		var wshader := Shader.new()
+		wshader.code = """
+shader_type canvas_item;
+uniform sampler2D u_water;
+uniform float u_phase = 0.0;
+uniform float u_rows = 16.0;
+uniform float u_total = 16.0;
+void fragment() {
+	float idx = UV.y * u_total;
+	float base = floor(idx / u_rows) * u_rows;
+	float row = mod(idx + u_phase * u_rows, u_rows);
+	vec2 wuv = vec2(UV.x, (base + row) / u_total);
+	COLOR = texture(u_water, wuv) * COLOR;
+}
+"""
+		_water_mat = ShaderMaterial.new()
+		_water_mat.shader = wshader
+		_water_mat.set_shader_parameter("u_water", _water_tex)
+		_water_mat.set_shader_parameter("u_rows", float(_water_rows))
+		_water_mat.set_shader_parameter("u_total", float(_water_total))
+		amesh.surface_set_material(1, _water_mat)
+
+## Анимация воды: сдвиг фазы в шейдере (пауза останавливает).
+func _process(delta: float) -> void:
+	if _water_mat == null or _water_total <= 0:
+		return
+	if Game.is_paused:
+		return
+	_water_phase = fmod(_water_phase + delta / WATER_ANIM_PERIOD, 1.0)
+	_water_mat.set_shader_parameter("u_phase", _water_phase)
 
 func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
 	st.set_uv(Vector2(u, v))
@@ -437,6 +547,48 @@ func _load_spawn_anchor() -> Vector2i:
 	if json is not Dictionary:
 		return Vector2i(-1, -1)
 	return Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
+
+## Sidecar-файлы рядом с .alm — редактор сохраняет в них полное состояние
+## структур и НПЦ (сам .alm не перезаписывается):
+##   "<имя>.structures.json" — {"structures": [{x, y, type_id}]}
+##   "<имя>.npcs.json"       — {"npcs": [{x, y, set}]}
+## Если sidecar существует — он ПЕРЕКРЫВАЕТ секции 4/6 .alm (редактор копирует
+## их туда при первом открытии); иначе работают оригинальные секции.
+func _load_sidecars() -> void:
+	if alm_path.is_empty():
+		return
+	var base := alm_path.get_basename()
+	var s: Variant = _read_sidecar(base + ".structures.json")
+	if s != null and s is Array:
+		_structures = s
+	var u: Variant = _read_sidecar(base + ".npcs.json")
+	if u != null and u is Array:
+		map_units = u
+
+## Прочитать sidecar: null — файла нет (использовать секции .alm),
+## иначе массив записей (пустой — сущностей нет).
+func _read_sidecar(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return null
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		if parsed.has("structures") and parsed["structures"] is Array:
+			return parsed["structures"]
+		if parsed.has("npcs") and parsed["npcs"] is Array:
+			return parsed["npcs"]
+		return []
+	if parsed is Array:
+		return parsed
+	return []
+
+## Список юнитов карты для спавна: секция id=6 (.alm) или sidecar .npcs.json.
+## Записи: {x, y — клетки, type_id | set, player, hp_max}.
+func get_units() -> Array:
+	return map_units
 
 ## --- Запросы для движения и миникарты ---
 
