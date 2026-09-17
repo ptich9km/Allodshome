@@ -117,6 +117,16 @@ func play(anim_kind: int, reset: bool = false) -> void:
 	anim_time = 0.0
 	_apply_frame()
 
+## Зафиксировать ПОСЛЕДНИЙ кадр блока (труп после анимации смерти).
+## advance() по завершении блока зацикливается на первый кадр — для трупа
+## нужно оставить лежать последний (юнит «упал»).
+func freeze_last_frame(kind: int) -> void:
+	anim = kind
+	var phases := _phases_for(kind)
+	anim_idx = maxi(0, phases - 1)
+	anim_time = 0.0
+	_apply_frame()
+
 ## Продвинуть анимацию, вернуть true когда блок завершён (для одноразовых анимаций).
 func advance(delta: float) -> bool:
 	var phases: int = _phases_for(anim)

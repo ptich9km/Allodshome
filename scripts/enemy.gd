@@ -16,6 +16,7 @@ var attack_cooldown: float = 0.0
 var can_flee: bool = false        # по умолчанию монстр дерётся до конца, не убегает
 var _path: Array = []             # маршрут к игроку (обход препятствий)
 var _repath := 0.0
+var _corpse_timer := 0.0          # сколько труп лежит до удаления (без разложения)
 var health_bar: HealthBar
 var _anim: UnitAnim = null
 
@@ -49,6 +50,37 @@ func _physics_process(delta):
 		return
 
 	attack_cooldown = max(0, attack_cooldown - delta)
+
+	# Монстр умер — играем анимацию падения, потом труп остаётся на земле
+	if state == "dying" or state == "decay" or state == "corpse":
+		if _anim:
+			match state:
+				"dying":
+					_anim.play(UnitAnim.Anim.DYING)
+					if _anim.advance(delta):
+						velocity = Vector2.ZERO
+						if UnitDB.decay_phases(anim_set) > 0:
+							state = "decay"          # есть разложение (скелет)
+							_anim.play(UnitAnim.Anim.DECAY)
+						else:
+							state = "corpse"
+							_anim.freeze_last_frame(UnitAnim.Anim.DYING)
+							_corpse_timer = 5.0      # труп лежит 5 сек, потом исчезает
+				"decay":
+					if _anim.advance(delta):
+						_corpse_timer = 3.0         # разложился — ещё немного лежит
+						state = "corpse"
+						_anim.freeze_last_frame(UnitAnim.Anim.DECAY)
+				"corpse":
+					if _corpse_timer > 0.0:
+						_corpse_timer -= delta
+						if _corpse_timer <= 0.0:
+							queue_free()
+							return
+		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+		move_and_slide()
+		_apply_relief_stand()
+		return
 
 	# Обновляем бар здоровья
 	if health_bar:
@@ -184,7 +216,11 @@ func take_damage(dmg: int, attacker: Node2D):
 	if current_hp <= 0:
 		SoundDB.play(_unit_sound_at(4))  # смерть
 		_drop_loot()
-		queue_free()
+		state = "dying"
+		attack_target = null
+		velocity = Vector2.ZERO
+		if health_bar:
+			health_bar.visible = false  # труп не показывает шкалу
 	else:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))  # боль
 
@@ -198,8 +234,18 @@ func _drop_loot():
 		return
 	var bag: LootBag = bag_prefab.new()
 	bag.items = _make_loot()
-	bag.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16))
+	# Мешок на высоте рельефа (юнит поднят на высоту холма; без этого мешок
+	# «тонет» ниже уровня земли на высоту рельефа)
+	var h := _relief_here()
+	bag.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16) - h)
 	get_tree().current_scene.add_child(bag)
+
+## Высота рельефа под юнитом (0, если карты нет).
+func _relief_here() -> float:
+	var map_node := get_tree().get_first_node_in_group("alm_map")
+	if map_node != null and map_node.has_method("relief_at_world"):
+		return float(map_node.call("relief_at_world", global_position))
+	return 0.0
 
 ## Добыча: золото по силе врага + шанс зелья и снаряжения (как «надето на нём»).
 func _make_loot() -> Array:

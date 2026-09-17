@@ -458,15 +458,15 @@ func _hover_portrait() -> void:
 		return
 	var world := player.get_global_mouse_position()
 	var pic := ""
+	var hover_set := ""   # набор анимаций юнита под курсором (фолбэк-портрет)
 
 	# 1) Юнит под курсором (монстр или житель): хит-бокс спрайта (видимая область)
 	for e in Game.enemies + Game.npcs:
 		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(6.0).has_point(world):
-			var set_name := ""
 			if e is Enemy or e is Npc:
-				set_name = str(e.anim_set)
-			if set_name != "":
-				pic = str(UnitDB.get_set(set_name).get("picture", ""))
+				hover_set = str(e.anim_set)
+			if hover_set != "":
+				pic = str(UnitDB.get_set(hover_set).get("picture", ""))
 			break
 
 	# 2) Иначе здание под курсором (хитбокс структуры)
@@ -493,13 +493,20 @@ func _hover_portrait() -> void:
 	if tex == null:
 		var path := "res://assets/portraits/%s.png" % lower
 		if not ResourceLoader.exists(path):
-			# Портрета нет (не у всех юнитов/структур есть картинка) — герой
-			_hover_name = ""
-			portrait_texture.texture = hero_portrait
-			return
-		tex = load(path)
-		if tex != null:
-			_portrait_cache[lower] = tex
+			# Портрета-файла нет: для юнитов показываем кадр его спрайта
+			# (у людей файлов portraits/*.png нет — рисуем самого НПЦ).
+			if hover_set != "":
+				tex = UnitDB.preview_frame(hover_set)
+				if tex != null:
+					_portrait_cache[lower] = tex
+			if tex == null:
+				_hover_name = ""
+				portrait_texture.texture = hero_portrait
+				return
+		else:
+			tex = load(path)
+			if tex != null:
+				_portrait_cache[lower] = tex
 	if tex != null:
 		portrait_texture.texture = tex
 	else:
