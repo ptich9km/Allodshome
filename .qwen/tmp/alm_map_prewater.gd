@@ -18,10 +18,7 @@ var _terrain: PackedByteArray   # byte[0] — вариант автайла
 var _hflags: PackedByteArray    # byte[1] — тип terrain (файл-1: 0..3)
 var _heights: PackedByteArray   # int8 — рельеф (0..127)
 var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объект)
-var _structures: Array = []     # секция id=4 — здания (или sidecar .structures.json)
-var map_units: Array = []       # секция id=6 — юниты (или sidecar .npcs.json)
-var _nowalk: Dictionary = {}    # клетки «Нельзя пройти» (ручная разметка в редакторе)
-var _allowwalk: Dictionary = {} # клетки «Разрешить проход» — пускать сквозь препятствие
+var _structures: Array = []     # секция id=4 — здания
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
 
 var mesh: MeshInstance2D
@@ -30,22 +27,10 @@ var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
 var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
 var obstacles_root: Node2D      # слой препятствий (y-sort)
 var buildings: Node2D           # слой зданий (y-sort)
-var world_sort: Node2D          # общий y-sort: препятствия + здания (крона перекрывает фонтан)
 var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
-
-## Единый слой с y-сортировкой для препятствий и зданий: южнее — поверх.
-func _ensure_world_sort() -> Node2D:
-	if world_sort == null:
-		world_sort = Node2D.new()
-		world_sort.name = "WorldSort"
-		world_sort.y_sort_enabled = true
-		add_child(world_sort)
-	return world_sort
 
 # Высотная сетка для движения (0/1: скала приподнята) — как раньше
 var _height_grid: Array = []
-
-const _DIRS_4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 func _ready() -> void:
 	add_to_group("alm_map")
@@ -62,8 +47,6 @@ func _ready() -> void:
 	_heights = data["heights"]
 	_obstacles = data["obstacles"]
 	_structures = data.get("structures", [])
-	map_units = data.get("units", [])
-	_load_sidecars()
 	var info: Dictionary = data.get("info", {})
 	solar_angle = float(info.get("solar_angle", 0.785398))
 	_load_obstacle_db()
@@ -91,7 +74,8 @@ func _build_obstacles() -> void:
 		obstacles_root = Node2D.new()
 		obstacles_root.name = "Obstacles"
 		obstacles_root.y_sort_enabled = true
-		_ensure_world_sort().add_child(obstacles_root)
+		obstacles_root.z_index = 1
+		add_child(obstacles_root)
 	for y in range(map_height):
 		for x in range(map_width):
 			var oid := _obstacles[y * map_width + x]
@@ -121,7 +105,8 @@ func _build_structures() -> void:
 		buildings = Node2D.new()
 		buildings.name = "Buildings"
 		buildings.y_sort_enabled = true
-		_ensure_world_sort().add_child(buildings)
+		buildings.z_index = 4
+		add_child(buildings)
 	var placed := 0
 	var missing := 0
 	for st in _structures:
@@ -162,7 +147,6 @@ func _build_structures() -> void:
 				"y0": sy, "y1": sy + sh - 1,
 				"picture": str(fj.get("picture", "")),
 				"type_id": type_id,
-				"ax": int(x), "ay": int(y),
 			})
 		else:
 			_structure_hits.append({
@@ -170,7 +154,6 @@ func _build_structures() -> void:
 				"y0": int(y) - (fh - th), "y1": int(y) + th - 1,
 				"picture": str(fj.get("picture", "")),
 				"type_id": type_id,
-				"ax": int(x), "ay": int(y),
 			})
 	print("AlmMap: зданий создано %d, пропущено %d" % [placed, missing])
 
@@ -376,7 +359,6 @@ func _build_relief_mesh() -> void:
 			var vmax := 4 if file_n == 4 else 16
 			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
 			var row := _terrain[i] & 0xF
-			# Вода (file 3) — статичный кадр из общего атласа (ряд row из tile3-XX.bmp)
 			var uv := _uv_for_cell(file_n, variant, row)
 			if uv == Vector4(0, 0, 0, 0):
 				continue
@@ -456,66 +438,6 @@ func _load_spawn_anchor() -> Vector2i:
 		return Vector2i(-1, -1)
 	return Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
 
-## Sidecar-файлы рядом с .alm — редактор сохраняет в них полное состояние
-## структур и НПЦ (сам .alm не перезаписывается):
-##   "<имя>.structures.json" — {"structures": [{x, y, type_id}]}
-##   "<имя>.npcs.json"       — {"npcs": [{x, y, set}]}
-## Если sidecar существует — он ПЕРЕКРЫВАЕТ секции 4/6 .alm (редактор копирует
-## их туда при первом открытии); иначе работают оригинальные секции.
-func _load_sidecars() -> void:
-	if alm_path.is_empty():
-		return
-	var base := alm_path.get_basename()
-	var s: Variant = _read_sidecar(base + ".structures.json")
-	if s != null and s is Array:
-		_structures = s
-	var u: Variant = _read_sidecar(base + ".npcs.json")
-	if u != null and u is Array:
-		map_units = u
-	# Ручная разметка «Нельзя пройти» — редактор пишет её рядом с .alm
-	var n: Variant = _read_sidecar(base + ".nowalk.json")
-	_nowalk.clear()
-	if n != null and n is Array:
-		for pair in n:
-			if pair is Array and pair.size() >= 2:
-				_nowalk[Vector2i(int(pair[0]), int(pair[1]))] = true
-	# Ручная разметка «Разрешить проход» — пускать сквозь препятствие (дерево/камень)
-	var a: Variant = _read_sidecar(base + ".allowwalk.json")
-	_allowwalk.clear()
-	if a != null and a is Array:
-		for pair in a:
-			if pair is Array and pair.size() >= 2:
-				_allowwalk[Vector2i(int(pair[0]), int(pair[1]))] = true
-
-## Прочитать sidecar: null — файла нет (использовать секции .alm),
-## иначе массив записей (пустой — сущностей нет).
-func _read_sidecar(path: String) -> Variant:
-	if not FileAccess.file_exists(path):
-		return null
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return null
-	var parsed: Variant = JSON.parse_string(f.get_as_text())
-	f.close()
-	if parsed is Dictionary:
-		if parsed.has("structures") and parsed["structures"] is Array:
-			return parsed["structures"]
-		if parsed.has("npcs") and parsed["npcs"] is Array:
-			return parsed["npcs"]
-		if parsed.has("nowalk") and parsed["nowalk"] is Array:
-			return parsed["nowalk"]
-		if parsed.has("allowwalk") and parsed["allowwalk"] is Array:
-			return parsed["allowwalk"]
-		return []
-	if parsed is Array:
-		return parsed
-	return []
-
-## Список юнитов карты для спавна: секция id=6 (.alm) или sidecar .npcs.json.
-## Записи: {x, y — клетки, type_id | set, player, hp_max}.
-func get_units() -> Array:
-	return map_units
-
 ## --- Запросы для движения и миникарты ---
 
 func _cell_of(pos: Vector2) -> Vector2i:
@@ -543,37 +465,24 @@ func is_walkable_world(pos: Vector2) -> bool:
 	var ty := int(pos.y) / TILE
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return false
-	# Ручная разметка «Нельзя пройти» (редактор) — приоритет над автоматикой
-	if _nowalk.has(Vector2i(tx, ty)):
-		return false
 	var i := ty * map_width + tx
-	var hf := _hflags[i]
-	# Спец-значения Nival (16..40 — вода/барьер в byte[1]) — всегда непроходимы
-	if hf >= 16 and hf <= 40:
+	if not AlmLoader.is_walkable(_hflags[i]):
 		return false
-	var file_n := (hf & 0xF) + 1
-	var variant := clampi((_terrain[i] >> 4) & 0xF, 0, 15)
-	# Таблица «цены прохода по текстуре» (WalkTable): вода (tile3) и
-	# переопределённые варианты с ценой 0 — непроходимы; горы/песок — проходимы
-	if not WalkTable.walkable(file_n, variant):
+	# Объект (дерево/камень из obstacles) — непроходимо
+	if _obstacles.size() > i and _obstacles[i] > 0:
 		return false
-	var allow := _allowwalk.has(Vector2i(tx, ty))
-	# Объект (дерево/камень из obstacles) — непроходимо (кроме allowwalk-разметки)
-	if not allow and _obstacles.size() > i and _obstacles[i] > 0:
-		return false
-	# Здания (секция id=4) — непроходимы (кроме allowwalk-разметки)
-	if not allow and not structure_at(Vector2i(tx, ty)).is_empty():
+	# Здания (секция id=4) — непроходимы
+	if not structure_at(Vector2i(tx, ty)).is_empty():
 		return false
 	return true
 
-## Множитель скорости по текстуре клетки (WalkTable, как у разработчиков:
-## скорость = 8 / цена прохода). Дорога быстрее травы, песок/горы медленнее.
+## Множитель скорости по типу клетки: дороги (tile4) быстрее травы.
 func speed_factor_at_world(pos: Vector2) -> float:
 	var tx := int(pos.x) / TILE
 	var ty := int(pos.y) / TILE
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return 1.0
-	return WalkTable.speed_at(_hflags[ty * map_width + tx], _terrain[ty * map_width + tx])
+	return AlmLoader.speed_factor_type(AlmLoader.terrain_type(_hflags[ty * map_width + tx]))
 
 ## Тип клетки 0..3 для миникарты: 0 трава, 1 горы, 2 вода/барьер, 3 дорога.
 func cell_type_at(tx: int, ty: int) -> int:
@@ -584,111 +493,12 @@ func cell_type_at(tx: int, ty: int) -> int:
 		return 2
 	return t
 
-## Причина непроходимости клетки («», если проходима) — для подсказки координат.
-## «Трава» может быть занята деревом/камнем (obstacles), зданием или разметкой.
-func blocked_reason(cell: Vector2i) -> String:
-	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
-		return "вне карты"
-	if _nowalk.has(cell):
-		return "запрет разметки"
-	var i := cell.y * map_width + cell.x
-	var hf := _hflags[i]
-	if hf >= 16 and hf <= 40:
-		return "барьер (спец-тайл)"
-	var file_n := (hf & 0xF) + 1
-	var variant := clampi((_terrain[i] >> 4) & 0xF, 0, 15)
-	if not WalkTable.walkable(file_n, variant):
-		if file_n == 3:
-			return "вода (tile3)"
-		return "непроходимая текстура (tile%d-%02d)" % [file_n, variant]
-	if _obstacles.size() > i and _obstacles[i] > 0:
-		return "дерево/камень"
-	if not structure_at(cell).is_empty():
-		return "здание"
-	return ""
-
 func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var min_x := margin
 	var min_y := margin
 	var max_x := map_width * TILE - margin
 	var max_y := map_height * TILE - margin
 	return pos.x >= min_x and pos.y >= min_y and pos.x <= max_x and pos.y <= max_y
-
-## --- Путь (pathfinding): BFS по сетке проходимости, обход препятствий ---
-
-## Путь от from_world до to_world в мировых точках (центры клеток), без первой
-## клетки. Если цель непроходима — ищем путь к ближайшей проходимой рядом с ней
-## (клик по дереву/воде подводит героя к самому краю). Пустой — пути нет.
-func find_path(from_world: Vector2, to_world: Vector2) -> Array:
-	var start := _cell_of(from_world)
-	var goal := _cell_of(to_world)
-	# Герой может стоять в клетке, которая по разметке непроходима (упёрся/склон):
-	# путь начинаем от ближайшей ПРОХОДИМОЙ клетки рядом, иначе «нельзя вернуться».
-	if not _cell_walkable(start):
-		start = _nearest_walkable(start, 4)
-		if start.x < 0:
-			return []
-	if not _cell_walkable(goal):
-		# Цель непроходима: пробуем 4 соседей, берём ближайшего
-		var best: Vector2i = goal
-		var best_d := -1.0
-		for d in _DIRS_4:
-			var n := goal + d
-			if _cell_walkable(n):
-				var dist := from_world.distance_squared_to(Vector2(n.x * TILE + TILE / 2, n.y * TILE + TILE / 2))
-				if best_d < 0.0 or dist < best_d:
-					best_d = dist
-					best = n
-		if best_d < 0.0:
-			return []
-		goal = best
-
-	# BFS по 4 соседям
-	var prev := {}
-	var queue: Array = [start]
-	var seen := {start: true}
-	while not queue.is_empty():
-		var cur: Vector2i = queue.pop_front()
-		if cur == goal:
-			break
-		for d in _DIRS_4:
-			var n := cur + d
-			if seen.has(n) or not _cell_walkable(n):
-				continue
-			seen[n] = true
-			prev[n] = cur
-			queue.append(n)
-	if not seen.has(goal):
-		return []
-
-	# Восстановить путь и перевести в мировые точки (центры клеток)
-	var cells: Array = []
-	var c := goal
-	while c != start:
-		cells.append(c)
-		c = prev[c]
-	cells.reverse()
-	var out: Array = []
-	for cell in cells:
-		out.append(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
-	return out
-
-func _cell_walkable(cell: Vector2i) -> bool:
-	return is_walkable_world(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
-
-## Ближайшая проходимая клетка (спираль радиуса r) или (-1,-1).
-func _nearest_walkable(cell: Vector2i, r: int) -> Vector2i:
-	if _cell_walkable(cell):
-		return cell
-	for radius in range(1, r + 1):
-		for dy in range(-radius, radius + 1):
-			for dx in range(-radius, radius + 1):
-				if abs(dx) != radius and abs(dy) != radius:
-					continue
-				var c := cell + Vector2i(dx, dy)
-				if _cell_walkable(c):
-					return c
-	return Vector2i(-1, -1)
 
 func tile_id_at(cell: Vector2i) -> int:
 	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
