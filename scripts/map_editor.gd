@@ -33,11 +33,13 @@ var _alm_tiles_off: int = -1
 var _alm_path := ""
 var _alm_original_tiles: PackedInt32Array = PackedInt32Array()
 
-# Инструменты: 0 = тайлы (кисть), 1 = структуры (здания), 2 = НПЦ (юниты)
-var tool_mode := 0
+# Инструменты: 0 = тайлы (кисть), 1 = структуры (здания), 2 = НПЦ (юниты),
+# 3 = выбор/инспектор (по умолчанию — чтобы случайным кликом не испортить карту)
+var tool_mode := 3
 var tool_buttons := {}           # режим -> Button
 var structure_id := -1           # выбранный тип структуры (StructureDB id)
 var npc_set := ""                # выбранный набор юнита (units_db)
+var _inspect_msg := ""           # сообщение инспектора (держится до смены инструмента)
 
 func _ready() -> void:
 	camera = Camera2D.new()
@@ -53,6 +55,7 @@ func _ready() -> void:
 	_update_palette_icons()
 	_build_texture_strip()
 	_center_camera()
+	_select_tool(3)   # стартуем с инструментом «Выбор» (нельзя случайно испортить)
 
 func _build_ui() -> void:
 	ui = CanvasLayer.new()
@@ -150,6 +153,17 @@ func _build_ui() -> void:
 	tool_buttons[2] = npc_btn
 	py += 32
 
+	var pick_btn := Button.new()
+	pick_btn.text = "Выбор"
+	pick_btn.toggle_mode = true
+	pick_btn.button_pressed = true
+	pick_btn.position = Vector2(8, py)
+	pick_btn.size = Vector2(150, 26)
+	pick_btn.pressed.connect(func(): _select_tool(3))
+	pal.add_child(pick_btn)
+	tool_buttons[3] = pick_btn
+	py += 32
+
 	var tlabel := Label.new()
 	tlabel.text = "Текстура:"
 	tlabel.position = Vector2(8, py)
@@ -204,18 +218,30 @@ func _add_top_button(parent: Control, x: float, text: String, cb: Callable) -> f
 func _select_brush(t: int) -> void:
 	brush_type = t
 	brush_tex_idx = 0
+	_inspect_msg = ""
 	for k in palette_buttons:
 		palette_buttons[k].button_pressed = (k == t)
 	_build_texture_strip()
 
-## Переключение инструмента: 0 тайлы, 1 структуры, 2 НПЦ.
+## Переключение инструмента: 0 тайлы, 1 структуры, 2 НПЦ, 3 выбор.
 func _select_tool(mode: int) -> void:
 	tool_mode = mode
+	_inspect_msg = ""
 	for m in tool_buttons:
 		tool_buttons[m].button_pressed = (m == mode)
-	if mode == 1:
+	if mode == 3:
+		# Режим выбора: кисть/структура/НПЦ неактивны (защита от случайных кликов)
+		for k in palette_buttons:
+			palette_buttons[k].button_pressed = false
+		fill_btn.button_pressed = false
+		_fill_mode = false
+		structure_id = -1
+		npc_set = ""
+	elif mode == 1:
+		structure_id = -1
 		_open_structure_picker()
 	elif mode == 2:
+		npc_set = ""
 		_open_npc_picker()
 
 func _open_structure_picker() -> void:
@@ -357,7 +383,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			var cell := _mouse_to_cell()
 			if cell.x >= 0 and cell.y >= 0:
-				if tool_mode == 1 and structure_id > 0:
+				if tool_mode == 3:
+					_inspect(cell)
+				elif tool_mode == 1 and structure_id > 0:
 					_place_structure(cell)
 				elif tool_mode == 2 and npc_set != "":
 					_place_npc(cell)
@@ -394,6 +422,44 @@ func _paint(center: Vector2i, type_id: int, size: int) -> void:
 			if type_id == -1:
 				_erase_entity(cell)
 			_set_cell_undo(cell, type_id)
+
+## Инструмент «Выбор»: показать в статусе, что стоит на клетке — НПЦ, структура
+## или объект-препятствие (по слоям данных, без изменения карты).
+func _inspect(cell: Vector2i) -> void:
+	for rec in map.npcs:
+		if int(rec.get("x", -1)) == cell.x and int(rec.get("y", -1)) == cell.y:
+			var set_name := str(rec.get("set", ""))
+			var o := UnitDB.get_set(set_name)
+			var hostile := " (монстр)" if UnitDB.is_hostile(set_name) else ""
+			_inspect_msg = "НПЦ: %s — %s%s" % [set_name, o.get("desc", ""), hostile]
+			return
+	for rec in map.structures:
+		var def := StructureDB.get_by_id(int(rec.get("type_id", 0)))
+		if def.is_empty():
+			continue
+		var rx := int(rec.get("x", 0))
+		var ry := int(rec.get("y", 0))
+		var fw := int(def.get("tile_width", 1))
+		var th := int(def.get("tile_height", 1))
+		var fh := int(def.get("full_height", th))
+		var x0 := rx
+		var x1 := rx + fw - 1
+		var y0 := ry - (fh - th)
+		var y1 := ry + th - 1
+		if cell.x >= x0 and cell.x <= x1 and cell.y >= y0 and cell.y <= y1:
+			_inspect_msg = "Структура: %s (id %s, %s)" % [def.get("desc", "?"), rec.get("type_id"), def.get("folder", "")]
+			return
+	# Объект-препятствие (дерево/камень) из секции obstacles .alm
+	var spec := map.texture_spec_at(cell)
+	var obj_name := ObjectDB.object_name_from_spec(spec)
+	if obj_name != "" and map.tile_id_at(cell) == 5:
+		_inspect_msg = "Объект: %s" % obj_name
+		return
+	var t := map.tile_id_at(cell)
+	if t >= 0:
+		_inspect_msg = "Клетка %d,%d — %s" % [cell.x, cell.y, CustomMap.TYPE_NAMES[t]]
+	else:
+		_inspect_msg = "Клетка %d,%d — пусто" % [cell.x, cell.y]
 
 ## Поставить структуру (здание) с якорем-клеткой (левый-нижний угол корпуса).
 func _place_structure(cell: Vector2i) -> void:
@@ -499,6 +565,7 @@ func _on_new() -> void:
 	_update_palette_icons()
 	_build_texture_strip()
 	_center_camera()
+	_select_tool(3)
 	status_label.text = "Новая карта %dx%d" % [w, h]
 
 func _on_save() -> void:
@@ -545,6 +612,7 @@ func _open_alm_file(path: String) -> void:
 	_update_palette_icons()
 	_build_texture_strip()
 	_center_camera()
+	_select_tool(3)   # после открытия — инструмент «Выбор», чтобы не задеть карту
 	status_label.text = "Открыт .alm: %s (%dx%d)" % [path.get_file(), map.map_width, map.map_height]
 
 ## Восстановить спавн из файла-якоря "<имя>.spawn.json" (если есть): ставим
@@ -742,6 +810,10 @@ func _process(_delta) -> void:
 			dir.x += 1
 		if dir != Vector2.ZERO:
 			camera.position += dir.normalized() * speed
+	if _inspect_msg != "":
+		# Сообщение инспектора держится, пока не выбран другой инструмент
+		status_label.text = _inspect_msg
+		return
 	if map:
 		var tex_info := "-"
 		var set: Array = map.texture_sets.get(brush_type, [])

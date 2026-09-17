@@ -378,7 +378,9 @@ func _hover_portrait() -> void:
 	# 1) Юнит под курсором (монстр или житель): радиус 32px вокруг центра
 	for e in Game.enemies + Game.npcs:
 		if is_instance_valid(e) and e.global_position.distance_to(world) < 32.0:
-			var set_name: String = str(e.get("anim_set", "")) if "anim_set" in e else ""
+			var set_name := ""
+			if e is Enemy or e is Npc:
+				set_name = str(e.anim_set)
 			if set_name != "":
 				pic = str(UnitDB.get_set(set_name).get("picture", ""))
 			break

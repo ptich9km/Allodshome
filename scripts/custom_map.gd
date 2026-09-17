@@ -163,8 +163,60 @@ func import_alm(data: Dictionary) -> void:
 		var s: Dictionary = specs[i]
 		tiles[i] = int(s["cat"])
 		tex_ids[i] = int(s["idx"])
+	_import_alm_obstacles(data, alm_tiles.size())
 	_refresh_spawn()
 	_build_tilemap()
+
+## Препятствия .alm (секция obstacles: деревья/камни/статуи) -> клетки типа 5
+## с объектным спеком {kind:object, obj:folder} — деревья видны в редакторе.
+func _import_alm_obstacles(data: Dictionary, n: int) -> void:
+	var obstacles: PackedByteArray = data.get("obstacles", PackedByteArray())
+	# Секция obstacles может отсутствовать (пустые массивы от loader)
+	if obstacles.size() < n:
+		return
+	var has_any := false
+	for i in range(n):
+		if obstacles[i] > 0:
+			has_any = true
+			break
+	if not has_any:
+		return
+	_load_alm_obstacle_db()
+	var folder_idx := {}     # folder -> индекс в наборе типа 5
+	var set: Array = texture_sets.get(5, [])
+	for i in range(n):
+		if obstacles[i] <= 0:
+			continue
+		var rec: Dictionary = _alm_obstacle_db.get(str(obstacles[i]), {})
+		var folder := str(rec.get("folder", ""))
+		if folder == "" or folder_idx.has(folder):
+			continue
+		folder_idx[folder] = set.size()
+		set.append({"kind": "object", "obj": folder, "file": 1, "variant": 0, "row": 0})
+	for i in range(n):
+		if obstacles[i] <= 0:
+			continue
+		var rec: Dictionary = _alm_obstacle_db.get(str(obstacles[i]), {})
+		var folder := str(rec.get("folder", ""))
+		if folder == "" or not folder_idx.has(folder):
+			continue
+		if tiles[i] >= 0 and tiles[i] < 5:
+			under_tiles[i] = tiles[i]
+		tiles[i] = 5
+		tex_ids[i] = int(folder_idx[folder])
+
+## Реестр препятствий .alm: obstacle id -> {folder, w, h, cx, cy, phases}.
+var _alm_obstacle_db := {}
+func _load_alm_obstacle_db() -> void:
+	if not _alm_obstacle_db.is_empty():
+		return
+	var f := FileAccess.open("res://assets/map-objects/alm_objects.json", FileAccess.READ)
+	if f == null:
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		_alm_obstacle_db = parsed
 
 ## Категория редактора для tile id: 0=tile1 трава, 1=tile2 земля,
 ## 2=tile3 вода, 3=tile4 дорога/камень (категории редактора 0..4).
