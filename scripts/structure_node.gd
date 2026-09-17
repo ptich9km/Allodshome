@@ -65,6 +65,16 @@ func _build() -> void:
 	_phase = 0
 	_active = use_anim and _blocks > 1
 
+	# Отсев «мусорных» фаз: если первый кадр блока — пустышка/битый конверт
+	# (файл < 160 байт, напр. inn1 house-010 = 83 б), анимацию отключаем — иначе
+	# здание «мигает» дырками между фазами.
+	if _active:
+		for b in range(1, _blocks):
+			if _house_size(b * grid + 1) < 160:
+				_blocks = 1
+				break
+		_active = use_anim and _blocks > 1
+
 	# Тайлы (все блоки берём из первого блока: блок 0 — база)
 	for ly in range(fh):
 		for lx in range(fw):
@@ -84,9 +94,19 @@ func _build() -> void:
 			s.name = "Shadow%d" % _shadow_tiles.size()
 			s.position = Vector2(lx * TILE, ly * TILE + shadow_off)
 			s.z_index = -2
+			s.modulate = Color(1, 1, 1, 0.4)   # полупрозрачная тень (не «второе здание»)
 			add_child(s)
 			_shadow_tiles.append(s)
 	_apply_frame()
+
+## Размер файла кадра house-NNN в байтах (-1, если файла нет).
+func _house_size(frame: int) -> int:
+	var f := FileAccess.open("res://assets/structures/%s/house-%03d.png" % [folder, frame], FileAccess.READ)
+	if f == null:
+		return -1
+	var sz := f.get_length()
+	f.close()
+	return sz
 
 ## Применить текущую фазу ко всем тайлам.
 func _apply_frame() -> void:
