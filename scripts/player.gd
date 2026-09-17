@@ -66,6 +66,7 @@ func _ready():
 	current_mana = max_mana
 	move_speed = _calc_speed()
 	alm_map = get_tree().get_first_node_in_group("alm_map")
+	collision_mask = 0   # юниты не толкают друг друга физикой — ходят по сетке проходимости
 	_ensure_sprite()
 	_create_health_bar()
 	_setup_starter_magic()
@@ -379,8 +380,9 @@ func _follow_path(delta: float) -> void:
 
 func chase_target(delta):
 	if attack_target and is_instance_valid(attack_target):
-		var distance = global_position.distance_to(attack_target.global_position)
-		if distance <= Game.ATTACK_RANGE:
+		# Дистанция боя — между корпусами (хит-боксами), а не точками «пола»
+		var range_to_enemy := Game.units_range(self, attack_target)
+		if range_to_enemy <= Game.ATTACK_RANGE:
 			_path.clear()
 			state = "attack"
 			velocity = Vector2.ZERO
@@ -404,6 +406,10 @@ func chase_target(delta):
 
 func attack_enemy(_delta):
 	if attack_target and is_instance_valid(attack_target):
+		# Враг убежал из радиуса — догоняем, а не бьём в пустоту
+		if Game.units_range(self, attack_target) > Game.ATTACK_RANGE + 12.0:
+			state = "chase"
+			return
 		if attack_cooldown <= 0:
 			var damage = get_damage_min() + randi() % (get_damage_max() - get_damage_min() + 1)
 			print("Атакуем! Урон: ", damage)

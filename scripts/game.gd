@@ -252,6 +252,8 @@ static func unit_hit_rect(u: Node2D) -> Rect2:
 	var set_name := ""
 	if "anim_set" in u:
 		set_name = str(u.get("anim_set"))
+	if set_name == "" and u is Player:
+		set_name = (u as Player).anim_set_name()
 	var w := 128
 	var h := 128
 	var sel := Rect2i(16, 16, 96, 96)
@@ -262,6 +264,19 @@ static func unit_hit_rect(u: Node2D) -> Rect2:
 		sel = UnitDB.sel_box(set_name)
 	var base := u.global_position + Vector2(-w / 2.0, -h)
 	return Rect2(base + Vector2(sel.position.x, sel.position.y), Vector2(sel.size.x, sel.size.y))
+
+## Расстояние между КОРПУСАМИ юнитов (хит-бокс к хит-боксу; 0 при пересечении).
+## Для боя: юниты встают вплотную телами и атакуют, а не «издалека по центру».
+static func units_range(a: Node2D, b: Node2D) -> float:
+	var ra := unit_hit_rect(a)
+	var rb := unit_hit_rect(b)
+	if ra.intersects(rb):
+		return 0.0
+	var dx := maxf(0.0, maxf(ra.position.x - (rb.position.x + rb.size.x),
+		rb.position.x - (ra.position.x + ra.size.x)))
+	var dy := maxf(0.0, maxf(ra.position.y - (rb.position.y + rb.size.y),
+		rb.position.y - (ra.position.y + ra.size.y)))
+	return sqrt(dx * dx + dy * dy)
 
 func _process(delta):
 	if is_paused:

@@ -14,6 +14,7 @@ var _anim: UnitAnim = null
 
 func _ready() -> void:
 	add_to_group("mercenary")
+	collision_mask = 0   # юниты не толкают друг друга физикой
 	current_hp = max_hp
 	_anim = UnitAnim.new()
 	_anim.name = "UnitAnim"

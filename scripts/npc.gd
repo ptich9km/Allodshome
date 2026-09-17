@@ -20,6 +20,7 @@ var _pause_timer := 0.0
 
 func _ready() -> void:
 	add_to_group("npcs")
+	collision_mask = 0   # жители не толкают друг друга физикой
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	_anim = UnitAnim.new()
 	_anim.name = "UnitAnim"

@@ -19,6 +19,7 @@ var _anim: UnitAnim = null
 
 func _ready():
 	add_to_group("enemy")
+	collision_mask = 0   # юниты не толкают друг друга физикой
 	current_hp = max_hp
 	home_position = global_position
 	_create_sprite()
@@ -57,7 +58,7 @@ func _physics_process(delta):
 		move_and_slide()
 		return
 
-	var distance_to_player = global_position.distance_to(player.global_position)
+	var distance_to_player = Game.units_range(self, player)
 	var hp_percent = float(current_hp) / max_hp
 
 	match state:
