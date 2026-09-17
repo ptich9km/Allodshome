@@ -85,7 +85,6 @@ Allodshome/
 │   ├── alm_loader.gd        # Декодер .alm ("M7R", 2 байта/тайл × 2 слоя)
 │   ├── alm_map.gd           # Карта из .alm (TileMapLayer 32x32)
 │   ├── health_bar.gd        # HP/Mana бары
-│   └── map_generator.gd     # (вспомогательный)
 ├── assets/
 │   ├── maps/                # Beach.alm, 84.alm, my_map.json, map_editor_palette.json
 │   ├── map-objects/         # 77 объектов: sprites-00N.png, dead/, object_db.json
