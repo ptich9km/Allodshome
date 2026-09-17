@@ -209,6 +209,9 @@ func _input(event):
 			ui.toggle_spells()
 
 func handle_click(world_position: Vector2):
+	# Герой мёртв (падение/разложение) — управление не работает
+	if is_instance_valid(player) and player.state in ["dead", "decay"]:
+		return
 	print("Клик в: ", world_position)
 
 	# Клик по функциональному зданию: магазин / таверна / школа (подход к двери)

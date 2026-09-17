@@ -503,10 +503,14 @@ func _hover_portrait() -> void:
 				_hover_name = ""
 				portrait_texture.texture = hero_portrait
 				return
+			# Кадр спрайта — в центр в оригинальном размере (без растягивания)
+			portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		else:
 			tex = load(path)
 			if tex != null:
 				_portrait_cache[lower] = tex
+			# Настоящий портрет (герой/здания) — вписываем с сохранением пропорций
+			portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	if tex != null:
 		portrait_texture.texture = tex
 	else:

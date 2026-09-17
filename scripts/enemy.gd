@@ -208,6 +208,9 @@ func _chase_move(delta: float) -> void:
 		_move_checked((target - global_position).normalized(), move_speed, delta)
 
 func take_damage(dmg: int, attacker: Node2D):
+	# Труп не получает урон: иначе на каждый удар по телу падает новый мешок
+	if state == "dying" or state == "decay" or state == "corpse":
+		return
 	current_hp -= dmg
 	# При получении урона — сразу начинаем погоню
 	if is_instance_valid(attacker):
@@ -215,6 +218,8 @@ func take_damage(dmg: int, attacker: Node2D):
 		attack_target = attacker
 	if current_hp <= 0:
 		SoundDB.play(_unit_sound_at(4))  # смерть
+		# Убираем из списка врагов: герой перестаёт выбирать труп целью
+		Game.enemies.erase(self)
 		_drop_loot()
 		state = "dying"
 		attack_target = null

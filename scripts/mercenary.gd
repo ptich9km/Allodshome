@@ -10,6 +10,8 @@ class_name Mercenary
 
 var current_hp: int
 var attack_cooldown: float = 0.0
+var state: String = "idle"      # idle | dying | decay | corpse
+var _corpse_timer := 0.0
 var _anim: UnitAnim = null
 
 func _ready() -> void:
@@ -27,6 +29,33 @@ func _physics_process(delta: float) -> void:
 		return
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	_apply_relief_stand()
+
+	# Наёмник умер: падение → разложение (если есть) → исчезновение
+	if state == "dying" or state == "decay" or state == "corpse":
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+		match state:
+			"dying":
+				_anim.play(UnitAnim.Anim.DYING)
+				if _anim.advance(delta):
+					if UnitDB.decay_phases(anim_set) > 0:
+						state = "decay"
+						_anim.play(UnitAnim.Anim.DECAY)
+					else:
+						state = "corpse"
+						_anim.freeze_last_frame(UnitAnim.Anim.DYING)
+						_corpse_timer = 5.0
+			"decay":
+				if _anim.advance(delta):
+					state = "corpse"
+					_anim.freeze_last_frame(UnitAnim.Anim.DECAY)
+					_corpse_timer = 3.0
+			"corpse":
+				_corpse_timer -= delta
+				if _corpse_timer <= 0.0:
+					queue_free()
+					return
+		move_and_slide()
+		return
 
 	var target := _nearest_enemy(240.0)
 	if target != null:
@@ -88,11 +117,16 @@ func _attack(target: Node2D) -> void:
 	SoundDB.play(5)
 
 func take_damage(dmg: int, _attacker: Node2D) -> void:
+	# Мёртвый наёмник урона не получает
+	if state == "dying" or state == "decay" or state == "corpse":
+		return
 	current_hp -= dmg
 	if current_hp <= 0:
+		current_hp = 0
 		SoundDB.play(4)
 		Game.party.erase(self)
-		queue_free()
+		velocity = Vector2.ZERO
+		state = "dying"
 	else:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))
 

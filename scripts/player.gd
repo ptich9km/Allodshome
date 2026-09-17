@@ -325,7 +325,20 @@ func _physics_process(delta):
 		"dead":
 			velocity = Vector2.ZERO
 			if _anim:
+				# Падение: DYING один раз, затем разложение DECAY (1-2-3), потом пауза
 				_anim.play(UnitAnim.Anim.DYING)
+				if _anim.advance(delta):
+					if UnitDB.decay_phases(anim_set_name()) > 0:
+						state = "decay"
+						_anim.play(UnitAnim.Anim.DECAY)
+					else:
+						get_tree().paused = true
+		"decay":
+			velocity = Vector2.ZERO
+			if _anim:
+				_anim.play(UnitAnim.Anim.DECAY)
+				if _anim.advance(delta):
+					get_tree().paused = true
 
 	move_and_slide()
 	_apply_relief_stand()
@@ -392,6 +405,12 @@ func _follow_path(delta: float) -> void:
 
 func chase_target(delta):
 	if attack_target and is_instance_valid(attack_target):
+		# Цель умерла (падение/разложение) — прекращаем погоню
+		if attack_target.is_in_group("enemy") and not Game.enemies.has(attack_target):
+			attack_target = null
+			state = "idle"
+			velocity = Vector2.ZERO
+			return
 		# Дистанция боя — между корпусами (хит-боксами), а не точками «пола»
 		var range_to_enemy := Game.units_range(self, attack_target)
 		if range_to_enemy <= Game.ATTACK_RANGE:
@@ -697,12 +716,17 @@ func _create_lightning_effect(from: Vector2, to: Vector2):
 	)
 
 func take_damage(damage: int, _attacker: Node2D):
+	# Мёртвый герой больше не получает урон
+	if state == "dead" or state == "decay":
+		return
 	current_hp -= damage
 	SoundDB.play_pain([0, 0, 220, 221, 240])  # боль человека (easy1/easy2)
 	if current_hp <= 0:
-		# Смерть — не удаляем а показываем экран
+		# Смерть: играем падение DYING + разложение DECAY, затем пауза
 		velocity = Vector2.ZERO
 		state = "dead"
+		_path.clear()
+		Game.player_target = global_position
 		SoundDB.play(240)  # units\dead1
-		get_tree().paused = true
-		print("=== ВЫ ПОГИБЛИ! Нажмите R для рестарта ===")
+		if health_bar:
+			health_bar.visible = false
