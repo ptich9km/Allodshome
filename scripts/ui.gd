@@ -590,24 +590,17 @@ func _update_stats():
 	var absorption = p.get_absorption()
 	var attack = p.get_attack()
 	var sight = p.get_sight()
-	var hp_regen = p._calc_hp_regen()
-	var mana_regen = p._calc_mana_regen()
 
 	var stats = "ИМЯ: %s\n" % Game.hero_name
-	stats += "─────────────\n"
 	stats += "ТЕЛО:%d  ЛОВКОСТЬ:%d\n" % [p.body, p.agility]
 	stats += "РАЗУМ:%d  ДУХ:%d\n" % [p.mind, p.spirit]
-	stats += "─────────────\n"
-	stats += "HP:%d/%d  РЕГЕН:%d\n" % [p.current_hp, p.max_hp, hp_regen]
-	stats += "МАНА:%d/%d  РЕГЕН:%d\n" % [p.current_mana, p.max_mana, mana_regen]
-	stats += "─────────────\n"
+	stats += "HP:%d/%d\n" % [p.current_hp, p.max_hp]
+	stats += "МАНА:%d/%d\n" % [p.current_mana, p.max_mana]
 	stats += "АТАКА:%d  УРОН:%d-%d\n" % [attack, damage_min, damage_max]
 	stats += "ЗАЩИТА:%d  ПОГЛОЩ:%d\n" % [defense, absorption]
 	stats += "СКОРОСТЬ:%d  ОБЗОР:%d\n" % [int(p.move_speed), sight]
-	stats += "─────────────\n"
 	stats += "ОГОНЬ:%d  ВОДА:%d  ВОЗДУХ:%d\n" % [p.get_protection_fire(), p.get_protection_water(), p.get_protection_air()]
 	stats += "ЗЕМЛЯ:%d  АСТРАЛ:%d\n" % [p.get_protection_earth(), p.get_protection_astral()]
-	stats += "─────────────\n"
 	stats += "МЕЧ:%d  ТОПОР:%d  ДУБИНА:%d\n" % [p.blade_skill, p.axe_skill, p.bludgeon_skill]
 	stats += "КОПЬЁ:%d  СТРЕЛЬБА:%d\n" % [p.pike_skill, p.shooting_skill]
 	stats += "МАГИЯ: О:%d В:%d ВО:%d ЗЕ:%d А:%d\n" % [p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
