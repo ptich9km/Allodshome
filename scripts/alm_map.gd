@@ -37,7 +37,17 @@ var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
 var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
 var obstacles_root: Node2D      # слой препятствий (y-sort)
 var buildings: Node2D           # слой зданий (y-sort)
+var world_sort: Node2D          # общий y-sort: препятствия + здания (крона перекрывает фонтан)
 var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
+
+## Единый слой с y-сортировкой для препятствий и зданий: южнее — поверх.
+func _ensure_world_sort() -> Node2D:
+	if world_sort == null:
+		world_sort = Node2D.new()
+		world_sort.name = "WorldSort"
+		world_sort.y_sort_enabled = true
+		add_child(world_sort)
+	return world_sort
 
 # Высотная сетка для движения (0/1: скала приподнята) — как раньше
 var _height_grid: Array = []
@@ -88,8 +98,7 @@ func _build_obstacles() -> void:
 		obstacles_root = Node2D.new()
 		obstacles_root.name = "Obstacles"
 		obstacles_root.y_sort_enabled = true
-		obstacles_root.z_index = 1
-		add_child(obstacles_root)
+		_ensure_world_sort().add_child(obstacles_root)
 	for y in range(map_height):
 		for x in range(map_width):
 			var oid := _obstacles[y * map_width + x]
@@ -119,8 +128,7 @@ func _build_structures() -> void:
 		buildings = Node2D.new()
 		buildings.name = "Buildings"
 		buildings.y_sort_enabled = true
-		buildings.z_index = 4
-		add_child(buildings)
+		_ensure_world_sort().add_child(buildings)
 	var placed := 0
 	var missing := 0
 	for st in _structures:

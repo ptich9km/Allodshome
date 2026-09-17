@@ -711,14 +711,44 @@ func _update_bottom_panel_visibility():
 var _shop: ShopPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
+var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
+var _in_interior := false
+
+## Вход в здание: герой «уходит внутрь» (скрыт на карте), выходит при закрытии.
+func _enter_interior() -> void:
+	if not is_instance_valid(player):
+		return
+	_interior_pos = player.global_position
+	player.visible = false
+	_in_interior = true
+
+func _exit_interior() -> void:
+	if not _in_interior:
+		return
+	_in_interior = false
+	if is_instance_valid(player):
+		player.visible = true
+		player.global_position = _interior_pos
+
+## Общий обработчик закрытия любой панели: показать героя у здания.
+func _on_panel_closed() -> void:
+	_shop = null
+	_school = null
+	_inn = null
+	_exit_interior()
+
+## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
+func is_editor_open() -> bool:
+	return is_instance_valid(_shop) or is_instance_valid(_school) or is_instance_valid(_inn)
 
 ## Магазин: купля/продажа (клик по зданию Shop).
 func open_shop() -> void:
 	if _shop != null and is_instance_valid(_shop):
 		return
+	_enter_interior()
 	_shop = ShopPanel.new()
 	_shop.setup(player)
-	_shop.closed.connect(func(): _shop = null)
+	_shop.closed.connect(_on_panel_closed)
 	_shop.inventory_changed.connect(refresh_inventory)
 	add_child(_shop)
 	refresh_inventory()
@@ -727,16 +757,18 @@ func open_shop() -> void:
 func open_school() -> void:
 	if _school != null and is_instance_valid(_school):
 		return
+	_enter_interior()
 	_school = SchoolPanel.new()
 	_school.setup(player)
-	_school.closed.connect(func(): _school = null)
+	_school.closed.connect(_on_panel_closed)
 	add_child(_school)
 
 ## Таверна: наём наёмников и разговоры (клик по Inn).
 func open_inn() -> void:
 	if _inn != null and is_instance_valid(_inn):
 		return
+	_enter_interior()
 	_inn = InnPanel.new()
 	_inn.setup(player)
-	_inn.closed.connect(func(): _inn = null)
+	_inn.closed.connect(_on_panel_closed)
 	add_child(_inn)
