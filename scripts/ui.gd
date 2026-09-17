@@ -15,7 +15,7 @@ class_name GameUI
 
 # Правые панели — двигаем при смене размера окна (колонка 176px у правого края)
 @onready var right_panels: Array = [
-	$MinimapBorder, $HeadBarL, $HeadBarR, $HeroName,
+	$MinimapBorder, $HeroName,
 	$PortraitBorder, $StatsBorder, $CommandL, $CommandBar,
 ]
 const COL_W := 176  # ширина правой колонки (кромка 16 + поле 160)

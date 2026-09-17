@@ -2,6 +2,9 @@
 .godot/
 *.godot/
 
+# Temp/agent scratch
+.qwen/
+
 # OS generated files
 .DS_Store
 Thumbs.db
