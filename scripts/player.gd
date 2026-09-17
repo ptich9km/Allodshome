@@ -228,8 +228,8 @@ func _height_speed_factor(target_pos: Vector2) -> float:
 	var tgt_h: int = alm_map.height_at_world(target_pos)
 	var f := 1.0
 	if tgt_h > cur_h:
-		# Подъём — замедление (каждый уровень -30%)
-		f = maxf(0.4, 1.0 - 0.3 * (tgt_h - cur_h))
+		# Подъём — замедление (каждый уровень -30%, минимум 0.45 — «ползёт», а не стоит)
+		f = maxf(0.45, 1.0 - 0.3 * (tgt_h - cur_h))
 	if alm_map.has_method("speed_factor_at_world"):
 		f *= float(alm_map.call("speed_factor_at_world", global_position))
 	return f
@@ -380,7 +380,7 @@ func _follow_path(delta: float) -> void:
 	_move_checked(dir, move_speed * speed_factor, delta)
 	if velocity.length_squared() < 1.0:
 		_stuck_frames += 1
-		if _stuck_frames > 12:
+		if _stuck_frames > 20:
 			_path.clear()
 			state = "idle"
 	else:

@@ -702,8 +702,12 @@ func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 	var start := _cell_of(from_world)
 	var goal := _cell_of(to_world)
+	# Герой может стоять в клетке, которая по разметке непроходима (упёрся/склон):
+	# путь начинаем от ближайшей ПРОХОДИМОЙ клетки рядом, иначе «нельзя вернуться».
 	if not _cell_walkable(start):
-		return []
+		start = _nearest_walkable(start, 4)
+		if start.x < 0:
+			return []
 	if not _cell_walkable(goal):
 		# Цель непроходима: пробуем 4 соседей, берём ближайшего
 		var best: Vector2i = goal
@@ -751,6 +755,20 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 
 func _cell_walkable(cell: Vector2i) -> bool:
 	return is_walkable_world(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
+
+## Ближайшая проходимая клетка (спираль радиуса r) или (-1,-1).
+func _nearest_walkable(cell: Vector2i, r: int) -> Vector2i:
+	if _cell_walkable(cell):
+		return cell
+	for radius in range(1, r + 1):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if abs(dx) != radius and abs(dy) != radius:
+					continue
+				var c := cell + Vector2i(dx, dy)
+				if _cell_walkable(c):
+					return c
+	return Vector2i(-1, -1)
 
 func tile_id_at(cell: Vector2i) -> int:
 	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:

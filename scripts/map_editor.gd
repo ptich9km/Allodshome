@@ -57,6 +57,15 @@ func _ready() -> void:
 	_center_camera()
 	_select_tool(3)   # стартуем с инструментом «Выбор» (нельзя случайно испортить)
 
+	# Автооткрытие карты из аргумента запуска:
+	# godot --path . res://scenes/map_editor.tscn -- --open-alm=res://assets/maps/Kids3.alm
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--open-alm="):
+			var p := a.trim_prefix("--open-alm=")
+			if FileAccess.file_exists(p):
+				_open_alm_file(p)
+			break
+
 func _build_ui() -> void:
 	ui = CanvasLayer.new()
 	add_child(ui)
