@@ -46,7 +46,7 @@ font_names = PackedStringArray("Consolas", "Courier New", "DejaVu Sans Mono", "L
 
 [sub_resource type="FontVariation" id="FontVariation_mono95"]
 base_font = SubResource("SystemFont_mono")
-variation_font_size = -0.5
+variation_font_size = -1.0
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_game")
