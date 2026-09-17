@@ -28,6 +28,7 @@ var dir := 0                  # текущее МИРОВОЕ направлен
 var anim: int = Anim.IDLE
 var anim_idx := 0             # номер фазы в текущем блоке
 var anim_time := 0.0
+var speed_scale := 1.0        # множитель темпа (движение быстрее — шаги быстрее)
 var _last_dir := 0
 
 var _sprite: Sprite2D
@@ -101,6 +102,7 @@ func advance(delta: float) -> bool:
 	var t: float = 0.12
 	if anim_idx < times.size():
 		t = times[anim_idx]
+	t /= maxf(speed_scale, 0.05)
 	anim_time += delta
 	if anim_time < t:
 		return false

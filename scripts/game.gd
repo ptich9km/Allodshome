@@ -222,6 +222,9 @@ func handle_click(world_position: Vector2):
 		player_target = world_position
 		player.state = "move"
 		player.attack_target = null
+		# Маршрут с обходом препятствий (pathfinding по клеткам), не «по прямой»
+		if alm_map != null and alm_map.has_method("find_path"):
+			player.begin_path(alm_map.find_path(player.global_position, world_position))
 
 ## Функциональная роль здания по папке структуры (StructureDB).
 func _structure_kind(type_id: int) -> String:

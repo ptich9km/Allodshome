@@ -42,6 +42,8 @@ var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,pic
 # Высотная сетка для движения (0/1: скала приподнята) — как раньше
 var _height_grid: Array = []
 
+const _DIRS_4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
 func _ready() -> void:
 	add_to_group("alm_map")
 	if alm_path.is_empty():
@@ -651,6 +653,64 @@ func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 	var max_x := map_width * TILE - margin
 	var max_y := map_height * TILE - margin
 	return pos.x >= min_x and pos.y >= min_y and pos.x <= max_x and pos.y <= max_y
+
+## --- Путь (pathfinding): BFS по сетке проходимости, обход препятствий ---
+
+## Путь от from_world до to_world в мировых точках (центры клеток), без первой
+## клетки. Если цель непроходима — ищем путь к ближайшей проходимой рядом с ней
+## (клик по дереву/воде подводит героя к самому краю). Пустой — пути нет.
+func find_path(from_world: Vector2, to_world: Vector2) -> Array:
+	var start := _cell_of(from_world)
+	var goal := _cell_of(to_world)
+	if not _cell_walkable(start):
+		return []
+	if not _cell_walkable(goal):
+		# Цель непроходима: пробуем 4 соседей, берём ближайшего
+		var best: Vector2i = goal
+		var best_d := -1.0
+		for d in _DIRS_4:
+			var n := goal + d
+			if _cell_walkable(n):
+				var dist := from_world.distance_squared_to(Vector2(n.x * TILE + TILE / 2, n.y * TILE + TILE / 2))
+				if best_d < 0.0 or dist < best_d:
+					best_d = dist
+					best = n
+		if best_d < 0.0:
+			return []
+		goal = best
+
+	# BFS по 4 соседям
+	var prev := {}
+	var queue: Array = [start]
+	var seen := {start: true}
+	while not queue.is_empty():
+		var cur: Vector2i = queue.pop_front()
+		if cur == goal:
+			break
+		for d in _DIRS_4:
+			var n := cur + d
+			if seen.has(n) or not _cell_walkable(n):
+				continue
+			seen[n] = true
+			prev[n] = cur
+			queue.append(n)
+	if not seen.has(goal):
+		return []
+
+	# Восстановить путь и перевести в мировые точки (центры клеток)
+	var cells: Array = []
+	var c := goal
+	while c != start:
+		cells.append(c)
+		c = prev[c]
+	cells.reverse()
+	var out: Array = []
+	for cell in cells:
+		out.append(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
+	return out
+
+func _cell_walkable(cell: Vector2i) -> bool:
+	return is_walkable_world(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
 
 func tile_id_at(cell: Vector2i) -> int:
 	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:

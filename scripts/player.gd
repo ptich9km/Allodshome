@@ -26,6 +26,9 @@ var state: String = "idle"
 var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
 var move_speed: float = 120.0
+var _path: Array = []        # маршрут (мировые точки — центры клеток), без «льда»
+var _stuck_frames := 0
+var _repath_timer := 0.0
 
 # --- Экономика (P0): золото и склад владений ---
 var gold: int = 20
@@ -293,12 +296,14 @@ func _physics_process(delta):
 			if _anim:
 				_anim.play(UnitAnim.Anim.MOVE)
 				_anim.set_direction_vec(velocity)
+				_anim.speed_scale = clampf(velocity.length() / maxf(move_speed * 0.85, 1.0), 0.5, 2.0)
 				_anim.advance(delta)
 		"chase":
 			chase_target(delta)
 			if _anim:
 				_anim.play(UnitAnim.Anim.MOVE)
 				_anim.set_direction_vec(velocity)
+				_anim.speed_scale = clampf(velocity.length() / maxf(move_speed * 0.85, 1.0), 0.5, 2.0)
 				_anim.advance(delta)
 		"attack":
 			attack_enemy(delta)
@@ -325,6 +330,13 @@ func _apply_relief_stand() -> void:
 		health_bar.position.y = -(h + 60.0)  # бар выше головы
 
 func move_to_target(delta):
+	if _path.size() > 0:
+		_follow_path(delta)
+		if _path.is_empty():
+			# Маршрут пройден — цель достигнута (не скользим дальше)
+			state = "idle"
+			velocity = Vector2.ZERO
+		return
 	if Game.player_target.distance_to(global_position) > 5.0:
 		var direction = (Game.player_target - global_position).normalized()
 		var speed_factor = _height_speed_factor(Game.player_target)
@@ -333,16 +345,53 @@ func move_to_target(delta):
 		state = "idle"
 		velocity = Vector2.ZERO
 
+## Начать движение по маршруту (центры клеток из alm_map.find_path).
+func begin_path(path: Array) -> void:
+	_path = path
+	_stuck_frames = 0
+
+## Идти по маршруту: к очередной точке; при упоре 12 кадров — остановиться.
+func _follow_path(delta: float) -> void:
+	if _path.is_empty():
+		return
+	var wp: Vector2 = _path[0]
+	if global_position.distance_to(wp) <= 6.0:
+		_path.pop_front()
+		if _path.is_empty():
+			return
+		wp = _path[0]
+	var dir := (wp - global_position).normalized()
+	var speed_factor := _height_speed_factor(wp)
+	_move_checked(dir, move_speed * speed_factor, delta)
+	if velocity.length_squared() < 1.0:
+		_stuck_frames += 1
+		if _stuck_frames > 12:
+			_path.clear()
+			state = "idle"
+	else:
+		_stuck_frames = 0
+
 func chase_target(delta):
 	if attack_target and is_instance_valid(attack_target):
 		var distance = global_position.distance_to(attack_target.global_position)
-		if distance > Game.ATTACK_RANGE:
+		if distance <= Game.ATTACK_RANGE:
+			_path.clear()
+			state = "attack"
+			velocity = Vector2.ZERO
+			return
+		# Путь к врагу (обход препятствий), перепланировка раз в 0.6 с
+		if _path.is_empty():
+			_repath_timer -= delta
+			if _repath_timer <= 0.0:
+				_repath_timer = 0.6
+				if alm_map != null and alm_map.has_method("find_path"):
+					begin_path(alm_map.find_path(global_position, attack_target.global_position))
+		if _path.size() > 0:
+			_follow_path(delta)
+		else:
 			var direction = (attack_target.global_position - global_position).normalized()
 			var speed_factor = _height_speed_factor(attack_target.global_position)
 			_move_checked(direction, move_speed * speed_factor, delta)
-		else:
-			state = "attack"
-			velocity = Vector2.ZERO
 	else:
 		state = "idle"
 		velocity = Vector2.ZERO
