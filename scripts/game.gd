@@ -313,6 +313,8 @@ func _hover_enemy() -> Node2D:
 	return null
 
 ## Подсветка цели: враг под курсором или текущая цель атаки (красное кольцо).
+## Кольцо ставится по центру ХИТ-БОКСА тела (спрайт выше точки-пола!), иначе
+## оно «висит в пустоте» под моделью.
 func _update_target_ring() -> void:
 	var target: Node2D = null
 	if is_instance_valid(player) and is_instance_valid(player.attack_target) \
@@ -323,8 +325,12 @@ func _update_target_ring() -> void:
 	if _select_ring == null:
 		return
 	if is_instance_valid(target):
+		var r := unit_hit_rect(target)
 		_select_ring.visible = true
-		_select_ring.global_position = target.global_position + Vector2(0, 10)
+		_select_ring.global_position = Vector2(
+			r.position.x + r.size.x / 2.0,
+			r.position.y + r.size.y * 0.55)
+		_select_ring.radius = maxf(22.0, r.size.x / 2.0 + 8.0)
 	else:
 		_select_ring.visible = false
 
