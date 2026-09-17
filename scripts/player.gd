@@ -27,6 +27,10 @@ var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
 var move_speed: float = 120.0
 
+# --- Экономика (P0): золото и склад владений ---
+var gold: int = 20
+var inventory: Array = []   # ключи предметов item_db ("Common Iron Long Sword", "Potion ...")
+
 ## Магия героя: выученные заклинания (книги) и заряды свитков.
 ## known_spells: "Fire_Ball" -> {"charges": -1} — выучено навсегда (маг, из книги);
 ## "Heal" -> {"charges": 2} — заряды свитков (может кастовать, тратя свиток).
@@ -47,6 +51,10 @@ var _anim: UnitAnim = null
 
 func _ready():
 	_apply_hero_choice()
+	# Экономика (P0): стартовое золото и склад владений
+	gold = 20
+	inventory.clear()
+	_grant_starter_set()
 	# Только маги имеют ману и читают книги магии; воины — свитки (заряды).
 	has_mana = Game.hero_class == "mage"
 	max_hp = _calc_max_hp()
@@ -97,6 +105,33 @@ func _apply_hero_choice() -> void:
 	has_shield = bool(st.get("shield", false))
 	armor_kind = str(st.get("armor", armor_kind))
 	# Маг: стартовые заклинания уже в abilities (fireball/heal/lightning)
+
+## Стартовое снаряжение по классу героя (в склад — можно одеть/продать сразу).
+func _grant_starter_set() -> void:
+	inventory.append("Common Iron Long Sword" if Game.hero_class != "mage" else "Common Wood Staff")
+	if Game.hero_stats.get("shield", false):
+		inventory.append("Common Iron Buckler")
+	inventory.append("Common Leather Mail")
+	for i in range(3):
+		inventory.append("Potion Medium Healing")
+	inventory.append("Potion Mana Regeneration")
+
+## --- Склад владений ---
+
+func has_item(key: String) -> bool:
+	return inventory.has(key)
+
+func add_item(key: String) -> void:
+	if key != "":
+		inventory.append(key)
+
+## Убрать предмет из склада; true — если он там был.
+func remove_item(key: String) -> bool:
+	var i := inventory.find(key)
+	if i < 0:
+		return false
+	inventory.remove_at(i)
+	return true
 
 # --- Производные характеристики (связи из оригинального main.txt) ---
 func _calc_max_hp() -> int:

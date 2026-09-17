@@ -76,12 +76,25 @@ var _name_btn: Button
 var _cards: Array = []
 var _name_idx := -1  # последнее сгенерированное имя (для повторной кнопки)
 
+# --- Настройка героя (как в оригинале): атрибуты и склонность навыка ---
+var _edit: Dictionary = {}          # редактируемые статы (копия пресета)
+var _stat_labels := {}              # "body" -> Label значения
+var _pool_label: Label
+var _affinity_buttons: Array = []   # кнопки склонности (field)
+const AFFINITIES := [
+	["Меч", "blade"], ["Топор", "axe"], ["Булава", "bludgeon"], ["Копьё", "pike"],
+	["Стрельба", "shooting"], ["Огонь", "fire"], ["Вода", "water"],
+	["Воздух", "air"], ["Земля", "earth"], ["Астрал", "astral"],
+]
+const STATS_ORDER := ["body", "agility", "mind", "spirit"]
+
 func _ready():
 	_setup_background()
 	_setup_title()
 	_setup_cards()
 	_setup_name_row()
 	_setup_start_button()
+	_setup_editor()
 	# Отложенный выбор: в _ready корень сцены занят, а звук создаёт шину в root
 	_select.call_deferred(0)
 
@@ -237,10 +250,130 @@ func _setup_start_button() -> void:
 	btn.pressed.connect(_start_game)
 	add_child(btn)
 
+## Панель настройки внизу: атрибуты (очки) и склонность навыка (+20).
+func _setup_editor() -> void:
+	var panel := Panel.new()
+	panel.position = Vector2(12, 676)
+	panel.size = Vector2(1256, 116)
+	add_child(panel)
+
+	var lab := Label.new()
+	lab.text = "Характеристики:"
+	lab.position = Vector2(14, 10)
+	lab.add_theme_font_size_override("font_size", 15)
+	panel.add_child(lab)
+
+	var x := 130.0
+	for name in STATS_ORDER:
+		var title := Label.new()
+		title.text = {"body": "ТЕЛО", "agility": "ЛОВКОСТЬ", "mind": "РАЗУМ", "spirit": "ДУХ"}[name]
+		title.position = Vector2(x, 8)
+		title.size = Vector2(90, 22)
+		title.add_theme_font_size_override("font_size", 13)
+		panel.add_child(title)
+
+		var minus := Button.new()
+		minus.text = "−"
+		minus.position = Vector2(x, 32)
+		minus.size = Vector2(26, 26)
+		minus.pressed.connect(func(n=name): _change_stat(n, -1))
+		panel.add_child(minus)
+
+		var val := Label.new()
+		val.text = "10"
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		val.position = Vector2(x + 28, 32)
+		val.size = Vector2(44, 26)
+		val.add_theme_font_size_override("font_size", 17)
+		panel.add_child(val)
+		_stat_labels[name] = val
+
+		var plus := Button.new()
+		plus.text = "+"
+		plus.position = Vector2(x + 74, 32)
+		plus.size = Vector2(26, 26)
+		plus.pressed.connect(func(n=name): _change_stat(n, 1))
+		panel.add_child(plus)
+		x += 118.0
+
+	_pool_label = Label.new()
+	_pool_label.position = Vector2(640, 12)
+	_pool_label.size = Vector2(240, 28)
+	_pool_label.add_theme_font_size_override("font_size", 15)
+	_pool_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
+	panel.add_child(_pool_label)
+
+	var alab := Label.new()
+	alab.text = "Склонность (+20 к навыку):"
+	alab.position = Vector2(14, 64)
+	alab.size = Vector2(220, 26)
+	alab.add_theme_font_size_override("font_size", 13)
+	panel.add_child(alab)
+	var ax := 240.0
+	for i in range(AFFINITIES.size()):
+		var b := Button.new()
+		b.text = str(AFFINITIES[i][0])
+		b.toggle_mode = true
+		b.position = Vector2(ax, 62)
+		b.size = Vector2(88, 28)
+		b.pressed.connect(func(idx=i): _pick_affinity(idx))
+		panel.add_child(b)
+		_affinity_buttons.append(b)
+		ax += 96.0
+
+func _change_stat(name: String, delta: int) -> void:
+	if not _edit.has(name):
+		return
+	var v := int(_edit[name])
+	var total := 0
+	for n in STATS_ORDER:
+		total += int(_edit[n])
+	var preset := _edit.get("_preset_total", total)
+	var pool := preset - total
+	if delta < 0:
+		if v <= 4:
+			return
+		_edit[name] = v - 1
+	elif delta > 0:
+		if v >= 20 or pool <= 0:
+			return
+		_edit[name] = v + 1
+	_refresh_editor()
+
+func _pick_affinity(idx: int) -> void:
+	for i in range(_affinity_buttons.size()):
+		(_affinity_buttons[i] as Button).button_pressed = (i == idx)
+	if idx < 0 or idx >= AFFINITIES.size():
+		return
+	_edit[str(AFFINITIES[idx][1])] = 20   # выбранная склонность
+	_refresh_editor()
+
+## Обновить подписи статов/очков после правок.
+func _refresh_editor() -> void:
+	if _edit.is_empty():
+		return
+	var total := 0
+	for n in STATS_ORDER:
+		(_stat_labels[n] as Label).text = str(_edit[n])
+		total += int(_edit[n])
+	var preset := int(_edit.get("_preset_total", total))
+	_pool_label.text = "Очки: %d" % (preset - total)
+
 func _select(idx: int) -> void:
 	if idx < 0 or idx >= CHARACTERS.size():
 		return
 	selected = idx
+	# Редактируемая копия статов пресета + фиксированная сумма («очки»)
+	var base: Dictionary = CHARACTERS[idx]["stats"]
+	_edit = base.duplicate(true)
+	var total := 0
+	for n in STATS_ORDER:
+		total += int(_edit.get(n, 0))
+	_edit["_preset_total"] = total
+	_refresh_editor()
+	# Сброс склонности
+	for i in range(_affinity_buttons.size()):
+		(_affinity_buttons[i] as Button).button_pressed = false
 	for i in range(_cards.size()):
 		_update_card_style(_cards[i])
 		var desc: Label = _cards[i].get_node_or_null("Desc")
@@ -253,7 +386,10 @@ func _select(idx: int) -> void:
 
 func _start_game() -> void:
 	var c: Dictionary = CHARACTERS[selected]
-	var st: Dictionary = c["stats"]
+	var st: Dictionary = _edit.duplicate(true)
+	if st.is_empty():
+		st = c["stats"]
+	st.erase("_preset_total")
 	Game.hero_class = str(c["role"])
 	Game.hero_gender = str(c["gender"])
 	Game.hero_name = name_input.text.strip_edges()

@@ -208,19 +208,41 @@ var inventory_items_meta: Array = []  # исходные Dictionary предме
 
 func _setup_inventory():
 	# Сетка с вертикальным скроллом: по 12 слотов в ряд.
-	# Показываем экипируемые предметы + магические книги и свитки.
+	# Склад владений героя + магическая витрина (книги/свитки) в конце.
 	inventory_grid.columns = 12
-
 	var slot_bg = load("res://assets/interface/myitem.png")
+	build_inventory_grid(slot_bg)
 
-	for item in ItemDB.equippable_items():
-		_add_inventory_slot(item, slot_bg)
+## Пересобрать сетку инвентаря после покупки/продажи/лута/зелья.
+func refresh_inventory() -> void:
+	for s in inventory_slots:
+		if is_instance_valid(s):
+			s.queue_free()
+	inventory_slots.clear()
+	inventory_items.clear()
+	inventory_items_meta.clear()
+	var slot_bg = load("res://assets/interface/myitem.png")
+	build_inventory_grid(slot_bg)
 
-	# Книги стихий (для магов) и свитки (для всех) — в конце инвентаря
+func build_inventory_grid(slot_bg: Texture2D) -> void:
+	if not is_instance_valid(player):
+		return
+	# Склад: предметы, которыми владеет герой
+	for key in player.inventory:
+		var item := ItemDB.find(str(key))
+		if not item.is_empty():
+			_add_inventory_slot(item, slot_bg)
+	# Витрина магии: книги стихий (маг) и свитки (для всех) — учить/читать
 	for item in ItemDB.all():
 		var q := str(item.get("quality", ""))
 		if q in ["Book", "Scroll", "SuperScroll"]:
 			_add_inventory_slot(item, slot_bg)
+	if inventory_slots.is_empty():
+		var lab := Label.new()
+		lab.text = "Склад пуст"
+		lab.add_theme_font_size_override("font_size", 16)
+		lab.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
+		inventory_grid.add_child(lab)
 
 ## Создать слот инвентаря для предмета item (экипировка или магия).
 func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D) -> void:
@@ -267,6 +289,11 @@ func _on_item_clicked(item: Dictionary):
 			_update_stats()
 		return
 
+	# Зелья: лечение/мана из склада
+	if quality == "Potion":
+		_use_potion(item_key, item)
+		return
+
 	var slot := str(item.get("slot", ""))
 	if slot == "armor":
 		player.armor_kind = str(item.get("armor", "light"))
@@ -282,6 +309,32 @@ func _on_item_clicked(item: Dictionary):
 	player.refresh_animation()
 	_update_stats()
 	print("Экипировано: " + str(item.get("name_ru", item_key)))
+
+## Зелья из склада: лечение/мана (объём по названию), предмет расходуется.
+func _use_potion(item_key: String, item: Dictionary) -> void:
+	if not is_instance_valid(player):
+		return
+	var key := item_key.to_lower()
+	var heal := 0
+	var mana := 0
+	if "healing" in key:
+		heal = 60 if "big" in key else (30 if "medium" in key else 20)
+	elif "mana" in key:
+		mana = 50 if "big" in key else (25 if "medium" in key else 15)
+	elif "regen" in key:
+		heal = 15
+		mana = 10
+	if heal <= 0 and mana <= 0:
+		return
+	if not player.remove_item(item_key):
+		return
+	player.current_hp = mini(player.max_hp, player.current_hp + heal)
+	if player.max_mana > 0:
+		player.current_mana = mini(player.max_mana, player.current_mana + mana)
+	SoundDB.play(11)
+	refresh_inventory()
+	_update_stats()
+	print("Использовано: " + str(item.get("name_ru", item_key)))
 
 func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictionary = {}):
 	if slot_idx >= 0 and slot_idx < inventory_slots.size():
@@ -646,3 +699,38 @@ func _update_bottom_panel_visibility():
 		inventory_panel.offset_top = 0.0
 		inventory_panel.offset_bottom = inv_h
 		bottom_panel.offset_top = 800.0 - inv_h
+
+# --- Экономика (P0): панели магазина / школы / таверны ---
+
+var _shop: ShopPanel = null
+var _school: SchoolPanel = null
+var _inn: InnPanel = null
+
+## Магазин: купля/продажа (клик по зданию Shop).
+func open_shop() -> void:
+	if _shop != null and is_instance_valid(_shop):
+		return
+	_shop = ShopPanel.new()
+	_shop.setup(player)
+	_shop.closed.connect(func(): _shop = null)
+	_shop.inventory_changed.connect(refresh_inventory)
+	add_child(_shop)
+	refresh_inventory()
+
+## Школа тренировок: навыки за золото (клик по Training School).
+func open_school() -> void:
+	if _school != null and is_instance_valid(_school):
+		return
+	_school = SchoolPanel.new()
+	_school.setup(player)
+	_school.closed.connect(func(): _school = null)
+	add_child(_school)
+
+## Таверна: наём наёмников и разговоры (клик по Inn).
+func open_inn() -> void:
+	if _inn != null and is_instance_valid(_inn):
+		return
+	_inn = InnPanel.new()
+	_inn.setup(player)
+	_inn.closed.connect(func(): _inn = null)
+	add_child(_inn)

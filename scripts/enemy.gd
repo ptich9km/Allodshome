@@ -144,27 +144,37 @@ func _unit_sound_at(idx: int) -> int:
 	return SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx)
 
 func _drop_loot():
-	var num_items = 1
-	if max_hp >= 80:
-		num_items = 5
-	elif max_hp >= 50:
-		num_items = 3
-	elif max_hp >= 30:
-		num_items = 2
-	
-	var items = []
-	for i in range(num_items):
-		var roll = randi() % 4
-		match roll:
-			0: items.append({"name": "Золото", "amount": randi() % 10 + 1})
-			1: items.append({"name": "Зелье HP", "amount": 1})
-			2: items.append({"name": "Зелье маны", "amount": 1})
-			3: items.append({"name": "Руда", "amount": randi() % 3 + 1})
+	var bag_prefab := load("res://scripts/loot_bag.gd")
+	if bag_prefab == null:
+		return
+	var bag: LootBag = bag_prefab.new()
+	bag.items = _make_loot()
+	bag.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16))
+	get_tree().current_scene.add_child(bag)
 
-	# Лут пока отключён - вернём когда создадим систему инвентаря
-	# var loot_scene = preload("res://scenes/loot_bag.tscn")
-	# if loot_scene:
-	# 	var bag = loot_scene.instantiate()
-	# 	bag.items = items
-	# 	bag.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
-	# 	get_tree().root.add_child(bag)
+## Добыча: золото по силе врага + шанс зелья и снаряжения (как «надето на нём»).
+func _make_loot() -> Array:
+	var pool: Array = []
+	var gold_base := 4 + max_hp / 5
+	pool.append({"gold": gold_base + randi() % gold_base})
+	if randi() % 100 < 45:
+		pool.append({"key": "Potion Medium Healing" if randi() % 2 == 0 else "Potion Mana Regeneration"})
+	if randi() % 100 < 35:
+		var item := _random_gear()
+		if not item.is_empty():
+			pool.append(item)
+	return pool
+
+## Случайное снаряжение «по силе врага» (бюджет = HP × 12), из настоящей базы.
+func _random_gear() -> Dictionary:
+	var budget := maxi(20, max_hp * 12)
+	var pool: Array = []
+	for it in ItemDB.all():
+		if not ItemDB.is_equippable(it):
+			continue
+		var p := int(it.get("price", 0))
+		if p > 0 and p <= budget:
+			pool.append(it)
+	if pool.is_empty():
+		return {}
+	return {"key": str((pool[randi() % pool.size()] as Dictionary).get("key", ""))}

@@ -10,6 +10,8 @@ static var is_paused: bool = false
 static var player_target: Vector2 = Vector2.ZERO
 static var enemies: Array = []
 static var npcs: Array = []               # мирные жители (Npc) вне Game.enemies
+static var hero: Node2D = null            # игрок (для наёмников/лута)
+static var party: Array = []              # наёмники (Mercenary) из таверны
 static var mana_regen_accum: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
@@ -38,6 +40,8 @@ func _ready():
 
 	# Спавним игрока на проходимом тайле в центре карты
 	_spawn_player_on_walkable()
+	Game.hero = player
+	Game.party.clear()
 	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
 	_spawn_map_units()
 
@@ -191,6 +195,23 @@ func _input(event):
 func handle_click(world_position: Vector2):
 	print("Клик в: ", world_position)
 
+	# Клик по функциональному зданию: магазин / таверна / школа (без движения)
+	var cell := Vector2i(int(world_position.x) / 32, int(world_position.y) / 32)
+	if alm_map != null and alm_map.has_method("structure_at"):
+		var s: Dictionary = alm_map.call("structure_at", cell)
+		if not s.is_empty():
+			var kind := _structure_kind(int(s.get("type_id", 0)))
+			match kind:
+				"shop":
+					if ui: ui.open_shop()
+					return
+				"inn":
+					if ui: ui.open_inn()
+					return
+				"school":
+					if ui: ui.open_school()
+					return
+
 	var enemy = get_enemy_at_position(world_position)
 	if enemy:
 		print("Атака врага!")
@@ -201,6 +222,18 @@ func handle_click(world_position: Vector2):
 		player_target = world_position
 		player.state = "move"
 		player.attack_target = null
+
+## Функциональная роль здания по папке структуры (StructureDB).
+func _structure_kind(type_id: int) -> String:
+	var def := StructureDB.get_by_id(type_id)
+	var folder := str(def.get("folder", "")).to_lower()
+	if folder.contains("shop"):
+		return "shop"
+	if folder.contains("inn"):
+		return "inn"
+	if folder.contains("train") or folder.contains("school"):
+		return "school"
+	return ""
 
 func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 	for enemy in enemies:
