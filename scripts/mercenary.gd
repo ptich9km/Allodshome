@@ -66,9 +66,15 @@ func _nearest_enemy(radius: float) -> Node2D:
 func _move_toward(p: Vector2, delta: float) -> void:
 	var dir := (p - global_position).normalized()
 	var wanted := dir * move_speed
+	var next := global_position + wanted * delta
 	var map_node := get_tree().get_first_node_in_group("alm_map")
-	if map_node != null and map_node.has_method("is_walkable_world") \
-			and not map_node.is_walkable_world(global_position + wanted * delta):
+	var can := true
+	if map_node != null and map_node.has_method("is_walkable_world"):
+		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
+		can = map_node.is_walkable_world(next) \
+			or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
+				== Vector2i(int(next.x) / 32, int(next.y) / 32)
+	if not can:
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)   # упёрлись — стоп
 		return
 	velocity = velocity.move_toward(wanted, 1100.0 * delta)

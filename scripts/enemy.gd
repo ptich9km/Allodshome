@@ -136,7 +136,10 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	var can_step := true
 	var map_node = get_tree().get_first_node_in_group("alm_map")
 	if UnitDB.fly_z(anim_set) <= 0 and map_node != null and map_node.has_method("is_walkable_world"):
-		can_step = map_node.is_walkable_world(next)
+		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
+		can_step = map_node.is_walkable_world(next) \
+			or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
+				== Vector2i(int(next.x) / 32, int(next.y) / 32)
 	if can_step:
 		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
 	else:

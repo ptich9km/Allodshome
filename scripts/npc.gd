@@ -87,7 +87,11 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	var wanted := direction * speed
 	var can_step := true
 	if alm_map != null and alm_map.has_method("is_walkable_world"):
-		can_step = alm_map.is_walkable_world(global_position + wanted * delta)
+		var next := global_position + wanted * delta
+		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
+		can_step = alm_map.is_walkable_world(next) \
+			or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
+				== Vector2i(int(next.x) / 32, int(next.y) / 32)
 	if can_step:
 		velocity = velocity.move_toward(wanted, 1100.0 * delta)
 	else:

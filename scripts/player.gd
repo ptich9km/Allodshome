@@ -235,12 +235,16 @@ func _height_speed_factor(target_pos: Vector2) -> float:
 	return f
 
 ## Можно ли двигаться в точку: проходимость (вода/барьер) + границы карты.
+## Исключение: выход ИЗ непроходимой клетки (герой «в дереве») разрешён — шаг
+## внутри своей клетки допускается, чтобы дойти до границы и выйти наружу.
 func _can_move_to(pos: Vector2) -> bool:
 	if not alm_map:
 		return true
-	if not alm_map.is_walkable_world(pos):
-		return false
-	return alm_map.is_within_bounds(pos)
+	if alm_map.is_walkable_world(pos):
+		return alm_map.is_within_bounds(pos)
+	var cur := Vector2i(int(global_position.x) / 32, int(global_position.y) / 32)
+	var nxt := Vector2i(int(pos.x) / 32, int(pos.y) / 32)
+	return nxt == cur
 
 # --- Физика движения тела (плавный разгон/торможение, без «льда») ---
 const MOVE_ACCEL := 1100.0   # px/s² — разгон до 120 px/s за ~0.11 с
