@@ -81,8 +81,8 @@ func _layout_panels() -> void:
 	_apply_stats_mm_offset()
 
 ## Сдвиг текста характеристик в ФИЗИЧЕСКИХ миллиметрах (как отмерено линейкой
-## на мониторе): 9 мм вправо, 3 мм вниз от базовой позиции (8, 6 из .tscn).
-## px = мм * DPI / 25.4 — на 96 DPI это ~34px вправо и ~11px вниз.
+## на мониторе): 7 мм вправо, 3 мм вниз от базовой позиции (8, 6 из .tscn).
+## px = мм * DPI / 25.4 — на 96 DPI это ~26px вправо и ~11px вниз.
 func _apply_stats_mm_offset() -> void:
 	if not is_instance_valid(stats_label):
 		return
@@ -90,7 +90,7 @@ func _apply_stats_mm_offset() -> void:
 	if dpi <= 0:
 		dpi = 96
 	var px_per_mm := dpi / 25.4
-	var dx := int(round(9.0 * px_per_mm))
+	var dx := int(round(7.0 * px_per_mm))
 	var dy := int(round(3.0 * px_per_mm))
 	var base_left := 8.0
 	var base_top := 6.0
