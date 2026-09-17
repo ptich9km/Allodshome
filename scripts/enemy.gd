@@ -77,6 +77,7 @@ func _physics_process(delta):
 				velocity = Vector2.ZERO
 			elif distance_to_player < 40.0:
 				state = "attack"
+				velocity = Vector2.ZERO   # остановиться и бить, а не проскакивать мимо
 			elif hp_percent < 0.15 and can_flee:
 				state = "flee"
 			else:
@@ -84,10 +85,14 @@ func _physics_process(delta):
 		"attack":
 			if distance_to_player > 50.0:
 				state = "chase"
-			elif attack_cooldown <= 0:
-				player.take_damage(damage, self)
-				attack_cooldown = 1.0
-				SoundDB.play(_unit_sound_at(0))
+			else:
+				# Держим стоп между ударами: без этого инерция от погони
+				# несёт монстра мимо игрока — он «бегает вокруг, то туда, то сюда»
+				velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+				if attack_cooldown <= 0:
+					player.take_damage(damage, self)
+					attack_cooldown = 1.0
+					SoundDB.play(_unit_sound_at(0))
 		"flee":
 			var flee_direction = (global_position - player.global_position).normalized()
 			_move_checked(flee_direction, move_speed * 1.5, delta)
