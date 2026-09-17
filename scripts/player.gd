@@ -34,6 +34,129 @@ var _repath_timer := 0.0
 var gold: int = 20
 var inventory: Array = []   # ключи предметов item_db ("Common Iron Long Sword", "Potion ...")
 
+# --- Опыт по навыкам (как у разработчиков UnityAllods/ROM2): ---
+# навык растёт от опыта: exp = (1.1^skill - 1) * 1000; skill = log_1.1(exp/1000 + 1).
+# Опыт даётся за удары оружием и применение магии (по сфере/навыку).
+const SKILL_NAMES := [
+	"blade", "axe", "bludgeon", "pike", "shooting",
+	"fire", "water", "air", "earth", "astral",
+]
+var experience := {}        # name -> очки опыта по навыку
+const UNIT_EXP_BASE := 100  # множитель опыта цели (Template.Experience у разработчиков)
+
+## Очки опыта, соответствующие уровню навыка (обратная формула).
+static func skill_to_exp(skill: int) -> int:
+	return int((pow(1.1, float(skill)) - 1.0) * 1000.0)
+
+## Уровень навыка из очков опыта: floor(log_1.1(exp/1000 + 1)).
+static func exp_to_skill(e: int) -> int:
+	if e <= 0:
+		return 0
+	return int(floor(log(float(e) / 1000.0 + 1.0) / log(1.1)))
+
+## Суммарный опыт героя по всем навыкам (XP в панели).
+func total_experience() -> int:
+	var t := 0
+	for name in SKILL_NAMES:
+		t += int(experience.get(name, 0))
+	return t
+
+## Текущее значение навыка по имени (blade/axe/.../astral) — для урона/UI.
+func skill_value(name: String) -> int:
+	match name:
+		"blade": return blade_skill
+		"axe": return axe_skill
+		"bludgeon": return bludgeon_skill
+		"pike": return pike_skill
+		"shooting": return shooting_skill
+		"fire": return fire_skill
+		"water": return water_skill
+		"air": return air_skill
+		"earth": return earth_skill
+		"astral": return astral_skill
+	return 0
+
+func _set_skill_value(name: String, v: int) -> void:
+	match name:
+		"blade": blade_skill = v
+		"axe": axe_skill = v
+		"bludgeon": bludgeon_skill = v
+		"pike": pike_skill = v
+		"shooting": shooting_skill = v
+		"fire": fire_skill = v
+		"water": water_skill = v
+		"air": air_skill = v
+		"earth": earth_skill = v
+		"astral": astral_skill = v
+
+## Начислить опыт навыку; если уровень из опыта вырос — поднять навык.
+func gain_skill_exp(skill_name: String, amount: int) -> void:
+	if not SKILL_NAMES.has(skill_name) or amount <= 0:
+		return
+	var e := int(experience.get(skill_name, 0)) + amount
+	experience[skill_name] = e
+	var lvl := exp_to_skill(e)
+	if lvl > skill_value(skill_name):
+		_set_skill_value(skill_name, lvl)
+		print("Навык %s повышен до %d!" % [skill_name, lvl])
+
+## Навык из нанесённого урона (по типу оружия героя). "" — опыт не идёт.
+func _weapon_skill_name() -> String:
+	match weapon:
+		"sword": return "blade"
+		"axe": return "axe"
+		"club": return "bludgeon"
+		"pike": return "pike"
+		"bow", "xbow": return "shooting"
+	return ""
+
+## Опыт за попадание: как у разработчиков MapUnit:
+## exp = урон/HPмакс * Experience юнита * (1 + Mind/100); при убийстве x2.
+func _apply_attack_experience(target: Node2D, damage: int) -> void:
+	var ws := _weapon_skill_name()
+	if ws == "" or not is_instance_valid(target):
+		return
+	var target_hp := 50
+	if "max_hp" in target:
+		target_hp = maxi(int(target.max_hp), 1)
+	var f := float(damage) / float(target_hp) * UNIT_EXP_BASE * (1.0 + mind / 100.0)
+	var target_cur := 0
+	if "current_hp" in target:
+		target_cur = int(target.current_hp)
+	if target_cur <= damage:
+		f *= 2.0  # убийство — вдвое больше опыта
+	gain_skill_exp(ws, int(f))
+
+## Опыт за применение магии (по сфере заклинания).
+func _apply_spell_experience(sphere: String) -> void:
+	var ws := sphere.to_lower()
+	if not SKILL_NAMES.has(ws):
+		return
+	# база ~20 * (1 + Mind/100), как «опыт юнита» у заклинаний
+	gain_skill_exp(ws, int(20.0 * (1.0 + mind / 100.0)))
+
+## --- Нагрузка: вес предметов в инвентаре, перегруз снижает скорость ---
+func get_load() -> float:
+	var w := 0.0
+	for key in inventory:
+		var it := ItemDB.find(str(key))
+		w += float(it.get("weight", 0.0))
+	return w
+
+## Ёмкость до перегруза (Body даёт силу нести больше).
+func load_capacity() -> float:
+	return 30.0 + body * 10.0
+
+## Множитель скорости от нагрузки: до ёмкости — 1.0, перегруз — до 0.5.
+func _load_penalty() -> float:
+	var cap := load_capacity()
+	if cap <= 0.0:
+		return 1.0
+	var load := get_load()
+	if load <= cap:
+		return 1.0
+	return clampf(cap / load, 0.5, 1.0)
+
 ## Магия героя: выученные заклинания (книги) и заряды свитков.
 ## known_spells: "Fire_Ball" -> {"charges": -1} — выучено навсегда (маг, из книги);
 ## "Heal" -> {"charges": 2} — заряды свитков (может кастовать, тратя свиток).
@@ -70,6 +193,15 @@ func _ready():
 	_ensure_sprite()
 	_create_health_bar()
 	_setup_starter_magic()
+	_init_experience()
+
+## Начальный опыт из стартовых навыков (skill -> exp, как у разработчиков:
+## exp = (1.1^skill - 1) * 1000). Дальше навык растёт от получаемого опыта.
+func _init_experience() -> void:
+	for name in SKILL_NAMES:
+		var lvl := skill_value(name)
+		if lvl > 0:
+			experience[name] = skill_to_exp(lvl)
 
 ## Стартовая магия: маг уже знает по одному заклинанию сферы (по книге), воин — ничего.
 ## У магов шт обеспечить базовые заклинания для старта игры.
@@ -128,6 +260,7 @@ func has_item(key: String) -> bool:
 func add_item(key: String) -> void:
 	if key != "":
 		inventory.append(key)
+		_recall_speed()
 
 ## Убрать предмет из склада; true — если он там был.
 func remove_item(key: String) -> bool:
@@ -135,7 +268,12 @@ func remove_item(key: String) -> bool:
 	if i < 0:
 		return false
 	inventory.remove_at(i)
+	_recall_speed()
 	return true
+
+## Пересчитать скорость после изменения веса (нагрузки).
+func _recall_speed() -> void:
+	move_speed = _calc_speed()
 
 # --- Производные характеристики (связи из оригинального main.txt) ---
 func _calc_max_hp() -> int:
@@ -158,7 +296,10 @@ func _calc_speed() -> float:
 	# В наших пикселях: base × 7.5 (при agility=10 — те же 120 px/с, что и раньше).
 	var reaction := 2 * agility
 	var base := clampf(float(reaction) / 5.0 + 12.0, 12.0, 255.0)
-	return base * 7.5
+	var speed := base * 7.5
+	# Нагрузка (вес предметов в инвентаре): перегруз замедляет до 0.5x
+	speed *= _load_penalty()
+	return speed
 
 func get_damage_min() -> int:
 	return body / 2 + blade_skill / 10     # Body + навык меча -> урон
@@ -446,6 +587,7 @@ func attack_enemy(_delta):
 			print("Атакуем! Урон: ", damage)
 			_sound_weapon_attack()
 			attack_target.take_damage(damage, self)
+			_apply_attack_experience(attack_target, damage)
 			attack_cooldown = Game.ATTACK_COOLDOWN
 	else:
 		state = "idle"
@@ -573,6 +715,8 @@ func cast_spell(name: String, target_position: Vector2) -> bool:
 				"Light": print("Свет")
 				"Shield": print("Щит (задел)")
 				"Summon": print("Призыв (задел)")
+	# Опыт за применение магии (по сфере заклинания)
+	_apply_spell_experience(sphere)
 	return true
 
 ## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).

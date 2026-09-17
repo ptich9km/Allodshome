@@ -630,14 +630,16 @@ func _update_stats():
 	stats += "ДУХ      %d  %d/%d\n" % [p.spirit, p.current_mana, p.max_mana]
 	stats += "УРОН %d-%d  ЗАЩИТА %d\n" % [damage_min, damage_max, defense]
 	stats += "АТАКА   %d  ПОГЛОЩ %d\n" % [attack, absorption]
-	stats += "НАВЫКИ       СОПРОТИВЛ.\n"
+	stats += "НАВЫКИ     СОПРОТИВЛ.\n"
 	stats += "МЕЧ      %d  ОГОНЬ   %d\n" % [p.blade_skill, p.get_protection_fire()]
 	stats += "ТОПОР    %d  ВОДА    %d\n" % [p.axe_skill, p.get_protection_water()]
 	stats += "ДУБИНА   %d  ВОЗДУХ  %d\n" % [p.bludgeon_skill, p.get_protection_air()]
 	stats += "КОПЬЁ    %d  ЗЕМЛЯ   %d\n" % [p.pike_skill, p.get_protection_earth()]
 	stats += "СТРЕЛЬБА %d  АСТРАЛ  %d\n" % [p.shooting_skill, p.get_protection_astral()]
-	stats += "      ОБЗОР     %d\n" % [sight]
-	stats += "      СКОРОСТЬ  %d\n" % [int(p.move_speed)]
+	stats += "      ОБЗОР    %d\n" % [sight]
+	stats += "      СКОРОСТЬ %d\n" % [int(p.move_speed)]
+	stats += "НАГРУЗКА %.1f/%.0f\n" % [p.get_load(), p.load_capacity()]
+	stats += "ОПЫТ     %d\n" % [p.total_experience()]
 	stats_label.text = stats
 
 func update_ui(p: Player):
