@@ -302,35 +302,63 @@ func _process_pending_building() -> void:
 			"inn": ui.open_inn()
 			"school": ui.open_school()
 
-## Враг под курсором (по видимой области корпуса).
-func _hover_enemy() -> Node2D:
+## Юнит под курсором (враг ИЛИ мирный НПЦ) по видимой области корпуса.
+func _hover_unit() -> Node2D:
 	if not is_instance_valid(player):
 		return null
 	var mouse := player.get_global_mouse_position()
 	for e in enemies:
-		if is_instance_valid(e) and unit_hit_rect(e).grow(4.0).has_point(mouse):
+		if is_instance_valid(e) and unit_hit_rect(e).grow(6.0).has_point(mouse):
+			return e
+	for e in npcs:
+		if is_instance_valid(e) and unit_hit_rect(e).grow(6.0).has_point(mouse):
 			return e
 	return null
 
-## Подсветка цели: враг под курсором или текущая цель атаки (красное кольцо).
-## Кольцо ставится по центру ХИТ-БОКСА тела (спрайт выше точки-пола!), иначе
-## оно «висит в пустоте» под моделью.
+## Размер спрайта юнита (w, h).
+func _unit_metrics(u: Node2D) -> Array:
+	var set_name := ""
+	if "anim_set" in u:
+		set_name = str(u.get("anim_set"))
+	if set_name == "" and u is Player:
+		set_name = (u as Player).anim_set_name()
+	var w := 128
+	var h := 128
+	if set_name != "":
+		var o := UnitDB.get_set(set_name)
+		w = int(o.get("w", 128))
+		h = int(o.get("h", 128))
+	return [w, h]
+
+## Точка кольца выделения: центр тела юнита. Спрайт рисуется вверх от точки
+## «пола» и поднимается на рельефе — без учёта этого кольцо «висит в пустоте».
+func _target_ring_pos(u: Node2D) -> Vector2:
+	var m := _unit_metrics(u)
+	var rise := 0.0
+	if alm_map != null and alm_map.has_method("relief_at_world"):
+		rise = float(alm_map.call("relief_at_world", u.global_position))
+	return Vector2(u.global_position.x, u.global_position.y - float(m[1]) * 0.55 - rise)
+
+## Подсветка цели: враг под курсором / текущая цель атаки (красное кольцо)
+## или мирный НПЦ под курсором (жёлтое кольцо).
 func _update_target_ring() -> void:
 	var target: Node2D = null
+	var hostile := false
 	if is_instance_valid(player) and is_instance_valid(player.attack_target) \
 			and player.state in ["chase", "attack"]:
 		target = player.attack_target
+		hostile = true
 	else:
-		target = _hover_enemy()
+		target = _hover_unit()
+		hostile = target != null and enemies.has(target)
 	if _select_ring == null:
 		return
 	if is_instance_valid(target):
-		var r := unit_hit_rect(target)
 		_select_ring.visible = true
-		_select_ring.global_position = Vector2(
-			r.position.x + r.size.x / 2.0,
-			r.position.y + r.size.y * 0.55)
-		_select_ring.radius = maxf(22.0, r.size.x / 2.0 + 8.0)
+		_select_ring.color = Color(1, 0.3, 0.2, 0.9) if hostile else Color(0.95, 0.85, 0.35, 0.9)
+		_select_ring.global_position = _target_ring_pos(target)
+		var m := _unit_metrics(target)
+		_select_ring.radius = maxf(22.0, float(m[0]) / 2.0 + 8.0)
 	else:
 		_select_ring.visible = false
 
