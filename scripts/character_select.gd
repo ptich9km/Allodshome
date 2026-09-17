@@ -32,10 +32,11 @@ const CHARACTERS := [
 		"title": "Маг",
 		"gender": "male",
 		"role": "mage",
-		"desc": "Мужчина-маг. Могучий разум, владение огнём и водой.",
+		"desc": "Мужчина-маг. Могучий разум, владение школой магии (выберите её).",
 		"image": "res://assets/equipment/mmage/1.png",
 		"stats": {"body": 8, "agility": 9, "mind": 13, "spirit": 12,
-			"blade": 5, "bludgeon": 5, "pike": 5, "fire": 30, "water": 25, "air": 15, "earth": 10, "astral": 10,
+			"blade": 5, "bludgeon": 5, "pike": 5,
+			"fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
 			"weapon": "staff", "shield": false, "armor": "heavy"},
 	},
 	{
@@ -43,10 +44,11 @@ const CHARACTERS := [
 		"title": "Маг",
 		"gender": "female",
 		"role": "mage",
-		"desc": "Женщина-маг. Дух и интуиция, целительная сила.",
+		"desc": "Женщина-маг. Дух и интуиция, владение школой магии (выберите её).",
 		"image": "res://assets/equipment/fmage/1.png",
 		"stats": {"body": 7, "agility": 10, "mind": 12, "spirit": 13,
-			"blade": 5, "bludgeon": 5, "pike": 5, "fire": 25, "water": 25, "air": 15, "earth": 10, "astral": 10,
+			"blade": 5, "bludgeon": 5, "pike": 5,
+			"fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
 			"weapon": "staff", "shield": false, "armor": "heavy"},
 	},
 ]
@@ -345,8 +347,24 @@ func _pick_affinity(idx: int) -> void:
 		(_affinity_buttons[i] as Button).button_pressed = (i == idx)
 	if idx < 0 or idx >= AFFINITIES.size():
 		return
-	_edit[str(AFFINITIES[idx][1])] = 20   # выбранная склонность
+	var skill := str(AFFINITIES[idx][1])
+	_edit[skill] = 20   # выбранная склонность
+	# Маг: выбранная сфера магии — его «школа» (даёт стартовую книгу заклинания).
+	if str(CHARACTERS[selected]["role"]) == "mage":
+		var sphere := _magic_sphere_of(skill)
+		if sphere != "":
+			_edit["_school"] = sphere
 	_refresh_editor()
+
+## Сфера магии по имени навыка (для выбора школы мага); "" — не магия.
+func _magic_sphere_of(skill: String) -> String:
+	match skill:
+		"fire": return "Fire"
+		"water": return "Water"
+		"air": return "Air"
+		"earth": return "Earth"
+		"astral": return "Astral"
+	return ""
 
 ## Обновить подписи статов/очков после правок.
 func _refresh_editor() -> void:
@@ -366,6 +384,7 @@ func _select(idx: int) -> void:
 	# Редактируемая копия статов пресета + фиксированная сумма («очки»)
 	var base: Dictionary = CHARACTERS[idx]["stats"]
 	_edit = base.duplicate(true)
+	_edit.erase("_school")   # сброс выбора школы мага при смене персонажа
 	var total := 0
 	for n in STATS_ORDER:
 		total += int(_edit.get(n, 0))
@@ -390,12 +409,31 @@ func _start_game() -> void:
 	if st.is_empty():
 		st = c["stats"]
 	st.erase("_preset_total")
+	st.erase("_school")
 	Game.hero_class = str(c["role"])
 	Game.hero_gender = str(c["gender"])
 	Game.hero_name = name_input.text.strip_edges()
 	if Game.hero_name == "":
 		Game.hero_name = "Герой"
+	# Маг: выбранная школа магии развита до 20 очков, в склад кладётся книга
+	# простейшего заклинания этой школы (учится двойным кликом по ячейке).
+	Game.hero_start_book = ""
+	if Game.hero_class == "mage":
+		var school := str(_edit.get("_school", ""))
+		if school == "":
+			school = _default_mage_school(st)
+		st[school.to_lower()] = 20
+		var starter := SpellDB.simplest_spell_of_sphere(school)
+		Game.hero_start_book = SpellDB.book_key_for_spell(starter)
 	Game.hero_stats = st
 	Game.hero_character_id = str(c["id"])
 	SoundDB.play(2)  # click_ok
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+## Школа по умолчанию, если склонность не трогали: первая сфера с навыком >= 20
+## в пресете; иначе — Огонь.
+func _default_mage_school(st: Dictionary) -> String:
+	for sk in ["fire", "water", "air", "earth", "astral"]:
+		if int(st.get(sk, 0)) >= 20:
+			return _magic_sphere_of(sk)
+	return "Fire"

@@ -159,8 +159,8 @@ func _load_penalty() -> float:
 
 ## Магия героя: выученные заклинания (книги) и заряды свитков.
 ## known_spells: "Fire_Ball" -> {"charges": -1} — выучено навсегда (маг, из книги);
-## "Heal" -> {"charges": 2} — заряды свитков (может кастовать, тратя свиток).
-## Воины не имеют маны (max_mana = 0) и не читают книги — только свитки.
+## "Fire_Arrow" -> {"charges": 2} — заряды свитков (каст тратит заряд, свиток
+## в итоге исчезает). Воины не имеют маны (max_mana = 0) — только свитки.
 var known_spells: Dictionary = {}
 var sphere_books: Dictionary = {}   # "Fire" -> true (книга стихии изучена магом)
 var cast_cooldowns: Dictionary = {} # имя -> оставшееся время кд
@@ -192,7 +192,6 @@ func _ready():
 	collision_mask = 0   # юниты не толкают друг друга физикой — ходят по сетке проходимости
 	_ensure_sprite()
 	_create_health_bar()
-	_setup_starter_magic()
 	_init_experience()
 
 ## Начальный опыт из стартовых навыков (skill -> exp, как у разработчиков:
@@ -203,19 +202,9 @@ func _init_experience() -> void:
 		if lvl > 0:
 			experience[name] = skill_to_exp(lvl)
 
-## Стартовая магия: маг уже знает по одному заклинанию сферы (по книге), воин — ничего.
-## У магов шт обеспечить базовые заклинания для старта игры.
-func _setup_starter_magic() -> void:
-	if not has_mana:
-		return
-	# Книги стихий у мага изначально: Огонь, Вода, Воздух, Земля, Астрал
-	for sphere in ["Fire", "Water", "Air", "Earth", "Astral"]:
-		sphere_books[sphere] = true
-	# Базовые заклинания доступны сразу (как в оригинале — из стартовых книг)
-	for sphere in sphere_books:
-		for spell in SpellDB.spells_of_sphere(sphere):
-			if not known_spells.has(spell):
-				known_spells[spell] = {"charges": -1}
+## Стартовая магия отключена: маг начинает БЕЗ заклинаний в панели магии.
+## На старте он получает в склад книгу простейшего заклинания выбранной школы
+## (см. _grant_starter_set) и учит её двойным кликом по ячейке склада.
 
 ## Применить выбор персонажа с экрана старта (character_select): характеристики,
 ## стартовая экипировка. Без выбора (запуск main.tscn напрямую) — значения по умолчанию.
@@ -248,6 +237,15 @@ func _grant_starter_set() -> void:
 	if Game.hero_stats.get("shield", false):
 		inventory.append("Common Iron Buckler")
 	inventory.append("Common Leather Mail")
+	# Маг на старте получает книгу простейшего заклинания выбранной школы
+	# (учится двойным кликом по ячейке склада; книга расходуется).
+	if Game.hero_class == "mage" and Game.hero_start_book != "":
+		inventory.append(Game.hero_start_book)
+	# ВРЕМЕННО (отладка магии): маг сразу знает все 24 книжные магии —
+	# панель заливается иконками, кастуется всё без кликов по книгам.
+	if Game.debug_magic and Game.hero_class == "mage":
+		for spell in SpellDB.BOOK_SPELLS:
+			known_spells[str(spell)] = {"charges": -1}
 	for i in range(3):
 		inventory.append("Potion Medium Healing")
 	inventory.append("Potion Mana Regeneration")
@@ -651,7 +649,7 @@ func _attack_spells() -> Array:
 func has_spell(name: String) -> bool:
 	return known_spells.has(name)
 
-## Заряды заклинания: -1 = выучено (маг, из книги), 0 = нет, N = свитки.
+## Заряды заклинания: -1 = выучено навсегда (маг, из книги), 0 = нет, N = свитки.
 func spell_charges(name: String) -> int:
 	if not known_spells.has(name):
 		return 0
@@ -664,34 +662,48 @@ func can_cast(name: String) -> bool:
 	if float(cast_cooldowns.get(name, 0.0)) > 0.0:
 		return false
 	var charges := spell_charges(name)
-	if charges != 0:
-		return true  # есть заряд свитка
-	if has_mana and current_mana >= SpellDB.mana_cost(name):
-		return true  # маг за ману
+	if charges > 0:
+		return true       # есть заряд свитка
+	if charges == -1 and has_mana:
+		return current_mana >= SpellDB.mana_cost(name)   # маг за ману
 	return false
 
 ## Использовать заклинание по имени. Возвращает true, если кастован.
+## Панель: маг платит ману, свитковая ячейка — заряд; цель-точка/курсор.
 func cast_spell(name: String, target_position: Vector2) -> bool:
 	if not can_cast(name):
 		return false
 	var spell: Dictionary = SpellDB.get_spell(name)
 	if spell.is_empty():
 		return false
-	# Стоимость: заряды свитка тратятся первыми; маг платит ману.
+	# Стоимость: заряд свитка тратится; когда заряды кончаются, свитковое
+	# заклинание навсегда исчезает из панели магии (маг платит ману).
 	var charges := spell_charges(name)
 	if charges > 0:
-		known_spells[name]["charges"] = charges - 1
+		var left := charges - 1
+		if left <= 0:
+			known_spells.erase(name)   # свиток израсходован — ячейка гаснет
+		else:
+			known_spells[name]["charges"] = left
 	elif has_mana:
 		current_mana = maxi(0, current_mana - SpellDB.mana_cost(name))
 	cast_cooldowns[name] = 0.8  # универсальный КД ~0.8 с
 
-	var sphere := str(spell.get("sphere", ""))
-	var kind := str(spell.get("kind", "buff"))
-	var dmg := int(spell.get("damage", 0))
-	var area := float(spell.get("area", 0))
-	var range_f := float(spell.get("range", 0))
+	_cast_spell_effect(name, spell, target_position, self)
+	_apply_spell_experience(str(spell.get("sphere", "")))
+	return true
 
-	# Звук заклинания по сфере (magic\*.wav)
+## Свиток мага, прочитанный из склада: применить заклинание 1 РАЗ по выбранной
+## цели (враг / себя / союзник). НЕ тратит ману и НЕ появляется в панели магии.
+func apply_scroll_to_target(name: String, target: Node2D) -> void:
+	var spell: Dictionary = SpellDB.get_spell(name)
+	if spell.is_empty():
+		return
+	_cast_spell_effect(name, spell, target.global_position, target)
+	_apply_spell_experience(str(spell.get("sphere", "")))
+
+## Звук заклинания по сфере (magic\*.wav).
+func _play_spell_sound(sphere: String) -> void:
 	match sphere:
 		"Fire": SoundDB.play(512)      # fireball
 		"Water": SoundDB.play(518)     # icemissile
@@ -700,24 +712,31 @@ func cast_spell(name: String, target_position: Vector2) -> bool:
 		"Astral": SoundDB.play(556)    # heal
 		_: SoundDB.play(512)
 
+## Общий порядок применения заклинания (книга на панели ИЛИ свиток с прицелом).
+## target_node — выбранная цель (для лечения/защиты); при панельном касте — герой.
+func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector2, target_node: Node2D) -> void:
+	var sphere := str(spell.get("sphere", ""))
+	var kind := str(spell.get("kind", "buff"))
+	var dmg := int(spell.get("damage", 0))
+	var area := float(spell.get("area", 0))
+	var range_f := float(spell.get("range", 0))
+	_play_spell_sound(sphere)
+
 	match kind:
 		"attack", "area":
 			_fire_spell_projectile(name, sphere, dmg, area, range_f, target_position)
 		"heal":
-			_apply_heal(name, dmg, sphere)
+			_heal_target(target_node, maxi(1, -dmg + mind / 5))
 		"buff":
-			_apply_buff(sphere, target_position)
+			_apply_buff_target(target_node, sphere, name)
 		"wall":
 			_create_wall(target_position)
 		"self":
 			match name:
 				"Teleport": _teleport_to(target_position)
 				"Light": print("Свет")
-				"Shield": print("Щит (задел)")
 				"Summon": print("Призыв (задел)")
-	# Опыт за применение магии (по сфере заклинания)
-	_apply_spell_experience(sphere)
-	return true
+				_: _apply_buff_target(target_node, sphere, name)   # напр. Shield
 
 ## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).
 func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float, range_f: float, target_position: Vector2) -> void:
@@ -749,15 +768,34 @@ func create_spell_projectile(name: String, from: Vector2, to: Vector2, damage: i
 	if p.has_method("set_spell_anim"):
 		p.set_spell_anim(name)
 
-## Лечение: восстановить HP герою (максимум).
-func _apply_heal(name: String, dmg: int, _sphere: String) -> void:
-	var heal_amount := -dmg + mind / 5
-	current_hp = mini(max_hp, current_hp + heal_amount)
-	print("Лечение: +%d HP (итого %d/%d)" % [heal_amount, current_hp, max_hp])
+## Лечение выбранной цели (герой по умолчанию): HP, но не выше максимума.
+func _heal_target(target: Node2D, amount: int) -> void:
+	if target == null or not is_instance_valid(target):
+		target = self
+	var maxhp := int(target.get("max_hp") if "max_hp" in target else 0)
+	var cur := int(target.get("current_hp") if "current_hp" in target else 0)
+	if maxhp <= 0 or cur >= maxhp:
+		return
+	var healed := mini(maxhp, cur + amount) - cur
+	if healed <= 0:
+		return
+	target.set("current_hp", cur + healed)
+	print("Лечение: +%d HP у %s (итого %d/%d)" % [healed, target.name, cur + healed, maxhp])
+	if target == self and health_bar:
+		health_bar.update_bars(current_hp, current_mana)
 
-## Бафф: пока просто накладываем положительный эффект и печатаем.
-func _apply_buff(sphere: String, _target_position: Vector2) -> void:
-	print("Бафф сферы %s применён (задел)" % sphere)
+## Защитный бафф цели (герой или союзник): поглощение урона на время.
+## Protection_from_<Сфера> / Bless — слабее, Shield — сильнее.
+func _apply_buff_target(target: Node2D, sphere: String, name: String) -> void:
+	if target == null or not is_instance_valid(target):
+		target = self
+	var strength := 2 + sphere_skill(sphere) / 10
+	var seconds := 90.0
+	if name == "Shield":
+		strength = 18
+		seconds = 60.0
+	Game.apply_shield(target, strength, seconds)
+	print("Защита %s +%d у %s на %.0f с" % [sphere, strength, target.name, seconds])
 
 ## Стена (Wall of Fire / Wall of Earth): метка у точки прицела в радиусе.
 func _create_wall(target_position: Vector2) -> void:
@@ -787,30 +825,52 @@ func _damage_area_at(pos: Vector2, radius: float, dmg: int) -> void:
 		if is_instance_valid(enemy) and enemy.global_position.distance_to(pos) <= radius:
 			enemy.take_damage(dmg, self)
 
-## Изучить книгу стихии (только маг): открывает все заклинания сферы.
-func learn_sphere_book(item_name: String) -> bool:
+## Изучить книгу магии (только маг, навсегда): книга стихии открывает всю
+## сферу ("Book Fire"), книга одного заклинания — только его ("Book Fire Arrow").
+## Книга расходуется (уходит из склада). true — если что-то выучено.
+func learn_book(item_name: String) -> bool:
 	if not has_mana:
-		return false  # воин не может читать книги магии
+		return false   # воин не может читать книги магии
 	var sphere := SpellDB.sphere_of_book(item_name)
-	if sphere == "":
-		return false
-	sphere_books[sphere] = true
 	var gained: Array = []
-	for spell in SpellDB.spells_of_sphere(sphere):
-		if not known_spells.has(spell):
-			known_spells[spell] = {"charges": -1}
-			gained.append(spell)
-	print("Изучена книга %s: +%d заклинаний" % [sphere, gained.size()])
+	if sphere != "":
+		sphere_books[sphere] = true
+		for spell in SpellDB.spells_of_sphere(sphere):
+			if not known_spells.has(spell):
+				known_spells[spell] = {"charges": -1}
+				gained.append(spell)
+		if gained.is_empty():
+			return false   # вся сфера уже выучена — книгу не тратим
+		print("Изучена книга стихии %s: +%d заклинаний" % [sphere, gained.size()])
+	else:
+		var spell := SpellDB.spell_of_book(item_name)
+		if spell == "":
+			return false
+		if known_spells.has(spell) and spell_charges(spell) == -1:
+			return false   # уже выучено навсегда — книгу не тратим
+		known_spells[spell] = {"charges": -1}
+		gained.append(spell)
+		print("Выучено заклинание из книги: %s" % spell)
+	remove_item(item_name)
 	return true
 
-## Прочитать свиток: +1 заряд заклинания (любой персонаж).
+## Прочитать свиток (НЕ-маг): +1 заряд заклинания за свиток, который при этом
+## расходуется. Маг читает свитки ПРИЦЕЛЬНО из склада (см. apply_scroll_to_target),
+## заряды в панели магии ему не копятся.
 func read_scroll(item_name: String) -> bool:
+	if has_mana:
+		print("Маг читает свиток прицельно из склада (заряды не копятся).")
+		return false
 	var spell := SpellDB.spell_from_scroll(item_name)
 	if spell == "":
+		return false
+	if known_spells.has(spell) and spell_charges(spell) == -1:
+		print("Это заклинание уже выучено навсегда — свиток не нужен.")
 		return false
 	if not known_spells.has(spell):
 		known_spells[spell] = {"charges": 0}
 	known_spells[spell]["charges"] = int(known_spells[spell]["charges"]) + 1
+	remove_item(item_name)
 	print("Прочитан свиток: %s, зарядов: %d" % [spell, known_spells[spell]["charges"]])
 	return true
 
@@ -862,6 +922,9 @@ func _create_lightning_effect(from: Vector2, to: Vector2):
 func take_damage(damage: int, _attacker: Node2D):
 	# Мёртвый герой больше не получает урон
 	if state == "dead" or state == "decay":
+		return
+	damage = Game.shield_reduce(self, damage)
+	if damage <= 0:
 		return
 	current_hp -= damage
 	SoundDB.play_pain([0, 0, 220, 221, 240])  # боль человека (easy1/easy2)

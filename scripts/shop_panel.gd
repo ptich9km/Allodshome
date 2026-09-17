@@ -7,7 +7,7 @@ extends CanvasLayer
 signal closed
 signal inventory_changed
 
-const SHELVES := ["Оружие", "Броня", "Зелья"]
+const SHELVES := ["Оружие", "Броня", "Зелья", "Свитки"]
 const SHELF_MAX := 40   # предметов на полку (самые дешёвые)
 
 var player: Player
@@ -133,27 +133,41 @@ func _refresh() -> void:
 	_update_slot_gold()
 
 ## Полка покупки: предметы категории по возрастанию цены.
+## Полка «Свитки» (3): свитки — всем, книги магии — только магу.
 func _build_buy_shelf(kind: int) -> void:
 	var pool: Array = []
-	for it in _all_cache:
-		var q := str(it.get("quality", ""))
-		if not ItemDB.is_equippable(it) and q != "Potion":
-			continue
-		var slot := ItemDB.slot_of(it)
-		match kind:
-			0:
-				if slot != "weapon":
-					continue
-			1:
-				if slot == "weapon" or q == "Potion":
-					continue
-			2:
-				if q != "Potion":
-					continue
-		var price := int(it.get("price", 0))
-		if price <= 0 or price > 60000:
-			continue   # без бесплатных и «непродаваемых»
-		pool.append(it)
+	if kind == 3:
+		for it in _all_cache:
+			var q := str(it.get("quality", ""))
+			if q not in ["Scroll", "SuperScroll"]:
+				continue
+			var price := int(it.get("price", 0))
+			if price <= 0 or price > 60000:
+				continue
+			pool.append(it)
+		if is_instance_valid(player) and player.has_mana:
+			for spell in SpellDB.catalog_spells():
+				pool.append(SpellDB.make_book_item(spell))
+	else:
+		for it in _all_cache:
+			var q := str(it.get("quality", ""))
+			if not ItemDB.is_equippable(it) and q != "Potion":
+				continue
+			var slot := ItemDB.slot_of(it)
+			match kind:
+				0:
+					if slot != "weapon":
+						continue
+				1:
+					if slot == "weapon" or q == "Potion":
+						continue
+				2:
+					if q != "Potion":
+						continue
+			var price := int(it.get("price", 0))
+			if price <= 0 or price > 60000:
+				continue   # без бесплатных и «непродаваемых»
+			pool.append(it)
 	pool.sort_custom(func(a, b): return int(a.get("price", 0)) < int(b.get("price", 0)))
 	var shown := mini(SHELF_MAX, pool.size())
 	for i in range(shown):

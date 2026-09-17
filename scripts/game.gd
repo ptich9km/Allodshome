@@ -15,6 +15,44 @@ static var party: Array = []              # наёмники (Mercenary) из т
 static var mana_regen_accum: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
+static var pending_scroll: Dictionary = {}   # прицеливание свитка: {"spell","item_key"}
+static var debug_magic: bool = true  # ВРЕМЕННО: маг на старте знает все 24 книжные магии (отладка)
+
+# --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
+static func apply_shield(unit: Node2D, strength: int, seconds: float) -> void:
+	if not is_instance_valid(unit):
+		return
+	unit.set_meta("shield_strength", int(unit.get_meta("shield_strength", 0)) + strength)
+	unit.set_meta("shield_time", float(unit.get_meta("shield_time", 0.0)) + seconds)
+
+static func shield_reduce(unit: Node2D, dmg: int) -> int:
+	if not is_instance_valid(unit):
+		return dmg
+	var strength := int(unit.get_meta("shield_strength", 0))
+	if strength <= 0:
+		return dmg
+	unit.set_meta("shield_strength", strength - dmg)
+	var out := maxi(0, dmg - strength)
+	if out == 0:
+		print("%s: щит поглотил весь урон!" % unit.name)
+	return out
+
+static func tick_shields(delta: float) -> void:
+	var units: Array = [Game.hero]
+	units.append_array(Game.enemies)
+	units.append_array(Game.npcs)
+	units.append_array(Game.party)
+	for u in units:
+		if u == null or not is_instance_valid(u):
+			continue
+		if not u.has_meta("shield_time"):
+			continue
+		var t := float(u.get_meta("shield_time", 0.0)) - delta
+		if t > 0.0:
+			u.set_meta("shield_time", t)
+		else:
+			u.set_meta("shield_time", 0.0)
+			u.set_meta("shield_strength", 0)
 
 var _select_ring: SelectRing = null       # подсветка цели (ховер/атака)
 var _pending_building := ""               # здание, к которому герой подходит («вход»)
@@ -26,6 +64,7 @@ static var hero_gender: String = "male"     # male | female
 static var hero_name: String = "Герой"
 static var hero_character_id: String = "mfighter"  # id из character_select
 static var hero_stats: Dictionary = {}      # стартовые характеристики
+static var hero_start_book: String = ""     # книга простейшего заклинания школы мага
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
@@ -180,6 +219,16 @@ func _is_open_spot(tx: int, ty: int) -> bool:
 	return open_neighbors >= 2
 
 func _input(event):
+	# Прицеливание свитка: ПКМ или ESC отменяет чтение (свиток не тратится)
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		if not Game.pending_scroll.is_empty():
+			cancel_scroll_targeting()
+			return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if not Game.pending_scroll.is_empty():
+			cancel_scroll_targeting()
+			return
+
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Клики по интерфейсу (книга заклинаний, инвентарь, панели, магазин/таверна)
 		# не должны двигать/атаковать героя по карте
@@ -188,6 +237,10 @@ func _input(event):
 		if ui != null and ui.has_method("is_pointer_over_ui") and ui.is_pointer_over_ui(event.position):
 			return
 		var world_position = get_global_mouse_position()
+		# Чтение свитка мага: клик выбирает цель (врага или себя/союзника)
+		if not Game.pending_scroll.is_empty():
+			_resolve_scroll_click(world_position)
+			return
 		handle_click(world_position)
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
@@ -371,6 +424,53 @@ func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 			return enemy
 	return null
 
+## Свиток мага: клик выбрал цель. Враг — для урона/области/стены,
+## герой или союзник (НПЦ/наёмник) — для лечения/защиты/баффа.
+func _resolve_scroll_click(world_position: Vector2) -> void:
+	if not is_instance_valid(player):
+		return
+	var spell := str(Game.pending_scroll.get("spell", ""))
+	if spell == "":
+		return
+	var kind := SpellDB.kind_of(spell)
+	var target: Node2D = null
+	if kind in ["attack", "area", "wall"]:
+		target = get_enemy_at_position(world_position)
+		if target == null:
+			target = player.get_nearest_enemy(world_position, 220.0)
+		if target == null:
+			print("Нет врага под курсором — укажите противника.")
+			return
+	else:
+		target = _ally_at_position(world_position)
+		if target == null:
+			print("Укажите героя или союзника для этого заклинания.")
+			return
+	# Применяем 1 раз и расходуем свиток
+	player.apply_scroll_to_target(spell, target)
+	player.remove_item(str(Game.pending_scroll.get("item_key", "")))
+	Game.pending_scroll = {}
+	if ui != null and ui.has_method("_finish_scroll_targeting"):
+		ui._finish_scroll_targeting()
+
+## Цель-союзник под курсором: сам герой, мирный НПЦ или наёмник.
+func _ally_at_position(world_position: Vector2) -> Node2D:
+	if is_instance_valid(player) and unit_hit_rect(player).grow(8.0).has_point(world_position):
+		return player
+	for n in npcs:
+		if is_instance_valid(n) and unit_hit_rect(n).grow(8.0).has_point(world_position):
+			return n
+	for m in party:
+		if is_instance_valid(m) and unit_hit_rect(m).grow(8.0).has_point(world_position):
+			return m
+	return null
+
+## Отмена прицеливания свитка (свиток НЕ тратится).
+func cancel_scroll_targeting() -> void:
+	Game.pending_scroll = {}
+	if ui != null and ui.has_method("_cancel_scroll_targeting"):
+		ui._cancel_scroll_targeting()
+
 ## Хит-бокс юнита в мире: по sel_box спрайта — кликабельная ВИДИМАЯ область
 ## (раньше цель считалась в точке пола — «враг был ниже, чем его видно»).
 static func unit_hit_rect(u: Node2D) -> Rect2:
@@ -411,7 +511,7 @@ func _process(delta):
 	if is_instance_valid(player) and camera:
 		camera.position = camera.position.lerp(player.position, 5.0 * delta)
 	if is_instance_valid(ui) and is_instance_valid(player):
-		ui.update_ui(player)
+		ui.update_ui(player, delta)
 	
 	# Регенерация маны игрока — 1 мана в секунду
 	if is_instance_valid(player) and player.current_mana < player.max_mana:
@@ -424,6 +524,7 @@ func _process(delta):
 	_process_action_mode()
 	_update_target_ring()
 	_process_pending_building()
+	Game.tick_shields(delta)
 
 func _process_action_mode():
 	if action_mode == "none" or not is_instance_valid(player):

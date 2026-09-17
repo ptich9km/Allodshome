@@ -211,6 +211,9 @@ func take_damage(dmg: int, attacker: Node2D):
 	# Труп не получает урон: иначе на каждый удар по телу падает новый мешок
 	if state == "dying" or state == "decay" or state == "corpse":
 		return
+	dmg = Game.shield_reduce(self, dmg)
+	if dmg <= 0:
+		return
 	current_hp -= dmg
 	# При получении урона — сразу начинаем погоню
 	if is_instance_valid(attacker):

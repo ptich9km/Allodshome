@@ -1,492 +1,492 @@
 {
- "Fire_Arrow": {
-  "name": "Fire_Arrow",
-  "ru": "Огненная стрела",
-  "sphere": "Fire",
-  "damage": 14,
-  "mana_cost": 8,
-  "range": 320,
-  "area": 0,
-  "projectile": "firebolt",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014006-000.png",
-   "super": "res://assets/inventory/0014035-000.png"
+  "Fire_Arrow": {
+    "name": "Fire_Arrow",
+    "ru": "Огненная стрела",
+    "sphere": "Fire",
+    "damage": 14,
+    "mana_cost": 8,
+    "range": 320,
+    "area": 0,
+    "projectile": "firebolt",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014006-000.png",
+      "super": "res://assets/inventory/0014035-000.png"
+    },
+    "kind": "attack"
   },
-  "kind": "attack"
- },
- "Fire_Ball": {
-  "name": "Fire_Ball",
-  "ru": "Огненный шар",
-  "sphere": "Fire",
-  "damage": 26,
-  "mana_cost": 15,
-  "range": 280,
-  "area": 48,
-  "projectile": "fireball",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014007-000.png",
-   "super": "res://assets/inventory/0014036-000.png"
+  "Fire_Ball": {
+    "name": "Fire_Ball",
+    "ru": "Огненный шар",
+    "sphere": "Fire",
+    "damage": 26,
+    "mana_cost": 15,
+    "range": 280,
+    "area": 48,
+    "projectile": "fireball",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014007-000.png",
+      "super": "res://assets/inventory/0014036-000.png"
+    },
+    "kind": "area"
   },
-  "kind": "area"
- },
- "Wall_of_Fire": {
-  "name": "Wall_of_Fire",
-  "ru": "Стена огня",
-  "sphere": "Fire",
-  "damage": 10,
-  "mana_cost": 22,
-  "range": 200,
-  "area": 0,
-  "projectile": "firewall",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014008-000.png",
-   "super": "res://assets/inventory/0014037-000.png"
+  "Wall_of_Fire": {
+    "name": "Wall_of_Fire",
+    "ru": "Стена огня",
+    "sphere": "Fire",
+    "damage": 10,
+    "mana_cost": 22,
+    "range": 200,
+    "area": 0,
+    "projectile": "firewall",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014008-000.png",
+      "super": "res://assets/inventory/0014037-000.png"
+    },
+    "kind": "attack"
   },
-  "kind": "attack"
- },
- "Protection_from_Fire": {
-  "name": "Protection_from_Fire",
-  "ru": "Защита от огня",
-  "sphere": "Fire",
-  "damage": 0,
-  "mana_cost": 12,
-  "range": 0,
-  "area": 0,
-  "projectile": "shield",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014009-000.png",
-   "super": "res://assets/inventory/0014038-000.png"
+  "Protection_from_Fire": {
+    "name": "Protection_from_Fire",
+    "ru": "Защита от огня",
+    "sphere": "Fire",
+    "damage": 0,
+    "mana_cost": 12,
+    "range": 0,
+    "area": 0,
+    "projectile": "shield",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014009-000.png",
+      "super": "res://assets/inventory/0014038-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Ice_Missile": {
-  "name": "Ice_Missile",
-  "ru": "Ледяная стрела",
-  "sphere": "Water",
-  "damage": 18,
-  "mana_cost": 10,
-  "range": 320,
-  "area": 0,
-  "projectile": "icemissile",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014010-000.png",
-   "super": "res://assets/inventory/0014039-000.png"
+  "Ice_Missile": {
+    "name": "Ice_Missile",
+    "ru": "Ледяная стрела",
+    "sphere": "Water",
+    "damage": 18,
+    "mana_cost": 10,
+    "range": 320,
+    "area": 0,
+    "projectile": "icemissile",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014010-000.png",
+      "super": "res://assets/inventory/0014039-000.png"
+    },
+    "kind": "attack"
   },
-  "kind": "attack"
- },
- "Poison_Cloud": {
-  "name": "Poison_Cloud",
-  "ru": "Ядовитое облако",
-  "sphere": "Water",
-  "damage": 8,
-  "mana_cost": 18,
-  "range": 200,
-  "area": 64,
-  "projectile": "poison",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014011-000.png",
-   "super": "res://assets/inventory/0014040-000.png"
+  "Poison_Cloud": {
+    "name": "Poison_Cloud",
+    "ru": "Ядовитое облако",
+    "sphere": "Water",
+    "damage": 8,
+    "mana_cost": 18,
+    "range": 200,
+    "area": 64,
+    "projectile": "poison",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014011-000.png",
+      "super": "res://assets/inventory/0014040-000.png"
+    },
+    "kind": "area"
   },
-  "kind": "area"
- },
- "Blizzard": {
-  "name": "Blizzard",
-  "ru": "Метель",
-  "sphere": "Water",
-  "damage": 14,
-  "mana_cost": 30,
-  "range": 260,
-  "area": 80,
-  "projectile": "blizzard",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014012-000.png",
-   "super": "res://assets/inventory/0014041-000.png"
+  "Blizzard": {
+    "name": "Blizzard",
+    "ru": "Метель",
+    "sphere": "Water",
+    "damage": 14,
+    "mana_cost": 30,
+    "range": 260,
+    "area": 80,
+    "projectile": "steam",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014012-000.png",
+      "super": "res://assets/inventory/0014041-000.png"
+    },
+    "kind": "area"
   },
-  "kind": "area"
- },
- "Protection_from_Water": {
-  "name": "Protection_from_Water",
-  "ru": "Защита от воды",
-  "sphere": "Water",
-  "damage": 0,
-  "mana_cost": 12,
-  "range": 0,
-  "area": 0,
-  "projectile": "shield",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014013-000.png",
-   "super": "res://assets/inventory/0014042-000.png"
+  "Protection_from_Water": {
+    "name": "Protection_from_Water",
+    "ru": "Защита от воды",
+    "sphere": "Water",
+    "damage": 0,
+    "mana_cost": 12,
+    "range": 0,
+    "area": 0,
+    "projectile": "shield",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014013-000.png",
+      "super": "res://assets/inventory/0014042-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Acid_Stream": {
-  "name": "Acid_Stream",
-  "ru": "Кислотная струя",
-  "sphere": "Water",
-  "damage": 22,
-  "mana_cost": 20,
-  "range": 280,
-  "area": 0,
-  "projectile": "acid",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014014-000.png",
-   "super": "res://assets/inventory/0014043-000.png"
+  "Acid_Stream": {
+    "name": "Acid_Stream",
+    "ru": "Кислотная струя",
+    "sphere": "Water",
+    "damage": 22,
+    "mana_cost": 20,
+    "range": 280,
+    "area": 0,
+    "projectile": "acid",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014014-000.png",
+      "super": "res://assets/inventory/0014043-000.png"
+    },
+    "kind": "attack"
   },
-  "kind": "attack"
- },
- "Lightning": {
-  "name": "Lightning",
-  "ru": "Молния",
-  "sphere": "Air",
-  "damage": 30,
-  "mana_cost": 20,
-  "range": 300,
-  "area": 0,
-  "projectile": "lightnin",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014015-000.png",
-   "super": "res://assets/inventory/0014044-000.png"
+  "Lightning": {
+    "name": "Lightning",
+    "ru": "Молния",
+    "sphere": "Air",
+    "damage": 30,
+    "mana_cost": 20,
+    "range": 300,
+    "area": 0,
+    "projectile": "lightnin",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014015-000.png",
+      "super": "res://assets/inventory/0014044-000.png"
+    },
+    "kind": "attack"
   },
-  "kind": "attack"
- },
- "Prismatic_Spray": {
-  "name": "Prismatic_Spray",
-  "ru": "Призматическое сияние",
-  "sphere": "Air",
-  "damage": 12,
-  "mana_cost": 26,
-  "range": 260,
-  "area": 72,
-  "projectile": "chain",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014016-000.png",
-   "super": "res://assets/inventory/0014045-000.png"
+  "Prismatic_Spray": {
+    "name": "Prismatic_Spray",
+    "ru": "Призматическое сияние",
+    "sphere": "Air",
+    "damage": 12,
+    "mana_cost": 26,
+    "range": 260,
+    "area": 72,
+    "projectile": "chain",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014016-000.png",
+      "super": "res://assets/inventory/0014045-000.png"
+    },
+    "kind": "area"
   },
-  "kind": "area"
- },
- "Invisibility": {
-  "name": "Invisibility",
-  "ru": "Невидимость",
-  "sphere": "Air",
-  "damage": 0,
-  "mana_cost": 16,
-  "range": 0,
-  "area": 0,
-  "projectile": "p_air",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014017-000.png",
-   "super": "res://assets/inventory/0014046-000.png"
+  "Invisibility": {
+    "name": "Invisibility",
+    "ru": "Невидимость",
+    "sphere": "Air",
+    "damage": 0,
+    "mana_cost": 16,
+    "range": 0,
+    "area": 0,
+    "projectile": "p_air",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014017-000.png",
+      "super": "res://assets/inventory/0014046-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Protection_from_Air": {
-  "name": "Protection_from_Air",
-  "ru": "Защита от воздуха",
-  "sphere": "Air",
-  "damage": 0,
-  "mana_cost": 12,
-  "range": 0,
-  "area": 0,
-  "projectile": "shield",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014018-000.png",
-   "super": "res://assets/inventory/0014047-000.png"
+  "Protection_from_Air": {
+    "name": "Protection_from_Air",
+    "ru": "Защита от воздуха",
+    "sphere": "Air",
+    "damage": 0,
+    "mana_cost": 12,
+    "range": 0,
+    "area": 0,
+    "projectile": "shield",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014018-000.png",
+      "super": "res://assets/inventory/0014047-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Darkness": {
-  "name": "Darkness",
-  "ru": "Тьма",
-  "sphere": "Air",
-  "damage": 0,
-  "mana_cost": 14,
-  "range": 200,
-  "area": 80,
-  "projectile": "p_air",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014019-000.png",
-   "super": "res://assets/inventory/0014048-000.png"
+  "Darkness": {
+    "name": "Darkness",
+    "ru": "Тьма",
+    "sphere": "Air",
+    "damage": 0,
+    "mana_cost": 14,
+    "range": 200,
+    "area": 80,
+    "projectile": "p_air",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014019-000.png",
+      "super": "res://assets/inventory/0014048-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Stone_Missile": {
-  "name": "Stone_Missile",
-  "ru": "Каменная стрела",
-  "sphere": "Earth",
-  "damage": 24,
-  "mana_cost": 14,
-  "range": 320,
-  "area": 0,
-  "projectile": "meteorit",
-  "icon": "",
-  "icons": {},
-  "kind": "attack"
- },
- "Wall_of_Earth": {
-  "name": "Wall_of_Earth",
-  "ru": "Стена земли",
-  "sphere": "Earth",
-  "damage": 0,
-  "mana_cost": 24,
-  "range": 200,
-  "area": 0,
-  "projectile": "wall",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014022-000.png",
-   "super": "res://assets/inventory/0014051-000.png"
+  "Stone_Missile": {
+    "name": "Stone_Missile",
+    "ru": "Каменная стрела",
+    "sphere": "Earth",
+    "damage": 24,
+    "mana_cost": 14,
+    "range": 320,
+    "area": 0,
+    "projectile": "meteorit",
+    "icon": "",
+    "icons": {},
+    "kind": "attack"
   },
-  "kind": "wall"
- },
- "Stone_Curse": {
-  "name": "Stone_Curse",
-  "ru": "Каменное проклятие",
-  "sphere": "Earth",
-  "damage": 0,
-  "mana_cost": 28,
-  "range": 240,
-  "area": 0,
-  "projectile": "curse",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014023-000.png",
-   "super": "res://assets/inventory/0014052-000.png"
+  "Wall_of_Earth": {
+    "name": "Wall_of_Earth",
+    "ru": "Стена земли",
+    "sphere": "Earth",
+    "damage": 0,
+    "mana_cost": 24,
+    "range": 200,
+    "area": 0,
+    "projectile": "wall",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014022-000.png",
+      "super": "res://assets/inventory/0014051-000.png"
+    },
+    "kind": "wall"
   },
-  "kind": "buff"
- },
- "Protection_from_Earth": {
-  "name": "Protection_from_Earth",
-  "ru": "Защита от земли",
-  "sphere": "Earth",
-  "damage": 0,
-  "mana_cost": 12,
-  "range": 0,
-  "area": 0,
-  "projectile": "shield",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014024-000.png",
-   "super": "res://assets/inventory/0014053-000.png"
+  "Stone_Curse": {
+    "name": "Stone_Curse",
+    "ru": "Каменное проклятие",
+    "sphere": "Earth",
+    "damage": 0,
+    "mana_cost": 28,
+    "range": 240,
+    "area": 0,
+    "projectile": "curse",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014023-000.png",
+      "super": "res://assets/inventory/0014052-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Diamond_Dust": {
-  "name": "Diamond_Dust",
-  "ru": "Алмазная пыль",
-  "sphere": "Earth",
-  "damage": 20,
-  "mana_cost": 24,
-  "range": 280,
-  "area": 40,
-  "projectile": "diamonddust",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014021-000.png",
-   "super": "res://assets/inventory/0014050-000.png"
+  "Protection_from_Earth": {
+    "name": "Protection_from_Earth",
+    "ru": "Защита от земли",
+    "sphere": "Earth",
+    "damage": 0,
+    "mana_cost": 12,
+    "range": 0,
+    "area": 0,
+    "projectile": "shield",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014024-000.png",
+      "super": "res://assets/inventory/0014053-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "area"
- },
- "Bless": {
-  "name": "Bless",
-  "ru": "Благословение",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 10,
-  "range": 200,
-  "area": 0,
-  "projectile": "bless",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014025-000.png",
-   "super": "res://assets/inventory/0014054-000.png"
+  "Diamond_Dust": {
+    "name": "Diamond_Dust",
+    "ru": "Алмазная пыль",
+    "sphere": "Earth",
+    "damage": 20,
+    "mana_cost": 24,
+    "range": 280,
+    "area": 40,
+    "projectile": "diamonddust",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014021-000.png",
+      "super": "res://assets/inventory/0014050-000.png"
+    },
+    "kind": "area"
   },
-  "kind": "buff"
- },
- "Haste": {
-  "name": "Haste",
-  "ru": "Ускорение",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 10,
-  "range": 200,
-  "area": 0,
-  "projectile": "p_air",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014026-000.png",
-   "super": "res://assets/inventory/0014055-000.png"
+  "Bless": {
+    "name": "Bless",
+    "ru": "Благословение",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 10,
+    "range": 200,
+    "area": 0,
+    "projectile": "bless",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014025-000.png",
+      "super": "res://assets/inventory/0014054-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- },
- "Heal": {
-  "name": "Heal",
-  "ru": "Лечение",
-  "sphere": "Astral",
-  "damage": -22,
-  "mana_cost": 12,
-  "range": 200,
-  "area": 0,
-  "projectile": "healing",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014029-000.png",
-   "super": "res://assets/inventory/0014058-000.png"
+  "Haste": {
+    "name": "Haste",
+    "ru": "Ускорение",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 10,
+    "range": 200,
+    "area": 0,
+    "projectile": "p_air",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014026-000.png",
+      "super": "res://assets/inventory/0014055-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "heal"
- },
- "Drain_Life": {
-  "name": "Drain_Life",
-  "ru": "Кража жизни",
-  "sphere": "Astral",
-  "damage": 18,
-  "mana_cost": 14,
-  "range": 240,
-  "area": 0,
-  "projectile": "drain",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014031-000.png",
-   "super": "res://assets/inventory/0014060-000.png"
+  "Heal": {
+    "name": "Heal",
+    "ru": "Лечение",
+    "sphere": "Astral",
+    "damage": -22,
+    "mana_cost": 12,
+    "range": 200,
+    "area": 0,
+    "projectile": "healing",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014029-000.png",
+      "super": "res://assets/inventory/0014058-000.png"
+    },
+    "kind": "heal"
   },
-  "kind": "attack"
- },
- "Shield": {
-  "name": "Shield",
-  "ru": "Щит",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 16,
-  "range": 0,
-  "area": 0,
-  "projectile": "shield",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014032-000.png",
-   "super": "res://assets/inventory/0014061-000.png"
+  "Drain_Life": {
+    "name": "Drain_Life",
+    "ru": "Кража жизни",
+    "sphere": "Astral",
+    "damage": 18,
+    "mana_cost": 14,
+    "range": 240,
+    "area": 0,
+    "projectile": "drain",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014031-000.png",
+      "super": "res://assets/inventory/0014060-000.png"
+    },
+    "kind": "attack"
   },
-  "kind": "self"
- },
- "Summon": {
-  "name": "Summon",
-  "ru": "Призыв",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 20,
-  "range": 0,
-  "area": 0,
-  "projectile": "magic",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014030-000.png",
-   "super": "res://assets/inventory/0014059-000.png"
+  "Shield": {
+    "name": "Shield",
+    "ru": "Щит",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 16,
+    "range": 0,
+    "area": 0,
+    "projectile": "shield",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014032-000.png",
+      "super": "res://assets/inventory/0014061-000.png"
+    },
+    "kind": "self"
   },
-  "kind": "self"
- },
- "Animate_Dead": {
-  "name": "Animate_Dead",
-  "ru": "Animate Dead",
-  "sphere": "Astral",
-  "damage": 10,
-  "mana_cost": 10,
-  "range": 200,
-  "area": 0,
-  "projectile": "",
-  "icon": "",
-  "icons": {},
-  "kind": "attack"
- },
- "Teleport": {
-  "name": "Teleport",
-  "ru": "Телепорт",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 25,
-  "range": 0,
-  "area": 0,
-  "projectile": "teleport",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014028-000.png",
-   "super": "res://assets/inventory/0014057-000.png"
+  "Summon": {
+    "name": "Summon",
+    "ru": "Призыв",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 20,
+    "range": 0,
+    "area": 0,
+    "projectile": "teleport",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014030-000.png",
+      "super": "res://assets/inventory/0014059-000.png"
+    },
+    "kind": "self"
   },
-  "kind": "self"
- },
- "Curse": {
-  "name": "Curse",
-  "ru": "Проклятие",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 10,
-  "range": 240,
-  "area": 0,
-  "projectile": "curse",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014033-000.png",
-   "super": "res://assets/inventory/0014062-000.png"
+  "Animate_Dead": {
+    "name": "Animate_Dead",
+    "ru": "Animate Dead",
+    "sphere": "Astral",
+    "damage": 10,
+    "mana_cost": 10,
+    "range": 200,
+    "area": 0,
+    "projectile": "poison_d",
+    "icon": "",
+    "icons": {},
+    "kind": "attack"
   },
-  "kind": "buff"
- },
- "Slow": {
-  "name": "Slow",
-  "ru": "Замедление",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 10,
-  "range": 240,
-  "area": 0,
-  "projectile": "p_water",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014034-000.png",
-   "super": "res://assets/inventory/0014063-000.png"
+  "Teleport": {
+    "name": "Teleport",
+    "ru": "Телепорт",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 25,
+    "range": 0,
+    "area": 0,
+    "projectile": "teleport",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014028-000.png",
+      "super": "res://assets/inventory/0014057-000.png"
+    },
+    "kind": "self"
   },
-  "kind": "buff"
- },
- "Light": {
-  "name": "Light",
-  "ru": "Свет",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 5,
-  "range": 0,
-  "area": 0,
-  "projectile": "p_fire",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014020-000.png",
-   "super": "res://assets/inventory/0014049-000.png"
+  "Curse": {
+    "name": "Curse",
+    "ru": "Проклятие",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 10,
+    "range": 240,
+    "area": 0,
+    "projectile": "curse",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014033-000.png",
+      "super": "res://assets/inventory/0014062-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "self"
- },
- "Control_Spirit": {
-  "name": "Control_Spirit",
-  "ru": "Контроль духа",
-  "sphere": "Astral",
-  "damage": 0,
-  "mana_cost": 18,
-  "range": 200,
-  "area": 0,
-  "projectile": "bless",
-  "icon": "",
-  "icons": {
-   "scroll": "res://assets/inventory/0014027-000.png",
-   "super": "res://assets/inventory/0014056-000.png"
+  "Slow": {
+    "name": "Slow",
+    "ru": "Замедление",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 10,
+    "range": 240,
+    "area": 0,
+    "projectile": "p_water",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014034-000.png",
+      "super": "res://assets/inventory/0014063-000.png"
+    },
+    "kind": "buff"
   },
-  "kind": "buff"
- }
+  "Light": {
+    "name": "Light",
+    "ru": "Свет",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 5,
+    "range": 0,
+    "area": 0,
+    "projectile": "p_fire",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014020-000.png",
+      "super": "res://assets/inventory/0014049-000.png"
+    },
+    "kind": "self"
+  },
+  "Control_Spirit": {
+    "name": "Control_Spirit",
+    "ru": "Контроль духа",
+    "sphere": "Astral",
+    "damage": 0,
+    "mana_cost": 18,
+    "range": 200,
+    "area": 0,
+    "projectile": "bless",
+    "icon": "",
+    "icons": {
+      "scroll": "res://assets/inventory/0014027-000.png",
+      "super": "res://assets/inventory/0014056-000.png"
+    },
+    "kind": "buff"
+  }
 }

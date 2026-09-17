@@ -16,7 +16,6 @@
 [ext_resource type="Texture2D" path="res://assets/interface/textbackr.bmp" id="textbackr_tex"]
 [ext_resource type="Texture2D" path="res://assets/interface/commandbarl.bmp" id="commandbarl_tex"]
 [ext_resource type="Texture2D" path="res://assets/interface/commandbarr.bmp" id="commandbar_tex"]
-[ext_resource type="Texture2D" path="res://assets/interface/spellbook.bmp" id="spellbook_tex"]
 [ext_resource type="Texture2D" path="res://assets/interface/invframe.bmp" id="invframe_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
@@ -95,14 +94,11 @@ offset_top = 625.0
 offset_right = 720.0
 offset_bottom = 800.0
 
-[node name="SpellPanel" type="TextureRect" parent="UI/BottomPanel"]
+[node name="SpellPanel" type="Control" parent="UI/BottomPanel"]
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 480.0
 offset_bottom = 85.0
-texture = ExtResource("spellbook_tex")
-expand_mode = 1
-stretch_mode = 0
 
 [node name="SpellGrid" type="GridContainer" parent="UI/BottomPanel/SpellPanel"]
 offset_left = 5.0

@@ -119,6 +119,9 @@ func _apply_relief_stand() -> void:
 func take_damage(dmg: int, _attacker: Node2D) -> void:
 	if state == "dying" or state == "decay" or state == "corpse":
 		return
+	dmg = Game.shield_reduce(self, dmg)
+	if dmg <= 0:
+		return
 	current_hp -= dmg
 	if current_hp > 0:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))
