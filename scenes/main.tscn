@@ -142,36 +142,36 @@ color = Color(0.05, 0.05, 0.05, 1)
 
 [node name="HeadBarL" type="TextureRect" parent="UI"]
 offset_left = 1104.0
-offset_top = 180.0
+offset_top = 265.0
 offset_right = 1120.0
-offset_bottom = 260.0
+offset_bottom = 345.0
 texture = ExtResource("headsl_tex")
 expand_mode = 0
 stretch_mode = 3
 
 [node name="HeadBarR" type="TextureRect" parent="UI"]
 offset_left = 1120.0
-offset_top = 180.0
+offset_top = 265.0
 offset_right = 1280.0
-offset_bottom = 260.0
+offset_bottom = 345.0
 texture = ExtResource("headsr_tex")
 expand_mode = 0
 stretch_mode = 3
 
 [node name="HeroName" type="Label" parent="UI"]
 offset_left = 1104.0
-offset_top = 190.0
+offset_top = 275.0
 offset_right = 1280.0
-offset_bottom = 220.0
+offset_bottom = 305.0
 theme_override_font_sizes/font_size = 15
 horizontal_alignment = 1
 text = "ГЕРОЙ"
 
 [node name="PortraitBorder" type="Panel" parent="UI"]
 offset_left = 1104.0
-offset_top = 265.0
+offset_top = 350.0
 offset_right = 1280.0
-offset_bottom = 507.0
+offset_bottom = 592.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
 [node name="PortraitL" type="TextureRect" parent="UI/PortraitBorder"]
@@ -203,7 +203,7 @@ texture = ExtResource("hero_portrait")
 
 [node name="StatsBorder" type="Panel" parent="UI"]
 offset_left = 1104.0
-offset_top = 512.0
+offset_top = 597.0
 offset_right = 1280.0
 offset_bottom = 800.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
@@ -235,19 +235,19 @@ theme_override_font_sizes/font_size = 10
 autowrap_mode = 3
 
 [node name="CommandL" type="TextureRect" parent="UI"]
-offset_left = 8.0
-offset_top = 690.0
-offset_right = 24.0
-offset_bottom = 770.0
+offset_left = 1104.0
+offset_top = 180.0
+offset_right = 1120.0
+offset_bottom = 260.0
 texture = ExtResource("commandbarl_tex")
 expand_mode = 0
 stretch_mode = 3
 
 [node name="CommandBar" type="TextureRect" parent="UI"]
-offset_left = 24.0
-offset_top = 690.0
-offset_right = 184.0
-offset_bottom = 770.0
+offset_left = 1120.0
+offset_top = 180.0
+offset_right = 1280.0
+offset_bottom = 260.0
 texture = ExtResource("commandbar_tex")
 expand_mode = 0
 stretch_mode = 3

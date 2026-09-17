@@ -19,8 +19,6 @@ class_name GameUI
 	$PortraitBorder, $StatsBorder, $CommandL, $CommandBar,
 ]
 const COL_W := 176  # ширина правой колонки (кромка 16 + поле 160)
-const COL_HGAPS := [[5, 175], [180, 260], [265, 507], [512, 754]]  # y-диапазоны панелей
-const CMD_Y := [690, 770]  # команды внизу по центру
 
 var show_coords := false
 var hero_portrait: Texture2D = null   # дефолтный портрет героя (сброс ховера)
