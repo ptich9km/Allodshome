@@ -16,6 +16,9 @@ static var mana_regen_accum: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
 static var pending_scroll: Dictionary = {}   # прицеливание свитка: {"spell","item_key"}
+static var pending_spell: Dictionary = {}    # выбор заклинания из книги: {"name"}
+static var hotbar: Dictionary = {}           # быстрый вызов: слот 0..8 (клавиши 1..9) -> имя заклинания
+static var _spell_targeting_frame: int = -1  # кадр, когда начато прицеливание (защита от двойного каста)
 static var debug_magic: bool = true  # ВРЕМЕННО: маг на старте знает все 24 книжные магии (отладка)
 
 # --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
@@ -75,6 +78,11 @@ const DEAGGRO_RADIUS: float = 200.0
 func _ready():
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
 
+	# Сброс режимов прицеливания (статика переживает перезапуск сцены)
+	pending_scroll = {}
+	pending_spell = {}
+	_spell_targeting_frame = -1
+
 	# Страховка: если main.tscn запущен напрямую (F6, отладка) без выбора
 	# персонажа на старте — уходим на экран выбора героя.
 	if Game.hero_stats.is_empty():
@@ -89,7 +97,7 @@ func _ready():
 	_spawn_map_units()
 
 	if camera and player:
-		camera.position = player.position
+		camera.position = player.camera_focus()
 		camera.make_current()
 
 	await get_tree().process_frame
@@ -219,15 +227,37 @@ func _is_open_spot(tx: int, ty: int) -> bool:
 	return open_neighbors >= 2
 
 func _input(event):
-	# Прицеливание свитка: ПКМ или ESC отменяет чтение (свиток не тратится)
+	# Прицеливание (свиток или заклинание книги): ПКМ или ESC отменяет.
+	# Свиток НЕ тратится, мана/заряд НЕ списываются.
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		if not Game.pending_scroll.is_empty():
-			cancel_scroll_targeting()
+		if not Game.pending_scroll.is_empty() or not Game.pending_spell.is_empty():
+			cancel_targeting()
 			return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		if not Game.pending_scroll.is_empty():
-			cancel_scroll_targeting()
+		if not Game.pending_scroll.is_empty() or not Game.pending_spell.is_empty():
+			cancel_targeting()
 			return
+
+	# Быстрые клавиши заклинаний (как у разработчиков): во время выбора магии
+	# Ctrl+1..9 назначает её на цифровую клавишу; 1..9 (без Ctrl) входит в
+	# прицеливание назначенной магии.
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
+			var slot: int = event.keycode - KEY_1
+			if event.ctrl_pressed and not Game.pending_spell.is_empty():
+				var sn := str(Game.pending_spell.get("name", ""))
+				if sn != "":
+					Game.hotbar[slot] = sn
+					print("Быстрая клавиша %d -> %s" % [slot + 1, sn])
+					if ui != null and ui.has_method("_notify_hotbar_assigned"):
+						ui._notify_hotbar_assigned(slot, sn)
+				return
+			if not event.ctrl_pressed:
+				var fast := str(Game.hotbar.get(slot, ""))
+				if fast != "":
+					if ui != null and ui.has_method("_quick_cast"):
+						ui._quick_cast(fast)
+					return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Клики по интерфейсу (книга заклинаний, инвентарь, панели, магазин/таверна)
@@ -240,6 +270,10 @@ func _input(event):
 		# Чтение свитка мага: клик выбирает цель (врага или себя/союзника)
 		if not Game.pending_scroll.is_empty():
 			_resolve_scroll_click(world_position)
+			return
+		# Заклинание из книги: клик выбирает цель для выбранной магии
+		if not Game.pending_spell.is_empty():
+			_resolve_spell_click(world_position)
 			return
 		handle_click(world_position)
 
@@ -453,6 +487,56 @@ func _resolve_scroll_click(world_position: Vector2) -> void:
 	if ui != null and ui.has_method("_finish_scroll_targeting"):
 		ui._finish_scroll_targeting()
 
+## Заклинание из книги: клик выбрал цель. Атака/область/стена — по врагу или
+## точке, лечение/защита/бафф — по герою или союзнику. Мана/заряд списываются
+## только при успешном касте.
+func _resolve_spell_click(world_position: Vector2) -> void:
+	if not is_instance_valid(player):
+		return
+	var name := str(Game.pending_spell.get("name", ""))
+	if name == "":
+		return
+	# Защита: не кастовать в тот же кадр, что и выбор магии из книги
+	if Engine.get_process_frames() == Game._spell_targeting_frame:
+		return
+	var kind := SpellDB.kind_of(name)
+	var target_position := world_position
+	var target_node: Node2D = null
+	var ok := true
+
+	if kind in ["attack", "area", "wall"]:
+		var enemy := get_enemy_at_position(world_position)
+		if enemy != null:
+			target_position = enemy.global_position
+		elif kind in ["area", "wall"]:
+			pass   # можно кастовать и по точке на земле
+		else:
+			enemy = player.get_nearest_enemy(world_position, 220.0)
+			if enemy == null:
+				ok = false
+			else:
+				target_position = enemy.global_position
+	else:
+		var ally := _ally_at_position(world_position)
+		if ally == null:
+			ok = false
+		else:
+			target_position = ally.global_position
+			target_node = ally
+
+	if not ok:
+		var msg := "Укажите ВРАГА для «%s» (ПКМ/ESC — отмена)." % name if kind == "attack" \
+			else "Укажите ГЕРОЯ или СОЮЗНИКА для «%s»." % name
+		print(msg)
+		if ui != null and ui.has_method("_flash_targeting_error"):
+			ui._flash_targeting_error(msg)
+		return
+
+	if not player.cast_spell(name, target_position, target_node):
+		print("Не удалось кастовать: " + name)
+	if ui != null and ui.has_method("_finish_spell_targeting"):
+		ui._finish_spell_targeting()
+
 ## Цель-союзник под курсором: сам герой, мирный НПЦ или наёмник.
 func _ally_at_position(world_position: Vector2) -> Node2D:
 	if is_instance_valid(player) and unit_hit_rect(player).grow(8.0).has_point(world_position):
@@ -465,11 +549,13 @@ func _ally_at_position(world_position: Vector2) -> Node2D:
 			return m
 	return null
 
-## Отмена прицеливания свитка (свиток НЕ тратится).
-func cancel_scroll_targeting() -> void:
+## Отмена прицеливания (свиток или заклинание книги). НЕ тратится.
+func cancel_targeting() -> void:
 	Game.pending_scroll = {}
-	if ui != null and ui.has_method("_cancel_scroll_targeting"):
-		ui._cancel_scroll_targeting()
+	Game.pending_spell = {}
+	Game._spell_targeting_frame = -1
+	if ui != null and ui.has_method("_cancel_targeting"):
+		ui._cancel_targeting()
 
 ## Хит-бокс юнита в мире: по sel_box спрайта — кликабельная ВИДИМАЯ область
 ## (раньше цель считалась в точке пола — «враг был ниже, чем его видно»).
@@ -509,7 +595,7 @@ func _process(delta):
 	if is_paused:
 		return
 	if is_instance_valid(player) and camera:
-		camera.position = camera.position.lerp(player.position, 5.0 * delta)
+		camera.position = camera.position.lerp(player.camera_focus(), 5.0 * delta)
 	if is_instance_valid(ui) and is_instance_valid(player):
 		ui.update_ui(player, delta)
 	

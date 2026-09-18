@@ -429,14 +429,6 @@ func _physics_process(delta):
 	if health_bar:
 		health_bar.update_bars(current_hp, current_mana)
 
-	# Быстрые клавиши каста (зар-1/2/3 — первые известные атакующие заклинания)
-	var cast_keys := ["cast_1", "cast_2", "cast_3"]
-	var castable := _attack_spells()
-	for i in range(cast_keys.size()):
-		if Input.is_action_just_pressed(cast_keys[i]):
-			if i < castable.size():
-				cast_spell(castable[i], get_global_mouse_position())
-
 	match state:
 		"idle":
 			velocity = Vector2.ZERO
@@ -492,6 +484,21 @@ func _apply_relief_stand() -> void:
 	_anim.position = Vector2(_anim.position.x, -h)
 	if health_bar:
 		health_bar.position.y = -(h + _anim.sprite_height() + 6.0)  # над головой
+
+## Точка фокуса камеры: визуальный центр персонажа (середина фигурки), а не его
+## «ноги» (global_position). Спрайт рисуется от подошв вверх — если центрировать
+## на global_position, герой всегда будет выше середины экрана.
+func camera_focus() -> Vector2:
+	if _anim == null:
+		return global_position
+	return global_position + Vector2(0, _anim.position.y - _anim.visual_height() * 0.5)
+
+## Точка старта снаряда заклинания: чуть выше середины фигурки (на уровне рук/
+## груди). Не «ноги» — иначе снаряд вылетает из-под ступней.
+func cast_origin() -> Vector2:
+	if _anim == null:
+		return global_position
+	return global_position + Vector2(0, _anim.position.y - _anim.visual_height() * 0.62)
 
 func move_to_target(delta):
 	if _path.size() > 0:
@@ -669,8 +676,9 @@ func can_cast(name: String) -> bool:
 	return false
 
 ## Использовать заклинание по имени. Возвращает true, если кастован.
-## Панель: маг платит ману, свитковая ячейка — заряд; цель-точка/курсор.
-func cast_spell(name: String, target_position: Vector2) -> bool:
+## Панель/быстрый вызов: маг платит ману, свитковая ячейка — заряд.
+## target_node — выбранная цель (для лечения/защиты); иначе герой.
+func cast_spell(name: String, target_position: Vector2, target_node: Node2D = null) -> bool:
 	if not can_cast(name):
 		return false
 	var spell: Dictionary = SpellDB.get_spell(name)
@@ -689,7 +697,7 @@ func cast_spell(name: String, target_position: Vector2) -> bool:
 		current_mana = maxi(0, current_mana - SpellDB.mana_cost(name))
 	cast_cooldowns[name] = 0.8  # универсальный КД ~0.8 с
 
-	_cast_spell_effect(name, spell, target_position, self)
+	_cast_spell_effect(name, spell, target_position, target_node if is_instance_valid(target_node) else self)
 	_apply_spell_experience(str(spell.get("sphere", "")))
 	return true
 
@@ -702,15 +710,18 @@ func apply_scroll_to_target(name: String, target: Node2D) -> void:
 	_cast_spell_effect(name, spell, target.global_position, target)
 	_apply_spell_experience(str(spell.get("sphere", "")))
 
-## Звук заклинания по сфере (magic\*.wav).
-func _play_spell_sound(sphere: String) -> void:
-	match sphere:
-		"Fire": SoundDB.play(512)      # fireball
-		"Water": SoundDB.play(518)     # icemissile
-		"Air": SoundDB.play(528)       # lightning
-		"Earth": SoundDB.play(546)     # pearth
-		"Astral": SoundDB.play(556)    # heal
-		_: SoundDB.play(512)
+## Звук заклинания (magic\*.wav): из поля sound базы, по сфере на запас.
+func _play_spell_sound(name: String, sphere: String) -> void:
+	var sid := SpellDB.sound_of(name)
+	if sid <= 0:
+		match sphere:
+			"Fire": sid = 512    # fireball
+			"Water": sid = 518   # icemissile
+			"Air": sid = 528     # lightning
+			"Earth": sid = 546   # pearth
+			"Astral": sid = 556  # heal
+	if sid > 0:
+		SoundDB.play(sid)
 
 ## Общий порядок применения заклинания (книга на панели ИЛИ свиток с прицелом).
 ## target_node — выбранная цель (для лечения/защиты); при панельном касте — герой.
@@ -720,7 +731,7 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 	var dmg := int(spell.get("damage", 0))
 	var area := float(spell.get("area", 0))
 	var range_f := float(spell.get("range", 0))
-	_play_spell_sound(sphere)
+	_play_spell_sound(name, sphere)
 
 	match kind:
 		"attack", "area":
@@ -739,18 +750,26 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 				_: _apply_buff_target(target_node, sphere, name)   # напр. Shield
 
 ## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).
+## Если папки снаряда нет (эффект отсутствует — Haste/Invisibility/Summon...),
+## применяем заклинание мгновенно без летящего снаряда.
 func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float, range_f: float, target_position: Vector2) -> void:
 	var final_dmg := magic_damage(dmg, sphere)
+	if SpellDB.projectile_folder(name) == "":
+		# Эффекта-снаряда нет: мгновенный урон по цели/точке (напр. Animate_Dead).
+		var enemy := get_nearest_enemy(target_position, 120.0)
+		if enemy != null:
+			enemy.take_damage(final_dmg, self)
+		return
 	if area > 0.0:
 		# Областное: летит к точке, взрывается (урон по радиусу)
-		create_spell_projectile(name, global_position, target_position, final_dmg, area)
+		create_spell_projectile(name, cast_origin(), target_position, final_dmg, area)
 		if range_f <= 0.0:
 			_damage_area_at(target_position, area, final_dmg)
 	else:
 		# Одиночная цель: снаряд летит до врага у точки прицела
 		var enemy := get_nearest_enemy(target_position, 200.0)
 		var to := enemy.global_position if enemy != null else target_position
-		create_spell_projectile(name, global_position, to, final_dmg, 0.0)
+		create_spell_projectile(name, cast_origin(), to, final_dmg, 0.0)
 
 ## Создать снаряд с анимацией фаз из папки снаряда.
 func create_spell_projectile(name: String, from: Vector2, to: Vector2, damage: int, area: float) -> void:

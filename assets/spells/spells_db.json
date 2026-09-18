@@ -13,7 +13,8 @@
       "scroll": "res://assets/inventory/0014006-000.png",
       "super": "res://assets/inventory/0014035-000.png"
     },
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 510
   },
   "Fire_Ball": {
     "name": "Fire_Ball",
@@ -29,7 +30,8 @@
       "scroll": "res://assets/inventory/0014007-000.png",
       "super": "res://assets/inventory/0014036-000.png"
     },
-    "kind": "area"
+    "kind": "area",
+    "sound": 512
   },
   "Wall_of_Fire": {
     "name": "Wall_of_Fire",
@@ -45,7 +47,8 @@
       "scroll": "res://assets/inventory/0014008-000.png",
       "super": "res://assets/inventory/0014037-000.png"
     },
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 90
   },
   "Protection_from_Fire": {
     "name": "Protection_from_Fire",
@@ -61,7 +64,8 @@
       "scroll": "res://assets/inventory/0014009-000.png",
       "super": "res://assets/inventory/0014038-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 516
   },
   "Ice_Missile": {
     "name": "Ice_Missile",
@@ -77,7 +81,8 @@
       "scroll": "res://assets/inventory/0014010-000.png",
       "super": "res://assets/inventory/0014039-000.png"
     },
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 518
   },
   "Poison_Cloud": {
     "name": "Poison_Cloud",
@@ -93,7 +98,8 @@
       "scroll": "res://assets/inventory/0014011-000.png",
       "super": "res://assets/inventory/0014040-000.png"
     },
-    "kind": "area"
+    "kind": "area",
+    "sound": 520
   },
   "Blizzard": {
     "name": "Blizzard",
@@ -103,13 +109,14 @@
     "mana_cost": 30,
     "range": 260,
     "area": 80,
-    "projectile": "steam",
+    "projectile": "meteor",
     "icon": "",
     "icons": {
       "scroll": "res://assets/inventory/0014012-000.png",
       "super": "res://assets/inventory/0014041-000.png"
     },
-    "kind": "area"
+    "kind": "area",
+    "sound": 523
   },
   "Protection_from_Water": {
     "name": "Protection_from_Water",
@@ -125,7 +132,8 @@
       "scroll": "res://assets/inventory/0014013-000.png",
       "super": "res://assets/inventory/0014042-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 524
   },
   "Acid_Stream": {
     "name": "Acid_Stream",
@@ -141,7 +149,8 @@
       "scroll": "res://assets/inventory/0014014-000.png",
       "super": "res://assets/inventory/0014043-000.png"
     },
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 526
   },
   "Lightning": {
     "name": "Lightning",
@@ -157,7 +166,8 @@
       "scroll": "res://assets/inventory/0014015-000.png",
       "super": "res://assets/inventory/0014044-000.png"
     },
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 528
   },
   "Prismatic_Spray": {
     "name": "Prismatic_Spray",
@@ -173,7 +183,8 @@
       "scroll": "res://assets/inventory/0014016-000.png",
       "super": "res://assets/inventory/0014045-000.png"
     },
-    "kind": "area"
+    "kind": "area",
+    "sound": 530
   },
   "Invisibility": {
     "name": "Invisibility",
@@ -183,13 +194,14 @@
     "mana_cost": 16,
     "range": 0,
     "area": 0,
-    "projectile": "p_air",
+    "projectile": "",
     "icon": "",
     "icons": {
       "scroll": "res://assets/inventory/0014017-000.png",
       "super": "res://assets/inventory/0014046-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 532
   },
   "Protection_from_Air": {
     "name": "Protection_from_Air",
@@ -205,7 +217,8 @@
       "scroll": "res://assets/inventory/0014018-000.png",
       "super": "res://assets/inventory/0014047-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 534
   },
   "Darkness": {
     "name": "Darkness",
@@ -221,7 +234,8 @@
       "scroll": "res://assets/inventory/0014019-000.png",
       "super": "res://assets/inventory/0014048-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 536
   },
   "Stone_Missile": {
     "name": "Stone_Missile",
@@ -234,7 +248,8 @@
     "projectile": "meteorit",
     "icon": "",
     "icons": {},
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 540
   },
   "Wall_of_Earth": {
     "name": "Wall_of_Earth",
@@ -250,7 +265,8 @@
       "scroll": "res://assets/inventory/0014022-000.png",
       "super": "res://assets/inventory/0014051-000.png"
     },
-    "kind": "wall"
+    "kind": "wall",
+    "sound": 542
   },
   "Stone_Curse": {
     "name": "Stone_Curse",
@@ -266,7 +282,8 @@
       "scroll": "res://assets/inventory/0014023-000.png",
       "super": "res://assets/inventory/0014052-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 544
   },
   "Protection_from_Earth": {
     "name": "Protection_from_Earth",
@@ -282,7 +299,8 @@
       "scroll": "res://assets/inventory/0014024-000.png",
       "super": "res://assets/inventory/0014053-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 546
   },
   "Diamond_Dust": {
     "name": "Diamond_Dust",
@@ -298,7 +316,8 @@
       "scroll": "res://assets/inventory/0014021-000.png",
       "super": "res://assets/inventory/0014050-000.png"
     },
-    "kind": "area"
+    "kind": "area",
+    "sound": 540
   },
   "Bless": {
     "name": "Bless",
@@ -314,7 +333,8 @@
       "scroll": "res://assets/inventory/0014025-000.png",
       "super": "res://assets/inventory/0014054-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 548
   },
   "Haste": {
     "name": "Haste",
@@ -324,13 +344,14 @@
     "mana_cost": 10,
     "range": 200,
     "area": 0,
-    "projectile": "p_air",
+    "projectile": "",
     "icon": "",
     "icons": {
       "scroll": "res://assets/inventory/0014026-000.png",
       "super": "res://assets/inventory/0014055-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 550
   },
   "Heal": {
     "name": "Heal",
@@ -346,7 +367,8 @@
       "scroll": "res://assets/inventory/0014029-000.png",
       "super": "res://assets/inventory/0014058-000.png"
     },
-    "kind": "heal"
+    "kind": "heal",
+    "sound": 556
   },
   "Drain_Life": {
     "name": "Drain_Life",
@@ -362,7 +384,8 @@
       "scroll": "res://assets/inventory/0014031-000.png",
       "super": "res://assets/inventory/0014060-000.png"
     },
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 560
   },
   "Shield": {
     "name": "Shield",
@@ -378,7 +401,8 @@
       "scroll": "res://assets/inventory/0014032-000.png",
       "super": "res://assets/inventory/0014061-000.png"
     },
-    "kind": "self"
+    "kind": "self",
+    "sound": 562
   },
   "Summon": {
     "name": "Summon",
@@ -388,13 +412,14 @@
     "mana_cost": 20,
     "range": 0,
     "area": 0,
-    "projectile": "teleport",
+    "projectile": "",
     "icon": "",
     "icons": {
       "scroll": "res://assets/inventory/0014030-000.png",
       "super": "res://assets/inventory/0014059-000.png"
     },
-    "kind": "self"
+    "kind": "self",
+    "sound": 558
   },
   "Animate_Dead": {
     "name": "Animate_Dead",
@@ -404,10 +429,11 @@
     "mana_cost": 10,
     "range": 200,
     "area": 0,
-    "projectile": "poison_d",
+    "projectile": "",
     "icon": "",
     "icons": {},
-    "kind": "attack"
+    "kind": "attack",
+    "sound": 552
   },
   "Teleport": {
     "name": "Teleport",
@@ -423,7 +449,8 @@
       "scroll": "res://assets/inventory/0014028-000.png",
       "super": "res://assets/inventory/0014057-000.png"
     },
-    "kind": "self"
+    "kind": "self",
+    "sound": 554
   },
   "Curse": {
     "name": "Curse",
@@ -439,7 +466,8 @@
       "scroll": "res://assets/inventory/0014033-000.png",
       "super": "res://assets/inventory/0014062-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 564
   },
   "Slow": {
     "name": "Slow",
@@ -455,7 +483,8 @@
       "scroll": "res://assets/inventory/0014034-000.png",
       "super": "res://assets/inventory/0014063-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 566
   },
   "Light": {
     "name": "Light",
@@ -471,7 +500,8 @@
       "scroll": "res://assets/inventory/0014020-000.png",
       "super": "res://assets/inventory/0014049-000.png"
     },
-    "kind": "self"
+    "kind": "self",
+    "sound": 538
   },
   "Control_Spirit": {
     "name": "Control_Spirit",
@@ -487,6 +517,7 @@
       "scroll": "res://assets/inventory/0014027-000.png",
       "super": "res://assets/inventory/0014056-000.png"
     },
-    "kind": "buff"
+    "kind": "buff",
+    "sound": 552
   }
 }

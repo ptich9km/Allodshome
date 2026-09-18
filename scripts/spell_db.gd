@@ -78,6 +78,15 @@ static func sphere_of(name: String) -> String:
 static func projectile_folder(name: String) -> String:
 	return str(get_spell(name).get("projectile", ""))
 
+## Звук заклинания (ID из assets/audio/sound_index.json; 0 = нет/не задан).
+static func sound_of(name: String) -> int:
+	return int(get_spell(name).get("sound", 0))
+
+## Иконка магии из канонической Книги Магии (assets/spells/spell_NN.png,
+## нарезаны из spellbook.bmp, 2 ряда x 12 = 24 слота). По индексу книги 0..23.
+static func book_icon_path(index: int) -> String:
+	return "res://assets/spells/spell_%02d.png" % index
+
 ## Иконка заклинания (обычная, из inventory -000.png).
 static func icon_of(name: String) -> String:
 	var o := get_spell(name)

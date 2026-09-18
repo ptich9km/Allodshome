@@ -209,6 +209,12 @@ func sprite_height() -> float:
 		return 0.0
 	return -_sprite.position.y
 
+## Полная видимая высота кадра с учётом масштаба юнита (tile_size).
+func visual_height() -> float:
+	if _sprite == null:
+		return 0.0
+	return -_sprite.position.y * _sprite.scale.y
+
 ## Индекс кадра: направление-мажор. frame = block_start + file_dir*phases + phase.
 ## Для dirs=5 (unarmed) правые направления (5,6,7) = зеркало левых (3,2,1) flip_h.
 ## Для dirs=8 (оружие, меч) все 8 направлений нарисованы — зеркало не нужно.

@@ -82,7 +82,9 @@ func set_spell_anim(name: String) -> void:
 
 func explode():
 	var radius := spell_area if spell_area > 0.0 else 30.0
-	SoundDB.play(513)  # magic\explosion
+	# При касте звук заклинания уже проигран (player._play_spell_sound).
+	# На попадании — универсальный взрыв (513 = magic\explosion.wav).
+	SoundDB.play(513)
 	if spell_area > 0.0:
 		# Областное заклинание: урон всем целям в радиусе области
 		for enemy in Game.enemies:

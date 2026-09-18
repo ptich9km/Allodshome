@@ -125,8 +125,8 @@ func _setup_spells():
 
 ## Перестроить книгу магии: всегда 2 ряда по 12 ячеек = 24 книжных заклинания
 ## (порядок docs/rom2-ref/spells.txt). Слот 1 (1-й ряд, левая ячейка) … слот 24
-## (2-й ряд, 12-я ячейка). Иконка каждой магии — реальный кадр её снаряда из
-## реестра projectiles.reg (assets/projectiles/<folder>/). Выучено — иконка +
+## (2-й ряд, 12-я ячейка). Иконка каждой магии — каноничная иконка из книги
+## (assets/spells/spell_NN.png, нарезаны из spellbook.bmp). Выучено — иконка +
 ## подсказка с названием; не выучено — пустой квадрат spellback с подсказкой,
 ## какая магия здесь учится.
 func refresh_spell_book() -> void:
@@ -140,11 +140,12 @@ func refresh_spell_book() -> void:
 	_spell_button_names.clear()
 
 	# Каноничная таблица из 24 книжных заклинаний: порядок = порядок иконок
+	# assets/spells/spell_NN.png (нарезаны из spellbook.bmp, слот книги = индекс)
 	var slots: Array = []
 	for i in range(SpellDB.BOOK_SPELLS.size()):
 		slots.append({
 			"name": str(SpellDB.BOOK_SPELLS[i]),
-			"icon": SpellDB.projectile_icon(str(SpellDB.BOOK_SPELLS[i])),
+			"icon": SpellDB.book_icon_path(i),
 		})
 	# Прочие выученные заклинания (их дают Книги Сфер — напр. Curse/Slow/Light)
 	# идут следом за каноничными 24, с иконкой свитка из базы.
@@ -241,18 +242,15 @@ func _spellback_tex() -> Texture2D:
 		_spellback = load("res://assets/interface/spellback.bmp")
 	return _spellback
 
-## Клик по заклинанию в книге: каст по курсору.
+## Клик по заклинанию в книге: как у разработчиков — входим в режим
+## прицеливания (анимированный курсор cast/), магия улетает только по клику
+## на цель. Мана/заряд при этом НЕ списываются до попадания по цели.
 func _cast_spell_button(name: String) -> void:
 	if not is_instance_valid(player):
 		return
-	var target := player.get_global_mouse_position()
-	player.cast_spell(name, target)
-	# обновить подписи зарядов / убрать израсходованную ячейку свитка
-	refresh_spell_book()
-	_update_bottom_panel_visibility()
-	_update_stats()
+	_begin_spell_targeting(name)
 
-# --- Чтение свитков МАГА: прицеливание с анимированным курсором cast/ ---
+# --- Прицеливание (свиток МАГА или заклинание книги): курсор cast/ ---
 
 var _cast_cursor: Sprite2D = null
 var _cast_frames: Array = []
@@ -260,6 +258,63 @@ var _cast_frame_t := 0.0
 var _cast_frame_i := 0
 var _invisible_tex: ImageTexture = null
 var _scroll_hint: Label = null
+var _error_hint_timer: SceneTreeTimer = null
+
+## Выбрано заклинание из книги: ждём цели. Книга закрывается, курсор-cast следует
+## за мышью. Выбор отменяется ПКМ/ESC, назначение на цифру — Ctrl+1..9.
+func _begin_spell_targeting(name: String) -> void:
+	if not is_instance_valid(player) or not player.can_cast(name):
+		return
+	_cancel_targeting()
+	Game.pending_spell = {"name": name}
+	Game._spell_targeting_frame = Engine.get_process_frames()
+	spells_visible = false              # книга закрывается, остаётся курсор-прицел
+	_update_bottom_panel_visibility()
+	_ensure_cast_cursor()
+	_hide_os_cursor()
+	_update_targeting_hint(name, true)
+	SoundDB.play(7)  # ibook
+
+## Заклинание применено по цели (вызывает Game). Сброс режима + обновление книги.
+func _finish_spell_targeting() -> void:
+	_cancel_targeting()
+	refresh_spell_book()
+	_update_bottom_panel_visibility()
+	_update_stats()
+
+## Быстрая клавиша 1..9: вход в прицеливание назначенного заклинания.
+func _quick_cast(spell: String) -> void:
+	if not is_instance_valid(player) or not player.can_cast(spell):
+		print("Быстрый вызов недоступен: " + spell)
+		return
+	_begin_spell_targeting(spell)
+
+## Ctrl+N: выбранная магия назначена на цифровую клавишу (подпись в книге +
+## подсказка). Выбранное заклинание остаётся активным для прицеливания.
+func _notify_hotbar_assigned(slot: int, spell: String) -> void:
+	refresh_spell_book()
+	if _scroll_hint != null and is_instance_valid(_scroll_hint):
+		_scroll_hint.text = "«%s» назначена на клавишу %d (жмите %d для прицеливания)" % [
+			str(SpellDB.get_spell(spell).get("ru", spell)), slot + 1, slot + 1]
+		_scroll_hint.visible = true
+
+## Ошибка выбора цели (заклинание остаётся активным): показываем на
+## подсказке, затем возвращаем обычный текст подсказки.
+func _flash_targeting_error(msg: String) -> void:
+	if _scroll_hint != null and is_instance_valid(_scroll_hint):
+		_scroll_hint.text = msg
+		_scroll_hint.visible = true
+	var timer := get_tree().create_timer(1.8)
+	_error_hint_timer = timer
+	timer.timeout.connect(_on_error_hint_timeout)
+
+func _on_error_hint_timeout() -> void:
+	if not Game.pending_spell.is_empty():
+		_update_targeting_hint(str(Game.pending_spell.get("name", "")), true)
+	elif not Game.pending_scroll.is_empty():
+		_update_targeting_hint(str(Game.pending_scroll.get("spell", "")), true)
+	elif _scroll_hint != null and is_instance_valid(_scroll_hint):
+		_scroll_hint.visible = false
 
 ## Маг дважды кликнул свиток в складе: ждём выбора цели (курсор-cast).
 func _begin_scroll_targeting(item_key: String) -> void:
@@ -269,20 +324,23 @@ func _begin_scroll_targeting(item_key: String) -> void:
 	Game.pending_scroll = {"spell": spell, "item_key": item_key}
 	_ensure_cast_cursor()
 	_hide_os_cursor()
-	_update_scroll_hint(spell, true)
+	_update_targeting_hint(spell, true)
 	SoundDB.play(7)  # ibook
 
 ## Свиток применён по цели (вызывает Game). Сброс режима + обновление склад/книги.
 func _finish_scroll_targeting() -> void:
-	_cancel_scroll_targeting()
+	_cancel_targeting()
 	refresh_inventory()
 	refresh_spell_book()
 	_update_bottom_panel_visibility()
 	_update_stats()
 
-## Отмена прицеливания: свиток НЕ тратится, курсор-прицел снимается.
-func _cancel_scroll_targeting() -> void:
+## Отмена любого прицеливания (свиток/магия): цель НЕ тратится, курсор-прицел
+## снимается, системный курсор возвращается.
+func _cancel_targeting() -> void:
 	Game.pending_scroll = {}
+	Game.pending_spell = {}
+	Game._spell_targeting_frame = -1
 	_restore_os_cursor()
 	if _cast_cursor != null and is_instance_valid(_cast_cursor):
 		_cast_cursor.visible = false
@@ -327,8 +385,9 @@ func _hide_os_cursor() -> void:
 func _restore_os_cursor() -> void:
 	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
 
-## Подсказка над нижними панелями: куда применять выбранный свиток.
-func _update_scroll_hint(spell: String, on: bool) -> void:
+## Подсказка над нижними панелями: что применить выбранным свитком/заклинанием
+## и как отменить/назначить быструю клавишу (как у разработчиков).
+func _update_targeting_hint(spell: String, on: bool) -> void:
 	if _scroll_hint == null:
 		_scroll_hint = Label.new()
 		_scroll_hint.name = "ScrollHint"
@@ -346,9 +405,15 @@ func _update_scroll_hint(spell: String, on: bool) -> void:
 	if not on:
 		return
 	var kind := SpellDB.kind_of(spell)
-	var dir_text := "урона/области: укажите ВРАГА" \
-		if kind in ["attack", "area", "wall"] else "себя ИЛИ союзника"
-	_scroll_hint.text = ("Примените «%s» на %s (ПКМ/ESC — отмена)"
+	var dir_text := ""
+	match kind:
+		"attack":
+			dir_text = "ВРАГА"
+		"area", "wall":
+			dir_text = "ВРАГА ИЛИ ТОЧКУ"
+		_:
+			dir_text = "СЕБЯ ИЛИ СОЮЗНИКА"
+	_scroll_hint.text = ("Примените «%s» на %s (ПКМ/ESC — отмена; Ctrl+1..9 — быстрая клавиша)"
 		% [str(SpellDB.get_spell(spell).get("ru", spell)), dir_text])
 
 # Инвентарь
@@ -905,8 +970,8 @@ func _process(_delta):
 	else:
 		pause_label.visible = false
 
-	# Анимированный курсор-прицел свитка следует за мышью
-	if not Game.pending_scroll.is_empty() and _cast_cursor != null:
+	# Анимированный курсор-прицел (свиток или заклинание книги) следует за мышью
+	if (not Game.pending_scroll.is_empty() or not Game.pending_spell.is_empty()) and _cast_cursor != null:
 		_cast_cursor.global_position = get_viewport().get_mouse_position()
 		if _cast_frames.size() > 0:
 			_cast_frame_t += _delta
@@ -991,8 +1056,8 @@ var _in_interior := false
 func _enter_interior() -> void:
 	if not is_instance_valid(player):
 		return
-	if not Game.pending_scroll.is_empty():
-		_cancel_scroll_targeting()   # прицеливание свитка внутри здания не нужно
+	if not Game.pending_scroll.is_empty() or not Game.pending_spell.is_empty():
+		_cancel_targeting()   # прицеливание внутри здания не нужно
 	_interior_pos = player.global_position
 	player.stop_movement()          # не «ускакивает» по старой цели, пока в меню
 	player.visible = false
