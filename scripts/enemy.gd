@@ -122,7 +122,11 @@ func _physics_process(delta):
 				# несёт монстра мимо игрока — он «бегает вокруг, то туда, то сюда»
 				velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 				if attack_cooldown <= 0:
-					player.take_damage(damage, self)
+					# Единая точка урона: промах + поглощение (броня героя), затем take_damage.
+					if Game.is_miss(self, player):
+						print("%s промахнулся по герою!" % name)
+					else:
+						Game.deal_damage(player, damage, "physical", "", self)
 					attack_cooldown = 1.0
 					SoundDB.play(_unit_sound_at(0))
 		"flee":
@@ -207,11 +211,32 @@ func _chase_move(delta: float) -> void:
 	else:
 		_move_checked((target - global_position).normalized(), move_speed, delta)
 
-func take_damage(dmg: int, attacker: Node2D):
-	# Труп не получает урон: иначе на каждый удар по телу падает новый мешок
-	if state == "dying" or state == "decay" or state == "corpse":
-		return
-	dmg = Game.shield_reduce(self, dmg)
+## --- Производные характеристики (по данным монстра, как у героя) ---
+## Применяются через Game.unit_*: атака->точность, защита->уклонение,
+## поглощение->броня, защиты -> защита от стихий (для магии).
+
+func get_attack() -> int:
+	return damage / 2 + max_hp / 30
+
+func get_defense() -> int:
+	return max_hp / 25
+
+func get_absorption() -> int:
+	return max_hp / 40
+
+func get_protection_fire() -> int:   return max_hp / 60
+func get_protection_water() -> int:  return max_hp / 60
+func get_protection_air() -> int:    return max_hp / 60
+func get_protection_earth() -> int:  return max_hp / 70
+func get_protection_astral() -> int: return max_hp / 80
+
+## Обзор в клетках (влияет на радиус агро — как просили: «обзор -> агро»).
+func get_sight() -> int:
+	return maxi(1, int(move_speed / 8.0) + max_hp / 60)
+
+## Единая точка входящего урона: вызывается из Game.deal_damage
+## (там уже применены промах, поглощение брони и защиты стихий).
+func take_damage(dmg: int, attacker) -> void:
 	if dmg <= 0:
 		return
 	current_hp -= dmg

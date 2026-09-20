@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 class_name Game
 
 @onready var alm_map: Node2D = $Map
@@ -40,6 +40,66 @@ static func shield_reduce(unit: Node2D, dmg: int) -> int:
 		print("%s: щит поглотил весь урон!" % unit.name)
 	return out
 
+## --- Общая математика боя: характеристики -> шанс/урон (для ЛЮБОГО юнита) ---
+
+## Шанс попадания, %: 50 + атака − защита, кламп 5..95.
+static func hit_chance(attack: int, defense: int) -> int:
+	return clampi(50 + attack - defense, 5, 95)
+
+## Промах? Юниты с методами get_attack()/get_defense() участвуют полностью.
+static func is_miss(attacker: Node2D, defender: Node2D) -> bool:
+	var atk := 0
+	var dfs := 0
+	if attacker != null and attacker.has_method("get_attack"):
+		atk = int(attacker.call("get_attack"))
+	if defender != null and defender.has_method("get_defense"):
+		dfs = int(defender.call("get_defense"))
+	return randi() % 100 >= hit_chance(atk, dfs)
+
+## Точность юнита (если есть метод — иначе 0).
+static func unit_attack(u: Node2D) -> int:
+	return int(u.call("get_attack")) if u != null and u.has_method("get_attack") else 0
+
+## Защита юнита (уклонение/броня).
+static func unit_defense(u: Node2D) -> int:
+	return int(u.call("get_defense")) if u != null and u.has_method("get_defense") else 0
+
+## Поглощение (материал/броня): get_absorption() — есть у героя и врагов.
+static func unit_absorption(u: Node2D) -> int:
+	return int(u.call("get_absorption")) if u != null and u.has_method("get_absorption") else 0
+
+## Защита от стихии (магический урон): get_protection_<сфера>.to_lower().
+static func unit_protection(u: Node2D, sphere: String) -> int:
+	if u == null or sphere == "":
+		return 0
+	var m := "get_protection_%s" % sphere.to_lower()
+	if u.has_method(m):
+		return int(u.call(m))
+	return 0
+
+## ЕДИНАЯ точка урона: физика -> поглощение; магия -> защиты стихий; далее щит и HP.
+## Возвращает фактически нанесённый урон (0 — если всё поглощено/промах).
+static func deal_damage(target: Node2D, dmg: int, kind: String, sphere: String, attacker: Node2D) -> int:
+	if not is_instance_valid(target) or dmg <= 0:
+		return 0
+	var final := dmg
+	if kind == "magic":
+		final = maxi(0, final - unit_protection(target, sphere))
+	else:
+		final = maxi(0, final - unit_absorption(target))
+	if final <= 0:
+		print("%s: урон поглощён полностью (%s)." % [target.name,
+			"защита стихии" if kind == "magic" else "броня"])
+		return 0
+	target.take_damage(final, attacker)   # внутри take_damage — щит, затем HP
+	return final
+
+## Нанести урон всем целям в радиусе (для областных заклинаний/взрывов).
+static func deal_damage_area(targets: Array, dmg: int, kind: String, sphere: String, attacker: Node2D) -> void:
+	for t in targets:
+		if is_instance_valid(t):
+			deal_damage(t, dmg, kind, sphere, attacker)
+
 static func tick_shields(delta: float) -> void:
 	var units: Array = [Game.hero]
 	units.append_array(Game.enemies)
@@ -75,7 +135,7 @@ const ATTACK_COOLDOWN: float = 1.0
 const AGGRO_RADIUS: float = 150.0
 const DEAGGRO_RADIUS: float = 200.0
 
-func _ready():
+func _ready():  # Инициализация мира и боя
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
 
 	# Сброс режимов прицеливания (статика переживает перезапуск сцены)

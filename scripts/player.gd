@@ -591,7 +591,23 @@ func attack_enemy(_delta):
 			var damage = get_damage_min() + randi() % (get_damage_max() - get_damage_min() + 1)
 			print("Атакуем! Урон: ", damage)
 			_sound_weapon_attack()
-			attack_target.take_damage(damage, self)
+			# МАГ с посохом: удар — это сфера (мгновенная магия выбранной стихии),
+			# сразу в deal_damage("magic", sphere) — защита стихий работает, опыт сфере.
+			if Game.hero_class == "mage" and weapon == "staff":
+				var sphere := _active_sphere()
+				if Game.is_miss(self, attack_target):
+					print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(attack_target)))
+				else:
+					Game.deal_damage(attack_target, magic_damage(damage, sphere), "magic", sphere, self)
+				_apply_spell_experience(sphere)
+				attack_cooldown = Game.ATTACK_COOLDOWN
+				return
+			# Единая точка: промах по hit_chance(атака, защита), далее Game.deal_damage
+			# (поглощение бронёй → take_damage → щит → HP).
+			if Game.is_miss(self, attack_target):
+				print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(attack_target)))
+			else:
+				Game.deal_damage(attack_target, damage, "physical", "", self)
 			_apply_attack_experience(attack_target, damage)
 			attack_cooldown = Game.ATTACK_COOLDOWN
 	else:
@@ -624,6 +640,18 @@ func magic_damage(base: int, sphere: String) -> int:
 		"Earth": skill = earth_skill
 		"Astral": skill = astral_skill
 	return base + get_magic_power() + skill * 2 / 5
+
+## Активная сфера мага (для удара посохом/панели сфер): сфера стартовой книги,
+## иначе первая уже изученная. Fallback — Fire (на старте всегда есть книга сферы).
+func _active_sphere() -> String:
+	if Game.hero_start_book != "":
+		var b := SpellDB.sphere_of_book(Game.hero_start_book)
+		if b != "":
+			return b
+	for sp in ["Fire", "Water", "Air", "Earth", "Astral"]:
+		if sphere_books.get(sp, false):
+			return sp
+	return "Fire"
 
 ## Навык сферы (для UI/урона): 0-100.
 func sphere_skill(sphere: String) -> int:
@@ -758,7 +786,7 @@ func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float,
 		# Эффекта-снаряда нет: мгновенный урон по цели/точке (напр. Animate_Dead).
 		var enemy := get_nearest_enemy(target_position, 120.0)
 		if enemy != null:
-			enemy.take_damage(final_dmg, self)
+					Game.deal_damage(enemy, final_dmg, "magic", sphere, self)
 		return
 	if area > 0.0:
 		# Областное: летит к точке, взрывается (урон по радиусу)

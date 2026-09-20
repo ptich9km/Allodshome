@@ -893,11 +893,19 @@ func _update_stats():
 	stats += "УРОН %d-%d  ЗАЩИТА %d\n" % [damage_min, damage_max, defense]
 	stats += "АТАКА   %d  ПОГЛОЩ %d\n" % [attack, absorption]
 	stats += "НАВЫКИ     СОПРОТИВЛ.\n"
-	stats += "МЕЧ      %d  ОГОНЬ   %d\n" % [p.blade_skill, p.get_protection_fire()]
-	stats += "ТОПОР    %d  ВОДА    %d\n" % [p.axe_skill, p.get_protection_water()]
-	stats += "ДУБИНА   %d  ВОЗДУХ  %d\n" % [p.bludgeon_skill, p.get_protection_air()]
-	stats += "КОПЬЁ    %d  ЗЕМЛЯ   %d\n" % [p.pike_skill, p.get_protection_earth()]
-	stats += "СТРЕЛЬБА %d  АСТРАЛ  %d\n" % [p.shooting_skill, p.get_protection_astral()]
+	if Game.hero_class == "mage":
+		# Маг: вместо навыков оружия — сферы магии (как в Allods).
+		stats += "ОГОНЬ    %d  ОГОНЬ   %d\n" % [p.fire_skill, p.get_protection_fire()]
+		stats += "ВОДА     %d  ВОДА    %d\n" % [p.water_skill, p.get_protection_water()]
+		stats += "ВОЗДУХ   %d  ВОЗДУХ  %d\n" % [p.air_skill, p.get_protection_air()]
+		stats += "ЗЕМЛЯ    %d  ЗЕМЛЯ   %d\n" % [p.earth_skill, p.get_protection_earth()]
+		stats += "АСТРАЛ   %d  АСТРАЛ  %d\n" % [p.astral_skill, p.get_protection_astral()]
+	else:
+		stats += "МЕЧ      %d  ОГОНЬ   %d\n" % [p.blade_skill, p.get_protection_fire()]
+		stats += "ТОПОР    %d  ВОДА    %d\n" % [p.axe_skill, p.get_protection_water()]
+		stats += "ДУБИНА   %d  ВОЗДУХ  %d\n" % [p.bludgeon_skill, p.get_protection_air()]
+		stats += "КОПЬЁ    %d  ЗЕМЛЯ   %d\n" % [p.pike_skill, p.get_protection_earth()]
+		stats += "СТРЕЛЬБА %d  АСТРАЛ  %d\n" % [p.shooting_skill, p.get_protection_astral()]
 	stats += "      ОБЗОР    %d\n" % [sight]
 	stats += "      СКОРОСТЬ %d\n" % [int(p.move_speed)]
 	stats += "НАГРУЗКА %.1f/%.0f\n" % [p.get_load(), p.load_capacity()]

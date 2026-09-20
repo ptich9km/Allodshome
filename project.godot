@@ -1,4 +1,4 @@
-; Engine configuration file.
+﻿; Engine configuration file.
 ; It's best edited using the editor UI and not directly,
 ; since the parameters that go here are not all obvious.
 ;
@@ -58,6 +58,11 @@ cast_3={
 ]
 }
 
+[autoload]
+
+WorldBus="*res://scripts/world/world_bus.gd"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
+

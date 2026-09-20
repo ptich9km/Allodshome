@@ -85,12 +85,16 @@ func explode():
 	# При касте звук заклинания уже проигран (player._play_spell_sound).
 	# На попадании — универсальный взрыв (513 = magic\explosion.wav).
 	SoundDB.play(513)
+	var sphere := SpellDB.sphere_of(spell_name)
+	var targets: Array = []
 	if spell_area > 0.0:
 		# Областное заклинание: урон всем целям в радиусе области
 		for enemy in Game.enemies:
 			if is_instance_valid(enemy) and enemy.global_position.distance_to(global_position) <= radius:
-				enemy.take_damage(damage, projectile_owner)
-		# Разрушаемые объекты карты в радиусе
+				targets.append(enemy)
+		if not targets.is_empty():
+			Game.deal_damage_area(targets, damage, "magic", sphere, projectile_owner)
+		# Разрушаемые объекты карты в радиусе (карта применяет свой урон сама)
 		var map_node = get_tree().get_first_node_in_group("alm_map")
 		if map_node and map_node.has_method("damage_area"):
 			map_node.damage_area(global_position, radius, damage)
@@ -98,8 +102,8 @@ func explode():
 		# Одиночный снаряд: урон ближайшей цели (30 px — как раньше)
 		for enemy in Game.enemies:
 			if is_instance_valid(enemy) and enemy.global_position.distance_to(global_position) < radius:
-				enemy.take_damage(damage, projectile_owner)
+				Game.deal_damage(enemy, damage, "magic", sphere, projectile_owner)
 		var map_node = get_tree().get_first_node_in_group("alm_map")
 		if map_node and map_node.has_method("damage_area"):
-			map_node.damage_area(global_position, 40.0, damage)
+			map_node.damage_area(global_position, radius, damage)
 	queue_free()
