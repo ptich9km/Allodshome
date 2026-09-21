@@ -5,7 +5,10 @@ extends RefCounted
 
 const DB_PATH := "res://assets/maps/transition_db.json"
 const TERRAIN_NAMES := {0: "Трава", 1: "Горы", 2: "Вода", 3: "Дорога", 4: "Почва", 5: "Песок", 6: "Грязь"}
-const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}  # тип -> tile-файл
+## Тип -> tile-файл для .alm/рендера (пересчёт в генераторах по типу A)
+const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
+## Тип -> файл палитры в редакторе. Песок/грязь выбираются из tile1 (как просил).
+const PALETTE_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 1, 6: 1}
 const DIR_NAMES := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 const DIR_LABELS := {
 	"N": "Север", "NE": "СВ", "E": "Восток", "SE": "ЮВ",
@@ -54,7 +57,15 @@ func get_rule(type_a: int, dir: String, type_b: int) -> Dictionary:
 	return _rules.get("%d:%s:%d" % [type_a, dir, type_b], {})
 
 func set_rule(type_a: int, dir: String, type_b: int, spec: Dictionary) -> void:
-	_rules["%d:%s:%d" % [type_a, dir, type_b]] = spec
+	# Godot JSON пишет числа как float — нормализуем в int при установке
+	var clean := {}
+	for k in spec:
+		var v: Variant = spec[k]
+		if v is float and absf(v - roundf(v)) < 0.001:
+			clean[k] = int(roundf(v))
+		else:
+			clean[k] = v
+	_rules["%d:%s:%d" % [type_a, dir, type_b]] = clean
 
 # === Текстура из spec ===
 
@@ -161,11 +172,12 @@ func _build_panel(parent_ui: CanvasLayer) -> void:
 			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			btn.add_child(lbl)
 		else:
-			btn.disabled = true
+			# Центр = interior типа A, тоже редактируется
+			btn.pressed.connect(_on_grid_click.bind(""))
 			var lbl := Label.new()
 			lbl.text = "A"
 			lbl.add_theme_font_size_override("font_size", 16)
-			lbl.position = Vector2(28, 28)
+			lbl.position = Vector2(34, 4)
 			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			btn.add_child(lbl)
 
@@ -219,7 +231,12 @@ func _refresh_grid() -> void:
 		var dir: String = GRID_DIR[i]
 		var btn: TextureButton = _grid_buttons[i]
 		if dir == "":
-			btn.texture_normal = _interior_tex(_type_a)
+			var spec_i: Dictionary = _interior_spec(_type_a)
+			btn.texture_normal = tile_from_spec(spec_i) if not spec_i.is_empty() else null
+			btn.tooltip_text = "Interior %s: %s" % [
+				TERRAIN_NAMES[_type_a],
+				("f%d v%d r%d" % [spec_i.get("file", 0), spec_i.get("variant", 0), spec_i.get("row", 0)])
+				if not spec_i.is_empty() else "не задано"]
 			continue
 		var spec: Dictionary = get_rule(_type_a, dir, _type_b)
 		if spec.is_empty():
@@ -231,11 +248,18 @@ func _refresh_grid() -> void:
 				TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], dir,
 				spec.get("file", 0), spec.get("variant", 0), spec.get("row", 0)]
 
-func _interior_tex(type: int) -> Texture2D:
+func _interior_spec(type: int) -> Dictionary:
 	var interior: Dictionary = _db.get("interior", {})
-	if interior.has(str(type)):
-		return tile_from_spec(interior[str(type)])
-	return null
+	var v: Variant = interior.get(str(type), {})
+	return v if v is Dictionary else {}
+
+func _set_interior_spec(type: int, spec: Dictionary) -> void:
+	if not _db.has("interior") or not (_db["interior"] is Dictionary):
+		_db["interior"] = {}
+	if spec.is_empty():
+		_db["interior"].erase(str(type))
+	else:
+		_db["interior"][str(type)] = spec
 
 # === Обработчики ===
 
@@ -294,55 +318,70 @@ func _open_palette(dir: String) -> void:
 	margin.add_child(vb)
 
 	var title := Label.new()
-	title.text = "Тайл: %s -> %s [%s]" % [
-		TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], DIR_LABELS.get(dir, dir)]
+	if dir == "":
+		title.text = "Interior: %s" % TERRAIN_NAMES[_type_a]
+	else:
+		title.text = "Тайл: %s -> %s [%s]" % [
+			TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], DIR_LABELS.get(dir, dir)]
 	title.add_theme_font_size_override("font_size", 12)
 	vb.add_child(title)
 
-	var file_n: int = TERRAIN_FILE.get(_type_a, 1)
-	var max_rows := 14 if file_n != 3 else 8
+	var file_n: int = PALETTE_FILE.get(_type_a, 1)
+	var max_rows := 8 if file_n == 3 else 14
+	var max_vars := 4 if file_n == 4 else 16  # tile4 только варианты 00-03
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(scroll)
 
 	var grid := GridContainer.new()
-	grid.columns = 16
+	grid.columns = max_vars
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 2)
 	grid.add_theme_constant_override("v_separation", 2)
 	scroll.add_child(grid)
 
-	for v in range(16):
+	for v in range(max_vars):
 		for r in range(max_rows):
 			var spec := {"file": file_n, "variant": v, "row": r}
 			var btn := TextureButton.new()
 			btn.custom_minimum_size = Vector2(32, 32)
 			btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 			btn.texture_normal = tile_from_spec(spec)
-			btn.tooltip_text = "v%d r%d" % [v, r]
+			btn.tooltip_text = "f%d v%d r%d" % [file_n, v, r]
 			btn.pressed.connect(_on_palette_pick.bind(dir, spec))
 			grid.add_child(btn)
 
 	var clear_btn := Button.new()
-	clear_btn.text = "Очистить (убрать правило)"
+	clear_btn.text = "Очистить (убрать правило)" if dir != "" else "Сбросить interior"
 	clear_btn.pressed.connect(_on_palette_clear.bind(dir))
 	vb.add_child(clear_btn)
 
 func _on_palette_pick(dir: String, spec: Dictionary) -> void:
-	set_rule(_type_a, dir, _type_b, spec)
-	_refresh_grid()
-	_status_label.text = "Правило установлено: %s %s->%s = f%d v%d r%d" % [
-		TERRAIN_NAMES[_type_a], dir, TERRAIN_NAMES[_type_b],
-		spec["file"], spec["variant"], spec["row"]]
+	if dir == "":
+		_set_interior_spec(_type_a, spec)
+		_refresh_grid()
+		_status_label.text = "Interior %s = f%d v%d r%d" % [
+			TERRAIN_NAMES[_type_a], spec["file"], spec["variant"], spec["row"]]
+	else:
+		set_rule(_type_a, dir, _type_b, spec)
+		_refresh_grid()
+		_status_label.text = "Правило установлено: %s %s->%s = f%d v%d r%d" % [
+			TERRAIN_NAMES[_type_a], dir, TERRAIN_NAMES[_type_b],
+			spec["file"], spec["variant"], spec["row"]]
 	if _palette_popup != null and is_instance_valid(_palette_popup):
 		_palette_popup.queue_free()
 
 func _on_palette_clear(dir: String) -> void:
-	_rules.erase("%d:%s:%d" % [ _type_a, dir, _type_b])
-	_refresh_grid()
-	_status_label.text = "Правило удалено: %s %s->%s" % [
-		TERRAIN_NAMES[_type_a], dir, TERRAIN_NAMES[_type_b]]
+	if dir == "":
+		_set_interior_spec(_type_a, {})
+		_refresh_grid()
+		_status_label.text = "Interior %s очищен" % TERRAIN_NAMES[_type_a]
+	else:
+		_rules.erase("%d:%s:%d" % [ _type_a, dir, _type_b])
+		_refresh_grid()
+		_status_label.text = "Правило удалено: %s %s->%s" % [
+			TERRAIN_NAMES[_type_a], dir, TERRAIN_NAMES[_type_b]]
 	if _palette_popup != null and is_instance_valid(_palette_popup):
 		_palette_popup.queue_free()
 
@@ -350,24 +389,31 @@ func _on_palette_clear(dir: String) -> void:
 
 func _on_import_alm() -> void:
 	var pv := "res://assets/maps/pvm/"
-	var maps := [
-		"sb_anp_greenlnd_1_1.alm",
-		"sb_anp_tropic_1_0.alm",
-		"sb_anp_canyon_1_0.alm",
-		"sb_anp_orcish_1_0.alm",
-		"sb_anp_gothic_1_2.alm",
-		"sb_anp_som_1_0.alm",
-		"sc_an_nord_3_2.alm",
-		"hc_an_4islands_4_6.alm",
-		"sc_an_madp_2_1.alm",
-	]
+	# Собираем все .alm в папке (регистр не важен: .alm/.ALM)
+	var maps: Array[String] = []
+	var dir := DirAccess.open(pv)
+	if dir != null:
+		for f in dir.get_files():
+			var fl := f.to_lower()
+			if fl.ends_with(".alm"):
+				maps.append(f)
+	maps.sort()
+	if maps.is_empty():
+		_status_label.text = "Импорт: нет .alm в %s" % pv
+		return
+
 	# Ключ: "typeA:dir:typeB" -> {"file:variant:row": count}
 	var stats := {}
+	var interior_stats := {}  # "type" -> {"file:variant:row": count}
 	var total_cells := 0
+	var dirs := {
+		"N": Vector2i(0, -1), "S": Vector2i(0, 1),
+		"E": Vector2i(1, 0), "W": Vector2i(-1, 0),
+		"NE": Vector2i(1, -1), "NW": Vector2i(-1, -1),
+		"SE": Vector2i(1, 1), "SW": Vector2i(-1, 1),
+	}
 	for f in maps:
 		var p: String = pv + f
-		if not FileAccess.file_exists(p):
-			continue
 		var m: Dictionary = AlmLoader.load_map(p)
 		if m.is_empty():
 			continue
@@ -383,8 +429,7 @@ func _on_import_alm() -> void:
 				var file_n: int = (raw_f >> 4) + 1
 				var variant: int = raw_f & 0xF
 				var tile_key: String = "%d:%d:%d" % [file_n, variant, r]
-				var dirs := {"N": Vector2i(0, -1), "S": Vector2i(0, 1),
-							 "E": Vector2i(1, 0), "W": Vector2i(-1, 0)}
+				var is_edge := false
 				for dir_name in dirs:
 					var d: Vector2i = dirs[dir_name]
 					var nx: int = x + int(d.x)
@@ -395,36 +440,56 @@ func _on_import_alm() -> void:
 					var nt: int = AlmLoader.tile_type(tiles[ni])
 					if nt == t:
 						continue
+					is_edge = true
 					var key: String = "%d:%s:%d" % [t, dir_name, nt]
 					if not stats.has(key):
 						stats[key] = {}
 					stats[key][tile_key] = int(stats[key].get(tile_key, 0)) + 1
 					total_cells += 1
+				if not is_edge:
+					# Интерьер: самый частый тайл «внутри» типа
+					if not interior_stats.has(str(t)):
+						interior_stats[str(t)] = {}
+					interior_stats[str(t)][tile_key] = int(interior_stats[str(t)].get(tile_key, 0)) + 1
+
 	# Заполняем правила самыми частотными тайлами
 	var imported := 0
 	for key in stats:
 		var parts: Array = key.split(":")
 		if parts.size() != 3:
 			continue
-		var type_a: int = int(parts[0])
-		var dir: String = parts[1]
-		var type_b: int = int(parts[2])
-		var items: Dictionary = stats[key]
-		var best_key := ""
-		var best_count := 0
-		for tk in items:
-			if int(items[tk]) > best_count:
-				best_count = int(items[tk])
-				best_key = tk
-		if best_key == "":
+		var spec := _best_spec(stats[key])
+		if spec.is_empty():
 			continue
-		var bp: Array = best_key.split(":")
-		if bp.size() != 3:
-			continue
-		var spec := {"file": int(bp[0]), "variant": int(bp[1]), "row": int(bp[2])}
-		set_rule(type_a, dir, type_b, spec)
+		set_rule(int(parts[0]), parts[1], int(parts[2]), spec)
 		imported += 1
-	# Также заполняем диагонали из 4-связных данных (комбинация cardinal)
-	# Для диагоналей: берем.variant из "комбинации" двух cardinal direction
+
+	# Интерьер для типов, которые встретились на картах
+	var imported_int := 0
+	for tkey in interior_stats:
+		var spec := _best_spec(interior_stats[tkey])
+		if spec.is_empty():
+			continue
+		if not _db.has("interior"):
+			_db["interior"] = {}
+		_db["interior"][tkey] = spec
+		imported_int += 1
+
 	_refresh_grid()
-	_status_label.text = "Импорт: %d правил из %d клеток на границах. Сохраните!" % [imported, total_cells]
+	_status_label.text = "Импорт: %d правил + %d interior из %d карт (%d клеток на границах). Сохраните!" % [
+		imported, imported_int, maps.size(), total_cells]
+
+## Самый частотный tile-key -> spec {file, variant, row}
+func _best_spec(items: Dictionary) -> Dictionary:
+	var best_key := ""
+	var best_count := 0
+	for tk in items:
+		if int(items[tk]) > best_count:
+			best_count = int(items[tk])
+			best_key = str(tk)
+	if best_key == "":
+		return {}
+	var bp: Array = best_key.split(":")
+	if bp.size() != 3:
+		return {}
+	return {"file": int(bp[0]), "variant": int(bp[1]), "row": int(bp[2])}

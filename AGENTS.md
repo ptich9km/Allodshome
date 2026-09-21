@@ -1,7 +1,7 @@
 ﻿# AGENTS.md — заметки агента по проекту Allodshome_Godot
 
 > Памятка для продолжения работы из любой сессии. Обновляй при каждом заметном шаге.
-> Обновлено: **Сессия 21.09 (вечер+ночь)** — визуальный редактор переходов terrain-типов, расширение до 7+2 типов, исправлен рендер земли под объектами.
+> Обновлено: **Сессия 22.09** — доделан transition_editor: tile5/6/7 (PNG+BMP), import из pvm/ с диагоналями, transition_db 336/336.
 >
 > Запуск головного headless-раннера мира: `godot --headless --path ... --script res://scripts/world/sim_runner.gd` (см. Слой-2 заметку ниже).
 
@@ -321,4 +321,41 @@
 - `_source_id_for(type_id, tex_idx)`: проверка `type_id >= 9` → return -1
 - `texture_sets[type]` — набор текстур для типа; объекты хранятся в `texture_sets[7]`
 - `DEFAULT_TEX` в custom_map.gd — дефолтные текстуры для каждого типа
+
+---
+
+### Transition editor — доделка (сессия 22.09)
+
+#### Плитки tile5/6/7 (почва/песок/грязь)
+- `tests/gen_tile_placeholders.gd` — генерирует **и PNG** (224 ячейки 32×32 в `assets/terrain/tiles/tileN-VV_RR.png` для палитры редактора), **и BMP** (16 полос 32×448 в `assets/terrain/tileN-VV.bmp` для AlmMap/CustomMap).
+- BMP пишется **вручную 24-бит bottom-up** (у Godot 4 нет `Image.save_bmp`; top-down с отрицательной высотой Godot **не импортирует** → `valid=false`).
+- После генерации обязательно `godot --headless --path ... --import` — иначе `ResourceLoader.exists` = false.
+- Текстуры — процедурный шум по базовому цвету (не плоская заливка).
+
+#### transition_editor.gd
+- `TERRAIN_FILE := {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}` — тип → tile-файл **для .alm/рендера** (генераторы пересчитывают по типу A).
+- `PALETTE_FILE := {0:1, 1:2, 2:3, 3:4, 4:5, 5:1, 6:1}` — что показывать в палитре. **Песок (5) и грязь (6) выбираются из tile1**; в transition_db у них file=1.
+- Палитра: `max_rows = 8` для tile3 (вода), `max_vars = 4` для tile4 (дорога), иначе 14×16.
+- **Центральная ячейка (interior) редактируется**: клик по «A» открывает палитру interior типа A; «Сбросить interior» чистит запись.
+- **Импорт из .alm**: сканирует `DirAccess` папку `assets/maps/pvm/` (все `*.alm`/`*.ALM`), импортирует **8 направлений** + interior.
+
+#### transition_db.json
+- **336 правил** + interior для всех 7.
+- `file` в правиле = **палитра** (для типов 5/6 это 1 = tile1). Генераторы `.alm` вызывают `_spec_for_type(type_a, spec)` → `file = TERRAIN_FILE[type_a]`, variant/row из правила.
+- Диагонали заполняются наследованием от кардинальных; format UTF-8 без BOM, TAB.
+
+#### Рендер tile5/6/7
+- `alm_map.gd:_build_atlas` — файлы `[1..7]`, `vmax_by_file` включает 5/6/7 (16 вариантов).
+- `custom_map.gd:_load_tile_region` — кламп `0..7` (был `0..4` → почва/песок/грязь рендерилась как дорога).
+- `texture_settings.gd` — вкладки tile1..tile7 + «Объекты».
+
+#### Тесты
+- `tests/test_transitions.gd` → `RESULT:OK transition_editor+db`: 336 правил, file-маппинг, 224 PNG × 3, BMP 32×448, roundtrip `tile_from_spec`/`tile_type` для типов 4/5/6, полнота пары 4↔5 (почва↔песок).
+- `tests/test_import_smoke.gd` → `RESULT:OK import_smoke`: сканирует `assets/maps/pvm/`, грузит все `.alm` (на домашнем 11 карт, только типы 0-3), считает edge-статистику (410974 клеток, 96 уникальных ключей) — та же логика, что `_on_import_alm`.
+- `tests/gen_alm_map.gd` / `gen_smart_map.gd` — читают 336 rules, генерируют карты OK.
+
+#### Два ПК
+- Рабочий ПК: `C:\Work\Allodshome`, Godot `C:\Games\Godot_...`.
+- Домашний ПК: `D:\Work\UnityProjects\Allodshome_Godot`, Godot `D:\Work\UnityProjects\Godot_v4.7.2-stable_win64_console.exe`.
+- Карты для обучения генератора — `assets/maps/pvm/` (на домашнем: 11 шт; на рабочем может отличаться — импорт сканирует каталог, не хардкод).
 

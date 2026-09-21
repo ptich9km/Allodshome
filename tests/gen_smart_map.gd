@@ -6,6 +6,8 @@ const OUT_DIR := "res://assets/maps/gen/"
 const DB_PATH := "res://assets/maps/transition_db.json"
 const W := 128
 const H := 128
+## Тип A -> tile-файл для .alm (в DB у песка/грязи file=1 — палитра tile1)
+const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
 
 var _tiles := PackedInt32Array()
 var _heights := PackedByteArray()
@@ -98,18 +100,30 @@ func _place_terrain(n: int) -> void:
 	noise2.frequency = 1.0 / 32.0
 	noise2.fractal_octaves = 3
 
+	# Отдельный шум для почвы/песка/грязи
+	var noise3 := FastNoiseLite.new()
+	noise3.seed = 999
+	noise3.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise3.frequency = 1.0 / 40.0
+	noise3.fractal_octaves = 3
+
 	var field := PackedFloat32Array()
 	field.resize(n)
+	var soil_field := PackedFloat32Array()
+	soil_field.resize(n)
 	for i in range(n):
 		var x: float = float(i % W)
 		var y: float = float(i / W)
 		var v1: float = noise1.get_noise_2d(x, y)
 		var v2: float = noise2.get_noise_2d(x, y)
 		field[i] = clampf((v1 * 0.7 + v2 * 0.3 + 1.0) * 0.5, 0.0, 1.0)
+		soil_field[i] = clampf((noise3.get_noise_2d(x, y) + 1.0) * 0.5, 0.0, 1.0)
 
 	# Blur для плавных переходов
 	for _b in range(3):
 		field = _box_blur(field)
+	for _b in range(2):
+		soil_field = _box_blur(soil_field)
 
 	# Пороги по биому
 	var sorted: PackedFloat32Array = field.duplicate()
@@ -118,6 +132,13 @@ func _place_terrain(n: int) -> void:
 	var water_thr: float = sorted[clampi(int(_biome["water_pct"] * n_cells), 0, n_cells - 1)]
 	var mountain_thr: float = sorted[clampi(n_cells - 1 - int(_biome["mountain_pct"] * n_cells), 0, n_cells - 1)]
 
+	# Пороги почвы/песка/грязи (поверх травы)
+	var soil_sorted: PackedFloat32Array = soil_field.duplicate()
+	soil_sorted.sort()
+	var soil_thr: float = soil_sorted[clampi(int(0.72 * n_cells), 0, n_cells - 1)]     # ~8% почва
+	var sand_thr: float = soil_sorted[clampi(int(0.84 * n_cells), 0, n_cells - 1)]     # ~6% песок
+	var mud_thr: float = soil_sorted[clampi(int(0.92 * n_cells), 0, n_cells - 1)]      # ~4% грязь
+
 	for i in range(n):
 		var v: float = field[i]
 		if v <= water_thr:
@@ -125,7 +146,15 @@ func _place_terrain(n: int) -> void:
 		elif v >= mountain_thr:
 			_terrain[i] = 1  # горы
 		else:
-			_terrain[i] = 0  # трава
+			var sv: float = soil_field[i]
+			if sv >= mud_thr:
+				_terrain[i] = 6      # грязь
+			elif sv >= sand_thr:
+				_terrain[i] = 5      # песок
+			elif sv >= soil_thr:
+				_terrain[i] = 4      # почва
+			else:
+				_terrain[i] = 0      # трава
 
 func _place_roads(rng: RandomNumberGenerator) -> void:
 	# Соединяем центры карты случайными точками
@@ -207,7 +236,7 @@ func _sides(x: int, y: int) -> Dictionary:
 func _interior_tile(t: int) -> int:
 	var key := str(t)
 	if _interior.has(key):
-		return AlmLoader.tile_from_spec(_interior[key])
+		return AlmLoader.tile_from_spec(_spec_for_type(t, _interior[key]))
 	match t:
 		0: return AlmLoader.tile_from_spec({"file": 1, "variant": 1, "row": 1})
 		1: return AlmLoader.tile_from_spec({"file": 2, "variant": 15, "row": 3})
@@ -221,14 +250,22 @@ func _edge_tile(t: int, s: Dictionary) -> int:
 		if s[d] != -1 and s[d] != t:
 			var spec: Dictionary = _get_rule(t, d, s[d])
 			if not spec.is_empty():
-				return AlmLoader.tile_from_spec(spec)
+				return AlmLoader.tile_from_spec(_spec_for_type(t, spec))
 	# Пробуем diagonal
 	for d in ["NE", "NW", "SE", "SW"]:
 		if s[d] != -1 and s[d] != t:
 			var spec: Dictionary = _get_rule(t, d, s[d])
 			if not spec.is_empty():
-				return AlmLoader.tile_from_spec(spec)
+				return AlmLoader.tile_from_spec(_spec_for_type(t, spec))
 	return _interior_tile(t)
+
+## file из правила -> file для кодировки типа A (.alm)
+func _spec_for_type(type_a: int, spec: Dictionary) -> Dictionary:
+	var out := spec.duplicate(true)
+	out["file"] = int(TERRAIN_FILE.get(type_a, int(spec.get("file", 1))))
+	out["variant"] = int(spec.get("variant", 0))
+	out["row"] = int(spec.get("row", 0))
+	return out
 
 func _pick_height(x: int, y: int, t: int, rng: RandomNumberGenerator) -> int:
 	var base: float = float(_biome["h_grass"])

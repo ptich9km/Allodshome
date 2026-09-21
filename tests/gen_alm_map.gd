@@ -6,6 +6,9 @@ const OUT_DIR := "res://assets/maps/gen/"
 const DB_PATH := "res://assets/maps/transition_db.json"
 const W := 48
 const H := 48
+## Тип A -> tile-файл для .alm. В transition_db у песка/грязи file=1 (палитра tile1),
+## при генерации пересчитываем по типу, variant/row берём из правила.
+const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
 
 var _tiles := PackedInt32Array()
 var _heights := PackedByteArray()
@@ -120,11 +123,11 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 		return _interior(t, x, y)
 	return _edge(t, s, x, y)
 
-## Интерьер — из transition_db.json
+## Интерьер — из transition_db.json (file пересчитываем по типу)
 func _interior(t: int, x: int, y: int) -> int:
 	var key := str(t)
 	if _interior_rules.has(key):
-		return AlmLoader.tile_from_spec(_interior_rules[key])
+		return AlmLoader.tile_from_spec(_spec_for_type(t, _interior_rules[key]))
 	match t:
 		0: return AlmLoader.tile_from_spec({"file": 1, "variant": 1, "row": 1})
 		1: return AlmLoader.tile_from_spec({"file": 2, "variant": 15, "row": 3})
@@ -141,7 +144,7 @@ func _edge(t: int, s: Dictionary, x: int, y: int) -> int:
 	for d in diff_cardinals:
 		var spec: Dictionary = _get_rule(t, d, s[d])
 		if not spec.is_empty():
-			return AlmLoader.tile_from_spec(spec)
+			return AlmLoader.tile_from_spec(_spec_for_type(t, spec))
 	var diff_diags: Array = []
 	for d in ["NE", "NW", "SE", "SW"]:
 		if s[d] != -1 and s[d] != t:
@@ -149,8 +152,16 @@ func _edge(t: int, s: Dictionary, x: int, y: int) -> int:
 	for d in diff_diags:
 		var spec: Dictionary = _get_rule(t, d, s[d])
 		if not spec.is_empty():
-			return AlmLoader.tile_from_spec(spec)
+			return AlmLoader.tile_from_spec(_spec_for_type(t, spec))
 	return _interior(t, x, y)
+
+## file из правила -> file для кодировки типа A (.alm)
+func _spec_for_type(type_a: int, spec: Dictionary) -> Dictionary:
+	var out := spec.duplicate(true)
+	out["file"] = int(TERRAIN_FILE.get(type_a, int(spec.get("file", 1))))
+	out["variant"] = int(spec.get("variant", 0))
+	out["row"] = int(spec.get("row", 0))
+	return out
 
 func _pick_height(v: float, t: int, water_thr: float, mountain_thr: float) -> int:
 	var hval: float

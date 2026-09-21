@@ -4,6 +4,55 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.15.0] — 2026-09-22
+
+### Added (редактор переходов terrain: 7+2 типа, tile5/6/7, генератор карт)
+- **Система terrain-типов расширена до 7+2**: Трава (tile1), Почва (tile5),
+  Песок (tile6), Вода (tile3), Горы (tile2), Дорога (tile4), Грязь (tile7) +
+  Строение/Спавн (цвет-плейсхолдеры). WalkTable: почва 8, песок 12, грязь 14.
+- **Визуальный редактор переходов** (`scripts/transition_editor.gd`, кнопка
+  «Transitions» в редакторе карт): сетка 3×3 (центр = тип A, 8 клеток =
+  направления N/NE/E/SE/S/SW/W/NW), клик по ячейке — палитра тайлов типа A;
+  центральная ячейка (interior) редактируется и сбрасывается.
+- **База переходов** `assets/maps/transition_db.json`: **336 правил** + interior
+  для всех 7 типов. 96 правил импортированы из 9+ карт разработчиков
+  (`pvm/`, скриптом `analyze_dir_transitions.gd`), остальные — дефолтные;
+  диагонали наследуются от кардинальных. `file` в правиле = палитра
+  (песок/грязь выбираются из tile1), для .alm генераторы пересчитывают по типу A.
+- **Импорт переходов из .alm прямо в редакторе**: `_on_import_alm` сканирует
+  `assets/maps/pvm/` (DirAccess, все `*.alm`/`*.ALM`), считает статистику
+  границ по **8 направлениям** + interior, заполняет правила самым частотным
+  тайлом для каждой пары.
+- **Плитки tile5/6/7** (`tests/gen_tile_placeholders.gd`): PNG 32×32 для палитры
+  редактора (224 на тип, `tiles/tileN-VV_RR.png`) + BMP-полосы 32×448 для
+  рендера (`tileN-VV.bmp`). BMP пишется вручную 24-бит bottom-up (в Godot 4
+  нет `Image.save_bmp`; top-down Godot не импортирует). Текстуры — процедурный
+  шум по базовому цвету, не плоская заливка.
+- **Рендер tile5/6/7**: `alm_map._build_atlas` — файлы 1..7, 16 вариантов
+  каждый; `custom_map._load_tile_region` — кламп 0..7 (был 0..4 → грязь
+  рендерилась как дорога); `texture_settings.gd` — вкладки tile1..tile7 +
+  «Объекты».
+- **Генератор умных карт** (`tests/gen_smart_map.gd`): отдельные шумы для
+  земли/почвы/песка/грязи (пороговые доли ~8/6/4% поверх травы), читает
+  336 правил из transition_db, `_spec_for_type` пересчитывает file по типу A.
+
+### Changed
+- `gen_alm_map.gd` / `gen_smart_map.gd`: `_interior`/`_edge` берут spec из
+  `transition_db.json` с пересчётом `file = TERRAIN_FILE[type]` (0→tile1, 1→tile2,
+  2→tile3, 3→tile4, 4→tile5, 5→tile6, 6→tile7) — вариант/ряд из правила.
+- Удалены захардкоженные `scripts/tile_directions.gd` и
+  `assets/maps/tile_directions.json` — заменены на transition_db.json.
+
+### Verified (headless)
+- `tests/test_transitions.gd` → `RESULT:OK transition_editor+db`: 336 правил,
+  file-маппинг, 224 PNG × 3, BMP 32×448, roundtrip `tile_from_spec`/`tile_type`
+  для типов 4/5/6, полнота пары 4↔5 (почва↔песок).
+- `tests/test_import_smoke.gd` → `RESULT:OK import_smoke`: сканирует `pvm/`,
+  грузит 11 `.alm` (типы 0-3), edge-статистика 410974 клеток, 96 уникальных
+  ключей — та же логика, что `_on_import_alm`.
+- `tests/gen_alm_map.gd` / `gen_smart_map.gd` — читают 336 rules, генерируют
+  карты OK.
+
 ## [0.14.0] — 2026-09-18
 
 ### Added (магия: расшифрован реестр снарядов, панель 24, книги, свитки мага)

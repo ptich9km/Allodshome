@@ -278,9 +278,9 @@ func _build_atlas() -> void:
 	# Соберём фактические (файл, вариант, ряд) с реальным числом рядов в файле
 	var cells: Array = []  # [key, Image32]
 	var key_to_cell := {}
-	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4}
+	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16}
 	# Порядок: сначала все ряды файла 1, потом файла 2 ... (для обхода файлов)
-	for file_n in [1, 2, 3, 4]:
+	for file_n in [1, 2, 3, 4, 5, 6, 7]:
 		var vmax: int = vmax_by_file[file_n]
 		for variant in range(vmax):
 			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]

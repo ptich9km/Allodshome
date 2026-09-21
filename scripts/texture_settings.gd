@@ -124,15 +124,15 @@ func _build_type_column(panel: Panel) -> void:
 func _build_variant_area(panel: Panel) -> void:
 	var tabs := HBoxContainer.new()
 	tabs.position = Vector2(168, 40)
-	tabs.size = Vector2(360, 30)
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.size = Vector2(560, 30)
+	tabs.add_theme_constant_override("separation", 4)
 	panel.add_child(tabs)
 
-	for f in range(4):
+	for f in range(7):
 		var b := Button.new()
 		b.text = "tile%d" % (f + 1)
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(62, 28)
+		b.custom_minimum_size = Vector2(52, 28)
 		b.pressed.connect(func(id=f+1): _select_file(id))
 		tabs.add_child(b)
 		file_buttons[f + 1] = b

@@ -695,7 +695,7 @@ func _fit_in_cell(img: Image) -> Image:
 	return out
 
 func _load_tile_region(file_idx: int, variant: int, row: int, color_hex: String = "") -> Image:
-	var file_n := clampi(file_idx, 0, 4)
+	var file_n := clampi(file_idx, 0, 7)
 	if file_n == 0:
 		# Плейсхолдер-цвет для строений/НПЦ/спавна
 		var img := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)

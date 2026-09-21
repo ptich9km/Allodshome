@@ -42,38 +42,42 @@
 			"variant": 1.0
 		},
 		"5": {
-			"file": 6.0,
-			"label": "sand interior",
-			"row": 1.0,
-			"variant": 1.0
+			"file": 1,
+			"row": 0,
+			"variant": 11
 		},
 		"6": {
-			"file": 7.0,
-			"label": "mud interior",
-			"row": 1.0,
-			"variant": 1.0
+			"file": 1,
+			"row": 5,
+			"variant": 7
 		}
 	},
 	"rules": {
 		"0:E:1": {
-			"file": 1,
-			"row": 4,
-			"variant": 13
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 13.0
 		},
 		"0:E:2": {
-			"file": 1,
-			"row": 4,
-			"variant": 13
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 13.0
 		},
 		"0:E:3": {
-			"file": 1,
-			"row": 4,
-			"variant": 5
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 5.0
 		},
 		"0:E:4": {
-			"file": 1,
-			"row": 4,
-			"variant": 0
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 0.0
+		},
+		"0:E:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:E:6": {
 			"file": 1.0,
@@ -81,24 +85,30 @@
 			"variant": 1.0
 		},
 		"0:N:1": {
-			"file": 1,
-			"row": 4,
-			"variant": 1
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:N:2": {
-			"file": 1,
-			"row": 4,
-			"variant": 13
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 13.0
 		},
 		"0:N:3": {
-			"file": 1,
-			"row": 4,
-			"variant": 5
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 5.0
 		},
 		"0:N:4": {
-			"file": 1,
-			"row": 5,
-			"variant": 1
+			"file": 1.0,
+			"row": 5.0,
+			"variant": 1.0
+		},
+		"0:N:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:N:6": {
 			"file": 1.0,
@@ -124,15 +134,33 @@
 			"variant": 0.0
 		},
 		"0:NE:4": {
-			"file": 1,
-			"row": 11,
-			"variant": 2
+			"file": 1.0,
+			"row": 11.0,
+			"variant": 2.0
+		},
+		"0:NE:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"0:NE:6": {
+			"comment": "auto: from 0:N:6",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:NW:1": {
 			"comment": "grass NW→mountain (corner)",
 			"file": 1.0,
 			"row": 4.0,
 			"variant": 8.0
+		},
+		"0:NW:2": {
+			"comment": "auto: from 0:N:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 13.0
 		},
 		"0:NW:3": {
 			"comment": "grass NW→road (corner)",
@@ -141,29 +169,47 @@
 			"variant": 8.0
 		},
 		"0:NW:4": {
-			"file": 1,
-			"row": 0,
-			"variant": 0
+			"file": 1.0,
+			"row": 0.0,
+			"variant": 0.0
+		},
+		"0:NW:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"0:NW:6": {
+			"comment": "auto: from 0:N:6",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:S:1": {
-			"file": 1,
-			"row": 4,
-			"variant": 9
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 9.0
 		},
 		"0:S:2": {
-			"file": 1,
-			"row": 4,
-			"variant": 5
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 5.0
 		},
 		"0:S:3": {
-			"file": 1,
-			"row": 4,
-			"variant": 5
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 5.0
 		},
 		"0:S:4": {
-			"file": 1,
-			"row": 3,
-			"variant": 1
+			"file": 1.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"0:S:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:S:6": {
 			"file": 1.0,
@@ -189,9 +235,21 @@
 			"variant": 4.0
 		},
 		"0:SE:4": {
-			"file": 1,
-			"row": 2,
-			"variant": 2
+			"file": 1.0,
+			"row": 2.0,
+			"variant": 2.0
+		},
+		"0:SE:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"0:SE:6": {
+			"comment": "auto: from 0:S:6",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:SW:1": {
 			"comment": "grass SW→mountain (corner)",
@@ -212,29 +270,47 @@
 			"variant": 12.0
 		},
 		"0:SW:4": {
-			"file": 1,
-			"row": 2,
-			"variant": 0
+			"file": 1.0,
+			"row": 2.0,
+			"variant": 0.0
+		},
+		"0:SW:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"0:SW:6": {
+			"comment": "auto: from 0:S:6",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:W:1": {
-			"file": 1,
-			"row": 4,
-			"variant": 9
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 9.0
 		},
 		"0:W:2": {
-			"file": 1,
-			"row": 4,
-			"variant": 1
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:W:3": {
-			"file": 1,
-			"row": 4,
-			"variant": 9
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 9.0
 		},
 		"0:W:4": {
-			"file": 1,
-			"row": 4,
-			"variant": 2
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 2.0
+		},
+		"0:W:5": {
+			"comment": "default: 0->5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
 		},
 		"0:W:6": {
 			"file": 1.0,
@@ -242,24 +318,24 @@
 			"variant": 1.0
 		},
 		"1:E:0": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:E:2": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:E:3": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:E:4": {
 			"file": 2.0,
 			"row": 4.0,
 			"variant": 1.0
+		},
+		"1:E:2": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:E:3": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:E:4": {
+			"file": 2,
+			"row": 7,
+			"variant": 15
 		},
 		"1:E:5": {
 			"file": 2.0,
@@ -272,24 +348,24 @@
 			"variant": 1.0
 		},
 		"1:N:0": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:N:2": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:N:3": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:N:4": {
 			"file": 2.0,
 			"row": 4.0,
 			"variant": 1.0
+		},
+		"1:N:2": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:N:3": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:N:4": {
+			"file": 2,
+			"row": 13,
+			"variant": 13
 		},
 		"1:N:5": {
 			"file": 2.0,
@@ -319,6 +395,23 @@
 			"row": 4.0,
 			"variant": 1.0
 		},
+		"1:NE:4": {
+			"file": 2,
+			"row": 11,
+			"variant": 14
+		},
+		"1:NE:5": {
+			"comment": "auto: from 1:N:5",
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:NE:6": {
+			"comment": "auto: from 1:N:6",
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
 		"1:NW:0": {
 			"comment": "mountain NW→grass (corner)",
 			"file": 2.0,
@@ -337,25 +430,42 @@
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"1:S:0": {
+		"1:NW:4": {
 			"file": 2,
-			"row": 4,
-			"variant": 1
+			"row": 0,
+			"variant": 12
 		},
-		"1:S:2": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:S:3": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:S:4": {
+		"1:NW:5": {
+			"comment": "auto: from 1:N:5",
 			"file": 2.0,
 			"row": 4.0,
 			"variant": 1.0
+		},
+		"1:NW:6": {
+			"comment": "auto: from 1:N:6",
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:S:0": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:S:2": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:S:3": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:S:4": {
+			"file": 2,
+			"row": 10,
+			"variant": 13
 		},
 		"1:S:5": {
 			"file": 2.0,
@@ -385,6 +495,23 @@
 			"row": 4.0,
 			"variant": 1.0
 		},
+		"1:SE:4": {
+			"file": 2,
+			"row": 8,
+			"variant": 14
+		},
+		"1:SE:5": {
+			"comment": "auto: from 1:S:5",
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:SE:6": {
+			"comment": "auto: from 1:S:6",
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
 		"1:SW:0": {
 			"comment": "mountain SW→grass (corner)",
 			"file": 2.0,
@@ -403,25 +530,42 @@
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"1:W:0": {
+		"1:SW:4": {
 			"file": 2,
-			"row": 4,
-			"variant": 1
+			"row": 8,
+			"variant": 13
 		},
-		"1:W:2": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:W:3": {
-			"file": 2,
-			"row": 4,
-			"variant": 1
-		},
-		"1:W:4": {
+		"1:SW:5": {
+			"comment": "auto: from 1:S:5",
 			"file": 2.0,
 			"row": 4.0,
 			"variant": 1.0
+		},
+		"1:SW:6": {
+			"comment": "auto: from 1:S:6",
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:W:0": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:W:2": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:W:3": {
+			"file": 2.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"1:W:4": {
+			"file": 2,
+			"row": 7,
+			"variant": 12
 		},
 		"1:W:5": {
 			"file": 2.0,
@@ -434,24 +578,24 @@
 			"variant": 1.0
 		},
 		"2:E:0": {
-			"file": 3,
-			"row": 1,
-			"variant": 10
+			"file": 3.0,
+			"row": 1.0,
+			"variant": 10.0
 		},
 		"2:E:1": {
-			"file": 3,
-			"row": 4,
-			"variant": 8
+			"file": 3.0,
+			"row": 4.0,
+			"variant": 8.0
 		},
 		"2:E:3": {
-			"file": 3,
-			"row": 4,
-			"variant": 8
+			"file": 3.0,
+			"row": 4.0,
+			"variant": 8.0
 		},
 		"2:E:4": {
 			"file": 3.0,
-			"row": 0.0,
-			"variant": 1.0
+			"row": 4.0,
+			"variant": 4.0
 		},
 		"2:E:5": {
 			"file": 3.0,
@@ -464,23 +608,23 @@
 			"variant": 1.0
 		},
 		"2:N:0": {
-			"file": 3,
-			"row": 5,
-			"variant": 9
+			"file": 3.0,
+			"row": 5.0,
+			"variant": 9.0
 		},
 		"2:N:1": {
-			"file": 3,
-			"row": 5,
-			"variant": 1
+			"file": 3.0,
+			"row": 5.0,
+			"variant": 1.0
 		},
 		"2:N:3": {
-			"file": 3,
-			"row": 5,
-			"variant": 5
+			"file": 3.0,
+			"row": 5.0,
+			"variant": 5.0
 		},
 		"2:N:4": {
 			"file": 3.0,
-			"row": 0.0,
+			"row": 5.0,
 			"variant": 1.0
 		},
 		"2:N:5": {
@@ -511,6 +655,23 @@
 			"row": 0.0,
 			"variant": 0.0
 		},
+		"2:NE:4": {
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 14.0
+		},
+		"2:NE:5": {
+			"comment": "auto: from 2:N:5",
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 1.0
+		},
+		"2:NE:6": {
+			"comment": "auto: from 2:N:6",
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 1.0
+		},
 		"2:NW:0": {
 			"comment": "water NW→grass (diagonal)",
 			"file": 3.0,
@@ -529,25 +690,42 @@
 			"row": 0.0,
 			"variant": 4.0
 		},
-		"2:S:0": {
-			"file": 3,
-			"row": 2,
-			"variant": 5
+		"2:NW:4": {
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 0.0
 		},
-		"2:S:1": {
-			"file": 3,
-			"row": 1,
-			"variant": 13
-		},
-		"2:S:3": {
-			"file": 3,
-			"row": 2,
-			"variant": 5
-		},
-		"2:S:4": {
+		"2:NW:5": {
+			"comment": "auto: from 2:N:5",
 			"file": 3.0,
 			"row": 0.0,
 			"variant": 1.0
+		},
+		"2:NW:6": {
+			"comment": "auto: from 2:N:6",
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 1.0
+		},
+		"2:S:0": {
+			"file": 3.0,
+			"row": 2.0,
+			"variant": 5.0
+		},
+		"2:S:1": {
+			"file": 3.0,
+			"row": 1.0,
+			"variant": 13.0
+		},
+		"2:S:3": {
+			"file": 3.0,
+			"row": 2.0,
+			"variant": 5.0
+		},
+		"2:S:4": {
+			"file": 3.0,
+			"row": 3.0,
+			"variant": 13.0
 		},
 		"2:S:5": {
 			"file": 3.0,
@@ -577,6 +755,23 @@
 			"row": 0.0,
 			"variant": 8.0
 		},
+		"2:SE:4": {
+			"file": 3.0,
+			"row": 2.0,
+			"variant": 10.0
+		},
+		"2:SE:5": {
+			"comment": "auto: from 2:S:5",
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 1.0
+		},
+		"2:SE:6": {
+			"comment": "auto: from 2:S:6",
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 1.0
+		},
 		"2:SW:0": {
 			"comment": "water SW→grass (diagonal)",
 			"file": 3.0,
@@ -595,25 +790,42 @@
 			"row": 0.0,
 			"variant": 12.0
 		},
-		"2:W:0": {
-			"file": 3,
-			"row": 1,
-			"variant": 0
+		"2:SW:4": {
+			"file": 3.0,
+			"row": 2.0,
+			"variant": 4.0
 		},
-		"2:W:1": {
-			"file": 3,
-			"row": 4,
-			"variant": 10
-		},
-		"2:W:3": {
-			"file": 3,
-			"row": 2,
-			"variant": 0
-		},
-		"2:W:4": {
+		"2:SW:5": {
+			"comment": "auto: from 2:S:5",
 			"file": 3.0,
 			"row": 0.0,
 			"variant": 1.0
+		},
+		"2:SW:6": {
+			"comment": "auto: from 2:S:6",
+			"file": 3.0,
+			"row": 0.0,
+			"variant": 1.0
+		},
+		"2:W:0": {
+			"file": 3.0,
+			"row": 1.0,
+			"variant": 0.0
+		},
+		"2:W:1": {
+			"file": 3.0,
+			"row": 4.0,
+			"variant": 10.0
+		},
+		"2:W:3": {
+			"file": 3.0,
+			"row": 2.0,
+			"variant": 0.0
+		},
+		"2:W:4": {
+			"file": 3.0,
+			"row": 1.0,
+			"variant": 8.0
 		},
 		"2:W:5": {
 			"file": 3.0,
@@ -626,19 +838,19 @@
 			"variant": 1.0
 		},
 		"3:E:0": {
-			"file": 4,
-			"row": 4,
-			"variant": 0
+			"file": 4.0,
+			"row": 4.0,
+			"variant": 0.0
 		},
 		"3:E:1": {
-			"file": 4,
-			"row": 1,
-			"variant": 2
+			"file": 4.0,
+			"row": 1.0,
+			"variant": 2.0
 		},
 		"3:E:2": {
-			"file": 4,
-			"row": 0,
-			"variant": 2
+			"file": 4.0,
+			"row": 0.0,
+			"variant": 2.0
 		},
 		"3:E:4": {
 			"file": 4.0,
@@ -656,19 +868,19 @@
 			"variant": 0.0
 		},
 		"3:N:0": {
-			"file": 4,
-			"row": 5,
-			"variant": 1
+			"file": 4.0,
+			"row": 5.0,
+			"variant": 1.0
 		},
 		"3:N:1": {
-			"file": 4,
-			"row": 0,
-			"variant": 1
+			"file": 4.0,
+			"row": 0.0,
+			"variant": 1.0
 		},
 		"3:N:2": {
-			"file": 4,
-			"row": 5,
-			"variant": 1
+			"file": 4.0,
+			"row": 5.0,
+			"variant": 1.0
 		},
 		"3:N:4": {
 			"file": 4.0,
@@ -703,6 +915,24 @@
 			"row": 0.0,
 			"variant": 2.0
 		},
+		"3:NE:4": {
+			"comment": "auto: from 3:N:4",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:NE:5": {
+			"comment": "auto: from 3:N:5",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:NE:6": {
+			"comment": "auto: from 3:N:6",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
 		"3:NW:0": {
 			"comment": "road NW→grass (corner)",
 			"file": 4.0,
@@ -721,20 +951,38 @@
 			"row": 0.0,
 			"variant": 0.0
 		},
+		"3:NW:4": {
+			"comment": "auto: from 3:N:4",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:NW:5": {
+			"comment": "auto: from 3:N:5",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:NW:6": {
+			"comment": "auto: from 3:N:6",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
 		"3:S:0": {
-			"file": 4,
-			"row": 3,
-			"variant": 1
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
 		},
 		"3:S:1": {
-			"file": 4,
-			"row": 3,
-			"variant": 1
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
 		},
 		"3:S:2": {
-			"file": 4,
-			"row": 2,
-			"variant": 1
+			"file": 4.0,
+			"row": 2.0,
+			"variant": 1.0
 		},
 		"3:S:4": {
 			"file": 4.0,
@@ -769,6 +1017,24 @@
 			"row": 8.0,
 			"variant": 2.0
 		},
+		"3:SE:4": {
+			"comment": "auto: from 3:S:4",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:SE:5": {
+			"comment": "auto: from 3:S:5",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:SE:6": {
+			"comment": "auto: from 3:S:6",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
 		"3:SW:0": {
 			"comment": "road SW→grass (corner)",
 			"file": 4.0,
@@ -787,20 +1053,38 @@
 			"row": 8.0,
 			"variant": 0.0
 		},
+		"3:SW:4": {
+			"comment": "auto: from 3:S:4",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:SW:5": {
+			"comment": "auto: from 3:S:5",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
+		"3:SW:6": {
+			"comment": "auto: from 3:S:6",
+			"file": 4.0,
+			"row": 3.0,
+			"variant": 1.0
+		},
 		"3:W:0": {
-			"file": 4,
-			"row": 4,
-			"variant": 2
+			"file": 4.0,
+			"row": 4.0,
+			"variant": 2.0
 		},
 		"3:W:1": {
-			"file": 4,
-			"row": 1,
-			"variant": 0
+			"file": 4.0,
+			"row": 1.0,
+			"variant": 0.0
 		},
 		"3:W:2": {
-			"file": 4,
-			"row": 0,
-			"variant": 0
+			"file": 4.0,
+			"row": 0.0,
+			"variant": 0.0
 		},
 		"3:W:4": {
 			"file": 4.0,
@@ -877,6 +1161,78 @@
 			"row": 4.0,
 			"variant": 1.0
 		},
+		"4:NE:0": {
+			"comment": "auto: from 4:N:0",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NE:1": {
+			"comment": "auto: from 4:N:1",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NE:2": {
+			"comment": "auto: from 4:N:2",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NE:3": {
+			"comment": "auto: from 4:N:3",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NE:5": {
+			"comment": "auto: from 4:N:5",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NE:6": {
+			"comment": "auto: from 4:N:6",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NW:0": {
+			"comment": "auto: from 4:N:0",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NW:1": {
+			"comment": "auto: from 4:N:1",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NW:2": {
+			"comment": "auto: from 4:N:2",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NW:3": {
+			"comment": "auto: from 4:N:3",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NW:5": {
+			"comment": "auto: from 4:N:5",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:NW:6": {
+			"comment": "auto: from 4:N:6",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
 		"4:S:0": {
 			"file": 5.0,
 			"row": 4.0,
@@ -903,6 +1259,78 @@
 			"variant": 1.0
 		},
 		"4:S:6": {
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SE:0": {
+			"comment": "auto: from 4:S:0",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SE:1": {
+			"comment": "auto: from 4:S:1",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SE:2": {
+			"comment": "auto: from 4:S:2",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SE:3": {
+			"comment": "auto: from 4:S:3",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SE:5": {
+			"comment": "auto: from 4:S:5",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SE:6": {
+			"comment": "auto: from 4:S:6",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SW:0": {
+			"comment": "auto: from 4:S:0",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SW:1": {
+			"comment": "auto: from 4:S:1",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SW:2": {
+			"comment": "auto: from 4:S:2",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SW:3": {
+			"comment": "auto: from 4:S:3",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SW:5": {
+			"comment": "auto: from 4:S:5",
+			"file": 5.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"4:SW:6": {
+			"comment": "auto: from 4:S:6",
 			"file": 5.0,
 			"row": 4.0,
 			"variant": 1.0
@@ -938,244 +1366,524 @@
 			"variant": 1.0
 		},
 		"5:E:0": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:E:1": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:E:2": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:E:3": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:E:4": {
-			"file": 6.0,
-			"row": 4.0,
-			"variant": 1.0
+			"file": 1,
+			"row": 4,
+			"variant": 8
 		},
 		"5:E:6": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:N:0": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:N:1": {
-			"file": 6.0,
-			"row": 4.0,
-			"variant": 1.0
-		},
-		"5:N:2": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:N:3": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:N:4": {
-			"file": 6.0,
+			"file": 1,
+			"row": 0,
+			"variant": 9
+		},
+		"5:N:6": {
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"5:N:6": {
-			"file": 6.0,
+		"5:NE:0": {
+			"comment": "auto: from 5:N:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NE:1": {
+			"comment": "auto: from 5:N:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NE:2": {
+			"file": 1,
+			"variant": 1,
+			"row": 4,
+			"comment": "auto: from 5:N:2"
+		},
+		"5:NE:3": {
+			"comment": "auto: from 5:N:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NE:4": {
+			"file": 1,
+			"row": 0,
+			"variant": 10
+		},
+		"5:NE:6": {
+			"comment": "auto: from 5:N:6",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NW:0": {
+			"comment": "auto: from 5:N:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NW:1": {
+			"comment": "auto: from 5:N:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NW:2": {
+			"comment": "auto: from 5:N:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NW:3": {
+			"comment": "auto: from 5:N:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:NW:4": {
+			"file": 1,
+			"row": 0,
+			"variant": 8
+		},
+		"5:NW:6": {
+			"comment": "auto: from 5:N:6",
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:S:0": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:S:1": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:S:2": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:S:3": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:S:4": {
-			"file": 6.0,
+			"file": 1,
+			"row": 2,
+			"variant": 9
+		},
+		"5:S:6": {
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"5:S:6": {
-			"file": 6.0,
+		"5:SE:0": {
+			"comment": "auto: from 5:S:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SE:1": {
+			"comment": "auto: from 5:S:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SE:2": {
+			"comment": "auto: from 5:S:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SE:3": {
+			"comment": "auto: from 5:S:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SE:4": {
+			"file": 1,
+			"row": 2,
+			"variant": 10
+		},
+		"5:SE:6": {
+			"comment": "auto: from 5:S:6",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SW:0": {
+			"comment": "auto: from 5:S:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SW:1": {
+			"comment": "auto: from 5:S:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SW:2": {
+			"comment": "auto: from 5:S:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SW:3": {
+			"comment": "auto: from 5:S:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"5:SW:4": {
+			"file": 1,
+			"row": 8,
+			"variant": 9
+		},
+		"5:SW:6": {
+			"comment": "auto: from 5:S:6",
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:W:0": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:W:1": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:W:2": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:W:3": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"5:W:4": {
-			"file": 6.0,
-			"row": 4.0,
-			"variant": 1.0
+			"file": 1,
+			"row": 1,
+			"variant": 8
 		},
 		"5:W:6": {
-			"file": 6.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:E:0": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:E:1": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:E:2": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:E:3": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:E:4": {
-			"file": 7.0,
-			"row": 4.0,
-			"variant": 1.0
+			"file": 1,
+			"row": 1,
+			"variant": 6
 		},
 		"6:E:5": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:N:0": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:N:1": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:N:2": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:N:3": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:N:4": {
-			"file": 7.0,
+			"file": 1,
+			"row": 5,
+			"variant": 5
+		},
+		"6:N:5": {
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"6:N:5": {
-			"file": 7.0,
+		"6:NE:0": {
+			"comment": "auto: from 6:N:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NE:1": {
+			"comment": "auto: from 6:N:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NE:2": {
+			"comment": "auto: from 6:N:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NE:3": {
+			"comment": "auto: from 6:N:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NE:4": {
+			"file": 1,
+			"row": 0,
+			"variant": 6
+		},
+		"6:NE:5": {
+			"comment": "auto: from 6:N:5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NW:0": {
+			"comment": "auto: from 6:N:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NW:1": {
+			"comment": "auto: from 6:N:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NW:2": {
+			"comment": "auto: from 6:N:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NW:3": {
+			"comment": "auto: from 6:N:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:NW:4": {
+			"file": 1,
+			"row": 11,
+			"variant": 5
+		},
+		"6:NW:5": {
+			"comment": "auto: from 6:N:5",
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:S:0": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:S:1": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:S:2": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:S:3": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:S:4": {
-			"file": 7.0,
+			"file": 1,
+			"row": 9,
+			"variant": 5
+		},
+		"6:S:5": {
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"6:S:5": {
-			"file": 7.0,
+		"6:SE:0": {
+			"comment": "auto: from 6:S:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SE:1": {
+			"comment": "auto: from 6:S:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SE:2": {
+			"comment": "auto: from 6:S:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SE:3": {
+			"comment": "auto: from 6:S:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SE:4": {
+			"file": 1,
+			"row": 2,
+			"variant": 6
+		},
+		"6:SE:5": {
+			"comment": "auto: from 6:S:5",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SW:0": {
+			"comment": "auto: from 6:S:0",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SW:1": {
+			"comment": "auto: from 6:S:1",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SW:2": {
+			"comment": "auto: from 6:S:2",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SW:3": {
+			"comment": "auto: from 6:S:3",
+			"file": 1.0,
+			"row": 4.0,
+			"variant": 1.0
+		},
+		"6:SW:4": {
+			"file": 1,
+			"row": 2,
+			"variant": 4
+		},
+		"6:SW:5": {
+			"comment": "auto: from 6:S:5",
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:W:0": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:W:1": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:W:2": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:W:3": {
-			"file": 7.0,
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
 		"6:W:4": {
-			"file": 7.0,
+			"file": 1,
+			"row": 4,
+			"variant": 6
+		},
+		"6:W:5": {
+			"file": 1.0,
 			"row": 4.0,
 			"variant": 1.0
 		},
-		"6:W:5": {
-			"file": 7.0,
-			"row": 4.0,
-			"variant": 1.0
+		"5:N:2": {
+			"file": 1,
+			"variant": 1,
+			"row": 4
 		}
 	},
 	"type_names": {
