@@ -316,9 +316,9 @@ static func write_tiles(path: String, raw: PackedByteArray, tiles_off: int, tile
 	f.close()
 	return true
 
-## Tile id из спеки текстур редактора {file 1-4, variant 0-15, row кадр}.
+## Tile id из спеки текстур редактора {file 1-7, variant 0-15, row кадр}.
 static func tile_from_spec(spec: Dictionary) -> int:
-	var file_n := clampi(int(spec.get("file", 1)), 1, 4)
+	var file_n := clampi(int(spec.get("file", 1)), 1, 7)
 	var variant := clampi(int(spec.get("variant", 0)), 0, 15)
 	var row := clampi(int(spec.get("row", 0)), 0, 15)
 	var n := (file_n - 1) * 16 + variant

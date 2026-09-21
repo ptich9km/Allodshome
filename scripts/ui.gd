@@ -847,18 +847,19 @@ func _draw_minimap():
 	if tex_rect2:
 		tex_rect2.texture = minimap_texture
 
-# Цвет клетки для миникарты: CustomMap -> тип (0-7), .alm -> terrain_type
+# Цвет клетки для миникарты: CustomMap -> тип (0-8), .alm -> terrain_type
 func _minimap_color_at(tx: int, ty: int) -> Color:
 	if alm_map is CustomMap:
 		var t: int = alm_map.tile_id_at(Vector2i(tx, ty))
 		match t:
-			1: return Color(0.55, 0.45, 0.3, 1.0)    # земля
-			2: return Color(0.75, 0.7, 0.4, 1.0)      # песок
+			1: return Color(0.55, 0.35, 0.15, 1.0)    # почва
+			2: return Color(0.85, 0.80, 0.50, 1.0)    # песок
 			3: return Color(0.15, 0.35, 0.75, 1.0)    # вода
-			4: return Color(0.5, 0.45, 0.38, 1.0)     # скала
-			5: return Color(0.45, 0.3, 0.2, 1.0)      # строение
-			6: return Color(0.4, 0.8, 0.9, 1.0)       # НПЦ
-			7: return Color(1.0, 0.85, 0.2, 1.0)      # спавн
+			4: return Color(0.45, 0.42, 0.40, 1.0)    # горы
+			5: return Color(0.60, 0.50, 0.35, 1.0)    # дорога
+			6: return Color(0.30, 0.22, 0.12, 1.0)    # грязь
+			7: return Color(0.45, 0.3, 0.2, 1.0)      # строение
+			8: return Color(1.0, 0.85, 0.2, 1.0)      # спавн
 			0: return Color(0.25, 0.55, 0.25, 1.0)    # трава
 			_: return Color(0, 0, 0, 0)                # пусто
 	var t2: int = alm_map.cell_type_at(tx, ty)

@@ -83,7 +83,7 @@ func _find_enemy(aid: String, a: Dictionary, killed: Array) -> String:
 		var rel: int = state.relations.get("%s:%s" % [my_fid, ofid], 0)
 		if rel >= 0:
 			continue
-		var d := a.get("pos", Vector2.ZERO).distance_to(o.get("pos", Vector2.ZERO))
+		var d: float = a.get("pos", Vector2.ZERO).distance_to(o.get("pos", Vector2.ZERO))
 		if d < best_d:
 			best_d = d
 			best = oid
@@ -164,5 +164,4 @@ func EmitWorldChanged() -> void:
 
 
 func _log(kind: String, text: String) -> void:
-	var m := state._u
 	state.journal.append({ "day": state.day, "kind": kind, "text": text })

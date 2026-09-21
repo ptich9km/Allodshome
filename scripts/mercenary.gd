@@ -11,6 +11,8 @@ class_name Mercenary
 var current_hp: int
 var attack_cooldown: float = 0.0
 var state: String = "idle"      # idle | dying | decay | corpse
+var lifespan: float = 0.0       # >0 — призванный миньон: исчезает по истечении времени
+var _lifetime: float = 0.0
 var _corpse_timer := 0.0
 var _anim: UnitAnim = null
 
@@ -28,6 +30,12 @@ func _physics_process(delta: float) -> void:
 	if Game.is_paused or _anim == null:
 		return
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	if lifespan > 0.0:
+		_lifetime += delta
+		if _lifetime >= lifespan:
+			Game.party.erase(self)
+			queue_free()
+			return
 	_apply_relief_stand()
 
 	# Наёмник умер: падение → разложение (если есть) → исчезновение
@@ -112,13 +120,17 @@ func _attack(target: Node2D) -> void:
 	if attack_cooldown > 0.0:
 		return
 	attack_cooldown = 1.0
-	if target.has_method("take_damage"):
-		target.call("take_damage", damage, self)
+	if Game.is_miss(self, target):
+		return   # промах — тихо
+	Game.deal_damage(target, damage, "physical", "", self)
 	SoundDB.play(5)
 
 func take_damage(dmg: int, _attacker: Node2D) -> void:
 	# Мёртвый наёмник урона не получает
 	if state == "dying" or state == "decay" or state == "corpse":
+		return
+	dmg = Game.shield_reduce(self, dmg)
+	if dmg <= 0:
 		return
 	current_hp -= dmg
 	if current_hp <= 0:
@@ -129,6 +141,22 @@ func take_damage(dmg: int, _attacker: Node2D) -> void:
 		state = "dying"
 	else:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))
+
+## --- Производные характеристики (как у врагов/героя) для Game.deal_damage ---
+func get_attack() -> int:
+	return damage / 2 + max_hp / 30
+
+func get_defense() -> int:
+	return max_hp / 25
+
+func get_absorption() -> int:
+	return max_hp / 40
+
+func get_protection_fire() -> int:   return 0
+func get_protection_water() -> int:  return 0
+func get_protection_air() -> int:    return 0
+func get_protection_earth() -> int:  return 0
+func get_protection_astral() -> int: return 0
 
 func _apply_relief_stand() -> void:
 	var h := 0.0

@@ -61,7 +61,7 @@ func _collect_objects() -> void:
 
 func _copy_sets(sets: Dictionary) -> Dictionary:
 	var out := {}
-	for t in range(8):
+	for t in range(9):
 		var arr: Array = []
 		if sets.has(t):
 			arr = sets[t]
@@ -105,7 +105,7 @@ func _build_type_column(panel: Panel) -> void:
 	panel.add_child(left)
 
 	var ty := 8.0
-	for t in range(8):
+	for t in range(9):
 		var b := Button.new()
 		b.text = CustomMap.TYPE_NAMES[t]
 		b.toggle_mode = true

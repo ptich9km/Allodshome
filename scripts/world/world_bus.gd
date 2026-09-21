@@ -24,15 +24,15 @@ func _ready() -> void:
 
 
 func reseed() -> void:
-	var f_h := state.new_faction("Люди")
-	var f_e := state.new_faction("Орки")
-	var r := state.new_region("Черноземье")
-	var c_h := state.new_city("Речной Пост", f_h.id, r.id)
-	var c_e := state.new_city("Кровавый Бор", f_e.id, r.id)
-	var u1 := state.new_unit(f_h.id, "fire")
-	var u2 := state.new_unit(f_e.id, "fire")
-	var a_h := state.new_army(f_h.id, Vector2(300, 400))
-	var a_e := state.new_army(f_e.id, Vector2(700, 400))
+	var f_h: Dictionary = state.new_faction("Люди")
+	var f_e: Dictionary = state.new_faction("Орки")
+	var r: Dictionary = state.new_region("Черноземье")
+	var c_h: Dictionary = state.new_city("Речной Пост", f_h.id, r.id)
+	var c_e: Dictionary = state.new_city("Кровавый Бор", f_e.id, r.id)
+	var u1: Dictionary = state.new_unit(f_h.id, "fire")
+	var u2: Dictionary = state.new_unit(f_e.id, "fire")
+	var a_h: Dictionary = state.new_army(f_h.id, Vector2(300, 400))
+	var a_e: Dictionary = state.new_army(f_e.id, Vector2(700, 400))
 	a_h["unit_ids"] = [u1.id]
 	a_e["unit_ids"] = [u2.id]
 	state.relations["%s:%s" % [f_h.id, f_e.id]] = -40

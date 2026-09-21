@@ -5,25 +5,36 @@ extends Node2D
 ## индекс текстуры в наборе (tex_ids), -1 = первая в наборе.
 
 const TILE := 32
-const TYPE_NAMES := ["Трава", "Земля", "Песок", "Вода", "Скала", "Строение", "НПЦ", "Спавн"]
-const TYPE_WALKABLE := [true, true, true, false, false, false, true, true]
+const TYPE_NAMES := ["Трава", "Почва", "Песок", "Вода", "Горы", "Дорога", "Грязь", "Строение", "Спавн"]
+const TYPE_WALKABLE := [true, true, true, false, false, true, false, false, true]
 # Текстуры заливки по умолчанию: {file: tileN, variant: XX, row: ряд}; file=0 -> цвет
 const DEFAULT_TEX := {
-	0: {"file": 1, "variant": 4, "row": 1},   # трава
-	1: {"file": 2, "variant": 4, "row": 1},   # земля
-	2: {"file": 1, "variant": 0, "row": 11},  # песок (тёплая строка tile1)
-	3: {"file": 3, "variant": 1, "row": 5},   # вода
-	4: {"file": 4, "variant": 1, "row": 3},   # скала (tile4 имеет 00-03)
-	5: {"file": 0, "color": "8b5a2b"},        # строение (плейсхолдер-цвет)
-	6: {"file": 0, "color": "7ec8e3"},        # НПЦ (плейсхолдер-цвет)
-	7: {"file": 0, "color": "ffd700"},        # спавн героя (плейсхолдер-цвет)
+	0: {"file": 1, "variant": 1, "row": 1},   # трава (tile1)
+	1: {"file": 5, "variant": 1, "row": 1},   # почва (tile5)
+	2: {"file": 6, "variant": 1, "row": 1},   # песок (tile6)
+	3: {"file": 3, "variant": 1, "row": 0},   # вода (tile3)
+	4: {"file": 2, "variant": 1, "row": 3},   # горы (tile2)
+	5: {"file": 4, "variant": 3, "row": 0},   # дорога (tile4)
+	6: {"file": 7, "variant": 1, "row": 1},   # грязь (tile7)
+	7: {"file": 0, "color": "8b5a2b"},        # строение (плейсхолдер-цвет)
+	8: {"file": 0, "color": "ffd700"},        # спавн героя (плейсхолдер-цвет)
 }
 
 var map_width := 0
 var map_height := 0
 var tiles: PackedInt32Array    # тип на клетку, -1 = пусто
 var tex_ids: PackedInt32Array  # индекс текстуры в наборе типа, -1 = первая
-var under_tiles: PackedInt32Array  # земля ПОД объектом (0-4) или -1: объект "стоит" на ней
+var under_tiles: PackedInt32Array  # земля ПОД объектом: тип*256+tex_idx, или -1
+
+# Хелперы для under_tiles: упаковка типа земли + tex_idx в одно int
+static func _under_pack(type: int, tex: int) -> int:
+	return type * 256 + maxi(0, tex)
+
+static func _under_type(v: int) -> int:
+	return v / 256 if v >= 0 else -1
+
+static func _under_tex(v: int) -> int:
+	return v % 256 if v >= 0 else -1
 var texture_sets := {}         # тип -> Array[{file, variant, row}]
 var text_spec := {}            # тип -> {file, variant, row} (первая в наборе)
 var tilemap: TileMapLayer      # слой земли (типы 0-4)
@@ -175,7 +186,7 @@ func _load_entity_list(raw: Variant) -> Array:
 				out.append(rec.duplicate(true))
 	return out
 
-## Земля под объектами (типы 5-7). У старых карт поля нет — всё -1.
+## Земля под объектами: тип*256+tex_idx (новый) или просто тип 0-6 (старый формат).
 func _load_under_tiles(json: Dictionary) -> void:
 	under_tiles = PackedInt32Array()
 	under_tiles.resize(map_width * map_height)
@@ -183,7 +194,13 @@ func _load_under_tiles(json: Dictionary) -> void:
 	var raw: Variant = json.get("under_tiles", null)
 	if raw is Array and raw.size() == map_width * map_height:
 		for i in range(raw.size()):
-			under_tiles[i] = int(raw[i])
+			var v := int(raw[i])
+			# Старый формат: значение 0-6 = просто тип (tex_idx=0)
+			# Новый формат: > 256 = тип*256+tex_idx
+			if v >= 0 and v < 7:
+				under_tiles[i] = _under_pack(v, 0)
+			else:
+				under_tiles[i] = v
 
 func new_map(w: int, h: int) -> void:
 	map_width = w
@@ -264,8 +281,8 @@ func _import_alm_obstacles(data: Dictionary, n: int) -> void:
 	if not has_any:
 		return
 	_load_alm_obstacle_db()
-	var folder_idx := {}     # folder -> индекс в наборе типа 5
-	var set: Array = texture_sets.get(5, [])
+	var folder_idx := {}     # folder -> индекс в наборе типа 7 (Строение)
+	var set: Array = texture_sets.get(7, [])
 	for i in range(n):
 		if obstacles[i] <= 0:
 			continue
@@ -282,9 +299,9 @@ func _import_alm_obstacles(data: Dictionary, n: int) -> void:
 		var folder := str(rec.get("folder", ""))
 		if folder == "" or not folder_idx.has(folder):
 			continue
-		if tiles[i] >= 0 and tiles[i] < 5:
-			under_tiles[i] = tiles[i]
-		tiles[i] = 5
+		if tiles[i] >= 0 and tiles[i] < 7:
+			under_tiles[i] = _under_pack(tiles[i], tex_ids[i])
+		tiles[i] = 7
 		tex_ids[i] = int(folder_idx[folder])
 
 ## Реестр препятствий .alm: obstacle id -> {folder, w, h, cx, cy, phases}.
@@ -300,14 +317,17 @@ func _load_alm_obstacle_db() -> void:
 	if parsed is Dictionary:
 		_alm_obstacle_db = parsed
 
-## Категория редактора для tile id: 0=tile1 трава, 1=tile2 земля,
-## 2=tile3 вода, 3=tile4 дорога/камень (категории редактора 0..4).
+## Категория редактора для tile id: tile1=трава(0), tile2=горы(4),
+## tile3=вода(3), tile4=дорога(5), tile5=почва(1), tile6=песок(2), tile7=грязь(6).
 func _alm_cat_for(tile: int) -> int:
 	var t := AlmLoader.tile_type(tile)
 	match t:
-		1: return 1   # tile2 -> Земля
+		1: return 4   # tile2 -> Горы
 		2: return 3   # tile3 -> Вода
-		3: return 4   # tile4 -> Скала/дорога
+		3: return 5   # tile4 -> Дорога
+		4: return 1   # tile5 -> Почва
+		5: return 2   # tile6 -> Песок
+		6: return 6   # tile7 -> Грязь
 		_: return 0   # tile1 -> Трава
 
 ## Спек текстуры редактора для tile id: {file 1-4, variant, row кадр}.
@@ -322,7 +342,7 @@ func _alm_spec_for(tile: int) -> Dictionary:
 ## Спеки, собранные импортом: поправить ключи (int), пустые категории -> дефолт.
 func _alm_sets_normalized(sets: Dictionary) -> Dictionary:
 	var out := {}
-	for cat in range(8):
+	for cat in range(9):
 		var arr: Array = []
 		if sets.has(cat):
 			for it in sets[cat]:
@@ -345,14 +365,14 @@ func set_texture_sets(sets: Dictionary) -> void:
 	# Индексы за пределами новых наборов — сбрасываем на первую текстуру
 	for i in range(tex_ids.size()):
 		var t := tiles[i]
-		if t >= 0 and t < 8 and tex_ids[i] >= 0:
+		if t >= 0 and t < 9 and tex_ids[i] >= 0:
 			if tex_ids[i] > _set_size(t) - 1:
 				tex_ids[i] = -1
 	_build_tilemap()
 
 func _sync_text_spec() -> void:
 	text_spec = {}
-	for t in range(8):
+	for t in range(9):
 		var set: Array = texture_sets.get(t, [])
 		if set.size() > 0:
 			var first: Dictionary = set[0]
@@ -363,14 +383,14 @@ func _sync_text_spec() -> void:
 
 func _default_sets() -> Dictionary:
 	var sets := {}
-	for t in range(8):
+	for t in range(9):
 		var def: Dictionary = DEFAULT_TEX[t]
 		sets[t] = [def.duplicate(true)]
 	return sets
 
 func _normalize_sets(sets: Dictionary) -> Dictionary:
 	var out := {}
-	for t in range(8):
+	for t in range(9):
 		# JSON превращает int-ключи словаря в строки ("0".."4")
 		var arr: Array = []
 		if sets.has(t):
@@ -427,18 +447,18 @@ func set_tile(cell: Vector2i, type_id: int, tex_idx: int = -1) -> void:
 	var i := cell.y * map_width + cell.x
 	if type_id == -1:
 		# Ластик: снять объект -> вернуть землю из-под него; иначе пусто
-		if tiles[i] >= 5 and under_tiles[i] >= 0:
-			tiles[i] = under_tiles[i]
+		if tiles[i] >= 7 and under_tiles[i] >= 0:
+			tiles[i] = _under_type(under_tiles[i])
+			tex_ids[i] = _under_tex(under_tiles[i])
 			under_tiles[i] = -1
-			tex_ids[i] = -1
 		else:
 			tiles[i] = -1
 			tex_ids[i] = -1
 			under_tiles[i] = -1
-	elif type_id >= 5:
-		# Объект: запомнить землю под ним (если клетка была землёй)
-		if tiles[i] >= 0 and tiles[i] < 5:
-			under_tiles[i] = tiles[i]
+	elif type_id >= 7:
+		# Объект: запомнить землю + текстуру под ним (если клетка была землёй)
+		if tiles[i] >= 0 and tiles[i] < 7:
+			under_tiles[i] = tiles[i] * 256 + maxi(0, tex_ids[i])
 		else:
 			under_tiles[i] = -1
 		tiles[i] = type_id
@@ -461,19 +481,19 @@ func _refresh_cell(cell: Vector2i) -> void:
 	var i := cell.y * map_width + cell.x
 	var t := tiles[i]
 
-	if t >= 0 and t < 5:
+	if t >= 0 and t < 7:
 		if tilemap:
 			tilemap.set_cell(cell, _source_id_for(t, tex_ids[i]), Vector2i(0, 0))
 		if object_layer:
 			object_layer.erase_cell(cell)
 		_remove_map_object(cell)
-	elif t >= 5:
+	elif t >= 7:
 		var spec := texture_spec_at(cell)
 		var obj_name := ObjectDB.object_name_from_spec(spec)
 		if obj_name != "":
 			# Объект с анимацией: спрайт поверх, земля из-под него остаётся
 			if under_tiles[i] >= 0:
-				tilemap.set_cell(cell, _source_id_for(under_tiles[i], -1), Vector2i(0, 0))
+				tilemap.set_cell(cell, _source_id_for(_under_type(under_tiles[i]), _under_tex(under_tiles[i])), Vector2i(0, 0))
 			else:
 				tilemap.erase_cell(cell)
 			object_layer.erase_cell(cell)
@@ -481,7 +501,7 @@ func _refresh_cell(cell: Vector2i) -> void:
 		else:
 			# Цветовой плейсхолдер — обычный тайл
 			if under_tiles[i] >= 0:
-				tilemap.set_cell(cell, _source_id_for(under_tiles[i], -1), Vector2i(0, 0))
+				tilemap.set_cell(cell, _source_id_for(_under_type(under_tiles[i]), _under_tex(under_tiles[i])), Vector2i(0, 0))
 			else:
 				tilemap.erase_cell(cell)
 			object_layer.set_cell(cell, _source_id_for(t, tex_ids[i]), Vector2i(0, 0))
@@ -494,7 +514,7 @@ func _refresh_cell(cell: Vector2i) -> void:
 		_remove_map_object(cell)
 
 func _source_id_for(type_id: int, tex_idx: int) -> int:
-	if type_id < 0 or type_id >= 8:
+	if type_id < 0 or type_id >= 9:
 		return -1
 	var idx := clampi(tex_idx, 0, _set_size(type_id) - 1)
 	return int(_src_for.get(Vector2i(type_id, idx), -1))
@@ -528,7 +548,7 @@ func _build_tilemap() -> void:
 	ts.tile_size = Vector2i(TILE, TILE)
 	_src_for = {}
 	var src_id := 0
-	for t in range(8):
+	for t in range(9):
 		var set: Array = texture_sets.get(t, [])
 		for idx in range(set.size()):
 			var spec: Dictionary = set[idx]
@@ -705,16 +725,18 @@ func export_alm_tiles(original_tiles: PackedInt32Array = PackedInt32Array()) -> 
 	out.resize(map_width * map_height)
 	for i in range(map_width * map_height):
 		var t := tiles[i]
-		if t >= 0 and t <= 4:
+		if t >= 0 and t <= 6:
 			var cell := Vector2i(i % map_width, i / map_width)
 			var spec := texture_spec_at(cell)
 			out[i] = AlmLoader.tile_from_spec(spec)
-		elif t >= 5 and under_tiles[i] >= 0:
-			# Земля под объектом (тип 0-4) — её первая текстура из набора
-			var under := under_tiles[i]
-			var set: Array = texture_sets.get(under, [])
+		elif t >= 7 and under_tiles[i] >= 0:
+			# Земля под объектом — берём tex_idx из under_tiles
+			var under_t := _under_type(under_tiles[i])
+			var under_tex := _under_tex(under_tiles[i])
+			var set: Array = texture_sets.get(under_t, [])
 			if set.size() > 0:
-				out[i] = AlmLoader.tile_from_spec(set[0])
+				var idx := clampi(under_tex, 0, set.size() - 1)
+				out[i] = AlmLoader.tile_from_spec(set[idx])
 			elif i < original_tiles.size():
 				out[i] = original_tiles[i]
 			else:

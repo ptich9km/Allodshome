@@ -773,8 +773,8 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 		"self":
 			match name:
 				"Teleport": _teleport_to(target_position)
-				"Light": print("Свет")
-				"Summon": print("Призыв (задел)")
+				"Light": _cast_light()
+				"Summon": _cast_summon()
 				_: _apply_buff_target(target_node, sphere, name)   # напр. Shield
 
 ## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).
@@ -789,10 +789,8 @@ func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float,
 					Game.deal_damage(enemy, final_dmg, "magic", sphere, self)
 		return
 	if area > 0.0:
-		# Областное: летит к точке, взрывается (урон по радиусу)
+		# Областное: летит к точке, взрывается (урон по радиусу из projectile.gd)
 		create_spell_projectile(name, cast_origin(), target_position, final_dmg, area)
-		if range_f <= 0.0:
-			_damage_area_at(target_position, area, final_dmg)
 	else:
 		# Одиночная цель: снаряд летит до врага у точки прицела
 		var enemy := get_nearest_enemy(target_position, 200.0)
@@ -856,6 +854,35 @@ func _create_wall(target_position: Vector2) -> void:
 		if is_instance_valid(marker):
 			marker.queue_free())
 
+## Свет (Astral, self): мягкая светлая сфера вокруг героя на несколько секунд.
+## Визуальный маркер-вспышка (системы освещения в проекте нет).
+func _cast_light() -> void:
+	var marker := ColorRect.new()
+	marker.color = Color(1.0, 0.95, 0.7, 0.25)
+	var r := 90.0
+	marker.position = global_position - Vector2(r, r)
+	marker.size = Vector2(r * 2, r * 2)
+	get_tree().root.add_child(marker)
+	var t := get_tree().create_timer(4.0)
+	t.timeout.connect(func():
+		if is_instance_valid(marker):
+			marker.queue_free())
+
+## Призыв (Astral, self): союзный миньон (наёмник с монстрячьим сетом),
+## следует за героем и атакует врагов, исчезает через 45 секунд (или при смерти).
+func _cast_summon() -> void:
+	var m := Mercenary.new()
+	m.anim_set = "monsters/orc"
+	m.max_hp = 60
+	m.damage = 8
+	m.move_speed = 110.0
+	m.lifespan = 45.0
+	m.position = global_position + Vector2(30, 6)
+	get_tree().current_scene.add_child(m)
+	Game.party.append(m)
+	SoundDB.play(1)
+	print("Призыв: союзный монстр")
+
 ## Телепорт к точке (в пределах карты).
 func _teleport_to(target_position: Vector2) -> void:
 	if alm_map and alm_map.has_method("is_walkable_world") and not alm_map.is_walkable_world(target_position):
@@ -864,13 +891,15 @@ func _teleport_to(target_position: Vector2) -> void:
 	if health_bar:
 		health_bar.update_bars(current_hp, current_mana)
 
-## Урон по области вокруг точки (объектам карты и врагам).
-func _damage_area_at(pos: Vector2, radius: float, dmg: int) -> void:
+## Урон по области вокруг точки (объектам карты и врагам) через Game.deal_damage_area.
+func _damage_area_at(pos: Vector2, radius: float, dmg: int, sphere: String = "") -> void:
 	if alm_map and alm_map.has_method("damage_area"):
 		alm_map.damage_area(pos, radius, dmg)
+	var targets: Array = []
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy) and enemy.global_position.distance_to(pos) <= radius:
-			enemy.take_damage(dmg, self)
+			targets.append(enemy)
+	Game.deal_damage_area(targets, dmg, "magic", sphere, self)
 
 ## Изучить книгу магии (только маг, навсегда): книга стихии открывает всю
 ## сферу ("Book Fire"), книга одного заклинания — только его ("Book Fire Arrow").

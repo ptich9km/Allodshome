@@ -13,10 +13,10 @@ class_name WalkTable
 
 const OVERRIDE_PATH := "res://assets/maps/walk_speeds.json"
 
-# Дефолтная цена прохода по файлу тайла (file 1..4), как у разработчиков:
-# 1 трава (Land/Grass=8), 2 земля/песок/горы (Sand=14), 3 вода (0 — блок),
-# 4 дорога (Road=6 — быстрее)
-const DEFAULT := {1: 8, 2: 14, 3: 0, 4: 6}
+# Дефолтная цена прохода по файлу тайла (file 1..7):
+# 1 трава (8), 2 горы (14), 3 вода (0 — блок), 4 дорога (6),
+# 5 почва (8), 6 песок (12), 7 грязь (14)
+const DEFAULT := {1: 8, 2: 14, 3: 0, 4: 6, 5: 8, 6: 12, 7: 14}
 
 static var _overrides: Dictionary = {}
 static var _loaded := false

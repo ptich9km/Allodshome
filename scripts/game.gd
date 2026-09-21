@@ -19,7 +19,7 @@ static var pending_scroll: Dictionary = {}   # прицеливание свит
 static var pending_spell: Dictionary = {}    # выбор заклинания из книги: {"name"}
 static var hotbar: Dictionary = {}           # быстрый вызов: слот 0..8 (клавиши 1..9) -> имя заклинания
 static var _spell_targeting_frame: int = -1  # кадр, когда начато прицеливание (защита от двойного каста)
-static var debug_magic: bool = true  # ВРЕМЕННО: маг на старте знает все 24 книжные магии (отладка)
+static var debug_magic: bool = false  # отладка: маг на старте знает все 24 книжные магии
 
 # --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
 static func apply_shield(unit: Node2D, strength: int, seconds: float) -> void:

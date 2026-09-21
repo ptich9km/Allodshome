@@ -41,6 +41,7 @@ var structure_id := -1           # выбранный тип структуры 
 var npc_set := ""                # выбранный набор юнита (units_db)
 var _inspect_msg := ""           # сообщение инспектора (держится до смены инструмента)
 
+
 func _ready() -> void:
 	camera = Camera2D.new()
 	camera.zoom = Vector2(1, 1)
@@ -83,6 +84,7 @@ func _build_ui() -> void:
 	x = _add_top_button(top, x, "Сохранить .alm", _on_save_alm)
 	x = _add_top_button(top, x, "Настройки…", _on_settings)
 	x = _add_top_button(top, x, "Предметы…", _on_catalog)
+	x = _add_top_button(top, x, "Transitions", _on_transition_tool)
 	x = _add_top_button(top, x, "Назад в игру (F9)", _on_back)
 
 	# Размер новой карты
@@ -111,7 +113,7 @@ func _build_ui() -> void:
 	ui.add_child(pal)
 
 	var py := 8.0
-	for t in range(8):
+	for t in range(9):
 		var b := Button.new()
 		b.text = CustomMap.TYPE_NAMES[t]
 		b.toggle_mode = true
@@ -384,7 +386,7 @@ func _build_texture_strip() -> void:
 
 func _update_palette_icons() -> void:
 	# Иконки палитры из текущих текстур заливки
-	for t in range(8):
+	for t in range(9):
 		var spec: Dictionary = map.text_spec.get(t, {})
 		var img := map._load_spec_image(spec)
 		if img:
@@ -918,3 +920,15 @@ func _type_name(t: int) -> String:
 	if t < 0:
 		return "ластик"
 	return CustomMap.TYPE_NAMES[t]
+
+## === TRANSITION TOOL ===
+## Открывает визуальный редактор базы переходов terrain-типов.
+var _transition_editor: RefCounted = null
+
+func _on_transition_tool() -> void:
+	if _transition_editor != null and is_instance_valid(_transition_editor) and _transition_editor._panel != null and is_instance_valid(_transition_editor._panel):
+		_transition_editor._on_close()
+		_transition_editor = null
+		return
+	_transition_editor = load("res://scripts/transition_editor.gd").new()
+	_transition_editor.open_editor(ui)

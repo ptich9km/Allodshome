@@ -30,16 +30,6 @@ var factions: Dictionary = {}   # "f-1" -> {"id","name","color","relations":{fid
 var armies: Dictionary = {}     # "a-1" -> {"id","faction_id","unit_ids":[],"pos","target","owner_player":false}
 var regions: Dictionary = {}    # "r-1" -> {"id","name","area_px":Vector2,"cities":[],"roads":[],"faction_ids":[]}
 
-# --- Служебные поля тика (сервисные, тоже часть сериализации) ---------------
-var day := 0                 # номер текущего дня мира
-var global_threat := 0.0     # глобальная угроза 0..1 (растёт со временем)
-var relations := {}          # "fA:fB" -> int (utility-значение, >0 дружелюбно)
-var hero := {                # «привилегированный» герой, НО живёт в данных
-	"name": "Герой", "faction_id": "", "level": 1,
-	"curr_hp": 100, "max_hp": 100, "pos": Vector2.ZERO,
-}
-var journal := []            # журнал мира: [{"day":int,"kind":String,"text":String}]
-
 # --- Служебные поля тика (чистые данные, сериализуются) --------------------
 var day := 0                 # номер дня мира
 var global_threat := 0.0     # глобальная угроза 0..1 (растёт со временем)
@@ -54,12 +44,21 @@ var journal: Array[Dictionary] = []   # журнал событий мира (д
 static var primer := "мир"
 
 func _id(kind: String) -> String:
-	match kind:
-		"u": return "u-%d" % (_u += 1)
-		"c": return "c-%d" % (_c += 1)
-		"f": return "f-%d" % (_f += 1)
-		"a": return "a-%d" % (_a += 1)
-		"r": return "r-%d" % (_r += 1)
+	if kind == "u":
+		_u += 1
+		return "u-%d" % _u
+	elif kind == "c":
+		_c += 1
+		return "c-%d" % _c
+	elif kind == "f":
+		_f += 1
+		return "f-%d" % _f
+	elif kind == "a":
+		_a += 1
+		return "a-%d" % _a
+	elif kind == "r":
+		_r += 1
+		return "r-%d" % _r
 	return "%s-?_%d" % [kind, randi()]
 
 func new_unit(faction_id: String = "", sphere: String = "") -> Dictionary:
