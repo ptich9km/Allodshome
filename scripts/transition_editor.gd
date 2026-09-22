@@ -4,11 +4,11 @@ extends RefCounted
 ## для каждого кликаешь и выбираешь variant/row из палитры тайлов.
 
 const DB_PATH := "res://assets/maps/transition_db.json"
-const TERRAIN_NAMES := {0: "Трава", 1: "Горы", 2: "Вода", 3: "Дорога", 4: "Почва", 5: "Песок", 6: "Грязь"}
+const TERRAIN_NAMES := {0: "Трава", 1: "Горы", 2: "Вода", 3: "Дорога", 4: "Почва", 5: "Песок", 6: "Грязь", 7: "Гора непроходимая"}
 ## Тип -> tile-файл для .alm/рендера (пересчёт в генераторах по типу A)
-const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
+const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 2}
 ## Тип -> файл палитры в редакторе. Показываем РЕАЛЬНЫЙ файл типа.
-const PALETTE_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 1, 5: 1, 6: 1}
+const PALETTE_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 1, 5: 1, 6: 1, 7: 2}
 const DIR_NAMES := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 const DIR_LABELS := {
 	"N": "Север", "NE": "СВ", "E": "Восток", "SE": "ЮВ",
@@ -20,12 +20,13 @@ const GRID_DIR := ["NW", "N", "NE", "W", "", "E", "SW", "S", "SE"]
 ## Key = typeA, Value = array of typeB that have transition textures
 const SUPPORTED_PAIRS := {
 	0: [4],           # grass -> soil
-	1: [0, 4, 6],     # mountain -> grass, soil, mud
+	1: [0, 4, 6, 7],  # mountain -> grass, soil, mud, impassable mountain
 	2: [4],           # water -> soil
 	3: [4],           # road -> soil
 	4: [0, 1, 2, 3, 5, 6],  # soil -> all
 	5: [4],           # sand -> soil
 	6: [4],           # mud -> soil
+	7: [1],           # impassable mountain -> mountain
 }
 
 var _db: Dictionary = {}
@@ -158,7 +159,7 @@ func _build_panel(parent_ui: CanvasLayer) -> void:
 	type_row.add_child(lbl_a)
 	var opt_a := OptionButton.new()
 	_opt_a = opt_a
-	for id in range(7):
+	for id in range(8):
 		opt_a.add_item(TERRAIN_NAMES[id], id)
 	opt_a.selected = 0
 	opt_a.item_selected.connect(_on_type_a_changed)

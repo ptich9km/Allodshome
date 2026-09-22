@@ -1,10 +1,83 @@
 ﻿# AGENTS.md — заметки агента по проекту Allodshome_Godot
+# AGENTS.md — Godot Project Agent Contract
 
-> Памятка для продолжения работы из любой сессии. Обновляй при каждом заметном шаге.
-> Обновлено: **Сессия 22.09** — доделан transition_editor: tile5/6/7 (PNG+BMP), import из pvm/ с диагоналями, transition_db 336/336.
->
-> Запуск головного headless-раннера мира: `godot --headless --path ... --script res://scripts/world/sim_runner.gd` (см. Слой-2 заметку ниже).
+This file defines how AI coding agents must work in this repository.
+Agents must read and follow this file before making any changes.
 
+## 1. Project Overview
+
+- **Project name:** <Allodshome>
+- **Engine:** Godot <4.7>
+- **Language:** GDScript / C# <GDScript>
+- **Target platforms:** <Windows>
+- **Main scene:** `res://scenes/main.tscn`
+- **Repository root:** `res://`
+
+## 2. Repository Structure
+
+```text
+- `addons`          # Third-party and local editor plugins (do not modify without approval)
+- `assets`          # Art, audio, fonts, and other raw assets
+- `resources`       # .tres resource files
+- `scenes`          # .tscn scene files
+- `scripts`         # GDScript/C# source files
+- `tests`           # Automated tests (GUT / GdUnit4)
+- `ui`              # UI scenes and scripts
+- `scripts/game.gd` — автозагрузка, единые статы/математика боя (`deal_damage`, `is_miss`, `unit_*`, `tick_shields`, `deal_damage_area`), а также `unit_absorption`, `unit_protection` и т.д.
+- `scripts/enemy.gd` (~304 строк) — класс врагов: `take_damage`, `deal_damage` подключение, `flee/chase/attack`, лут, статы `get_*`.
+- `scripts/player.gd` — герой (ближний бой через deal_damage, магия, статы `get_attack/get_defense/etc`).
+- `scripts/mercenary.gd` — наёмник (атака через deal_damage, `take_damage`).
+- `scripts/projectile.gd` — снаряды (магия/область).
+- `scripts/unit.gd` / `unit_db.gd` — база юнитов (статы монстров/героев).
+- `scripts/spell_db.gd` — заклинания (сферы/магия).
+- `scripts/ui.gd`, `scripts/character_select.gd` — UI (панель сфер мага вместо навыков оружия).
+```
+
+## 3. Agent Scope Rules
+
+- **One task per prompt.** Do not bundle unrelated changes.
+- **Smallest safe change.** Modify only what is required to complete the task.
+- **No unsolicited refactoring.** Do not rename, reformat, or restructure code unless explicitly asked.
+- **No new dependencies.** Do not add addons, plugins, or external libraries without approval.
+- **Stay inside the allowed scope.** If the task says “edit `player.gd`”, do not touch other files unless strictly necessary. If necessary, ask first.
+- **Ask when ambiguous.** If requirements are unclear, stop and ask for clarification instead of guessing.
+
+## 4. Anti-Hallucination Rules
+
+- Do not invent Godot APIs, classes, methods, signals, or properties.
+- If an API is not present in the current Godot version or in the codebase, do not use it.
+- Do not invent file paths, scene names, node names, or autoloads.
+- Before using a node, signal, or resource, verify it exists in the project or in the official Godot documentation.
+- If you are unsure, search the codebase or ask. Do not guess.
+
+## 5. Godot Coding Conventions
+
+- **Indentation:** tabs (Godot standard).
+- **Naming:**
+  - Classes / nodes: `PascalCase`
+  - Files and folders: `snake_case`
+  - Functions and variables: `snake_case`
+  - Constants: `CONSTANT_CASE`
+  - Signals: past tense, e.g. `health_changed`, `door_opened`
+- **Typing:** Use typed GDScript where possible:
+  ```gdscript
+  var health: int = 100
+  func take_damage(amount: int) -> void:
+  ```
+- **Node access:** Prefer `@onready` and unique names (`%NodeName`) over hardcoded `get_node()` paths.
+- **Signals:** Prefer signals over direct parent/child references.
+- **Composition over inheritance:** Use child nodes and resources instead of deep inheritance trees.
+- **Data:** Use `Resource` files for configurable data, not hardcoded dictionaries.
+- **Exports:** Use `@export` for inspector-facing variables.
+- **Process functions:**
+  - Use `_physics_process` for physics and movement.
+  - Use `_process` only when frame-dependent logic is required.
+  - Prefer timers or signals over polling.
+- **Autoloads:** Do not add or remove autoloads without explicit approval. Current autoloads: `<list them>`.
+- **Scenes:** Keep scene trees shallow. One root node per scene. Use instancing.
+- **Resources:** Do not delete or rename `.tres` or `.tscn` files without approval.
+
+## 6. Testing and Verification
 ## Как запустить Godot (важно!)
 
 Проект (на этой машине): `C:\Work\Allodshome`
@@ -21,7 +94,103 @@
 
 Парсинг GODOT по скриптам можно отличить от «картинок-мусора»: выводимая Unicode-каша из PNG/CJK-файлов в `assets/` — норма, читаем только `.gd`-файлы. НЕ запускай `Get-ChildItem` на весь `assets` с фильтром по CJK — там сотни картинок.
 
-## Что сделано сегодня (главное)
+- Agents must run tests after code changes.
+- Agents must not claim tests passed if they were not run.
+- If no tests exist for the changed area, state that explicitly.
+- Code must parse without errors. Check with:
+
+
+## 7. Version Control Rules
+
+- **Never commit directly to `main`.**
+- **Branch naming:** `feature/agent-<short-task-name>`
+- **Commit messages:** `<type>(<scope>): <description>`
+  - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+- Do not rewrite git history, force-push, or delete branches without approval.
+
+## 8. Approval Gates
+
+The agent must stop and ask for explicit approval before:
+
+- Modifying `project.godot`
+- Adding/removing autoloads
+- Changing the input map
+- Adding/removing addons or plugins
+- Deleting or renaming scenes, resources, or scripts
+- Changing export presets
+- Refactoring architecture or folder structure
+- Running destructive commands (e.g., `rm -rf`, `git reset --hard`)
+
+## 9. Workflow
+
+1. Read `AGENTS.md` and the relevant files.
+2. Propose a short plan:
+   - What will change
+   - Which files will be touched
+   - How it will be tested
+3. Wait for approval if the task is non-trivial or touches approval gates.
+4. Implement the smallest possible change.
+5. Run tests and static checks.
+6. Report:
+   - Summary of changes
+   - Files modified
+   - Test results
+   - Any blockers or uncertainties
+
+## 10. Definition of Done
+
+A task is done only when:
+
+- Code parses without errors.
+- Relevant tests pass (or absence of tests is explicitly stated).
+- No new warnings are introduced.
+- Changes are limited to the requested scope.
+- The agent provides a clear summary and test evidence.
+
+## 11. Example Agent Prompts
+
+Good:
+- “Add a `take_damage(amount: int)` method to `player.gd`. Do not modify other files. Run tests.”
+- “Fix the jump bug in `player.gd`. Show me the plan before editing.”
+
+Bad:
+- “Improve the game.”
+- “Refactor everything and make it better.”
+- “Add multiplayer.”
+
+## 12. Notes for Humans
+
+- Keep this file updated as the project evolves.
+- If an agent repeatedly violates a rule, make the rule more explicit and add a check.
+- Prefer small, reviewable changes over large autonomous rewrites.
+
+
+> Памятка для продолжения работы из любой сессии. Обновляй при каждом заметном шаге.
+> Обновлено: **Сессия 22.09** — доделан transition_editor: tile5/6/7 (PNG+BMP), import из pvm/ с диагоналями, transition_db 336/336.
+>
+> Запуск головного headless-раннера мира: `godot --headless --path ... --script res://scripts/world/sim_runner.gd` (см. Слой-2 заметку ниже).
+
+## 13. Available Skills
+
+| Skill | Scope |
+|-------|-------|
+| [`godot-gdscript`](skills/godot/godot-gdscript/SKILL.md) | GDScript language: typing, lifecycle, `@export`, signals, idioms |
+| [`godot-nodes-scenes`](skills/godot/godot-nodes-scenes/SKILL.md) | Scene tree, node composition, instancing, autoloads, `PackedScene` |
+| [`godot-signals-groups`](skills/godot/godot-signals-groups/SKILL.md) | Event-driven design with signals + groups |
+| [`godot-2d-movement`](skills/godot/godot-2d-movement/SKILL.md) | `CharacterBody2D` kinematic movement, `move_and_slide`, slopes |
+| [`godot-tilemap`](skills/godot/godot-tilemap/SKILL.md) | `TileMapLayer`/`TileSet`: autotiling, terrain, collision/nav layers |
+| [`godot-physics`](skills/godot/godot-physics/SKILL.md) | Rigid/Area/Static bodies (2D+3D), collision layers, raycasts |
+| [`godot-ui-control`](skills/godot/godot-ui-control/SKILL.md) | `Control` nodes: anchors, containers, themes, focus nav |
+| [`godot-animation`](skills/godot/godot-animation/SKILL.md) | `AnimationPlayer`, `AnimationTree`, `Tween` |
+| [`godot-shaders`](skills/godot/godot-shaders/SKILL.md) | Godot shading language: 2D `canvas_item` + 3D `spatial` shaders |
+| [`godot-3d-essentials`](skills/godot/godot-3d-essentials/SKILL.md) | 3D nodes, cameras, lighting, environment/post, `GridMap` |
+| [`godot-resources`](skills/godot/godot-resources/SKILL.md) | Custom `Resource` classes, `.tres`, data-driven design |
+| [`godot-audio`](skills/godot/godot-audio/SKILL.md) | `AudioStreamPlayer`, buses, effects, sync-to-beat |
+| [`godot-multiplayer`](skills/godot/godot-multiplayer/SKILL.md) | High-level multiplayer: `MultiplayerAPI`, RPCs, spawner/sync |
+| [`godot-export`](skills/godot/godot-export/SKILL.md) | Export presets/templates, platform builds, headless CLI export |
+| [`godot-csharp`](skills/godot/godot-csharp/SKILL.md) | C#/.NET in Godot: bindings, signals as events, GDScript interop |
+
+## 14. Что сделано сегодня (главное)
 
 ### 0. Слои мира (Слой-2) — headless-канон, симулятор жив
 - `world_state.gd` — убраны дублирующие объявления (day/global_threat/relations/hero/journal), остался типизированный `journal: Array[Dictionary]`; `_id()` переписан с `match`-присваиваний (`return "u-%d" % (_u += 1)` — Parse Error) на `if/elif` с телом.
@@ -82,7 +251,7 @@
 - `player.gd` — реализованы **Light** (`_cast_light()`: визуальная вспышка вокруг героя на 4 с) и **Summon** (`_cast_summon()`: союзный миньон `monsters/orc`/60hp/8dmg на 45 с в `Game.party`).
 - `game.gd:22` — `debug_magic = false` (маг больше не стартует со всеми 24 заклинаниями).
 
-## План / что осталось (в порядке приоритета)
+## 15. План / что осталось (в порядке приоритета)
 
 ### П0-П2 — завершено (единая точка урона, снаряды/область, маг-тактика)
 - [x] `deal_damage` единый в `Game`
@@ -100,29 +269,14 @@
 - [x] Стартовый набор мага: посох + книга (а не меч + щит): `player.gd:236-243`, `character_select.gd`.
 - [x] Мана/опыт сферы за каст: `player.gd:_apply_spell_experience` + `_apply_spell_experience(sphere)` при касте/попадании посохом.
 
-## Статистика / производные (принятое решение)
+### Статистика / производные (принятое решение)
 - `hit_chance = clampi(50 + attack - defense, 5, 95)` (как в оригинале).
 - `absorption` — броня/поглощение (физика), `protection_*` — защита стихий (магия).
 - Шанс промаха `is_miss(attacker, attacker_defender)` через `hit_chance`. Промах = «тихий промах» без урона, для магии урона нет при промахе.
 - Всё применение урона через `take_damage` (внутри — щит юнита: `shield_reduce`, затем HP).
 
-## Файловая структура (ключевое)
-- `scripts/game.gd` — автозагрузка, единые статы/математика боя (`deal_damage`, `is_miss`, `unit_*`, `tick_shields`, `deal_damage_area`), а также `unit_absorption`, `unit_protection` и т.д.
-- `scripts/enemy.gd` (~304 строк) — класс врагов: `take_damage`, `deal_damage` подключение, `flee/chase/attack`, лут, статы `get_*`.
-- `scripts/player.gd` — герой (ближний бой через deal_damage, магия, статы `get_attack/get_defense/etc`).
-- `scripts/mercenary.gd` — наёмник (атака через deal_damage, `take_damage`).
-- `scripts/projectile.gd` — снаряды (магия/область).
-- `scripts/unit.gd` / `unit_db.gd` — база юнитов (статы монстров/героев).
-- `scripts/spell_db.gd` — заклинания (сферы/магия).
-- `scripts/ui.gd`, `scripts/character_select.gd` — UI (панель сфер мага вместо навыков оружия).
 
-## Как проверять
-- Godot headless через `--quit` (см. команду вверху) — главный контроль парсинга.
-- Только `.gd`-файлы читать на русском; `assets/**` — бинарь/картинки, игнорировать.
-
----
-
-## Процедурная генерация карт (сессия 21.09 — активно)
+## 16. Процедурная генерация карт (сессия 21.09 — активно)
 
 ### Концепция игры (решения пользователя)
 - **Не копия Аллодов II**, а духовный наследник. Песочница + тактический RPG.
