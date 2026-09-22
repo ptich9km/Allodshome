@@ -7,8 +7,8 @@ const DB_PATH := "res://assets/maps/transition_db.json"
 const TERRAIN_NAMES := {0: "Трава", 1: "Горы", 2: "Вода", 3: "Дорога", 4: "Почва", 5: "Песок", 6: "Грязь"}
 ## Тип -> tile-файл для .alm/рендера (пересчёт в генераторах по типу A)
 const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
-## Тип -> файл палитры в редакторе. Песок/грязь выбираются из tile1 (как просил).
-const PALETTE_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 1, 6: 1}
+## Тип -> файл палитры в редакторе. Показываем РЕАЛЬНЫЙ файл типа.
+const PALETTE_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 1, 5: 1, 6: 1}
 const DIR_NAMES := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 const DIR_LABELS := {
 	"N": "Север", "NE": "СВ", "E": "Восток", "SE": "ЮВ",
@@ -16,12 +16,45 @@ const DIR_LABELS := {
 }
 const GRID_DIR := ["NW", "N", "NE", "W", "", "E", "SW", "S", "SE"]
 
+## Supported transition pairs (only these have actual textures)
+## Key = typeA, Value = array of typeB that have transition textures
+const SUPPORTED_PAIRS := {
+	0: [4],           # grass -> soil
+	1: [0, 4, 6],     # mountain -> grass, soil, mud
+	2: [4],           # water -> soil
+	3: [4],           # road -> soil
+	4: [0, 1, 2, 3, 5, 6],  # soil -> all
+	5: [4],           # sand -> soil
+	6: [4],           # mud -> soil
+}
+
 var _db: Dictionary = {}
 var _rules: Dictionary = {}
 var _type_a: int = 0
-var _type_b: int = 2
+var _type_b: int = 4  # Default to soil since most transitions go through soil
 var _panel: PanelContainer = null
 var _grid_buttons: Array = []
+var _dir_keys: Array = []
+
+func _add_dir_btns(row_hb: HBoxContainer, dir_name: String) -> void:
+	for sub in range(2):
+		var btn := TextureButton.new()
+		btn.custom_minimum_size = Vector2(60, 60)
+		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		btn.add_theme_stylebox_override("normal", _frame(Color(0.3, 0.3, 0.3)))
+		btn.add_theme_stylebox_override("hover", _frame(Color(0.5, 0.5, 0.8)))
+		var key: String = dir_name + str(sub + 1)
+		btn.pressed.connect(_on_grid_click.bind(key))
+		var lbl := Label.new()
+		lbl.text = "%s%d" % [DIR_LABELS.get(dir_name, dir_name), sub + 1]
+		lbl.add_theme_font_size_override("font_size", 9)
+		lbl.position = Vector2(2, 2)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(lbl)
+		_grid_buttons.append(btn)
+		_dir_keys.append(key)
+		row_hb.add_child(btn)
+
 var _palette_popup: Panel = null
 var _status_label: Label = null
 var _parent_ui: CanvasLayer = null
@@ -136,53 +169,77 @@ func _build_panel(parent_ui: CanvasLayer) -> void:
 	type_row.add_child(spacer)
 
 	var lbl_b := Label.new()
-	lbl_b.text = "Тип B (сосед):"
+	lbl_b.text = "Type B (neighbor):"
 	type_row.add_child(lbl_b)
 	var opt_b := OptionButton.new()
 	_opt_b = opt_b
-	for id in range(7):
+	# Populate with supported neighbors for default type A
+	var supported: Array = SUPPORTED_PAIRS.get(_type_a, [])
+	for id in supported:
 		opt_b.add_item(TERRAIN_NAMES[id], id)
-	opt_b.selected = 2
+	if supported.size() > 0:
+		opt_b.selected = 0
+		_type_b = supported[0]
 	opt_b.item_selected.connect(_on_type_b_changed)
 	type_row.add_child(opt_b)
 
-	# Сетка 3x3
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 4)
-	grid.add_theme_constant_override("v_separation", 4)
-	vb.add_child(grid)
+	# Direction rose layout:
+	#   NW1 NW2 | N1 N2 | NE1 NE2
+	#   -------|-------|--------
+	#   W1  W2  | A1-A6 | E1  E2
+	#   -------|-------|--------
+	#   SW1 SW2 | S1 S2 | SE1 SE2
 
 	_grid_buttons.clear()
-	for i in range(9):
+	_dir_keys.clear()
+
+	# Row 1: NW N NE
+	var row1 := HBoxContainer.new()
+	row1.add_theme_constant_override("separation", 8)
+	vb.add_child(row1)
+	_add_dir_btns(row1, "NW")
+	_add_dir_btns(row1, "N")
+	_add_dir_btns(row1, "NE")
+
+	# Row 2: W | center(6) | E
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 8)
+	vb.add_child(row2)
+	_add_dir_btns(row2, "W")
+
+	# Center: 6 interior variant buttons
+	var center_grid := GridContainer.new()
+	center_grid.columns = 3
+	center_grid.add_theme_constant_override("h_separation", 2)
+	center_grid.add_theme_constant_override("v_separation", 2)
+	for iv in range(6):
 		var btn := TextureButton.new()
-		btn.custom_minimum_size = Vector2(80, 80)
+		btn.custom_minimum_size = Vector2(60, 60)
 		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-		btn.add_theme_stylebox_override("normal", _frame(Color(0.3, 0.3, 0.3)))
-		btn.add_theme_stylebox_override("hover", _frame(Color(0.5, 0.5, 0.8)))
-		btn.add_theme_stylebox_override("pressed", _frame(Color(0.3, 0.8, 0.3)))
-
-		if GRID_DIR[i] != "":
-			var dir: String = GRID_DIR[i]
-			btn.pressed.connect(_on_grid_click.bind(dir))
-			var lbl := Label.new()
-			lbl.text = DIR_LABELS.get(dir, dir)
-			lbl.add_theme_font_size_override("font_size", 9)
-			lbl.position = Vector2(2, 2)
-			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			btn.add_child(lbl)
-		else:
-			# Центр = interior типа A, тоже редактируется
-			btn.pressed.connect(_on_grid_click.bind(""))
-			var lbl := Label.new()
-			lbl.text = "A"
-			lbl.add_theme_font_size_override("font_size", 16)
-			lbl.position = Vector2(34, 4)
-			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			btn.add_child(lbl)
-
+		btn.add_theme_stylebox_override("normal", _frame(Color(0.8, 0.6, 0.2)))
+		btn.add_theme_stylebox_override("hover", _frame(Color(1.0, 0.8, 0.3)))
+		var akey: String = "A%d" % (iv + 1)
+		btn.pressed.connect(_on_grid_click.bind(akey))
+		var lbl := Label.new()
+		lbl.text = akey
+		lbl.add_theme_font_size_override("font_size", 10)
+		lbl.position = Vector2(18, 2)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(lbl)
 		_grid_buttons.append(btn)
-		grid.add_child(btn)
+		_dir_keys.append(akey)
+		center_grid.add_child(btn)
+	row2.add_child(center_grid)
+
+	_add_dir_btns(row2, "E")
+
+	# Row 3: SW S SE
+	var row3 := HBoxContainer.new()
+	row3.add_theme_constant_override("separation", 8)
+	vb.add_child(row3)
+	_add_dir_btns(row3, "SW")
+	_add_dir_btns(row3, "S")
+	_add_dir_btns(row3, "SE")
 
 	# Кнопки управления
 	var btn_row := HBoxContainer.new()
@@ -190,22 +247,17 @@ func _build_panel(parent_ui: CanvasLayer) -> void:
 	vb.add_child(btn_row)
 
 	var save_btn := Button.new()
-	save_btn.text = "Сохранить"
+	save_btn.text = "Save"
 	save_btn.pressed.connect(_on_save)
 	btn_row.add_child(save_btn)
 
-	var import_btn := Button.new()
-	import_btn.text = "Импорт из .alm (авто)"
-	import_btn.pressed.connect(_on_import_alm)
-	btn_row.add_child(import_btn)
-
 	var reload_btn := Button.new()
-	reload_btn.text = "Перечитать"
+	reload_btn.text = "Reload"
 	reload_btn.pressed.connect(_on_reload)
 	btn_row.add_child(reload_btn)
 
 	var close_btn := Button.new()
-	close_btn.text = "Закрыть"
+	close_btn.text = "Close"
 	close_btn.pressed.connect(_on_close)
 	btn_row.add_child(close_btn)
 
@@ -227,26 +279,31 @@ func _frame(color: Color) -> StyleBoxFlat:
 # === Обновление сетки ===
 
 func _refresh_grid() -> void:
-	for i in range(9):
-		var dir: String = GRID_DIR[i]
+	for i in range(_grid_buttons.size()):
 		var btn: TextureButton = _grid_buttons[i]
-		if dir == "":
-			var spec_i: Dictionary = _interior_spec(_type_a)
-			btn.texture_normal = tile_from_spec(spec_i) if not spec_i.is_empty() else null
-			btn.tooltip_text = "Interior %s: %s" % [
-				TERRAIN_NAMES[_type_a],
-				("f%d v%d r%d" % [spec_i.get("file", 0), spec_i.get("variant", 0), spec_i.get("row", 0)])
-				if not spec_i.is_empty() else "не задано"]
-			continue
-		var spec: Dictionary = get_rule(_type_a, dir, _type_b)
-		if spec.is_empty():
-			btn.texture_normal = null
-			btn.tooltip_text = "%s -> %s: не задано" % [TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b]]
+		var key: String = _dir_keys[i] if i < _dir_keys.size() else ""
+		if key.begins_with("A"):
+			# Interior variant button
+			var rule_key: String = "%d:%s:%d" % [_type_a, key, _type_a]
+			var spec: Dictionary = _rules.get(rule_key, {})
+			btn.texture_normal = tile_from_spec(spec) if not spec.is_empty() else null
+			btn.tooltip_text = "Interior %s %s: %s" % [
+				TERRAIN_NAMES[_type_a], key,
+				("v%d r%d" % [spec.get("variant", 0), spec.get("row", 0)])
+				if not spec.is_empty() else "not set"]
 		else:
-			btn.texture_normal = tile_from_spec(spec)
-			btn.tooltip_text = "%s -> %s %s: f%d v%d r%d" % [
-				TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], dir,
-				spec.get("file", 0), spec.get("variant", 0), spec.get("row", 0)]
+			# Direction button: key = "NW1", "N2" etc
+			var rule_key: String = "%d:%s:%d" % [_type_a, key, _type_b]
+			var spec: Dictionary = _rules.get(rule_key, {})
+			if spec.is_empty():
+				btn.texture_normal = null
+				btn.tooltip_text = "%s -> %s %s: not set" % [
+					TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], key]
+			else:
+				btn.texture_normal = tile_from_spec(spec)
+				btn.tooltip_text = "%s -> %s %s: v%d r%d" % [
+					TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], key,
+					spec.get("variant", 0), spec.get("row", 0)]
 
 func _interior_spec(type: int) -> Dictionary:
 	var interior: Dictionary = _db.get("interior", {})
@@ -265,14 +322,23 @@ func _set_interior_spec(type: int, spec: Dictionary) -> void:
 
 func _on_type_a_changed(idx: int) -> void:
 	_type_a = _opt_a.get_item_id(idx)
+	# Update type B dropdown to only show supported neighbors
+	_opt_b.clear()
+	var supported: Array = SUPPORTED_PAIRS.get(_type_a, [])
+	for id in supported:
+		_opt_b.add_item(TERRAIN_NAMES[id], id)
+	if supported.size() > 0:
+		_opt_b.selected = 0
+		_type_b = supported[0]
 	_refresh_grid()
 
 func _on_type_b_changed(idx: int) -> void:
 	_type_b = _opt_b.get_item_id(idx)
 	_refresh_grid()
 
-func _on_grid_click(dir: String) -> void:
-	_open_palette(dir)
+func _on_grid_click(key: String) -> void:
+	# key: "" or "A1"-"A6" for interior, "NW1"/"N2" etc for directions
+	_open_palette(key)
 
 func _on_save() -> void:
 	save_db()
@@ -290,17 +356,17 @@ func _on_close() -> void:
 
 # === Палитра выбора тайла ===
 
-func _open_palette(dir: String) -> void:
+func _open_palette(key: String) -> void:
 	if _palette_popup != null and is_instance_valid(_palette_popup):
 		_palette_popup.queue_free()
 
 	_palette_popup = Panel.new()
 	_palette_popup.name = "TilePalette"
 	_palette_popup.set_anchors_preset(Control.PRESET_CENTER)
-	_palette_popup.offset_left = -320
-	_palette_popup.offset_top = -250
-	_palette_popup.offset_right = 320
-	_palette_popup.offset_bottom = 250
+	_palette_popup.offset_left = -400
+	_palette_popup.offset_top = -300
+	_palette_popup.offset_right = 400
+	_palette_popup.offset_bottom = 300
 	_palette_popup.z_index = 300
 	_parent_ui.add_child(_palette_popup)
 
@@ -318,17 +384,21 @@ func _open_palette(dir: String) -> void:
 	margin.add_child(vb)
 
 	var title := Label.new()
-	if dir == "":
-		title.text = "Interior: %s" % TERRAIN_NAMES[_type_a]
+	if key.begins_with("A"):
+		title.text = "Interior %s %s — pick a tile" % [TERRAIN_NAMES[_type_a], key]
 	else:
-		title.text = "Тайл: %s -> %s [%s]" % [
-			TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], DIR_LABELS.get(dir, dir)]
+		title.text = "Transition: %s -> %s [%s] — pick a tile" % [
+			TERRAIN_NAMES[_type_a], TERRAIN_NAMES[_type_b], key]
 	title.add_theme_font_size_override("font_size", 12)
 	vb.add_child(title)
 
-	var file_n: int = PALETTE_FILE.get(_type_a, 1)
+	var file_n: int
+	if key.begins_with("A"):
+		file_n = PALETTE_FILE.get(_type_a, 1)
+	else:
+		file_n = PALETTE_FILE.get(_type_a, 1)
 	var max_rows := 8 if file_n == 3 else 14
-	var max_vars := 4 if file_n == 4 else 16  # tile4 только варианты 00-03
+	var max_vars := 4 if file_n == 4 else 16
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -341,47 +411,65 @@ func _open_palette(dir: String) -> void:
 	grid.add_theme_constant_override("v_separation", 2)
 	scroll.add_child(grid)
 
-	for v in range(max_vars):
-		for r in range(max_rows):
+	for r in range(max_rows):
+		for v in range(max_vars):
 			var spec := {"file": file_n, "variant": v, "row": r}
 			var btn := TextureButton.new()
 			btn.custom_minimum_size = Vector2(32, 32)
 			btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 			btn.texture_normal = tile_from_spec(spec)
-			btn.tooltip_text = "f%d v%d r%d" % [file_n, v, r]
-			btn.pressed.connect(_on_palette_pick.bind(dir, spec))
+			btn.tooltip_text = "v%d r%d" % [v, r]
+			btn.pressed.connect(_on_palette_pick.bind(key, spec))
 			grid.add_child(btn)
 
-	var clear_btn := Button.new()
-	clear_btn.text = "Очистить (убрать правило)" if dir != "" else "Сбросить interior"
-	clear_btn.pressed.connect(_on_palette_clear.bind(dir))
-	vb.add_child(clear_btn)
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 10)
+	vb.add_child(btn_row)
 
-func _on_palette_pick(dir: String, spec: Dictionary) -> void:
-	if dir == "":
-		_set_interior_spec(_type_a, spec)
+	var clear_btn := Button.new()
+	clear_btn.text = "Clear" if key != "" else "Reset interior"
+	clear_btn.pressed.connect(_on_palette_clear.bind(key))
+	btn_row.add_child(clear_btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.pressed.connect(_on_palette_cancel)
+	btn_row.add_child(cancel_btn)
+
+func _on_palette_pick(key: String, spec: Dictionary) -> void:
+	if key.begins_with("A"):
+		# Interior variant: store as rule with A key
+		var rule_key: String = "%d:%s:%d" % [_type_a, key, _type_a]
+		_rules[rule_key] = spec
 		_refresh_grid()
-		_status_label.text = "Interior %s = f%d v%d r%d" % [
-			TERRAIN_NAMES[_type_a], spec["file"], spec["variant"], spec["row"]]
+		_status_label.text = "Interior %s %s = v%d r%d" % [
+			TERRAIN_NAMES[_type_a], key, spec["variant"], spec["row"]]
 	else:
-		set_rule(_type_a, dir, _type_b, spec)
+		# Direction: store with full key
+		var rule_key: String = "%d:%s:%d" % [_type_a, key, _type_b]
+		_rules[rule_key] = spec
 		_refresh_grid()
-		_status_label.text = "Правило установлено: %s %s->%s = f%d v%d r%d" % [
-			TERRAIN_NAMES[_type_a], dir, TERRAIN_NAMES[_type_b],
-			spec["file"], spec["variant"], spec["row"]]
+		_status_label.text = "Rule: %s %s->%s = v%d r%d" % [
+			TERRAIN_NAMES[_type_a], key, TERRAIN_NAMES[_type_b],
+			spec["variant"], spec["row"]]
 	if _palette_popup != null and is_instance_valid(_palette_popup):
 		_palette_popup.queue_free()
 
-func _on_palette_clear(dir: String) -> void:
-	if dir == "":
-		_set_interior_spec(_type_a, {})
+func _on_palette_cancel() -> void:
+	if _palette_popup != null and is_instance_valid(_palette_popup):
+		_palette_popup.queue_free()
+
+func _on_palette_clear(key: String) -> void:
+	if key.begins_with("A"):
+		var rule_key: String = "%d:%s:%d" % [_type_a, key, _type_a]
+		_rules.erase(rule_key)
 		_refresh_grid()
-		_status_label.text = "Interior %s очищен" % TERRAIN_NAMES[_type_a]
+		_status_label.text = "Interior %s %s cleared" % [TERRAIN_NAMES[_type_a], key]
 	else:
-		_rules.erase("%d:%s:%d" % [ _type_a, dir, _type_b])
+		var rule_key: String = "%d:%s:%d" % [_type_a, key, _type_b]
+		_rules.erase(rule_key)
 		_refresh_grid()
-		_status_label.text = "Правило удалено: %s %s->%s" % [
-			TERRAIN_NAMES[_type_a], dir, TERRAIN_NAMES[_type_b]]
+		_status_label.text = "Rule deleted: %s %s" % [TERRAIN_NAMES[_type_a], key]
 	if _palette_popup != null and is_instance_valid(_palette_popup):
 		_palette_popup.queue_free()
 
