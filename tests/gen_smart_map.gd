@@ -7,7 +7,7 @@ const DB_PATH := "res://assets/maps/transition_db.json"
 const SHAPES_PATH := "res://assets/maps/shapes_db.json"
 const W := 128
 const H := 128
-## Тип A -> tile-файл для .alm (в DB у песка/грязи file=1 — палитра tile1)
+## Тип A -> tile-файл для .alm (песок/грязь/почва — свои BMP-файлы)
 const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
 ## 8-bit peer mask bit order — must match tests/analyze_shapes.gd
 const SHAPE_DIRS := [
@@ -19,6 +19,9 @@ var _tiles := PackedInt32Array()
 var _heights := PackedByteArray()
 var _obstacles := PackedByteArray()
 var _terrain := PackedByteArray()
+var _field := PackedFloat32Array()
+var _water_thr: float = 0.0
+var _mountain_thr: float = 0.0
 
 # Transition DB
 var _rules: Dictionary = {}
@@ -135,6 +138,9 @@ func _generate() -> void:
 	# 1b. Дороги-коридоры (связные ленты шириной 2 клетки, огибают воду)
 	_place_roads(rng_from_seed(4242))
 
+	# 1c. Portal + Spawn маркеры
+	_place_portal_spawn()
+
 	# 2. Tiles with transitions from DB
 	for y in range(H):
 		for x in range(W):
@@ -142,12 +148,10 @@ func _generate() -> void:
 			_tiles[i] = _pick_tile(_terrain[i], x, y)
 
 	# 3. Heights
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 42
 	for y in range(H):
 		for x in range(W):
 			var i: int = y * W + x
-			_heights[i] = _pick_height(x, y, _terrain[i], rng)
+			_heights[i] = _pick_height(x, y, _terrain[i], _field[i])
 
 func rng_from_seed(s: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -160,9 +164,93 @@ func rng_from_seed(s: int) -> RandomNumberGenerator:
 ## от самой кромки — как в оригинальных .alm (edgeC=0).
 func _place_roads(rng: RandomNumberGenerator) -> void:
 	var land: Array = _largest_land()
-	var count: int = 1 + (1 if rng.randf() < 0.35 else 0)
-	for r in range(count):
-		_carve_road(land, rng)
+	# Всегда 1 коридор — с новыми биомами (Voronoi) вода может разбить сушу
+	_carve_road(land, rng)
+
+var _spawn_pos: Vector2i = Vector2i(-1, -1)
+var _portal_pos: Vector2i = Vector2i(-1, -1)
+
+func _place_portal_spawn() -> void:
+	# Спавн: трава (0) рядом с началом дороги
+	# Портал: трава (0) на противоположном краю карты
+	var road_cells: Array = []
+	for y in range(H):
+		for x in range(W):
+			if _terrain[y * W + x] == 3:
+				road_cells.append(Vector2i(x, y))
+	if road_cells.is_empty():
+		return
+	# Начало дороги — минимальные координаты
+	var road_start: Vector2i = road_cells[0]
+	var road_end: Vector2i = road_cells[road_cells.size() - 1]
+	for c in road_cells:
+		if c.x + c.y < road_start.x + road_start.y:
+			road_start = c
+		if c.x + c.y > road_end.x + road_end.y:
+			road_end = c
+	# Спавн: ищем траву рядом с road_start (±5 клеток)
+	_spawn_pos = _find_grass_near(road_start, 5)
+	# Портал: ищем траву на противоположном краю (далеко от road_start)
+	_portal_pos = _find_grass_far(road_start, 40)
+	# Сохраняем sidecar JSON
+	_save_spawn_json()
+	_save_portal_json()
+	if _spawn_pos.x >= 0:
+		print("SPAWN: (%d, %d)" % [_spawn_pos.x, _spawn_pos.y])
+	if _portal_pos.x >= 0:
+		print("PORTAL: (%d, %d)" % [_portal_pos.x, _portal_pos.y])
+
+func _find_grass_near(origin: Vector2i, radius: int) -> Vector2i:
+	for r in range(1, radius + 1):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if abs(dx) != r and abs(dy) != r:
+					continue
+				var p := Vector2i(origin.x + dx, origin.y + dy)
+				if p.x >= 1 and p.y >= 1 and p.x < W - 1 and p.y < H - 1:
+					if _terrain[p.y * W + p.x] == 0:
+						return p
+	return Vector2i(-1, -1)
+
+func _find_grass_far(origin: Vector2i, min_dist: int) -> Vector2i:
+	# Ищем траву на расстоянии ≥ min_dist от origin, ближе к краю карты
+	var best := Vector2i(-1, -1)
+	var best_score := -1
+	for y in range(3, H - 3):
+		for x in range(3, W - 3):
+			if _terrain[y * W + x] != 0:
+				continue
+			var p := Vector2i(x, y)
+			var dist: float = p.distance_to(origin)
+			if dist < min_dist:
+				continue
+			# Оценка: дальше от origin + ближе к краю карты
+			var edge_dist: float = mini(mini(x, W - 1 - x), mini(y, H - 1 - y))
+			var score: int = int(dist * 2.0 - edge_dist * 3.0)
+			if score > best_score:
+				best_score = score
+				best = p
+	return best
+
+func _save_spawn_json() -> void:
+	if _spawn_pos.x < 0:
+		return
+	var path: String = OUT_DIR + "gen_smart_01.spawn.json"
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"x": _spawn_pos.x, "y": _spawn_pos.y}))
+	f.close()
+
+func _save_portal_json() -> void:
+	if _portal_pos.x < 0:
+		return
+	var path: String = OUT_DIR + "gen_smart_01.portal.json"
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"x": _portal_pos.x, "y": _portal_pos.y}))
+	f.close()
 
 func _carve_road(land: Array, rng: RandomNumberGenerator) -> void:
 	# Крупнейший связный «материк» суши: внутри него гарантированно существует путь.
@@ -281,7 +369,7 @@ func _is_road_cell(x: int, y: int) -> bool:
 	if x < 1 or y < 1 or x >= W - 1 or y >= H - 1:
 		return false
 	var t: int = _terrain[y * W + x]
-	return t == 0 or t == 1 or t == 3
+	return t != 2  # Всё кроме воды проходимо для дороги
 
 func _set_land_road(p: Vector2i) -> void:
 	if p.x < 0 or p.y < 0 or p.x >= W or p.y >= H:
@@ -365,93 +453,95 @@ func _detect_active_types() -> Array:
 	return types.keys()
 
 func _place_terrain(n: int, active_types: Array) -> void:
-	var noise := FastNoiseLite.new()
-	noise.seed = 42
-	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	noise.frequency = 1.0 / 48.0
-	noise.fractal_octaves = 4
-	noise.fractal_gain = 0.5
-	# Умеренно-высокочастотная составляющая: делает берег извилистым,
-	# как в оригинальных .alm (compactness ~1.5), не ломая связность воды/гор.
-	var coastal := FastNoiseLite.new()
-	coastal.seed = 7001
-	coastal.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	coastal.frequency = 1.0 / 16.0
-	coastal.fractal_octaves = 4
-	coastal.fractal_gain = 0.5
-	# Тонкая «рябь» берега — мелкие бухты и мысы вдоль линии воды.
-	var fine := FastNoiseLite.new()
-	fine.seed = 7002
-	fine.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	fine.frequency = 1.0 / 7.0
-	fine.fractal_octaves = 2
-	fine.fractal_gain = 0.5
-
-	# Поле высот 0..1 + лёгкое сглаживание, чтобы массы воды/гор были связными
-	var field := PackedFloat32Array()
-	field.resize(n)
-	for i in range(n):
-		var x: float = float(i % W)
-		var y: float = float(i / W)
-		var base: float = (noise.get_noise_2d(x, y) + 1.0) * 0.5
-		var det: float = (coastal.get_noise_2d(x, y) + 1.0) * 0.5
-		var ripple: float = (fine.get_noise_2d(x, y) + 1.0) * 0.5
-		field[i] = clampf(base * 0.55 + det * 0.3 + ripple * 0.15, 0.0, 1.0)
-	field = _box_blur(field)
-
 	if active_types.size() <= 1:
 		_terrain.fill(active_types[0] if active_types.size() > 0 else 0)
 		return
 
-	# Квантильные пороги по профилю (как в gen_biome.gd), а НЕ равные сегменты.
-	# Это убирает перекос к горам/воде, когда поле скучено вокруг 0.5.
-	var has_water: bool = active_types.has(2)
-	var has_mountain: bool = active_types.has(1)
-	# Роли для остальных типов: всё, что не вода/горы, занимает «середину».
+	# === Voronoi-биомы: связные регионы вместо разброса ===
+	# Генерируем опорные точки для каждого типа. Каждая клетка получает тип
+	# ближайшей опорной точки. Шум добавляет органичность границам.
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+
+	# Шум для деформации границ (создаёт извилистые берега/границы биомов)
+	var jitter_noise := FastNoiseLite.new()
+	jitter_noise.seed = 9999
+	jitter_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	jitter_noise.frequency = 1.0 / 20.0
+	jitter_noise.fractal_octaves = 3
+
+	# Опорные точки: тип -> количество
+	var seed_counts := {}
+	for t in active_types:
+		match t:
+			0: seed_counts[t] = 3   # Трава — крупные зоны
+			1: seed_counts[t] = 2   # Горы
+			2: seed_counts[t] = 1   # Вода — 1-2 озёра
+			4: seed_counts[t] = 2   # Почва
+			5: seed_counts[t] = 2   # Песок
+			6: seed_counts[t] = 1   # Грязь
+			_: seed_counts[t] = 1
+
+	# Генерируем опорные точки
+	var seeds: Array = []
+	for t in seed_counts:
+		for i in range(seed_counts[t]):
+			var sx: float = rng.randf_range(5.0, W - 6.0)
+			var sy: float = rng.randf_range(5.0, H - 6.0)
+			seeds.append({"pos": Vector2(sx, sy), "type": t})
+
+	# Поле высот для доминирования воды/гор (низкие = вода, высокие = горы)
+	var elev_noise := FastNoiseLite.new()
+	elev_noise.seed = 42
+	elev_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	elev_noise.frequency = 1.0 / 40.0
+	elev_noise.fractal_octaves = 4
+	elev_noise.fractal_gain = 0.5
+
+	var field := PackedFloat32Array()
+	field.resize(n)
+
+	# Для каждой клетки — ближайшая опорная точка
+	for i in range(n):
+		var x: float = float(i % W)
+		var y: float = float(i / W)
+		var elev: float = (elev_noise.get_noise_2d(x, y) + 1.0) * 0.5
+		field[i] = elev
+
+		# Ищем ближайшую опорную точку с шумовым смещением
+		var best_type: int = 0
+		var best_dist: float = 1e30
+		for s in seeds:
+			var sp: Vector2 = s["pos"]
+			# Базовое расстояние
+			var dx: float = x - sp.x
+			var dy: float = y - sp.y
+			var dist: float = dx * dx + dy * dy
+			# Шумовое смещение для органичных границ (~10% от расстояния)
+			var jx: float = jitter_noise.get_noise_2d(x * 3.0, y * 3.0)
+			var jy: float = jitter_noise.get_noise_2d(x * 3.0 + 100, y * 3.0 + 100)
+			dist += (jx * dx + jy * dy) * 3.0
+			if dist < best_dist:
+				best_dist = dist
+				best_type = s["type"]
+
+		# Доминирование воды/гор по высоте:
+		# Вода побеждает на низких, горы на высоких
+		if best_type != 2 and best_type != 1:
+			if elev < 0.20:
+				best_type = 2  # Вода
+			elif elev > 0.82:
+				best_type = 1  # Горы
+
+		_terrain[i] = best_type
+
+	# Сохраняем field и пороги для высот
+	_field = field
 	var sorted := field.duplicate()
 	sorted.sort()
-	var water_q := 0.32  # низкие значения
-	var mountain_q := 0.20  # высокие значения
-	if not has_water:
-		water_q = 0.0
-	if not has_mountain:
-		mountain_q = 0.0
-	var w_idx: int = clampi(int(water_q * n), 0, n - 1)
-	var m_idx: int = clampi(n - 1 - int(mountain_q * n), 0, n - 1)
-	var water_thr: float = sorted[w_idx]
-	var mountain_thr: float = sorted[m_idx]
-
-	# Список «серединных» типов (трава, почва, песок, грязь — что есть).
-	# Дорога (3) НЕ входит: она рисуется отдельным проходом как связный коридор
-	# шириной 2 клетки (в оригинале это одна лента, а не шумовые пятна).
-	var mid_types: Array = []
-	for t in active_types:
-		if t != 2 and t != 1 and t != 3:
-			mid_types.append(t)
-	mid_types.sort()
-	# Каждый серединный тип получает равный диапазон между (water_thr, mountain_thr)
-	for i in range(n):
-		var v: float = field[i]
-		if has_water and v <= water_thr:
-			_terrain[i] = 2
-			continue
-		if has_mountain and v >= mountain_thr:
-			_terrain[i] = 1
-			continue
-		if mid_types.is_empty():
-			_terrain[i] = 0
-			continue
-		# Серединный тип: нормализуем v в [water_thr, mountain_thr] -> индекс по типам
-		var lo: float = water_thr if has_water else sorted[0]
-		var hi: float = mountain_thr if has_mountain else sorted[n - 1]
-		var span: float = maxf(0.0001, hi - lo)
-		var u: float = clampf((v - lo) / span, 0.0, 1.0)
-		var accu := 0.0
-		for j in range(mid_types.size()):
-			accu += 1.0 / float(mid_types.size())
-			if u <= accu or j == mid_types.size() - 1:
-				_terrain[i] = mid_types[j]
-				break
+	_water_thr = sorted[clampi(int(0.10 * n), 0, n - 1)]
+	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
 
 func _pick_tile(t: int, x: int, y: int) -> int:
 	var s: Dictionary = _sides(x, y)
@@ -721,19 +811,69 @@ func _spec_for_type(type_a: int, spec: Dictionary) -> Dictionary:
 	var out := spec.duplicate(true)
 	out["variant"] = int(spec.get("variant", 0))
 	out["row"] = int(spec.get("row", 0))
+	# Для типов >=4: перезаписываем file через TERRAIN_FILE
+	if type_a >= 4:
+		out["file"] = int(TERRAIN_FILE.get(type_a, out["file"]))
 	return out
 
-func _pick_height(x: int, y: int, t: int, rng: RandomNumberGenerator) -> int:
-	var base: float = 19.0
+func _pick_height(x: int, y: int, t: int, field_value: float) -> int:
+	# Псевдо-высота: noise field определяет И terrain И высоту.
+	# Вода всегда низкая, горы высокие, остальные — средние с вариацией.
 	match t:
-		1: base = 35.0
-		2: base = 6.0
-		3: base = 17.0
-		4: base = 12.0
-		5: base = 8.0
-		6: base = 10.0
-	var variation := rng.randf_range(-0.3, 0.3)
-	return int(round(clampf(base * (1.0 + variation), 0.0, 127.0)))
+		2: # Вода: 0-15 (всегда низко)
+			return int(round(clampf(field_value * 15.0, 0.0, 15.0)))
+		1: # Горы: 40-127 (высокие пики)
+			var lo: float = _water_thr
+			var hi: float = 1.0
+			var span: float = maxf(0.0001, hi - lo)
+			var u: float = clampf((field_value - lo) / span, 0.0, 1.0)
+			return int(round(clampf(40.0 + u * 87.0, 40.0, 127.0)))
+		0: # Трава: 10-60 (холмы)
+			var lo: float = _water_thr
+			var hi: float = _mountain_thr
+			var span: float = maxf(0.0001, hi - lo)
+			var u: float = clampf((field_value - lo) / span, 0.0, 1.0)
+			return int(round(clampf(10.0 + u * 50.0, 10.0, 60.0)))
+		4: # Почва: 10-50 (средняя)
+			var lo: float = _water_thr
+			var hi: float = _mountain_thr
+			var span: float = maxf(0.0001, hi - lo)
+			var u: float = clampf((field_value - lo) / span, 0.0, 1.0)
+			return int(round(clampf(10.0 + u * 40.0, 10.0, 50.0)))
+		5: # Песок: 5-35 (низина)
+			var lo: float = _water_thr
+			var hi: float = _mountain_thr
+			var span: float = maxf(0.0001, hi - lo)
+			var u: float = clampf((field_value - lo) / span, 0.0, 1.0)
+			return int(round(clampf(5.0 + u * 30.0, 5.0, 35.0)))
+		6: # Грязь: 8-33 (болото)
+			var lo: float = _water_thr
+			var hi: float = _mountain_thr
+			var span: float = maxf(0.0001, hi - lo)
+			var u: float = clampf((field_value - lo) / span, 0.0, 1.0)
+			return int(round(clampf(8.0 + u * 25.0, 8.0, 33.0)))
+		3: # Дорога: интерполяция от соседей
+			return _interpolate_road_height(x, y)
+		_: # Остальные: средняя
+			return int(round(clampf(field_value * 60.0, 10.0, 60.0)))
+
+func _interpolate_road_height(x: int, y: int) -> int:
+	# Дорога: среднее от соседних не-дорожных клеток.
+	var sum := 0.0
+	var cnt := 0
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nx: int = x + d.x
+		var ny: int = y + d.y
+		if nx < 0 or ny < 0 or nx >= W or ny >= H:
+			continue
+		var nt: int = _terrain[ny * W + nx]
+		if nt != 3:
+			sum += float(_heights[ny * W + nx])
+			cnt += 1
+	if cnt > 0:
+		return int(round(sum / float(cnt)))
+	# Нет соседей — берём из field
+	return int(round(clampf(_field[y * W + x] * 40.0, 10.0, 40.0)))
 
 func _box_blur(field: PackedFloat32Array) -> PackedFloat32Array:
 	# Лёгкое сглаживание (3×3): сохраняет извилистость берега, убирая только
@@ -778,9 +918,13 @@ func _save() -> void:
 			var tt: int = _terrain[i]
 			tc[tt] = tc.get(tt, 0) + 1
 		var total: float = W * H
-		print("Terrain: трава=%.1f%% горы=%.1f%% вода=%.1f%% дорога=%.1f%%" % [
-			tc.get(0, 0) * 100.0 / total, tc.get(1, 0) * 100.0 / total,
-			tc.get(2, 0) * 100.0 / total, tc.get(3, 0) * 100.0 / total])
+		var terrain_parts: Array = []
+		var terrain_names := {0: "трава", 1: "горы", 2: "вода", 3: "дорога", 4: "почва", 5: "песок", 6: "грязь"}
+		for tt in terrain_names:
+			var cnt: int = tc.get(tt, 0)
+			if cnt > 0:
+				terrain_parts.append("%s=%.1f%%" % [terrain_names[tt], cnt * 100.0 / total])
+		print("Terrain: " + ", ".join(terrain_parts))
 		print("Shapes: exact=%d subset=%d rules-fallback=%d" % [
 			_stat_exact, _stat_subset, _stat_rules])
 		_road_stats(tc.get(3, 0))

@@ -50,5 +50,28 @@ func _render(path: String, out: String) -> void:
 			img.blit_rect(src, Rect2i(0, row * TILE, TILE, TILE),
 					Vector2i(x * TILE, y * TILE))
 	DirAccess.make_dir_recursive_absolute(out.get_base_dir())
+	# Draw spawn/portal markers
+	var spawn_path := path.get_basename() + ".spawn.json"
+	if FileAccess.file_exists(spawn_path):
+		var f := FileAccess.open(spawn_path, FileAccess.READ)
+		if f != null:
+			var json: Variant = JSON.parse_string(f.get_as_text())
+			f.close()
+			if json is Dictionary:
+				var sx: int = int(json.get("x", -1))
+				var sy: int = int(json.get("y", -1))
+				if sx >= 0 and sy >= 0:
+					img.fill_rect(Rect2i(sx * TILE + 8, sy * TILE + 8, TILE - 16, TILE - 16), Color(0, 1, 0, 0.8))
+	var portal_path := path.get_basename() + ".portal.json"
+	if FileAccess.file_exists(portal_path):
+		var f := FileAccess.open(portal_path, FileAccess.READ)
+		if f != null:
+			var json: Variant = JSON.parse_string(f.get_as_text())
+			f.close()
+			if json is Dictionary:
+				var px: int = int(json.get("x", -1))
+				var py: int = int(json.get("y", -1))
+				if px >= 0 and py >= 0:
+					img.fill_rect(Rect2i(px * TILE + 8, py * TILE + 8, TILE - 16, TILE - 16), Color(0, 0.5, 1, 0.8))
 	var err := img.save_png(out)
 	print("render %dx%d -> %s (err=%d, missing_tiles=%d)" % [w, h, out, err, missing])

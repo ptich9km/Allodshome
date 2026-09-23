@@ -671,6 +671,28 @@ func _process(delta):
 	_update_target_ring()
 	_process_pending_building()
 	Game.tick_shields(delta)
+	_check_portal()
+
+func _check_portal() -> void:
+	# Проверка: игрок на клетке портала?
+	if not is_instance_valid(player) or not is_instance_valid(alm_map):
+		return
+	var cells: Array = alm_map.call("get_portal_cells")
+	if cells.is_empty():
+		return
+	var TILE: int = 32
+	var cell := Vector2i(int(player.global_position.x) / TILE, int(player.global_position.y) / TILE)
+	for pc in cells:
+		if cell == pc:
+			_on_portal_enter()
+			return
+
+func _on_portal_enter() -> void:
+	# Placeholder: телепорт обратно на спавн
+	print("TELEPORT! → spawn")
+	if is_instance_valid(alm_map) and is_instance_valid(player):
+		var sp: Vector2 = alm_map.call("get_spawn_pos")
+		player.global_position = sp
 
 func _process_action_mode():
 	if action_mode == "none" or not is_instance_valid(player):

@@ -32,6 +32,10 @@ var obstacles_root: Node2D      # слой препятствий (y-sort)
 var buildings: Node2D           # слой зданий (y-sort)
 var world_sort: Node2D          # общий y-sort: препятствия + здания (крона перекрывает фонтан)
 var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
+var _portal_cells: Array = []   # координаты порталов (Vector2i)
+var _spawn_cell: Vector2i = Vector2i(-1, -1)
+var _portal_markers: Array = [] # PortalMarker instances
+var _spawn_marker: Node2D = null
 
 ## Единый слой с y-сортировкой для препятствий и зданий: южнее — поверх.
 func _ensure_world_sort() -> Node2D:
@@ -72,6 +76,7 @@ func _ready() -> void:
 	_build_relief_mesh()
 	_build_obstacles()
 	_build_structures()
+	_load_portal_spawn()
 	print("AlmMap: %s %dx%d клеток, структур %d, солнце %s°" % [alm_path.get_file(), map_width, map_height, _structures.size(), str(rad_to_deg(solar_angle))])
 
 ## Таблица препятствий: .alm obstacle id -> параметры спрайта (из objects.txt/obj.reg).
@@ -455,6 +460,42 @@ func _load_spawn_anchor() -> Vector2i:
 	if json is not Dictionary:
 		return Vector2i(-1, -1)
 	return Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
+
+func _load_portal_spawn() -> void:
+	# Загрузка spawn из sidecar
+	var sp := _load_spawn_anchor()
+	if sp.x >= 0:
+		_spawn_cell = sp
+		# Создаём маркер спавна
+		var pm := preload("res://scripts/portal_marker.gd").new()
+		pm.setup(sp, "spawn_marker")
+		pm.z_index = 10
+		add_child(pm)
+		_spawn_marker = pm
+	# Загрузка portal из sidecar
+	var portal_path: String = ""
+	if not alm_path.is_empty():
+		portal_path = alm_path.get_basename() + ".portal.json"
+	if portal_path != "" and FileAccess.file_exists(portal_path):
+		var f := FileAccess.open(portal_path, FileAccess.READ)
+		if f != null:
+			var json: Variant = JSON.parse_string(f.get_as_text())
+			f.close()
+			if json is Dictionary:
+				var pp := Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
+				if pp.x >= 0:
+					_portal_cells.append(pp)
+					var pm2 := preload("res://scripts/portal_marker.gd").new()
+					pm2.setup(pp, "portal")
+					pm2.z_index = 10
+					add_child(pm2)
+					_portal_markers.append(pm2)
+
+func get_portal_cells() -> Array:
+	return _portal_cells
+
+func get_spawn_cell() -> Vector2i:
+	return _spawn_cell
 
 ## Sidecar-файлы рядом с .alm — редактор сохраняет в них полное состояние
 ## структур и НПЦ (сам .alm не перезаписывается):
