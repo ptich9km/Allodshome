@@ -89,6 +89,7 @@ shape = SubResource("CircleShape2D_orc")
 script = ExtResource("4_ui")
 
 [node name="BottomPanel" type="Control" parent="UI"]
+mouse_filter = 2
 offset_left = 0.0
 offset_top = 625.0
 offset_right = 720.0

@@ -10,6 +10,8 @@ class_name Mercenary
 
 var current_hp: int
 var attack_cooldown: float = 0.0
+var _impact_timer := -1.0            # отсчёт до кадра удара (замах); <0 = нет удара в полёте
+var _pending_target: Node2D = null   # цель текущего замаха (урон — на кадре удара)
 var state: String = "idle"      # idle | dying | decay | corpse
 var lifespan: float = 0.0       # >0 — призванный миньон: исчезает по истечении времени
 var _lifetime: float = 0.0
@@ -66,6 +68,18 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var target := _nearest_enemy(240.0)
+	# Кадр удара: урон наносится в момент соприкосновения, а не в начале замаха
+	if _impact_timer >= 0.0:
+		_impact_timer -= delta
+		move_and_slide()
+		if _impact_timer < 0.0:
+			_impact_timer = -1.0
+			if is_instance_valid(_pending_target) and Game.enemies.has(_pending_target) \
+					and not Game.is_miss(self, _pending_target):
+				Game.deal_damage(_pending_target, damage, "physical", "", self)
+				SoundDB.play(5)
+			_pending_target = null
+		return
 	if target != null:
 		if global_position.distance_to(target.global_position) > 40.0:
 			_move_toward(target.global_position, delta)
@@ -117,13 +131,14 @@ func _move_toward(p: Vector2, delta: float) -> void:
 	velocity = velocity.move_toward(wanted, 1100.0 * delta)
 
 func _attack(target: Node2D) -> void:
-	if attack_cooldown > 0.0:
+	if attack_cooldown > 0.0 or _impact_timer >= 0.0:
+		return
+	if not Game.enemies.has(target):
 		return
 	attack_cooldown = 1.0
-	if Game.is_miss(self, target):
-		return   # промах — тихо
-	Game.deal_damage(target, damage, "physical", "", self)
-	SoundDB.play(5)
+	# Замах: урон и звук — в момент удара (_impact_timer обрабатывается в _physics_process)
+	_pending_target = target
+	_impact_timer = UnitDB.attack_delay(anim_set)
 
 func take_damage(dmg: int, _attacker: Node2D) -> void:
 	# Мёртвый наёмник урона не получает

@@ -25,6 +25,8 @@ var current_mana: int
 var state: String = "idle"
 var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
+var _impact_timer := -1.0            # отсчёт до кадра удара (замах); <0 = нет удара в полёте
+var _pending_attack_damage := 0      # урон текущего замаха (применяется в момент удара)
 var move_speed: float = 120.0
 var _path: Array = []        # маршрут (мировые точки — центры клеток), без «льда»
 var _stuck_frames := 0
@@ -439,19 +441,24 @@ func _physics_process(delta):
 			if _anim:
 				_anim.play(UnitAnim.Anim.MOVE)
 				_anim.set_direction_vec(velocity)
-				_anim.speed_scale = clampf(velocity.length() / maxf(move_speed * 0.85, 1.0), 0.5, 2.0)
+				# Темп шагов — по КОМАНДНОЙ скорости (разгон/торможение не «перекачивают» каденс)
+				_anim.speed_scale = clampf(_height_speed_factor(Game.player_target) / 0.85, 0.5, 2.0)
 				_anim.advance(delta)
 		"chase":
 			chase_target(delta)
 			if _anim:
 				_anim.play(UnitAnim.Anim.MOVE)
 				_anim.set_direction_vec(velocity)
-				_anim.speed_scale = clampf(velocity.length() / maxf(move_speed * 0.85, 1.0), 0.5, 2.0)
+				var walk_f := 1.0
+				if attack_target and is_instance_valid(attack_target):
+					walk_f = _height_speed_factor(attack_target.global_position)
+				_anim.speed_scale = clampf(walk_f / 0.85, 0.5, 2.0)
 				_anim.advance(delta)
 		"attack":
 			attack_enemy(delta)
 			if _anim:
 				_anim.play(UnitAnim.Anim.ATTACK)
+				_anim.speed_scale = 1.0
 				_anim.advance(delta)
 		"dead":
 			velocity = Vector2.ZERO
@@ -509,6 +516,15 @@ func move_to_target(delta):
 			velocity = Vector2.ZERO
 		return
 	if Game.player_target.distance_to(global_position) > 5.0:
+		# Прямая трассировка — только к ПРОХОДИМОЙ цели. Пустой маршрут (find_path
+		# вернул []) + непроходимая цель (клик в озеро без берега в радиусе) —
+		# стоп у кромки, а не «бег по воде» (провал за грань + исключение nxt==cur).
+		if alm_map != null and alm_map.has_method("is_walkable_world") \
+				and not alm_map.is_walkable_world(Game.player_target):
+			state = "idle"
+			velocity = Vector2.ZERO
+			Game.player_target = global_position
+			return
 		var direction = (Game.player_target - global_position).normalized()
 		var speed_factor = _height_speed_factor(Game.player_target)
 		_move_checked(direction, move_speed * speed_factor, delta)
@@ -581,37 +597,55 @@ func chase_target(delta):
 		state = "idle"
 		velocity = Vector2.ZERO
 
-func attack_enemy(_delta):
+func attack_enemy(delta):
 	if attack_target and is_instance_valid(attack_target):
 		# Враг убежал из радиуса — догоняем, а не бьём в пустоту
 		if Game.units_range(self, attack_target) > Game.ATTACK_RANGE + 12.0:
 			state = "chase"
+			_impact_timer = -1.0
 			return
-		if attack_cooldown <= 0:
+		# Цель мертва (труп/разложение) — прекращаем махать по трупу
+		if not Game.enemies.has(attack_target):
+			attack_target = null
+			state = "idle"
+			velocity = Vector2.ZERO
+			_impact_timer = -1.0
+			return
+		if attack_cooldown <= 0.0 and _impact_timer < 0.0:
 			var damage = get_damage_min() + randi() % (get_damage_max() - get_damage_min() + 1)
-			print("Атакуем! Урон: ", damage)
-			_sound_weapon_attack()
 			# МАГ с посохом: удар — это сфера (мгновенная магия выбранной стихии),
-			# сразу в deal_damage("magic", sphere) — защита стихий работает, опыт сфере.
+			# без задержки замаха — как и раньше, срабатывает сразу.
 			if Game.hero_class == "mage" and weapon == "staff":
 				var sphere := _active_sphere()
 				if Game.is_miss(self, attack_target):
 					print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(attack_target)))
 				else:
 					Game.deal_damage(attack_target, magic_damage(damage, sphere), "magic", sphere, self)
+					_sound_weapon_attack()
 				_apply_spell_experience(sphere)
 				attack_cooldown = Game.ATTACK_COOLDOWN
 				return
-			# Единая точка: промах по hit_chance(атака, защита), далее Game.deal_damage
-			# (поглощение бронёй → take_damage → щит → HP).
-			if Game.is_miss(self, attack_target):
-				print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(attack_target)))
-			else:
-				Game.deal_damage(attack_target, damage, "physical", "", self)
-			_apply_attack_experience(attack_target, damage)
+			# Старт замаха: урон и звук — в момент удара (_impact_timer),
+			# чтобы контакт ощущался по анимации, а не в начале движения.
+			print("Атакуем! Урон: ", damage)
+			_pending_attack_damage = damage
+			_impact_timer = UnitDB.attack_delay(anim_set_name())
 			attack_cooldown = Game.ATTACK_COOLDOWN
+		elif _impact_timer >= 0.0:
+			_impact_timer -= delta
+			if _impact_timer < 0.0:
+				_impact_timer = -1.0
+				# Единая точка: промах по hit_chance(атака, защита), далее Game.deal_damage
+				# (поглощение бронёй → take_damage → щит → HP).
+				if Game.is_miss(self, attack_target):
+					print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(attack_target)))
+				else:
+					Game.deal_damage(attack_target, _pending_attack_damage, "physical", "", self)
+					_sound_weapon_attack()
+				_apply_attack_experience(attack_target, _pending_attack_damage)
 	else:
 		state = "idle"
+		_impact_timer = -1.0
 
 ## Звук удара оружием героя (Sfx100-160: units\sword|axe|club|bow|cbow|pike|sling).
 func _sound_weapon_attack() -> void:
@@ -888,6 +922,7 @@ func _teleport_to(target_position: Vector2) -> void:
 	if alm_map and alm_map.has_method("is_walkable_world") and not alm_map.is_walkable_world(target_position):
 		return
 	global_position = target_position
+	reset_physics_interpolation()
 	if health_bar:
 		health_bar.update_bars(current_hp, current_mana)
 

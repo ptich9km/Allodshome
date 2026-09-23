@@ -63,6 +63,10 @@ cast_3={
 ]
 }
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

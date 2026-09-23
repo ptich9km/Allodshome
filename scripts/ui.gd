@@ -1080,6 +1080,7 @@ func _exit_interior() -> void:
 		player.visible = true
 		# Точка выхода: исходная позиция, но на ПРОХОДИМОЙ клетке (не «в здании»)
 		player.global_position = _clamp_to_walkable(_interior_pos)
+		player.reset_physics_interpolation()
 
 ## Ближайшая проходимая точка рядом с запрошенной (спираль по клеткам).
 func _clamp_to_walkable(from: Vector2) -> Vector2:
@@ -1125,12 +1126,14 @@ func _control_contains(c: Control, p: Vector2) -> bool:
 		if not cur.visible:
 			return false
 		cur = cur.get_parent() as Control
-	if Rect2(c.global_position, c.size).has_point(p):
-		return true
+	# Узлы с MOUSE_FILTER_IGNORE не перехватывают клики (фон панелей),
+	# но их дети-виджеты (кнопки и т.п.) по-прежнему блокируются отдельно.
+	var hit := c.mouse_filter != Control.MOUSE_FILTER_IGNORE \
+		and Rect2(c.global_position, c.size).has_point(p)
 	for ch in c.get_children():
 		if ch is Control and _control_contains(ch, p):
 			return true
-	return false
+	return hit
 
 ## Магазин: купля/продажа (клик по зданию Shop).
 func open_shop() -> void:

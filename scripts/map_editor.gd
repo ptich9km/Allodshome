@@ -397,6 +397,9 @@ func _update_palette_icons() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if is_instance_valid(settings_panel):
 		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F9:
+		_on_back()
+		return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_Z and event.ctrl_pressed:
 		_undo()
 		return
