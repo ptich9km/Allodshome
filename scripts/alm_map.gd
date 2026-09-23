@@ -53,6 +53,14 @@ const _DIRS_4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1
 
 func _ready() -> void:
 	add_to_group("alm_map")
+	# Карта из редактора: при «Назад в игру (F9)» (или старте после правки)
+	# грузим ту карту, которую открывал пользователь, а не захардкоженную.
+	var last: String = _read_last_alm_path()
+	if last != "" and FileAccess.file_exists(last):
+		var ld: Dictionary = AlmLoader.load_map(last)
+		if not ld.is_empty():
+			print("AlmMap: загрузка карты из редактора: %s" % last)
+			alm_path = last
 	if alm_path.is_empty():
 		push_warning("AlmMap: alm_path не задан")
 		return
@@ -445,6 +453,15 @@ func get_spawn_pos() -> Vector2:
 		return Vector2(anchor.x * TILE + TILE / 2, anchor.y * TILE + TILE / 2)
 	return Vector2(map_width * TILE / 2, map_height * TILE / 2)
 
+## Последняя карта, открытая в редакторе (пишет map_editor._remember_last_alm).
+func _read_last_alm_path() -> String:
+	var f := FileAccess.open("user://last_alm_path.txt", FileAccess.READ)
+	if f == null:
+		return ""
+	var p := f.get_as_text().strip_edges()
+	f.close()
+	return p
+
 ## Клетка спавна из файла-якоря рядом с .alm, или (-1,-1).
 func _load_spawn_anchor() -> Vector2i:
 	if alm_path.is_empty():
@@ -681,8 +698,15 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 					best_d = dist
 					best = n
 		if best_d < 0.0:
-			return []
-		goal = best
+			# Цель глубоко в объекте/воде (ни один из 4 соседей не проходим):
+			# идём к ближайшей суше спиралью, иначе клик превращается в «бег
+			# на месте» у кромки (пустая прямая трассировка в move_to_target).
+			var shore := _nearest_walkable(goal, 24)
+			if shore.x < 0:
+				return []
+			goal = shore
+		else:
+			goal = best
 
 	# BFS по 4 соседям
 	var prev := {}
