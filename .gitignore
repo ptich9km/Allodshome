@@ -4,6 +4,7 @@
 
 # Temp/agent scratch
 .qwen/
+.agents/
 
 # OS generated files
 .DS_Store
