@@ -23,6 +23,12 @@ var _field := PackedFloat32Array()
 var _water_thr: float = 0.0
 var _mountain_thr: float = 0.0
 
+# Спавн (структуры/npc sidecar-ами): зарезервированные клетки и выходные записи.
+var _reserved := {}           # Vector2i -> true (здания, спавн, портал)
+var _structures_out: Array = []   # {x, y, type_id}
+var _npcs_out: Array = []         # {x, y, set, role, patrol, post, hp_max, damage}
+var _obj_noise: FastNoiseLite
+
 # Transition DB
 var _rules: Dictionary = {}
 var _interior: Dictionary = {}
@@ -127,27 +133,43 @@ func _generate() -> void:
 	_heights.resize(n)
 	_obstacles.resize(n)
 	_obstacles.fill(0)
+	_reserved.clear()
+	_structures_out.clear()
+	_npcs_out.clear()
 
-	# Determine active terrain types from DB rules
-	var active_types: Array = _detect_active_types()
-	print("Active terrain types from DB: %s" % str(active_types))
+	# 1. Почва Voronoi (база, без гор/воды/дороги)
+	_place_terrain(n)
 
-	# 1. Noise → terrain (only active types)
-	_place_terrain(n, active_types)
+	var rng := rng_from_seed(4242)
 
-	# 1b. Дороги-коридоры (связные ленты шириной 2 клетки, огибают воду)
-	_place_roads(rng_from_seed(4242))
+	# 2. Города: овалы ~11×11 дорогой (type 3), по профилю зоны
+	_place_cities(rng)
 
-	# 1c. Portal + Spawn маркеры
+	# 3. Дороги: MST по городам + A*-коридоры ширины 2
+	_connect_cities(rng)
+
+	# 4. Горы/вода поверх экстремумов рельефа, не перетирая дорогу (3)
+	_place_mountains_water()
+
+	# 5. Portal + Spawn маркеры (у города №0)
 	_place_portal_spawn()
 
-	# 2. Tiles with transitions from DB
+	# 6. City content: здания + НПЦ городов (после известных спавна/портала)
+	_place_city_content(rng)
+
+	# 7. Деревья/объекты (заполняют _obstacles, обходя города/дороги/спавн)
+	_place_objects(rng)
+
+	# 8. Серые: кластеры у дорог и в лесу (только на не-занятых клетках)
+	_place_greys(rng)
+
+	# 9. Tiles with transitions from DB
 	for y in range(H):
 		for x in range(W):
 			var i: int = y * W + x
 			_tiles[i] = _pick_tile(_terrain[i], x, y)
 
-	# 3. Heights
+	# 10. Heights
 	for y in range(H):
 		for x in range(W):
 			var i: int = y * W + x
@@ -158,49 +180,191 @@ func rng_from_seed(s: int) -> RandomNumberGenerator:
 	r.seed = s
 	return r
 
-# === Дороги-коридоры ===
-## Рисует 1–2 связных коридора дороги шириной 2 клетки по земле (0/1),
-## огибая воду (2). Якоря лежат на противоположных краях карты, но с отступом
-## от самой кромки — как в оригинальных .alm (edgeC=0).
-func _place_roads(rng: RandomNumberGenerator) -> void:
-	var land: Array = _largest_land()
-	# Всегда 1 коридор — с новыми биомами (Voronoi) вода может разбить сушу
-	_carve_road(land, rng)
+# === Профили зон: число городов по сложности ===
+const ZONE := "mid"  # start | mid | hard | faction
+const ZONE_CITY_COUNTS := {
+	"start": [1, 1],
+	"mid": [1, 3],
+	"hard": [4, 5],
+	"faction": [2, 3],
+}
+
+# Серые (монстры palette=5 — UnitDB.is_hostile) по зоне: кластеры у дорог и в лесах.
+const GRAY_ZONE := {
+	"start": {
+		"count": [6, 10], "hp": [25, 45], "dmg": [4, 6],
+		"pool": ["monsters/bat", "monsters/bee", "monsters/wolf", "monsters/squirrel"],
+	},
+	"mid": {
+		"count": [10, 14], "hp": [45, 75], "dmg": [6, 9],
+		"pool": ["monsters/orc", "monsters/goblin", "monsters/wolf", "monsters/spider", "monsters/squirrel"],
+	},
+	"hard": {
+		"count": [14, 18], "hp": [70, 120], "dmg": [9, 14],
+		"pool": ["monsters/troll", "monsters/ogre", "monsters/goblin", "monsters/orc", "monsters/ghost", "monsters/dino"],
+	},
+	"faction": {
+		"count": [12, 16], "hp": [50, 95], "dmg": [7, 11],
+		"pool": ["monsters/orc", "monsters/goblin", "monsters/wolf", "monsters/spider", "monsters/troll"],
+	},
+}
+
+# Здания в городах: функциональные + жильё + декор (folder -> StructureDB).
+const SHOP_FOLDERS := ["shop1", "shop2"]
+const INN_FOLDERS := ["inn1", "inn2", "inn3"]
+const TRAIN_FOLDERS := ["train1", "train2", "train3"]
+const BLACKSMITH_FOLDERS := ["blacksmith1", "blacksmith2"]
+const HOUSE_FOLDERS := ["shed1", "shed2", "shed3", "khut1", "khut2", "hut1", "hut4", "hut5", "bighouse1", "bighouse2"]
+const DECOR_FOLDERS := ["well1", "well2", "well3", "campfire", "mill1", "mill2"]
+const ZONE_HOUSES := {"start": 4, "mid": 5, "hard": 7, "faction": 6}
+
+# НПЦ городов.
+const GUARD_SETS := ["humans/swordsman", "humans/archer", "humans/pikeman_"]
+const CITIZEN_SETS := ["humans/unarmed", "humans/clubman", "humans/axeman", "humans/mage_st"]
+const CAPTAIN_SET := "heroes/swordsman"
+
+# Объекты по биому: подходящие ID из alm_objects.json.
+const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]
+const TREE_SOIL := [41, 43, 53, 55, 47, 49, 51]
+const TREE_SAND := [128, 132, 134, 98, 99]
+const TREE_MUD := [7, 49, 51]
 
 var _spawn_pos: Vector2i = Vector2i(-1, -1)
 var _portal_pos: Vector2i = Vector2i(-1, -1)
+var _cities: Array = []  # [{pos: Vector2i, faction: String}]
 
-func _place_portal_spawn() -> void:
-	# Спавн: трава (0) рядом с началом дороги
-	# Портал: трава (0) на противоположном краю карты
-	var road_cells: Array = []
+## Этап 2: города. Центры — на базовой земле, разнесённые (мин. дистанция),
+## заливка овалом ~11×11 дорогой (type 3). Количество — из профиля зоны.
+func _place_cities(rng: RandomNumberGenerator) -> void:
+	_cities.clear()
+	var range_arr: Array = ZONE_CITY_COUNTS.get(ZONE, [1, 3])
+	var count: int = rng.randi_range(int(range_arr[0]), int(range_arr[1]))
+	var min_city_dist := 20
+	var attempts := 0
+	while _cities.size() < count and attempts < 500:
+		attempts += 1
+		var cx: int = rng.randi_range(8, W - 9)
+		var cy: int = rng.randi_range(8, H - 9)
+		var p := Vector2i(cx, cy)
+		# Центр города — только на базовой земле (0/4/5/6), не на воде/горах/дороге
+		var t: int = _terrain[p.y * W + p.x]
+		if t == 1 or t == 2 or t == 3:
+			continue
+		# Разнесение: не ближе min_city_dist к уже размещённым городам
+		var far_enough := true
+		for c in _cities:
+			if p.distance_to(c["pos"]) < min_city_dist:
+				far_enough = false
+				break
+		if not far_enough:
+			continue
+		_cities.append({"pos": p, "faction": _faction_for(_cities.size())})
+		_fill_city_oval(p, 5, 5)
+	print("CITIES: %d/%d (zone=%s)" % [_cities.size(), count, ZONE])
+
+## Присвоение фракции городу (метка-данные; арта/маркеров пока нет).
+## start — герою; faction — всем одна фракция; mid/hard — по кругу 4 фракции.
+func _faction_for(i: int) -> String:
+	match ZONE:
+		"start": return "hero"
+		"faction": return "f0"
+		_: return "f%d" % (i % 4)
+
+## Залитый овал дорогой (type 3), диаметр (2*rx+1)×(2*ry+1).
+func _fill_city_oval(center: Vector2i, rx: int, ry: int) -> void:
+	for dy in range(-ry, ry + 1):
+		for dx in range(-rx, rx + 1):
+			var fx: float = float(dx) / float(rx)
+			var fy: float = float(dy) / float(ry)
+			if fx * fx + fy * fy > 1.0:
+				continue
+			var x: int = center.x + dx
+			var y: int = center.y + dy
+			if x < 1 or y < 1 or x >= W - 1 or y >= H - 1:
+				continue
+			_terrain[y * W + x] = 3
+
+## Этап 3: дороги — MST по городам (Прим, ближайший сосед) + A*-коридоры ширины 2.
+func _connect_cities(rng: RandomNumberGenerator) -> void:
+	if _cities.size() < 2:
+		return
+	var in_tree := {}
+	in_tree[0] = true
+	var connected: Array = [0]
+	while connected.size() < _cities.size():
+		var best_i := -1
+		var best_j := -1
+		var best_d := 1 << 30
+		for i in connected:
+			for j in range(_cities.size()):
+				if in_tree.has(j):
+					continue
+				var d: int = _cities[i]["pos"].distance_squared_to(_cities[j]["pos"])
+				if d < best_d:
+					best_d = d
+					best_i = i
+					best_j = j
+		if best_j < 0:
+			break
+		_carve_road_between(_cities[best_i]["pos"], _cities[best_j]["pos"], rng)
+		in_tree[best_j] = true
+		connected.append(best_j)
+
+## A* между двумя точками + лента ширины 2 (перпендикулярно сегменту).
+func _carve_road_between(a: Vector2i, b: Vector2i, rng: RandomNumberGenerator) -> void:
+	var path: Array = _a_star(a, b, rng)
+	if path.is_empty():
+		path = _a_star(b, a, rng)
+	if path.is_empty():
+		return
+	for i in range(path.size()):
+		var p: Vector2i = path[i]
+		# Направление сегмента для перпендикулярной полосы ширины 2
+		var seg := Vector2i(0, 0)
+		if i + 1 < path.size():
+			seg = Vector2i(path[i + 1]) - p
+		elif i > 0:
+			seg = p - Vector2i(path[i - 1])
+		var lane := Vector2i(-seg.y, seg.x) if seg != Vector2i.ZERO else Vector2i(1, 0)
+		if lane.x + lane.y < 0:
+			lane = -lane
+		_set_land_road(p)
+		_set_land_road(p + lane)
+
+## Этап 4: горы/вода по экстремумам рельефа. Никогда не трогаем дорогу (3):
+## города и дорожная сеть остаются проходимыми — «горы/вода защищают дороги».
+func _place_mountains_water() -> void:
 	for y in range(H):
 		for x in range(W):
-			if _terrain[y * W + x] == 3:
-				road_cells.append(Vector2i(x, y))
-	if road_cells.is_empty():
+			var i: int = y * W + x
+			if _terrain[i] == 3:
+				continue
+			var elev: float = _field[i]
+			if elev < _water_thr:
+				_terrain[i] = 2
+			elif elev > _mountain_thr:
+				_terrain[i] = 1
+
+## Этап 5: спавн у города №0, портал на противоположном краю.
+func _place_portal_spawn() -> void:
+	if _cities.is_empty():
 		return
-	# Начало дороги — минимальные координаты
-	var road_start: Vector2i = road_cells[0]
-	var road_end: Vector2i = road_cells[road_cells.size() - 1]
-	for c in road_cells:
-		if c.x + c.y < road_start.x + road_start.y:
-			road_start = c
-		if c.x + c.y > road_end.x + road_end.y:
-			road_end = c
-	# Спавн: ищем траву рядом с road_start (±5 клеток)
-	_spawn_pos = _find_grass_near(road_start, 5)
-	# Портал: ищем траву на противоположном краю (далеко от road_start)
-	_portal_pos = _find_grass_far(road_start, 40)
-	# Сохраняем sidecar JSON
+	var city0: Vector2i = _cities[0]["pos"]
+	_spawn_pos = _find_land_near(city0, 8)
+	_portal_pos = _find_land_far(city0, 40)
 	_save_spawn_json()
 	_save_portal_json()
 	if _spawn_pos.x >= 0:
 		print("SPAWN: (%d, %d)" % [_spawn_pos.x, _spawn_pos.y])
 	if _portal_pos.x >= 0:
 		print("PORTAL: (%d, %d)" % [_portal_pos.x, _portal_pos.y])
+	_reserved[_spawn_pos] = true
+	_reserved[_portal_pos] = true
 
-func _find_grass_near(origin: Vector2i, radius: int) -> Vector2i:
+# === Спавн: здания + НПЦ городов, деревья, Серые ===
+
+## Ближайшая базовая земля (0 трава, 4 почва, 5 песок, 6 грязь) рядом с origin.
+func _find_land_near(origin: Vector2i, radius: int) -> Vector2i:
 	for r in range(1, radius + 1):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
@@ -208,17 +372,19 @@ func _find_grass_near(origin: Vector2i, radius: int) -> Vector2i:
 					continue
 				var p := Vector2i(origin.x + dx, origin.y + dy)
 				if p.x >= 1 and p.y >= 1 and p.x < W - 1 and p.y < H - 1:
-					if _terrain[p.y * W + p.x] == 0:
+					var t: int = _terrain[p.y * W + p.x]
+					if t == 0 or t == 4 or t == 5 or t == 6:
 						return p
 	return Vector2i(-1, -1)
 
-func _find_grass_far(origin: Vector2i, min_dist: int) -> Vector2i:
-	# Ищем траву на расстоянии ≥ min_dist от origin, ближе к краю карты
+## Базовая земля далеко от origin, ближе к краю карты.
+func _find_land_far(origin: Vector2i, min_dist: int) -> Vector2i:
 	var best := Vector2i(-1, -1)
 	var best_score := -1
 	for y in range(3, H - 3):
 		for x in range(3, W - 3):
-			if _terrain[y * W + x] != 0:
+			var t: int = _terrain[y * W + x]
+			if t != 0 and t != 4 and t != 5 and t != 6:
 				continue
 			var p := Vector2i(x, y)
 			var dist: float = p.distance_to(origin)
@@ -231,6 +397,312 @@ func _find_grass_far(origin: Vector2i, min_dist: int) -> Vector2i:
 				best_score = score
 				best = p
 	return best
+
+# === Спавн: здания + НПЦ городов, деревья, Серые ===
+
+## Спека здания по папке: {id, w, h} из structure_db.json или {}.
+func _structure_spec(folder: String) -> Dictionary:
+	if not StructureDB.has(folder):
+		return {}
+	var def := StructureDB.get_structure(folder)
+	var tid := int(def.get("id", 0))
+	if tid <= 0:
+		return {}
+	return {
+		"id": tid,
+		"w": int(def.get("tile_width", 1)),
+		"h": int(def.get("tile_height", 1)),
+	}
+
+## Этап 6: здания + НПЦ для каждого города. Запись в sidecar-ы structures/npcs.
+func _place_city_content(rng: RandomNumberGenerator) -> void:
+	var houses_n: int = int(ZONE_HOUSES.get(ZONE, 5))
+	for c in _cities:
+		var center: Vector2i = c["pos"]
+		# Сначала НПЦ — посты резервируются; здания ниже обходят их.
+		_place_city_npcs(rng, center)
+		var plan: Array = [
+			_pick(rng, SHOP_FOLDERS),
+			_pick(rng, INN_FOLDERS),
+			_pick(rng, BLACKSMITH_FOLDERS),
+			_pick(rng, TRAIN_FOLDERS),
+		]
+		for i in range(houses_n):
+			plan.append(_pick(rng, HOUSE_FOLDERS))
+		plan.append(_pick(rng, DECOR_FOLDERS))
+		for folder in plan:
+			var spec := _structure_spec(folder)
+			if not spec.is_empty():
+				_place_city_building(center, spec)
+	print("STRUCTURES_COUNT: %d" % _structures_out.size())
+
+## Поставить здание (spec) в кольцо вокруг центра города, не на площадь.
+func _place_city_building(center: Vector2i, spec: Dictionary) -> void:
+	var w := int(spec["w"])
+	var h := int(spec["h"])
+	var rings: Array[int] = [2, 3, 4]
+	for r in rings:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if abs(dx) != r and abs(dy) != r:
+					continue
+				var tl := center + Vector2i(dx, dy)
+				if not _footprint_fits(tl, w, h, center):
+					continue
+				_structures_out.append({"x": tl.x, "y": tl.y, "type_id": int(spec["id"])})
+				for yy in range(h):
+					for xx in range(w):
+						_reserved[tl + Vector2i(xx, yy)] = true
+				return
+
+## Футпринт здания помещается внутри овала города на дороге, не на площади,
+## не пересекая спавн/портал/уже занятые клетки.
+func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
+	for yy in range(h):
+		for xx in range(w):
+			var c := tl + Vector2i(xx, yy)
+			if c.x < 1 or c.y < 1 or c.x >= W - 1 or c.y >= H - 1:
+				return false
+			if _terrain[c.y * W + c.x] != 3:
+				return false
+			if _reserved.has(c) or c == _spawn_pos or c == _portal_pos:
+				return false
+			var d := maxi(abs(c.x - center.x), abs(c.y - center.y))
+			if d <= 1 or d > 4:
+				return false
+	return true
+
+## НПЦ города: стражи (первые 2 патрульные, остальные на постах), капитан,
+## жители у магазина/центра. Все стоят; патруль — только первые 2 стража.
+func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
+	var posts_taken := {}
+	var guard_offsets: Array = [
+		Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2),
+		Vector2i(2, 2), Vector2i(-2, 2), Vector2i(2, -2), Vector2i(-2, -2),
+	]
+	var citizens_offsets: Array = [
+		Vector2i(3, 0), Vector2i(-3, 0), Vector2i(0, 3), Vector2i(0, -3),
+		Vector2i(3, 3), Vector2i(-3, 3), Vector2i(3, -3), Vector2i(-3, -3),
+		Vector2i(4, 0), Vector2i(-4, 0), Vector2i(0, 4), Vector2i(0, -4),
+	]
+	var guards_n := rng.randi_range(3, 5)
+	for i in range(guards_n):
+		var post := _post_cell(center, guard_offsets, posts_taken)
+		if post.x < 0:
+			continue
+		var set_name: String = _pick(rng, GUARD_SETS)
+		var hp := rng.randi_range(60, 100)
+		var dmg := rng.randi_range(6, 10)
+		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg))
+	# Капитан у площади
+	var cap := _post_cell(center, [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)], posts_taken)
+	if cap.x >= 0:
+		_npcs_out.append(_npc_rec(cap, CAPTAIN_SET, "guard", false, 120, 12))
+	# Жители (стоят, не патрулируют) — кольца 3–4
+	var cit_n := rng.randi_range(4, 10)
+	for i in range(cit_n):
+		var post := _post_cell(center, citizens_offsets, posts_taken)
+		if post.x < 0:
+			continue
+		var set_name: String = _pick(rng, CITIZEN_SETS)
+		_npcs_out.append(_npc_rec(post, set_name, "citizen", false, 30, 0))
+
+## Свободный пост: клетка дороги в городе, не на площади, не занята.
+func _post_cell(center: Vector2i, offsets: Array, taken: Dictionary) -> Vector2i:
+	for off in offsets:
+		var c: Vector2i = center + off
+		if c.x < 1 or c.y < 1 or c.x >= W - 1 or c.y >= H - 1:
+			continue
+		if _terrain[c.y * W + c.x] != 3:
+			continue
+		if _reserved.has(c) or taken.has(c):
+			continue
+		if c == _spawn_pos or c == _portal_pos:
+			continue
+		taken[c] = true
+		return c
+	return Vector2i(-1, -1)
+
+func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool, hp: int, dmg: int) -> Dictionary:
+	return {
+		"x": post.x, "y": post.y, "set": set_name,
+		"role": role, "patrol": patrol,
+		"post": [post.x, post.y],
+		"hp_max": hp, "damage": dmg,
+	}
+
+## Этап 7: деревья/объекты в _obstacles (ID из alm_objects.json). Кластерный
+## шум по биому; не ставим на дорогу, у дорог, в городах и у спавна/портала.
+func _place_objects(rng: RandomNumberGenerator) -> void:
+	if _obj_noise == null:
+		_obj_noise = FastNoiseLite.new()
+		_obj_noise.seed = 777
+		_obj_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		_obj_noise.frequency = 1.0 / 16.0
+		_obj_noise.fractal_octaves = 2
+	var density: float = {"start": 0.06, "mid": 0.08, "hard": 0.10, "faction": 0.09}.get(ZONE, 0.08)
+	for y in range(H):
+		for x in range(W):
+			var t := _terrain[y * W + x]
+			if t != 0 and t != 4 and t != 5 and t != 6:
+				continue
+			var cell := Vector2i(x, y)
+			if _reserved.has(cell) or _near_road(cell) or _near_city(cell, 6):
+				continue
+			if _near_point(cell, _spawn_pos, 3) or _near_point(cell, _portal_pos, 3):
+				continue
+			if _obj_noise.get_noise_2d(x, y) > 0.12 and rng.randf() < density:
+				_obstacles[y * W + x] = _tree_id(rng, t)
+
+## Сосед-дорога рядом? (клиренс: дерево не примыкает к дороге)
+func _near_road(cell: Vector2i) -> bool:
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = cell + d
+		if n.x < 0 or n.y < 0 or n.x >= W or n.y >= H:
+			continue
+		if _terrain[n.y * W + n.x] == 3:
+			return true
+	return false
+
+func _near_city(cell: Vector2i, r: int) -> bool:
+	for c in _cities:
+		var cc: Vector2i = c["pos"]
+		if maxi(abs(cell.x - cc.x), abs(cell.y - cc.y)) <= r:
+			return true
+	return false
+
+func _near_point(cell: Vector2i, p: Vector2i, r: int) -> bool:
+	if p.x < 0:
+		return false
+	return maxi(abs(cell.x - p.x), abs(cell.y - p.y)) <= r
+
+func _tree_id(rng: RandomNumberGenerator, t: int) -> int:
+	var pool: Array
+	match t:
+		4: pool = TREE_SOIL
+		5: pool = TREE_SAND
+		6: pool = TREE_MUD
+		_: pool = TREE_GRASS
+	return int(_pick(rng, pool))
+
+## Этап 8: Серые — кластеры у дорог (сбоку) и в лесных массивах. Только на
+## свободных клетках, вне городов и не ближе 20 клеток к спавну.
+func _place_greys(rng: RandomNumberGenerator) -> void:
+	var cfg: Dictionary = GRAY_ZONE.get(ZONE, GRAY_ZONE["mid"])
+	var count: int = rng.randi_range(int(cfg["count"][0]), int(cfg["count"][1]))
+	var placed := 0
+	var tries := 0
+	while placed < count and tries < 800:
+		tries += 1
+		var anchor := Vector2i(-1, -1)
+		if rng.randf() < 0.5:
+			var road := _road_anchor(rng)
+			if road.x >= 0:
+				anchor = _side_road_cell(rng, road)
+		else:
+			anchor = _forest_anchor(rng)
+		if anchor.x < 0:
+			continue
+		placed += _gray_cluster(rng, anchor, cfg)
+	print("GRAY: %d/%d" % [placed, count])
+
+## Случайная клетка дороги вне городов и подальше от спавна.
+func _road_anchor(rng: RandomNumberGenerator) -> Vector2i:
+	var tries := 0
+	while tries < 400:
+		tries += 1
+		var x := rng.randi_range(2, W - 3)
+		var y := rng.randi_range(2, H - 3)
+		if _terrain[y * W + x] != 3:
+			continue
+		var c := Vector2i(x, y)
+		if _near_city(c, 6) or _near_point(c, _spawn_pos, 24):
+			continue
+		return c
+	return Vector2i(-1, -1)
+
+## Сбоку от дороги (1–2 клетки в сторону, только проходимая земля).
+func _side_road_cell(rng: RandomNumberGenerator, road: Vector2i) -> Vector2i:
+	var dirs: Array = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for step in range(1, 3):
+		for attempt in range(8):
+			var dir: Vector2i = dirs[rng.randi() % dirs.size()]
+			var c: Vector2i = road + dir * step
+			if _gray_cell_ok(c):
+				return c
+	return road
+
+## Лесная точка: вокруг >=2 деревьев (obstacles), клетка свободна.
+func _forest_anchor(rng: RandomNumberGenerator) -> Vector2i:
+	var tries := 0
+	while tries < 500:
+		tries += 1
+		var x := rng.randi_range(2, W - 3)
+		var y := rng.randi_range(2, H - 3)
+		var c := Vector2i(x, y)
+		if not _gray_cell_ok(c) or _near_point(c, _spawn_pos, 20):
+			continue
+		var trees := 0
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if n.x < 0 or n.y < 0 or n.x >= W or n.y >= H:
+				continue
+			if _obstacles[n.y * W + n.x] > 0:
+				trees += 1
+		if trees >= 2:
+			return c
+	return Vector2i(-1, -1)
+
+## Клетка пригодна для Серого: суша, без объекта/здания/спавна/портала, вне городов.
+func _gray_cell_ok(c: Vector2i) -> bool:
+	if c.x < 2 or c.y < 2 or c.x >= W - 2 or c.y >= H - 2:
+		return false
+	var t := _terrain[c.y * W + c.x]
+	if t != 0 and t != 4 and t != 5 and t != 6:
+		return false
+	if _obstacles[c.y * W + c.x] > 0:
+		return false
+	if _reserved.has(c) or c == _spawn_pos or c == _portal_pos:
+		return false
+	if _near_city(c, 6):
+		return false
+	return true
+
+## Кластер из 2–4 Серых вокруг anchor (ячейки разнесены).
+func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary) -> int:
+	var cells: Array = [anchor]
+	for i in range(1, 3):
+		var c := _near_gray_cell(rng, anchor, cells)
+		if c.x < 0:
+			break
+		cells.append(c)
+	for i in range(cells.size()):
+		var cc: Vector2i = cells[i]
+		var set_name: String = _pick(rng, cfg["pool"])
+		var hp := rng.randi_range(int(cfg["hp"][0]), int(cfg["hp"][1]))
+		var dmg := rng.randi_range(int(cfg["dmg"][0]), int(cfg["dmg"][1]))
+		_npcs_out.append({
+			"x": int(cc.x), "y": int(cc.y), "set": set_name,
+			"hp_max": hp, "damage": dmg,
+		})
+	return cells.size()
+
+func _near_gray_cell(rng: RandomNumberGenerator, anchor: Vector2i, taken: Array) -> Vector2i:
+	for attempt in range(12):
+		var off := Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
+		if off == Vector2i.ZERO:
+			continue
+		var c: Vector2i = anchor + off
+		if taken.has(c) or not _gray_cell_ok(c):
+			continue
+		taken.append(c)
+		return c
+	return Vector2i(-1, -1)
+
+func _pick(rng: RandomNumberGenerator, arr: Array) -> Variant:
+	if arr.is_empty():
+		return null
+	return arr[rng.randi() % arr.size()]
 
 func _save_spawn_json() -> void:
 	if _spawn_pos.x < 0:
@@ -251,49 +723,6 @@ func _save_portal_json() -> void:
 		return
 	f.store_string(JSON.stringify({"x": _portal_pos.x, "y": _portal_pos.y}))
 	f.close()
-
-func _carve_road(land: Array, rng: RandomNumberGenerator) -> void:
-	# Крупнейший связный «материк» суши: внутри него гарантированно существует путь.
-	if land.size() < 40:
-		return
-	# Якоря: клетки материка у противоположных краёв, с отступом от кромки
-	var min_x := W
-	var max_x := -1
-	var min_y := H
-	var max_y := -1
-	for c in land:
-		min_x = mini(min_x, c.x)
-		max_x = maxi(max_x, c.x)
-		min_y = mini(min_y, c.y)
-		max_y = maxi(max_y, c.y)
-	var horiz: bool = rng.randf() < 0.5
-	var a: Vector2i = Vector2i.ZERO
-	var b: Vector2i = Vector2i.ZERO
-	if horiz:
-		a = _anchor_in(land, Vector2i(min_x + 1, min_y), Vector2i(min_x + 3, max_y))
-		b = _anchor_in(land, Vector2i(max_x - 3, min_y), Vector2i(max_x - 1, max_y))
-	else:
-		a = _anchor_in(land, Vector2i(min_x, min_y + 1), Vector2i(max_x, min_y + 3))
-		b = _anchor_in(land, Vector2i(min_x, max_y - 3), Vector2i(max_x, max_y - 1))
-	if a == Vector2i.ZERO or b == Vector2i.ZERO or a == b:
-		return
-	# A* по суше: гарантирует СВЯЗНУЮ дорогу (компоненты не рвутся у воды).
-	var path: Array = _a_star(a, b, rng)
-	if path.is_empty():
-		return
-	for i in range(path.size()):
-		var p: Vector2i = path[i]
-		# Направление сегмента для перпендикулярной полосы ширины 2
-		var seg := Vector2i(0, 0)
-		if i + 1 < path.size():
-			seg = Vector2i(path[i + 1]) - p
-		elif i > 0:
-			seg = p - Vector2i(path[i - 1])
-		var lane := Vector2i(-seg.y, seg.x) if seg != Vector2i.ZERO else Vector2i(1, 0)
-		if lane.x + lane.y < 0:
-			lane = -lane
-		_set_land_road(p)
-		_set_land_road(p + lane)
 
 func _a_star(start: Vector2i, goal: Vector2i, rng: RandomNumberGenerator) -> Array:
 	var came: Dictionary = {}
@@ -380,86 +809,11 @@ func _set_land_road(p: Vector2i) -> void:
 		return
 	_terrain[idx] = 3
 
-func _largest_land() -> Array:
-	var seen := {}
-	var best: Array = []
-	for y in range(H):
-		for x in range(W):
-			var idx: int = y * W + x
-			if seen.has(idx) or _terrain[idx] == 2:
-				continue
-			var comp: Array = []
-			var st: Array = [Vector2i(x, y)]
-			seen[idx] = true
-			while not st.is_empty():
-				var p: Vector2i = st.pop_back()
-				comp.append(p)
-				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-					var n: Vector2i = p + d
-					if n.x < 0 or n.y < 0 or n.x >= W or n.y >= H:
-						continue
-					var nk: int = n.y * W + n.x
-					if seen.has(nk) or _terrain[nk] == 2:
-						continue
-					seen[nk] = true
-					st.push_back(n)
-			if comp.size() > best.size():
-				best = comp
-	return best
-
-func _anchor_in(land: Array, from: Vector2i, to: Vector2i) -> Vector2i:
-	var best := Vector2i.ZERO
-	var best_d := 999999
-	for c in land:
-		if c.x < from.x or c.y < from.y or c.x > to.x or c.y > to.y:
-			continue
-		var cnt := 0
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var n: Vector2i = c + d
-			if n.x >= 0 and n.y >= 0 and n.x < W and n.y < H and _terrain[n.y * W + n.x] != 2:
-				cnt += 1
-		var d := -cnt
-		if d < best_d:
-			best_d = d
-			best = c
-	return best
-
-func _to_land(p: Vector2i) -> Vector2i:
-	var best := p
-	var best_d := 999999
-	for cy in range(maxi(0, p.y - 6), mini(H, p.y + 7)):
-		for cx in range(maxi(0, p.x - 6), mini(W, p.x + 7)):
-			var dist: int = absi(cx - p.x) + absi(cy - p.y)
-			var t: int = _terrain[cy * W + cx]
-			if dist < best_d and t != 2 and t != 3:
-				best = Vector2i(cx, cy)
-				best_d = dist
-	return best
-
-func _detect_active_types() -> Array:
-	# Find all terrain types that appear in rules
-	var types := {}
-	for key in _rules:
-		var parts: Array = key.split(":")
-		if parts.size() >= 3:
-			var t: int = int(parts[0])
-			types[t] = true
-	# Always include types that appear as neighbors
-	for key in _rules:
-		var parts: Array = key.split(":")
-		if parts.size() >= 3:
-			var t: int = int(parts[2])
-			types[t] = true
-	return types.keys()
-
-func _place_terrain(n: int, active_types: Array) -> void:
-	if active_types.size() <= 1:
-		_terrain.fill(active_types[0] if active_types.size() > 0 else 0)
-		return
-
-	# === Voronoi-биомы: связные регионы вместо разброса ===
-	# Генерируем опорные точки для каждого типа. Каждая клетка получает тип
-	# ближайшей опорной точки. Шум добавляет органичность границам.
+func _place_terrain(n: int) -> void:
+	# === Этап 1: почва Voronoi (база). Горы/вода/дорога добавляются позже ===
+	# Только базовые типы: 0 трава, 4 почва, 5 песок, 6 грязь.
+	# Опорные точки: тип -> количество
+	var seed_counts := {0: 3, 4: 2, 5: 2, 6: 1}
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -471,17 +825,13 @@ func _place_terrain(n: int, active_types: Array) -> void:
 	jitter_noise.frequency = 1.0 / 20.0
 	jitter_noise.fractal_octaves = 3
 
-	# Опорные точки: тип -> количество
-	var seed_counts := {}
-	for t in active_types:
-		match t:
-			0: seed_counts[t] = 3   # Трава — крупные зоны
-			1: seed_counts[t] = 2   # Горы
-			2: seed_counts[t] = 1   # Вода — 1-2 озёра
-			4: seed_counts[t] = 2   # Почва
-			5: seed_counts[t] = 2   # Песок
-			6: seed_counts[t] = 1   # Грязь
-			_: seed_counts[t] = 1
+	# Поле высот: используется гор/воды этапом 4 и высотами (шаг 7)
+	var elev_noise := FastNoiseLite.new()
+	elev_noise.seed = 42
+	elev_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	elev_noise.frequency = 1.0 / 40.0
+	elev_noise.fractal_octaves = 4
+	elev_noise.fractal_gain = 0.5
 
 	# Генерируем опорные точки
 	var seeds: Array = []
@@ -490,14 +840,6 @@ func _place_terrain(n: int, active_types: Array) -> void:
 			var sx: float = rng.randf_range(5.0, W - 6.0)
 			var sy: float = rng.randf_range(5.0, H - 6.0)
 			seeds.append({"pos": Vector2(sx, sy), "type": t})
-
-	# Поле высот для доминирования воды/гор (низкие = вода, высокие = горы)
-	var elev_noise := FastNoiseLite.new()
-	elev_noise.seed = 42
-	elev_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	elev_noise.frequency = 1.0 / 40.0
-	elev_noise.fractal_octaves = 4
-	elev_noise.fractal_gain = 0.5
 
 	var field := PackedFloat32Array()
 	field.resize(n)
@@ -525,14 +867,6 @@ func _place_terrain(n: int, active_types: Array) -> void:
 			if dist < best_dist:
 				best_dist = dist
 				best_type = s["type"]
-
-		# Доминирование воды/гор по высоте:
-		# Вода побеждает на низких, горы на высоких
-		if best_type != 2 and best_type != 1:
-			if elev < 0.20:
-				best_type = 2  # Вода
-			elif elev > 0.82:
-				best_type = 1  # Горы
 
 		_terrain[i] = best_type
 
@@ -933,9 +1267,32 @@ func _save() -> void:
 			if v > 0:
 				obj_count += 1
 		print("Объектов: %d (%.1f%%)" % [obj_count, obj_count * 100.0 / total])
+		# Спавн sidecar-ами (buildings + NPC)
+		_save_sidecars()
+		var guards := 0
+		var citizens := 0
+		var greys := 0
+		for n in _npcs_out:
+			match str(n.get("role", "")):
+				"guard": guards += 1
+				"citizen": citizens += 1
+				_: greys += 1
+		print("Спавн: зданий=%d НПЦ=%d (стражи=%d жители=%d серые=%d)" % [
+			_structures_out.size(), _npcs_out.size(), guards, citizens, greys])
 	else:
 		print("ERROR load_map")
 	print("Сохранено: " + path)
+
+## Sidecar-ы спавна: структуры и NPC (грузит alm_map.gd/_load_sidecars).
+func _save_sidecars() -> void:
+	var f := FileAccess.open(OUT_DIR + "gen_smart_01.structures.json", FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify({"structures": _structures_out}))
+		f.close()
+	var n := FileAccess.open(OUT_DIR + "gen_smart_01.npcs.json", FileAccess.WRITE)
+	if n:
+		n.store_string(JSON.stringify({"npcs": _npcs_out}))
+		n.close()
 
 func _road_stats(road_cells: int) -> void:
 	# Компоненты связности дороги (4-соседи)

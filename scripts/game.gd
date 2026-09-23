@@ -192,6 +192,7 @@ func _spawn_player_on_walkable():
 	var spawn_pos: Vector2 = alm_map.call("get_spawn_pos")
 	if alm_map.call("is_walkable_world", spawn_pos):
 		player.global_position = spawn_pos
+		player.reset_physics_interpolation()
 		return
 	# 2) Запасной вариант — проходимый тайл от центра
 	var cx := mw / 2
@@ -206,6 +207,7 @@ func _spawn_player_on_walkable():
 				var wy := ty * ts + ts / 2
 				if alm_map.call("is_walkable_world", Vector2(wx, wy)):
 					player.global_position = Vector2(wx, wy)
+					player.reset_physics_interpolation()
 					return
 
 ## Спавн НПЦ/монстров из данных карты: .alm секция units (type_id) или
@@ -227,7 +229,7 @@ func _spawn_map_units() -> void:
 		if UnitDB.is_hostile(set_name):
 			_spawn_monster(set_name, pos, rec)
 		else:
-			_spawn_npc(set_name, pos)
+			_spawn_npc(set_name, pos, rec)
 		spawned += 1
 	print("Карта: спавн юнитов %d" % spawned)
 
@@ -238,17 +240,32 @@ func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var hp := int(rec.get("hp_max", 0))
 	if hp > 0:
 		e.max_hp = hp
+	var dmg := int(rec.get("damage", 0))
+	if dmg > 0:
+		e.damage = dmg
 	e.position = pos
 	e.home_position = pos
 	add_child(e)
 	enemies.append(e)
 
-func _spawn_npc(set_name: String, pos: Vector2) -> void:
+func _spawn_npc(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var n := Npc.new()
 	n.name = "Npc_" + set_name.get_file()
 	n.anim_set = set_name
 	n.position = pos
 	n.home = pos
+	var role := str(rec.get("role", "citizen"))
+	n.role = role
+	n.is_patrol = bool(rec.get("patrol", false))
+	var post: Array = rec.get("post", [])
+	if post.size() >= 2:
+		n.post = Vector2(float(post[0]) * 32.0 + 16.0, float(post[1]) * 32.0 + 16.0)
+	var hp := int(rec.get("hp_max", 0))
+	if hp > 0:
+		n.max_hp = hp
+	var dmg := int(rec.get("damage", 0))
+	if dmg > 0:
+		n.damage = dmg
 	add_child(n)
 	npcs.append(n)
 
@@ -693,6 +710,7 @@ func _on_portal_enter() -> void:
 	if is_instance_valid(alm_map) and is_instance_valid(player):
 		var sp: Vector2 = alm_map.call("get_spawn_pos")
 		player.global_position = sp
+		player.reset_physics_interpolation()
 
 func _process_action_mode():
 	if action_mode == "none" or not is_instance_valid(player):

@@ -1,26 +1,35 @@
 extends CharacterBody2D
 class_name Npc
-## Мирный житель (НПЦ): гуляет у своей точки, не атакует и не отвлекается
-## на игрока. Набор анимаций — любой не-враждебный юнит из units_db
-## (humans/*, мирные звери; агрессия в UnitDB.is_hostile).
+## Мирный житель (НПЦ): гуляет у своей точки, не отвлекается на игрока.
+## role "citizen" — стоит на посту (мелкое шевеление); role "guard" —
+## патрулирует город (is_patrol) и дерётся с Серыми (монстрами), героя не трогает.
 
 @export var anim_set: String = "humans/unarmed"
 @export var patrol_radius: int = 3           # клеток вокруг точки привязки
 @export var walk_speed: float = 45.0
 @export var pause_min: float = 1.2
 @export var pause_max: float = 4.0
-@export var max_hp: int = 30                 # здоровье мирного жителя
+@export var max_hp: int = 30                 # здоровье жителя
+@export var role: String = "citizen"         # citizen | guard
+@export var is_patrol: bool = false          # патруль вокруг поста (стражи)
+@export var damage: int = 0                  # урон стражи (граждане не бьют)
+@export var aggro_radius: float = 190.0      # радиус агро стражи на Серых
 
 var current_hp: int
 var state: String = "idle"                   # idle | move | dying | decay | corpse
 var _corpse_timer := 0.0
 var home := Vector2.ZERO       # мировая точка привязки (центр клетки)
+var post := Vector2.ZERO       # мировой пост (центр клетки) из sidecar
 var alm_map = null             # CustomMap или AlmMap из группы "alm_map"
 var _anim: UnitAnim = null
 var _target := Vector2.ZERO
 var _moving := false
 var _waiting := true
 var _pause_timer := 0.0
+var attack_cooldown := 0.0
+var _impact_timer := -1.0
+var _path: Array = []
+var _repath := 0.0
 
 func _ready() -> void:
 	add_to_group("npcs")
@@ -66,6 +75,10 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
+	# Стража: Серые рядом — бой (граждане не дерутся)
+	if role == "guard" and damage > 0 and _guard_combat(delta):
+		return
+
 	if _waiting:
 		_pause_timer -= delta
 		if _pause_timer <= 0.0:
@@ -88,22 +101,24 @@ func _physics_process(delta: float) -> void:
 		_pause_timer = randf_range(pause_min, pause_max)
 		_anim.play(UnitAnim.Anim.IDLE)
 
-## Случайная проходимая точка в радиусе патруля (или остаёмся дома).
+## Случайная проходимая точка у поста (патрульный — шире, остальные стоят).
 func _pick_new_target() -> void:
+	var anchor := post if post != Vector2.ZERO else home
 	if alm_map == null:
-		_target = home
+		_target = anchor
 		return
+	var rad := 4 if is_patrol else 1   # патруль-страж гуляет по городу, стоящие — на месте
 	for attempt in range(8):
 		var off := Vector2(
-			randf_range(-patrol_radius, patrol_radius),
-			randf_range(-patrol_radius, patrol_radius))
-		var p := home + off * 32.0
-		if p.distance_to(home) <= float(patrol_radius) * 32.0 + 16.0 \
+			randf_range(-rad, rad),
+			randf_range(-rad, rad))
+		var p := anchor + off * 32.0
+		if p.distance_to(anchor) <= float(rad) * 32.0 + 16.0 \
 				and alm_map.has_method("is_walkable_world") \
 				and bool(alm_map.call("is_walkable_world", p)):
 			_target = p
 			return
-	_target = home
+	_target = anchor
 
 ## Стоять на рельефе: поднять спрайт на высоту клетки (как у игрока/врагов).
 func _apply_relief_stand() -> void:
@@ -113,6 +128,102 @@ func _apply_relief_stand() -> void:
 	if alm_map != null and alm_map.has_method("relief_at_world"):
 		h = float(alm_map.call("relief_at_world", global_position))
 	_anim.position = Vector2(_anim.position.x, -h)
+
+# --- Бой стражи с Серыми ---
+
+## Один кадр боя стражи. Возвращает true, если страж занят (дерётся/преследует).
+func _guard_combat(delta: float) -> bool:
+	var target: Node2D = _nearest_enemy()
+	if target == null:
+		_impact_timer = -1.0
+		return false
+	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	var dist := Game.units_range(self, target)
+	# Не уходим далеко от города — граница обороны поста
+	if dist > 380.0:
+		_impact_timer = -1.0
+		return false
+	velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+	if dist > 30.0:
+		_chase_move(delta, target)
+	else:
+		if attack_cooldown <= 0.0 and _impact_timer < 0.0:
+			attack_cooldown = 1.0
+			_impact_timer = UnitDB.attack_delay(anim_set)
+		elif _impact_timer >= 0.0:
+			_impact_timer -= delta
+			if _impact_timer < 0.0:
+				_impact_timer = -1.0
+				if Game.is_miss(self, target):
+					print("%s промахнулся по %s!" % [name, target.name])
+				else:
+					Game.deal_damage(target, damage, "physical", "", self)
+				SoundDB.play(_unit_sound_at(0))
+		_anim.play(UnitAnim.Anim.ATTACK)
+		_anim.speed_scale = 1.0
+		_anim.advance(delta)
+	move_and_slide()
+	return true
+
+## Ближайший Серый в радиусе агро.
+func _nearest_enemy() -> Node2D:
+	var best: Node2D = null
+	var bd := aggro_radius
+	for e in Game.enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		var d := Game.units_range(self, e)
+		if d < bd:
+			bd = d
+			best = e
+	return best
+
+## Погоня с обходом препятствий (перепланировка пути раз в 0.6 с).
+func _chase_move(delta: float, target: Node2D) -> void:
+	var tpos: Vector2 = target.global_position
+	if _path.is_empty():
+		_repath -= delta
+		if _repath <= 0.0:
+			_repath = 0.6
+			if alm_map != null and alm_map.has_method("find_path"):
+				_path = alm_map.find_path(global_position, tpos)
+	if _path.size() > 0:
+		var wp: Vector2 = _path[0]
+		if global_position.distance_to(wp) <= 8.0:
+			_path.pop_front()
+		if _path.size() > 0:
+			wp = _path[0]
+			velocity = velocity.move_toward((wp - global_position).normalized() * walk_speed, 1100.0 * delta)
+			_anim.play(UnitAnim.Anim.MOVE)
+			_anim.set_direction_vec(velocity)
+			_anim.advance(delta)
+		else:
+			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+	else:
+		velocity = velocity.move_toward((tpos - global_position).normalized() * walk_speed, 1100.0 * delta)
+		_anim.play(UnitAnim.Anim.MOVE)
+		_anim.set_direction_vec(velocity)
+		_anim.advance(delta)
+
+## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
+func _unit_sound_at(idx: int) -> int:
+	return SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx)
+
+## --- Статы (для Game.unit_*: атака->точность, защита->уклонение) ---
+func get_attack() -> int:
+	return damage / 2 + max_hp / 30
+
+func get_defense() -> int:
+	return max_hp / 25
+
+func get_absorption() -> int:
+	return max_hp / 40
+
+func get_protection_fire() -> int:   return max_hp / 60
+func get_protection_water() -> int:  return max_hp / 60
+func get_protection_air() -> int:    return max_hp / 60
+func get_protection_earth() -> int:  return max_hp / 70
+func get_protection_astral() -> int: return max_hp / 80
 
 ## Получить урон (герой/монстры могут зацепить мирного жителя). При смерти —
 ## падение DYING → разложение DECAY (если есть) → исчезновение.

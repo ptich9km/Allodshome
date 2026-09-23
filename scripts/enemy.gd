@@ -13,6 +13,7 @@ var current_hp: int
 var state: String = "idle"
 var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
+var _impact_timer := -1.0            # отсчёт до кадра удара (замах); <0 = нет удара в полёте
 var can_flee: bool = false        # по умолчанию монстр дерётся до конца, не убегает
 var _path: Array = []             # маршрут к игроку (обход препятствий)
 var _repath := 0.0
@@ -86,53 +87,58 @@ func _physics_process(delta):
 	if health_bar:
 		health_bar.update_bars(current_hp)
 
-	var player = get_tree().get_first_node_in_group("player")
-	if not player or not is_instance_valid(player):
+	# Единая цель боя: игрок (приоритет) или страж города, что в радиусе агро.
+	var target: Node2D = _combat_target()
+	if target == null:
 		velocity = Vector2.ZERO
 		move_and_slide()
 		return
+	attack_target = target
 
-	var distance_to_player = Game.units_range(self, player)
+	var distance_to_target = Game.units_range(self, target)
 	var hp_percent = float(current_hp) / max_hp
 
 	match state:
 		"idle":
-			if distance_to_player < aggro_radius:
+			if distance_to_target < aggro_radius:
 				state = "chase"
-				attack_target = player
-			else:
-				velocity = Vector2.ZERO
 		"chase":
-			if distance_to_player > deaggro_radius:
+			if distance_to_target > deaggro_radius:
 				state = "idle"
-				attack_target = null
 				velocity = Vector2.ZERO
-			elif distance_to_player < 40.0:
+			elif distance_to_target < 40.0:
 				state = "attack"
 				velocity = Vector2.ZERO   # остановиться и бить, а не проскакивать мимо
 			elif hp_percent < 0.15 and can_flee:
 				state = "flee"
 			else:
-				_chase_move(delta)
+				_chase_move(delta, target)
 		"attack":
-			if distance_to_player > 50.0:
+			if distance_to_target > 50.0:
 				state = "chase"
+				_impact_timer = -1.0
 			else:
 				# Держим стоп между ударами: без этого инерция от погони
 				# несёт монстра мимо игрока — он «бегает вокруг, то туда, то сюда»
 				velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
-				if attack_cooldown <= 0:
-					# Единая точка урона: промах + поглощение (броня героя), затем take_damage.
-					if Game.is_miss(self, player):
-						print("%s промахнулся по герою!" % name)
-					else:
-						Game.deal_damage(player, damage, "physical", "", self)
+				if attack_cooldown <= 0.0 and _impact_timer < 0.0:
 					attack_cooldown = 1.0
-					SoundDB.play(_unit_sound_at(0))
+					# Единая точка урона (промах + поглощение бронёй) — на кадре удара,
+					# а не в начале замаха: удар звучит по анимации.
+					_impact_timer = UnitDB.attack_delay(anim_set)
+				elif _impact_timer >= 0.0:
+					_impact_timer -= delta
+					if _impact_timer < 0.0:
+						_impact_timer = -1.0
+						if Game.is_miss(self, target):
+							print("%s промахнулся по %s!" % [name, target.name])
+						else:
+							Game.deal_damage(target, damage, "physical", "", self)
+						SoundDB.play(_unit_sound_at(0))
 		"flee":
-			var flee_direction = (global_position - player.global_position).normalized()
+			var flee_direction = (global_position - target.global_position).normalized()
 			_move_checked(flee_direction, move_speed * 1.5, delta)
-			if distance_to_player > deaggro_radius * 1.5:
+			if distance_to_target > deaggro_radius * 1.5:
 				queue_free()
 
 	# Анимация монстра по состоянию
@@ -144,6 +150,7 @@ func _physics_process(delta):
 				_anim.advance(delta)
 			"attack":
 				_anim.play(UnitAnim.Anim.ATTACK)
+				_anim.speed_scale = 1.0
 				_anim.advance(delta)
 			_:
 				_anim.play(UnitAnim.Anim.IDLE)
@@ -186,19 +193,38 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 
+## Цель боя: игрок (приоритет; в агро или в погоне — до deaggro) или
+## ближайший страж-НПЦ города в радиусе агро.
+func _combat_target() -> Node2D:
+	var player = get_tree().get_first_node_in_group("player")
+	if is_instance_valid(player):
+		var dp := Game.units_range(self, player)
+		var lim := deaggro_radius if state == "chase" or state == "attack" or state == "flee" else aggro_radius
+		if dp < lim:
+			return player
+	var best: Node2D = null
+	var bd := deaggro_radius
+	for n in Game.npcs:
+		if n == null or not is_instance_valid(n):
+			continue
+		if not (n is Npc) or n.role != "guard":
+			continue
+		var d := Game.units_range(self, n)
+		if d < bd:
+			bd = d
+			best = n
+	return best
+
 ## Погоня с обходом препятствий (как у героя): перепланировка пути раз в 0.7 с.
-func _chase_move(delta: float) -> void:
-	var p = get_tree().get_first_node_in_group("player")
-	if not is_instance_valid(p):
-		return
-	var target: Vector2 = p.global_position
+func _chase_move(delta: float, target: Node2D) -> void:
+	var tpos: Vector2 = target.global_position
 	if _path.is_empty():
 		_repath -= delta
 		if _repath <= 0.0:
 			_repath = 0.7
 			var map_node = get_tree().get_first_node_in_group("alm_map")
 			if map_node != null and map_node.has_method("find_path"):
-				_path = map_node.find_path(global_position, target)
+				_path = map_node.find_path(global_position, tpos)
 	if _path.size() > 0:
 		var wp: Vector2 = _path[0]
 		if global_position.distance_to(wp) <= 8.0:
@@ -209,7 +235,7 @@ func _chase_move(delta: float) -> void:
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 	else:
-		_move_checked((target - global_position).normalized(), move_speed, delta)
+		_move_checked((tpos - global_position).normalized(), move_speed, delta)
 
 ## --- Производные характеристики (по данным монстра, как у героя) ---
 ## Применяются через Game.unit_*: атака->точность, защита->уклонение,
@@ -237,13 +263,19 @@ func get_sight() -> int:
 ## Единая точка входящего урона: вызывается из Game.deal_damage
 ## (там уже применены промах, поглощение брони и защиты стихий).
 func take_damage(dmg: int, attacker) -> void:
+	# Мёртвый монстр (труп/разложение) урона не получает — иначе повторный
+	# лут/звуки при махах по трупу
+	if state == "dying" or state == "decay" or state == "corpse":
+		return
 	if dmg <= 0:
 		return
 	current_hp -= dmg
-	# При получении урона — сразу начинаем погоню
+	# При получении урона — сразу начинаем погоню (но не прерываем текущую атаку,
+	# иначе после каждого попадания монстр сбрасывает замах)
 	if is_instance_valid(attacker):
-		state = "chase"
-		attack_target = attacker
+		if state != "attack":
+			state = "chase"
+			attack_target = attacker
 	if current_hp <= 0:
 		SoundDB.play(_unit_sound_at(4))  # смерть
 		# Убираем из списка врагов: герой перестаёт выбирать труп целью
