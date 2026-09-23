@@ -1,598 +1,479 @@
-﻿# AGENTS.md — заметки агента по проекту Allodshome_Godot
-# AGENTS.md — Godot Project Agent Contract
+﻿# AGENTS.md — Allods Home (Godot 4.7)
 
-This file defines how AI coding agents must work in this repository.
-Agents must read and follow this file before making any changes.
+Этот файл — единая точка входа в проект для **любой ИИ-системы и человека**.
+Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
-## 1. Project Overview
+> Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
+> Последнее обновление: 24.09 — спавн gen_smart_01 (здания, НПЦ-стражи/жители, Серые, деревья) + вода-фикс. Коммит и пуш выполнены.
 
-- **Project name:** <Allodshome>
-- **Engine:** Godot <4.7>
-- **Language:** GDScript / C# <GDScript>
-- **Target platforms:** <Windows>
-- **Main scene:** `res://scenes/main.tscn`
-- **Repository root:** `res://`
+## Содержание
 
-## 2. Repository Structure
+1. [Паспорт проекта](#1-паспорт-проекта)
+2. [Машины и запуск Godot](#2-машины-и-запуск-godot)
+3. [Проверка после правок](#3-проверка-после-правок)
+4. [Структура репозитория](#4-структура-репозитория)
+5. [Конвенции кода](#5-конвенции-кода)
+6. [Ключевая архитектура — единая точка урона](#6-ключевая-архитектура--единая-точка-урона)
+7. [Слой мира (SIM-эмуляция)](#7-слой-мира-sim-эмуляция)
+8. [Процедурная генерация карт](#8-процедурная-генерация-карт)
+9. [Правила для агентов](#9-правила-для-агентов)
+10. [Рабочий процесс агента](#10-рабочий-процесс-агента)
+11. [Доступные скилы](#11-доступные-скилы)
+12. [Журнал сессий](#12-журнал-сессий)
+13. [Дорожная карта](#13-дорожная-карта)
+
+---
+
+## 1. Паспорт проекта
+
+| Поле | Значение |
+|------|----------|
+| Название | Allods Home (`config/name = "Allods Home"`) |
+| Движок | Godot 4.7, GDScript 2.0 |
+| Главная сцена | `res://scenes/character_select.tscn` (старт игры); мир — `main.tscn` |
+| Корень | `res://` |
+| Autoload | `WorldBus` (единственный; `scripts/world/world_bus.gd`) |
+| Глобальные классы (`class_name`) | `Game` (`game.gd`, Node2D + `static`-математика боя), `SoundDB`, `SpellDB`, `GameUI` (`ui.gd`) |
+| Жанр | песочница + тактический RPG («духовный наследник» Аллодов II, не копия) |
+
+## 2. Машины и запуск Godot
+
+Проект ведётся на двух ПК; пути различаются.
+
+| | Путь проекта | Консольный Godot |
+|---|---|---|
+| **Домашний (эта машина)** | `D:\Work\Allodshome` | `D:\Work\UnityProjects\Godot_v4.7.2-stable_win64_console.exe` |
+| **Рабочий** | `C:\Work\Allodshome` | `C:\Games\Godot_v4.7.2-stable_win64_console.exe` |
+
+- GUI-вариант движка лежит рядом (суффикс `_win64.exe`).
+- Карты для обучения генератора — `assets/maps/pvm/`. Количество файлов на разных ПК может отличаться (импорт сканирует каталог, не хардкодит).
+
+## 3. Проверка после правок
+
+Контрольная точка после **любых** правок — headless-парсинг (команда для домашнего ПК):
+
+```powershell
+& 'D:\Work\UnityProjects\Godot_v4.7.2-stable_win64_console.exe' --headless --path 'D:\Work\Allodshome' --quit 2>&1 | Select-String 'SCRIPT ERROR|Parse Error|ERROR:'
+```
+
+- **Нет `SCRIPT ERROR`** = скрипты компилируются.
+- `ERROR: 1 resources still in use at exit` — безобидный «хвост», не ошибка.
+- **Свежий клон**: без кэша `.godot/` глобальные классы (`Game`, `SoundDB`, …) не зарегистрированы → `--quit` показывает ложные `Identifier ... not declared`. Сначала один раз выполни `--headless --import` (долго — импортируются сотни картинок), потом парсинг.
+- В выводе Godot бывает Unicode-каша из PNG/CJK-файлов в `assets/` — это норма. Читай только `.gd`. НЕ запускай полный обход `assets` с фильтром по CJK — там сотни картинок.
+- Headless-раннер мира (100 дней симуляции): `godot --headless --path . --script res://scripts/world/sim_runner.gd`.
+
+## 4. Структура репозитория
 
 ```text
-- `addons`          # Third-party and local editor plugins (do not modify without approval)
-- `assets`          # Art, audio, fonts, and other raw assets
-- `resources`       # .tres resource files
-- `scenes`          # .tscn scene files
-- `scripts`         # GDScript/C# source files
-- `tests`           # Automated tests (GUT / GdUnit4)
-- `ui`              # UI scenes and scripts
-- `scripts/game.gd` — автозагрузка, единые статы/математика боя (`deal_damage`, `is_miss`, `unit_*`, `tick_shields`, `deal_damage_area`), а также `unit_absorption`, `unit_protection` и т.д.
-- `scripts/enemy.gd` (~304 строк) — класс врагов: `take_damage`, `deal_damage` подключение, `flee/chase/attack`, лут, статы `get_*`.
-- `scripts/player.gd` — герой (ближний бой через deal_damage, магия, статы `get_attack/get_defense/etc`).
-- `scripts/mercenary.gd` — наёмник (атака через deal_damage, `take_damage`).
-- `scripts/projectile.gd` — снаряды (магия/область).
-- `scripts/unit.gd` / `unit_db.gd` — база юнитов (статы монстров/героев).
-- `scripts/spell_db.gd` — заклинания (сферы/магия).
-- `scripts/ui.gd`, `scripts/character_select.gd` — UI (панель сфер мага вместо навыков оружия).
+addons/      — сторонние/локальные плагины (не менять без согласования)
+assets/      — арт, звук, шрифты, карты (.alm/.bmp/.json)
+resources/   — .tres ресурсы
+scenes/      — .tscn (map_editor, main, character_select, ...)
+scripts/     — GDScript
+tests/       — автотесты и генераторы (GUT/GdUnit4 + analysis-скрипты)
+ui/          — UI-сцены и скрипты
 ```
 
-## 3. Agent Scope Rules
+Ключевые скрипты:
 
-- **One task per prompt.** Do not bundle unrelated changes.
-- **Smallest safe change.** Modify only what is required to complete the task.
-- **No unsolicited refactoring.** Do not rename, reformat, or restructure code unless explicitly asked.
-- **No new dependencies.** Do not add addons, plugins, or external libraries without approval.
-- **Stay inside the allowed scope.** If the task says “edit `player.gd`”, do not touch other files unless strictly necessary. If necessary, ask first.
-- **Ask when ambiguous.** If requirements are unclear, stop and ask for clarification instead of guessing.
+| Файл | Назначение |
+|------|------------|
+| `scripts/game.gd` | `class_name Game`, `static`-математика боя: `deal_damage`, `is_miss`, `unit_*`, `tick_shields`, `deal_damage_area`, `shield_reduce`, `apply_shield` |
+| `scripts/player.gd` | герой: ближний бой/магия через `Game.*`, статы `get_attack/get_defense/...`, `_active_sphere()` |
+| `scripts/enemy.gd` | враги: `take_damage`, flee/chase/attack, лут, статы `get_*` |
+| `scripts/mercenary.gd` | наёмники: атака через `Game.*`, `take_damage`, `lifespan` |
+| `scripts/projectile.gd` | снаряды (магия/область): урон через `Game.deal_damage(_area)` |
+| `scripts/unit.gd`, `unit_db.gd` | база юнитов (статы монстров/героев) |
+| `scripts/spell_db.gd` | заклинания (сферы/магия), `sphere_of(spell_name)` |
+| `scripts/ui.gd`, `scripts/character_select.gd` | UI; для мага — панель сфер вместо навыков оружия |
+| `scripts/transition_editor.gd` | визуальный редактор переходов terrain (в редакторе карт) |
+| `scripts/world/world_state.gd`, `world_bus.gd`, `world_sim.gd` | Слой-2, SIM-мир |
+| `scripts/portal_marker.gd` | `class_name PortalMarker`, Sprite2D + анимация 4 кадра |
 
-## 4. Anti-Hallucination Rules
+## 5. Конвенции кода
 
-- Do not invent Godot APIs, classes, methods, signals, or properties.
-- If an API is not present in the current Godot version or in the codebase, do not use it.
-- Do not invent file paths, scene names, node names, or autoloads.
-- Before using a node, signal, or resource, verify it exists in the project or in the official Godot documentation.
-- If you are unsure, search the codebase or ask. Do not guess.
+- **Отступы:** табы.
+- **Именование:** классы/узлы `PascalCase`; файлы/папки/функции/переменные `snake_case`; константы `CONSTANT_CASE`; сигналы в прошедшем времени (`health_changed`).
+- **Типизация:** типизированный GDScript (`var health: int`, `func f(a: int) -> void:`). `:=` только там, где тип выводится, — в autoload невыводимые места обязательны `: <тип>`.
+- **Узлы:** `@onready` + уникальные имена (`%Node`) вместо жёстких `get_node()` путей.
+- **Сигналы:** предпочитать события прямым ссылкам на родителей/детей.
+- **Композиция** поверх глубокого наследования; **данные** — в `Resource`/JSON, не в хардкод-словарях; `@export` для инспектора.
+- **Процессы:** движение/физика в `_physics_process`, `_process` только под frame-логику; таймеры/сигналы вместо опроса.
+- **Autoload:** не добавлять/не удалять без явного согласования (сейчас один — `WorldBus`).
+- **Сцены:** неглубокие деревья, один корень, инстансинг.
+- **Не удалять/не переименовывать** `.tres`/`.tscn` без согласования.
 
-## 5. Godot Coding Conventions
+## 6. Ключевая архитектура — единая точка урона
 
-- **Indentation:** tabs (Godot standard).
-- **Naming:**
-  - Classes / nodes: `PascalCase`
-  - Files and folders: `snake_case`
-  - Functions and variables: `snake_case`
-  - Constants: `CONSTANT_CASE`
-  - Signals: past tense, e.g. `health_changed`, `door_opened`
-- **Typing:** Use typed GDScript where possible:
-  ```gdscript
-  var health: int = 100
-  func take_damage(amount: int) -> void:
-  ```
-- **Node access:** Prefer `@onready` and unique names (`%NodeName`) over hardcoded `get_node()` paths.
-- **Signals:** Prefer signals over direct parent/child references.
-- **Composition over inheritance:** Use child nodes and resources instead of deep inheritance trees.
-- **Data:** Use `Resource` files for configurable data, not hardcoded dictionaries.
-- **Exports:** Use `@export` for inspector-facing variables.
-- **Process functions:**
-  - Use `_physics_process` for physics and movement.
-  - Use `_process` only when frame-dependent logic is required.
-  - Prefer timers or signals over polling.
-- **Autoloads:** Do not add or remove autoloads without explicit approval. Current autoloads: `<list them>`.
-- **Scenes:** Keep scene trees shallow. One root node per scene. Use instancing.
-- **Resources:** Do not delete or rename `.tres` or `.tscn` files without approval.
+Весь урон (герой, магия, враги, наёмники, снаряды, AoE) идёт через **`Game.deal_damage(...)`**, а не напрямую через `enemy.take_damage`. Математика живет в одном месте — `scripts/game.gd`.
 
-## 6. Testing and Verification
-## Как запустить Godot (важно!)
+| Хелпер | Назначение |
+|--------|------------|
+| `hit_chance(attack: int, defense: int) -> int` | `clampi(50 + attack - defense, 5, 95)` — процент попадания |
+| `is_miss(attacker, defender) -> bool` | промах по шансу `hit_chance` |
+| `unit_attack / unit_defense / unit_absorption(unit) -> int` | универсальные статы (герой/враг/наёмник через их `get_*`) |
+| `unit_protection(unit, sphere: String) -> int` | защита от стихии (fire/water/air/earth/astral) |
+| `tick_shields(delta)` | тикает срок жизни щитов |
+| `deal_damage(target, dmg, kind, sphere, attacker) -> int` | **единая точка урона** |
+| `deal_damage_area(targets, dmg, kind, sphere, attacker)` | урон по площади (AoE) |
+| `shield_reduce(unit, dmg) -> int` | внутренний щит юнита |
+| `apply_shield(unit, strength, seconds)` | наложить щит |
 
-Проект (на этой машине): `C:\Work\Allodshome`
-Консольный движок:
-- `C:\Games\Godot_v4.7.2-stable_win64_console.exe`
-- (обычный GUI-вариант рядом: `..._win64.exe`)
-- На домашнем ПК пути были `D:\Work\UnityProjects\...` — пути в заметках могли сохраниться оттуда.
+Правила внутри `deal_damage`:
 
-Быстрый тест «парсится ли всё» (headless, выход сразу):
-```
-& 'C:\Games\Godot_v4.7.2-stable_win64_console.exe' --headless --path 'C:\Work\Allodshome' --quit 2>&1 | Select-String 'SCRIPT ERROR|Parse Error|ERROR:'
-```
-Отсутствие `SCRIPT ERROR` = скрипты компилируются. Эту команду используем как «контрольную точку» после любых правок. `ERROR: 1 resources still in use at exit` — безобидный «хвост», не ошибка скриптов.
+- `kind == "physical"` → `unit_absorption` (броня) + шанс промаха (`is_miss`) → `target.take_damage(dmg, attacker)`.
+- `kind == "magic"` → `unit_protection(target, sphere)` (защита стихии) → `target.take_damage(...)`.
+- `deal_damage` сам вызывает `take_damage`; щиты живут **внутри** `take_damage` (`shield_reduce` → HP) и не дублируются.
+- Промах магии = «тихий промах», урона нет.
 
-Парсинг GODOT по скриптам можно отличить от «картинок-мусора»: выводимая Unicode-каша из PNG/CJK-файлов в `assets/` — норма, читаем только `.gd`-файлы. НЕ запускай `Get-ChildItem` на весь `assets` с фильтром по CJK — там сотни картинок.
+Точки подключения:
 
-- Agents must run tests after code changes.
-- Agents must not claim tests passed if they were not run.
-- If no tests exist for the changed area, state that explicitly.
-- Code must parse without errors. Check with:
+- `player.gd` (~594) — рукопашная героя: `is_miss` + `deal_damage(target, damage, "physical", "", self)`. Посох мага bьёт как мгновенная сфера (`_active_sphere()`): `deal_damage(..., "magic", sphere, self)` + опыт сфере.
+- `player.gd` (~761) — мгновенная магия: `deal_damage(target, dmg, "magic", sphere, self)`.
+- `enemy.gd` (~125) — удар врага: `is_miss` + `deal_damage(player, damage, "physical", "", self)`.
+- `mercenary.gd` (~116) — атака наёмника: `is_miss` + `deal_damage(..., "physical", "", self)`.
+- `projectile.gd` (~92/101) — снаряд на прилёте: `deal_damage` (одиночный `"magic"`, sphere из `SpellDB.sphere_of`) или `deal_damage_area` (AoE).
 
+## 7. Слой мира (SIM-эмуляция)
 
-## 7. Version Control Rules
+Глобальная SIM-логика (фракции, угроза, журнал) живёт в `scripts/world/`:
 
-- **Never commit directly to `main`.**
-- **Branch naming:** `feature/agent-<short-task-name>`
-- **Commit messages:** `<type>(<scope>): <description>`
-  - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-- Do not rewrite git history, force-push, or delete branches without approval.
+- `world_state.gd` — состояние мира: `day`, `global_threat`, `relations`, `hero`, типизированный `journal: Array[Dictionary]`, генератор id `_id()` через `if/elif` (не `match` с `_u += 1` — Parse Error).
+- `world_bus.gd` — `class WorldBus` (autoload). В `reseed()` переменные объявлять `: Dictionary`, а не `:=` (инференция в autoload запрещена).
+- `world_sim.gd` — симуляция дней; типы (`var d: float`) обязательны, где вывод неоднозначен.
+- `sim_runner.gd` — headless-просмотр (100 дней): `RESULT: world survived 100 days ... journal=208`.
 
-## 8. Approval Gates
+## 8. Процедурная генерация карт
 
-The agent must stop and ask for explicit approval before:
+### 8.1 Концепция (решения пользователя)
 
-- Modifying `project.godot`
-- Adding/removing autoloads
-- Changing the input map
-- Adding/removing addons or plugins
-- Deleting or renaming scenes, resources, or scripts
-- Changing export presets
-- Refactoring architecture or folder structure
-- Running destructive commands (e.g., `rm -rf`, `git reset --hard`)
+- Не копия Аллодов II, а духовный наследник: песочница + тактический RPG.
+- **Зона = процедурная карта-биом** (одна карта = один биом); переход между зонами — портал на новой карте. НЕ участки одной большой карты.
+- На карте героя — реальный бой с туманом войны и «!»-маркерами; на остальных территориях — SIM-эмуляция.
+- Лог боя — только на текущей карте (SIM-бои не засоряют лог).
+- Размеры карт пока 48×48 (в тестах 128×128), вырастут после отработки генерации.
+- **Антагонист НЕ копия Урда.** Песочница без «конца мира» — нарастающее давление/состояние мира. Варианты: Растворение (рекомендация), Цикл, Шёпот — финального решения нет.
 
-## 9. Workflow
+### 8.2 Фракции и репутация (на основе `units_db.json`, 89 наборов: humans 18, monsters 41, heroes 30)
 
-1. Read `AGENTS.md` and the relevant files.
-2. Propose a short plan:
-   - What will change
-   - Which files will be touched
-   - How it will be tested
-3. Wait for approval if the task is non-trivial or touches approval gates.
-4. Implement the smallest possible change.
-5. Run tests and static checks.
-6. Report:
-   - Summary of changes
-   - Files modified
-   - Test results
-   - Any blockers or uncertainties
+1. **Альянс Света** — humans/ (militia, swordsman, archer, mage)
+2. **Орды Огня** — orc/goblin/troll/ogre
+3. **Пожинатели** — undead (skeleton, zombie, necromant, ghost)
+4. **Круг Друидов** — druid, nature spirits
+5. **Серые** — monsters/ (bat, bee, wolf, spider, dino, turtle, squirrel, ...) — **всегда враги**
 
-## 10. Definition of Done
+- Герой по умолчанию воюет только с Серыми; с фракциями нейтралитет, можно ухудшать/улучшать до войны.
+- Прекрасеты отношений минимальны, дальше — война/мир/нейтралитет сами.
+- Репутация → качество наёмников в тавернах + тир магазинов.
+- Прогрессия: **Z1** старт/обучение → **Z2** средние Серые + войны фракций → **Z3** тяжёлые + разборки армий → **Z4a-d** базовые территории фракций.
+- Бой: отряд = герой + 2–3 наёмника (наёмникам нельзя менять экипировку/навыки); активная пауза = полная пауза + приказы.
 
-A task is done only when:
+### 8.3 Формат `.alm` (карты разработчиков, `assets/maps/pvm/`)
 
-- Code parses without errors.
-- Relevant tests pass (or absence of tests is explicitly stated).
-- No new warnings are introduced.
-- Changes are limited to the requested scope.
-- The agent provides a clear summary and test evidence.
+- Заголовок 0x14: magic `0x0052374D` "M7R\0", headersize, sectioncount.
+- Секции: `[8 junk][size u32][id u32][4 junk][data]`:
+  - id 0 info (660 Б; width/height/name), id 1 tiles (uint16/клетка), id 2 heights (int8; 0-127), id 3 obstacles (uint8), id 4 structures, id 5 players, id 6 units, id 7 logic.
+- Запись с нуля: `[header 0x14][info 680][tiles 20+W*H*2][heights 20+W*H][obstacles 20+W*H]` (`tests/gen_alm_map.gd`).
 
-## 11. Example Agent Prompts
+### 8.4 Terrain-типы (расширено до 7 + 2)
 
-Good:
-- “Add a `take_damage(amount: int)` method to `player.gd`. Do not modify other files. Run tests.”
-- “Fix the jump bug in `player.gd`. Show me the plan before editing.”
+| Тип | Tile-файл | Назначение | WalkTable cost |
+|-----|-----------|------------|----------------|
+| 0 | tile1 (224) | Трава | 8 |
+| 1 | tile2 (224) | Горы | 14 |
+| 2 | tile3 (128) | Вода | 0 (блок) |
+| 3 | tile4 (56) | Дорога | 6 |
+| 4 | tile5 (224) | Почва | 8 |
+| 5 | tile6 (224) | Песок | 12 |
+| 6 | tile7 (224) | Грязь | 14 |
+| 7 | — | Строение (цвет-плейсхолдер) | — |
+| 8 | — | Спавн (цвет-плейсхолдер) | — |
 
-Bad:
-- “Improve the game.”
-- “Refactor everything and make it better.”
-- “Add multiplayer.”
+- Границы в коде: `t < 7` = terrain, `t >= 7` = объект/спавн; `_source_id_for(type_id, tex_idx)` → `type_id >= 9` → `-1`.
 
-## 12. Notes for Humans
+### 8.5 Кодировка тайла (uint16) и BMP-структуры
 
-- Keep this file updated as the project evolves.
-- If an agent repeatedly violates a rule, make the rule more explicit and add a check.
-- Prefer small, reviewable changes over large autonomous rewrites.
+- `tile_from_spec({file, variant, row})`: `n = (file - 1) * 16 + variant`, результат `(n << 4) | row`.
+- `tile_type(tile) = (tile & 0xFF0) >> 8` — тип terrain 0–6; `tile_file = (tile & 0xFF0) >> 4`; `tile_frame = tile & 0xF`.
+- BMP: tile1/2/4 — 32×448 px = **14 строк**; tile3 (вода) — 32×256 = **8 строк**.
+- Плейсхолдеры tile5/6/7: `tests/gen_tile_placeholders.gd` — PNG 32×32 для палитры и BMP 24-бит **bottom-up** (у Godot 4 нет `Image.save_bmp`; top-down не импортируется → `valid=false`). После генерации обязателен `--headless --import`, иначе `ResourceLoader.exists` = false.
 
+### 8.6 Переходы между terrain-типами
 
-> Памятка для продолжения работы из любой сессии. Обновляй при каждом заметном шаге.
-> Обновлено: **Сессия 23.09 (вечер)** — дороги = связный коридор шириной 2 (A* по суше), берег извилистый (compactness 1.8).
-> Обновлено: **Сессия 23.09 (ночь)** — Voronoi-биомы (связные регионы), псевдо-высоты, portal/spawn маркеры.
-> Обновлено: **Сессия 22.09** — доделан transition_editor: tile5/6/7 (PNG+BMP), import из pvm/ с диагоналями, transition_db 336/336.
->
-> Запуск головного headless-раннера мира: `godot --headless --path ... --script res://scripts/world/sim_runner.gd` (см. Слой-2 заметку ниже).
+**Autotile нет** — сценаристы ставили переходные текстуры вручную; переход = конкретный `variant/row` на клетках-границах.
 
-## 13. Available Skills
+- `row 4` = «универсальный край» травы/гор: все граничные клетки травы/гор берут краевой row (маска & CARDINAL) — итог 100% граничных клеток с кромкой (было 44%). Вода и дорога края не навязываются.
+- База правил — `assets/maps/transition_db.json`: ключ `"типA:направление:типB"` → `{file, variant, row}`; interior — ключ `"тип"`. **336 правил** + interior для всех 7. Диагонали наследуются от кардинальных.
+- Возможные пары переходов (анализ карт): см. `tests/analyze_transitions.gd`, `tests/analyze_dir_transitions.gd`.
+- Редактор — `scripts/transition_editor.gd`: сетка 3×3 (центр A + 8 направлений), палитра только тайлов типа A, импорт из `.alm` (сканирует `assets/maps/pvm/`), центральная ячейка = interior.
+- Палитра: `PALETTE_FILE {0:1, 1:2, 2:3, 3:4, 4:5, 5:1, 6:1}` (песок/грязь выбираются из tile1); `.alm`-рендер — `TERRAIN_FILE {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}`.
+- Хранение земли под объектами (`under_tiles` в `custom_map.gd`): упаковка `тип * 256 + tex_idx`; при ластике восстанавливаются и тип, и текстура.
 
-Скилы лежат в `.agents/skills/` (папка в `.gitignore`, в репозиторий не коммитится). Каждый скил — папка с `SKILL.md`; frontmatter `description` задаёт, когда скил подтягивать. Категории: `godot/`, `disciplines/`, `genres/`, `workflows/`. Проект — Godot 4.7 → основные скилы: `godot/*`.
+### 8.7 Генераторы и тесты (`tests/`)
 
-### Godot (движок, 4.7)
+| Файл | Назначение |
+|------|------------|
+| `analyze_alm_maps.gd` | анализ terrain/structures/units из `.alm` |
+| `analyze_transitions.gd` / `analyze_dir_transitions.gd` | статистика переходов (cardinal/diagonal) |
+| `analyze_shapes.gd` | аудит форм: 8-бит маски соседей `[N,NE,E,SE,S,SW,W,NW]`, топ-4 тайла → `assets/maps/shapes_db.json` (603 формы) |
+| `gen_biome.gd` | terrain по профилю биома (noise + квантили + blur) |
+| `gen_alm_map.gd` | запись `.alm` (terrain + transitions + heights) |
+| `gen_smart_map.gd` | **главный генератор** (см. ниже) |
+| `gen_tile_placeholders.gd` | placeholder PNG/BMP для tile5/6/7 |
+| `render_alm_png.gd` | `.alm`→PNG для визуального контроля (`missing_tiles=0`) |
+| `test_transitions.gd` | `RESULT:OK transition_editor+db` (336 правил, roundtrip, полнота 4↔5) |
+| `test_import_smoke.gd` | `RESULT:OK import_smoke` (загрузка всех `.alm` из pvm/, edge-статистика) |
+| `test_simulation.gd` | просмотр `world_sim` |
+
+**Генератор умных карт (`gen_smart_map.gd`) — текущие решения:**
+
+- `_pick_tile`: mask≠0 → (1) exact-форма, (2) hybrid для t≥4 (топология травы, файл из `TERRAIN_FILE[t]`), (3) ближайшая по Хэммингу, (4) rules-fallback. mask==0 → interior.
+- Интерьер без «чанков»: `_interior_value` — низкочастотный FastNoiseLite ~1/14 + высокочастотный ~1/60, выбор в весовой диапазон топ-6 интерьера.
+- **Дорога = сеть городов MST:** города — овалы ≈11×11 дорогой (type 3) по профилю зоны; дороги — MST (Прим) + A* коридоры ширины 2 (`_place_cities`/`_connect_cities`). Цены A*: трава 10, горы 18, штраф за поворот 6, шум `(hash%9)-4`, +3 у воды. `_is_road_cell` пропускает все не-водные типы.
+- **Извилистый берег:** шум `base*0.55 + coastal(1/16, 4 октавы)*0.3 + ripple(1/7)*0.15`, box-blur 3×3. Метрика — компактность травы area/perim (ориг 1.5–1.8) и уникальные 8-бит-маски кромки (~230–245). Достигнуто: compactness **1.80**, маски **109**.
+- **Voronoi-биомы:** база — только почва (трава/почва/песок/грязь), связные регионы вместо полос шума; горы/вода добавляются этапом 4 по экстремумам `_field` (`_water_thr`/`_mountain_thr`, ~10/90-й перцентили). `_field`, `_water_thr`, `_mountain_thr` — class variables.
+- **Псевдо-высоты** `_pick_height`: вода 0–15, горы 40–127, трава 10–60, песок 5–35, грязь 8–33, дорога = интерполяция от соседей.
+- **Portal + Spawn:** `portal_marker.gd`; генератор кладёт spawn у дороги, портал на противоположном краю; sidecar `.spawn.json`/`.portal.json`; `alm_map.gd` грузит маркеры, `game.gd` → телепорт на спавн.
+
+## 9. Правила для агентов
+
+### 9.1 Scope
+
+- **Одна задача на запрос.** Не смешивать несвязанные изменения.
+- **Минимально безопасное изменение** — только то, что нужно для задачи.
+- **Без несанкционированного рефакторинга** (переименования/форматирование/реструктуризация).
+- **Без новых зависимостей** (addons/плагины/внешние библиотеки) без согласования.
+- Оставаться в рамках задачи; если нужно задеть другой файл — спросить.
+- **При неоднозначности — спрашивать**, не гадать.
+
+### 9.2 Антигалюцинации
+
+- Не выдумывать Godot API, классы, методы, сигналы, свойства.
+- Не использовать API, которых нет в текущей версии движка или в коде проекта.
+- Не выдумывать пути, сцены, узлы, autoload.
+- Перед использованием узла/сигнала/ресурса — проверить, что он существует (код или официальная документация).
+- Не уверен — ищи в коде или спроси. Не догадывайся.
+
+### 9.3 Версионирование (git)
+
+- **Коммит — только ПОСЛЕ ручной проверки человеком** того, что сделано. Игра делается для людей: любой результат должен быть проверен в игре/визуально, прежде чем попадёт в историю. Без теста человеком коммит не делать (спросить, когда удобно протестировать).
+- **Никогда не коммитить напрямую в `main`** (используется `master`; уточняй текущую ветку).
+- Ветки: `feature/agent-<short-task-name>`.
+- Сообщения коммитов: `<type>(<scope>): <description>`; типы `feat|fix|refactor|test|docs|chore`.
+- Не переписывать историю, не force-push, не удалять ветки без согласования.
+
+### 9.4 Approval gates — стоп и запрос одобрения перед
+
+- изменением `project.godot`
+- добавлением/удалением autoload
+- изменением input map
+- добавлением/удалением addons/плагинов
+- удалением/переименованием сцен, ресурсов, скриптов
+- изменением export presets
+- рефакторингом архитектуры/структуры папок
+- разрушительными командами (`rm -rf`, `git reset --hard`)
+
+## 10. Рабочий процесс агента
+
+1. Прочитать `AGENTS.md` и релевантные файлы.
+2. Короткий план: что изменится / какие файлы / как проверимся.
+3. Дождаться одобрения, если задача нетривиальна или задевает approval gates.
+4. Реализовать минимальное изменение.
+5. Прогнать тесты и проверки (§3).
+6. Отчёт: суть изменений, файлы, результаты тестов, блокеры/неопределённости.
+
+**Definition of Done** — задача готова только когда:
+
+- код парсится без ошибок;
+- релевантные тесты прошли (или явно заявлено их отсутствие);
+- не внесены новые предупреждения;
+- изменения ограничены задачей;
+- есть чёткий отчёт с доказательствами (никаких «тесты прошли», если не запускались).
+
+## 11. Доступные скилы
+
+Скилы лежат в `.agents/skills/` (папка в `.gitignore`, в репо не коммитится). Каждый скил — папка с `SKILL.md`; frontmatter `description` задаёт, когда его подтягивать. Категории: `godot/`, `disciplines/`, `genres/`, `workflows/`. Проект — Godot 4.7 → основной набор: `godot/*`; по жанру актуальны `rpg` и `roguelike`.
+
+### Godot
 
 | Skill | Scope |
 |-------|-------|
 | [`godot-gdscript`](.agents/skills/godot/godot-gdscript/SKILL.md) | GDScript 2.0: типизация, lifecycle, `@export`/`@onready`, сигналы, `await` |
-| [`godot-nodes-scenes`](.agents/skills/godot/godot-nodes-scenes/SKILL.md) | Scene tree, композиция узлов, инстансинг `PackedScene`, autoloads |
-| [`godot-signals-groups`](.agents/skills/godot/godot-signals-groups/SKILL.md) | Декаплинг через сигналы (Callable, `bind`, one-shot) + группы (`call_group`) |
-| [`godot-2d-movement`](.agents/skills/godot/godot-2d-movement/SKILL.md) | `CharacterBody2D` + `move_and_slide()`: платформер/топ-даун, склоны, coyote time |
-| [`godot-tilemap`](.agents/skills/godot/godot-tilemap/SKILL.md) | `TileMapLayer`/`TileSet`: слои, terrain/autotile, collision/nav, чтение/запись клеток |
-| [`godot-physics`](.agents/skills/godot/godot-physics/SKILL.md) | Rigid/Static/Character/Area, collision layers vs masks, raycasts (2D+3D) |
-| [`godot-ui-control`](.agents/skills/godot/godot-ui-control/SKILL.md) | `Control`: anchors, Containers, Theme, focus-навигация |
-| [`godot-animation`](.agents/skills/godot/godot-animation/SKILL.md) | `AnimationPlayer`, `AnimationTree` (state machine/blend space), `Tween` |
-| [`godot-shaders`](.agents/skills/godot/godot-shaders/SKILL.md) | Godot Shading Language: `canvas_item` (2D) + `spatial` (3D), uniform-хинты |
-| [`godot-3d-essentials`](.agents/skills/godot/godot-3d-essentials/SKILL.md) | Node3D, Camera3D, свет, WorldEnvironment/post, `GridMap` |
-| [`godot-resources`](.agents/skills/godot/godot-resources/SKILL.md) | Custom `Resource` + `.tres`, data-driven, `ResourceLoader`/`ResourceSaver` |
-| [`godot-audio`](.agents/skills/godot/godot-audio/SKILL.md) | `AudioStreamPlayer` (2D/3D), bus'ы, эффекты, sync-to-beat |
-| [`godot-multiplayer`](.agents/skills/godot/godot-multiplayer/SKILL.md) | ENet, `@rpc`, authority, `MultiplayerSpawner`/`MultiplayerSynchronizer` |
-| [`godot-export`](.agents/skills/godot/godot-export/SKILL.md) | Export presets, headless CLI export, web (COOP/COEP), dedicated server |
-| [`godot-csharp`](.agents/skills/godot/godot-csharp/SKILL.md) | C#/.NET: partial-классы, `[Export]`, `[Signal]` как события, interop |
+| [`godot-nodes-scenes`](.agents/skills/godot/godot-nodes-scenes/SKILL.md) | Scene tree, композиция узлов, `PackedScene`, autoloads |
+| [`godot-signals-groups`](.agents/skills/godot/godot-signals-groups/SKILL.md) | Сигналы (Callable, `bind`, one-shot) + группы (`call_group`) |
+| [`godot-2d-movement`](.agents/skills/godot/godot-2d-movement/SKILL.md) | `CharacterBody2D` + `move_and_slide()`, склоны, coyote time |
+| [`godot-tilemap`](.agents/skills/godot/godot-tilemap/SKILL.md) | `TileMapLayer`/`TileSet`: слои, terrain, collision/nav, клетки |
+| [`godot-physics`](.agents/skills/godot/godot-physics/SKILL.md) | Тела (2D+3D), collision layers vs masks, raycasts |
+| [`godot-ui-control`](.agents/skills/godot/godot-ui-control/SKILL.md) | `Control`: anchors, Containers, Theme, focus |
+| [`godot-animation`](.agents/skills/godot/godot-animation/SKILL.md) | `AnimationPlayer`, `AnimationTree`, `Tween` |
+| [`godot-shaders`](.agents/skills/godot/godot-shaders/SKILL.md) | Godot Shading Language: `canvas_item` + `spatial` |
+| [`godot-3d-essentials`](.agents/skills/godot/godot-3d-essentials/SKILL.md) | Node3D, Camera3D, свет, WorldEnvironment, `GridMap` |
+| [`godot-resources`](.agents/skills/godot/godot-resources/SKILL.md) | Custom `Resource` + `.tres`, `ResourceLoader`/`Saver` |
+| [`godot-audio`](.agents/skills/godot/godot-audio/SKILL.md) | `AudioStreamPlayer`, bus'ы, эффекты, sync-to-beat |
+| [`godot-multiplayer`](.agents/skills/godot/godot-multiplayer/SKILL.md) | ENet, `@rpc`, authority, `MultiplayerSpawner`/`Synchronizer` |
+| [`godot-export`](.agents/skills/godot/godot-export/SKILL.md) | Export presets, headless CLI, web COOP/COEP |
+| [`godot-csharp`](.agents/skills/godot/godot-csharp/SKILL.md) | C#/.NET: partial-классы, `[Export]`, `[Signal]`, interop |
 
-### Disciplines (крос-движковые ремёсла)
-
-| Skill | Scope |
-|-------|-------|
-| [`create-game-assets`](.agents/skills/disciplines/create-game-assets/SKILL.md) | Арт-дирекция, стиль-байблы, спрайты/тайлсеты/текстуры, пайплайн ассетов |
-| [`ai-behavior-trees-utility-ai`](.agents/skills/disciplines/ai-behavior-trees-utility-ai/SKILL.md) | Поведенческие деревья (Blackboard, композиты, декораторы) + Utility AI (кривые, considerations) |
-| [`game-ai`](.agents/skills/disciplines/game-ai/SKILL.md) | FSM, steering, флакинг, A*/navmesh, патруль/chase — выбор архитектуры ИИ |
-| [`procedural-gen`](.agents/skills/disciplines/procedural-gen/SKILL.md) | Seed-генерация, шум (Perlin/Simplex), данжен-генерация, loot-таблицы |
-| [`shader-programming`](.agents/skills/disciplines/shader-programming/SKILL.md) | Крос-движковые шейдеры: vertex→fragment, UV-математика, эффекты (GLSL/HLSL) |
-| [`audio-design`](.agents/skills/disciplines/audio-design/SKILL.md) | Микшерал/басы в дБ, ducking (sidechain), адаптивная музыка, SFX-вариации |
-| [`game-ui-ux`](.agents/skills/disciplines/game-ui-ux/SKILL.md) | Responsive UI, safe areas, фокус-навигация, стейк меню/экранов, event-driven HUD |
-| [`performance-optimization`](.agents/skills/disciplines/performance-optimization/SKILL.md) | Профилирование, frame budget, draw calls, batching, object pooling, GC |
-| [`game-feel`](.agents/skills/disciplines/game-feel/SKILL.md) | "Juice": screen shake, hit-stop, squash & stretch, knockback, easing |
-| [`physics-tuning`](.agents/skills/disciplines/physics-tuning/SKILL.md) | Fixed/variable timestep, интерполяция, CCD (анти-tunneling), jitter, layers |
-| [`camera-systems`](.agents/skills/disciplines/camera-systems/SKILL.md) | Follow-камера (deadzone, look-ahead), 3D orbit с коллизией, shake |
-| [`dialogue-systems`](.agents/skills/disciplines/dialogue-systems/SKILL.md) | Ветвящиеся диалоги, Ink/Yarn или свой runner, выборы, локализация |
-| [`input-systems`](.agents/skills/disciplines/input-systems/SKILL.md) | Action mapping, rebinding с конфликтами, мультиустройство, deadzone, buffering |
-| [`level-design`](.agents/skills/disciplines/level-design/SKILL.md) | Блокаут→playable, метрики, pacing (tension/rest), critical path, энкаунтеры |
-| [`save-systems`](.agents/skills/disciplines/save-systems/SKILL.md) | Сериализация, слоты, атомарная запись, versioning/миграция, autosave |
-
-### Genres (жанровые гайды — для текущего проекта особенно `rpg` и `roguelike`)
+### Disciplines
 
 | Skill | Scope |
 |-------|-------|
-| [`rpg`](.agents/skills/genres/rpg/SKILL.md) | Статы/leveling, инвентарь/экипировка, квесты, ветвящиеся диалоги, save/load, бой |
-| [`roguelike`](.agents/skills/genres/roguelike/SKILL.md) | Пошаговый грид, процедурные данжи, permadeath, FOV, loot |
-| [`platformer`](.agents/skills/genres/platformer/SKILL.md) | Ран/джамп с coyote time, буферизация прыжка, variable jump, hazards |
-| [`fps-shooter`](.agents/skills/genres/fps-shooter/SKILL.md) | Move+look контроллер, hitscan/projectile, оружие, отдача, TTK |
-| [`card-game`](.agents/skills/genres/card-game/SKILL.md) | Карты как данные, deck/hand/discard, ходы, стоимости, резолюция эффектов |
-| [`puzzle`](.agents/skills/genres/puzzle/SKILL.md) | Grid/board state, match-3 каскады, sokoban, scoring, undo |
-| [`tower-defense`](.agents/skills/genres/tower-defense/SKILL.md) | Лейны, волны спавна, авто-таргет башен, экономика, жизни |
-| [`survival-crafting`](.agents/skills/genres/survival-crafting/SKILL.md) | Сбор→крафт→стройка, нужды (голод/жажда/температура), tech tree |
-| [`visual-novel`](.agents/skills/genres/visual-novel/SKILL.md) | Ветвящийся скрипт, текстовое окно, сейвы, backlog, skip/auto |
+| [`create-game-assets`](.agents/skills/disciplines/create-game-assets/SKILL.md) | Арт-дирекция, спрайты/тайлсеты/текстуры, пайплайн ассетов |
+| [`ai-behavior-trees-utility-ai`](.agents/skills/disciplines/ai-behavior-trees-utility-ai/SKILL.md) | Поведенческие деревья + Utility AI |
+| [`game-ai`](.agents/skills/disciplines/game-ai/SKILL.md) | FSM, steering, A*/navmesh, выбор архитектуры ИИ |
+| [`procedural-gen`](.agents/skills/disciplines/procedural-gen/SKILL.md) | Seed-генерация, шум, данжи, loot-таблицы |
+| [`shader-programming`](.agents/skills/disciplines/shader-programming/SKILL.md) | Шейдеры: vertex→fragment, UV, эффекты (GLSL/HLSL) |
+| [`audio-design`](.agents/skills/disciplines/audio-design/SKILL.md) | Микшер, ducking, адаптивная музыка, SFX-вариации |
+| [`game-ui-ux`](.agents/skills/disciplines/game-ui-ux/SKILL.md) | Responsive UI, safe areas, фокус, HUD |
+| [`performance-optimization`](.agents/skills/disciplines/performance-optimization/SKILL.md) | Профилирование, frame budget, draw calls, pooling, GC |
+| [`game-feel`](.agents/skills/disciplines/game-feel/SKILL.md) | Juice: shake, hit-stop, squash & stretch |
+| [`physics-tuning`](.agents/skills/disciplines/physics-tuning/SKILL.md) | Timestep, CCD, jitter, collision layers |
+| [`camera-systems`](.agents/skills/disciplines/camera-systems/SKILL.md) | Follow-камера, 3D orbit, shake |
+| [`dialogue-systems`](.agents/skills/disciplines/dialogue-systems/SKILL.md) | Ветвящиеся диалоги, Ink/Yarn |
+| [`input-systems`](.agents/skills/disciplines/input-systems/SKILL.md) | Action mapping, rebinding, deadzone, buffering |
+| [`level-design`](.agents/skills/disciplines/level-design/SKILL.md) | Блокаут, метрики, pacing, critical path |
+| [`save-systems`](.agents/skills/disciplines/save-systems/SKILL.md) | Сериализация, слоты, versioning, autosave |
 
-### Workflows (процессы)
+### Genres
 
 | Skill | Scope |
 |-------|-------|
-| [`prototype-fast`](.agents/skills/workflows/prototype-fast/SKILL.md) | Прототип за ~час, greybox, тайм-бокс, критерии keep/kill |
-| [`game-jam`](.agents/skills/workflows/game-jam/SKILL.md) | Скоп к дедлайну, расписание, кат фич, сабмит на джеме |
-| [`steam-publish`](.agents/skills/workflows/steam-publish/SKILL.md) | Steamworks/SteamPipe: depots, steamcmd, бета-ветки, чеки-листы релиза |
-| [`itch-publish`](.agents/skills/workflows/itch-publish/SKILL.md) | Страница на itch.io, butler push, именование каналов, версии билдов |
-
-## 14. Что сделано сегодня (главное)
-
-### 0. Слои мира (Слой-2) — headless-канон, симулятор жив
-- `world_state.gd` — убраны дублирующие объявления (day/global_threat/relations/hero/journal), остался типизированный `journal: Array[Dictionary]`; `_id()` переписан с `match`-присваиваний (`return "u-%d" % (_u += 1)` — Parse Error) на `if/elif` с телом.
-- `world_bus.gd:reseed()` — 9 переменных `:=` → `: Dictionary` (f_h, f_e, r, c_h, c_e, u1, u2, a_h, a_e); инференция типов в невыводимых местах запрещена в autoload.
-- `world_sim.gd:86/167` — `var d := a.get("pos")...distance_to()` → `var d: float`; `var m := state._u` → выпилен неиспользуемый (в `_log`).
-- Контроль: `--headless --quit` = `0 SCRIPT ERROR`; симулятор 100 дней: `RESULT: world survived 100 days. day=100, threat=1.00, journal=208`.
-
-### 1. Унифицирован весь урон через единую точку `Game`
-Игра перешла на единую точку боевой математики — весь урон (герой ближнего боя, мгновенная магия героя, атака врагов, наёмники, магия по площади) идёт через **`Game.deal_damage(...)`**, а не напрямую через `enemy.take_damage`.
-
-Все хелперы боя живут в `scripts/game.gd` (дубль математики выпилен, теперь строго по одному экземпляру каждого):
-- `Game.hit_chance(attack, defense) -> int` — процент попадания (универсальная, тот самый `hit_chance` из плана):
-  - `clampi(50 + attack - defense, 5, 95)` — либо 50 базовов + разность атаки и защиты.
-- `Game.is_miss(attacker, attacker_unit, defender) -> bool` — промах с шансом `hit_chance(attack, defense)`.
-  - Сигнатура приведена к `Game.is_miss(attacker, defender)` (сейчас в коде `is_miss(attacker, defender)`).
-- `Game.unit_attack(unit) -> int`, `Game.unit_defense(unit) -> int`, `Game.unit_absorption(unit) -> int` — генерализованные до уровня `unit_*` (работают и для героя, и для врагов/наёмников через их `get_*`).
-- `Game.unit_protection(unit, element) -> int` — защита от материала (стихии: fire/water/air/earth/astral).
-- `Game.tick_shields(unit, delta)` — тикает щиты (снимает срок жизни).
-- `Game.deal_damage(target, dmg, kind, sphere, attacker)` — ЕДИНАЯ точка нанесения урона:
-  - `kind == "physical"` → применяется `unit_absorption` (броня/поглощение) + шанс промаха (из `is_miss`), затем `target.take_damage(...)`.
-  - `kind == "magic"` → защита от стихии `unit_protection(target, sphere)`, затем `target.take_damage(...)`.
-  - attacker — кто наносит (герой, наёмник, враг, снаряд).
-- `Game.deal_damage_area(targets, dmg, kind, sphere, attacker)` — урон по площади (магия области/снаряды AoE).
-- `Game.deal_damage` сам вызывает `target.take_damage(final_dmg, attacker)` — НЕ дублирует никакие щиты (щиты юнита живут ВНУТРИ `take_damage` героя/врага/наёмника и снимаются внутри `Game.tick_shields`).
-
-Точки подключения (заменено напрямую на `Game.deal_damage`):
-- `player.gd:594` — рукопашная героя (атака по врагу): `Game.is_miss` + `Game.deal_damage(target, damage, "physical", "", self)`.
-- `player.gd:761` — магия героя (мгновенная/по прямой): `Game.deal_damage(target, final_dmg, "magic", sphere, self)`.
-- `enemy.gd:125` — удар врага по герою (промах + урон): `Game.is_miss` + `Game.deal_damage(player, damage, "physical", "", self)`.
-- `mercenary.gd:116` — атака наёмника: `Game.is_miss` + `Game.deal_damage(attack_target, damage, "physical", "", self)`.
-- `game.gd:138` — **починена серьёзная поломка**: при удалении дубля математики был выпилен заголовок функции, а внутрь тела вклеилась CJK-порча `什么人` (китайские иероглифы в `return`), из-за чего:
-  - враг `take_damage` потерял заголовок `func take_damage(dmg, attacker)` и его тело осталось «сиротой», а строки `dmg <= 0` / `current_hp -= dmg` попали внутрь `get_sight`.
-  - файл `enemy.gd` перестал компилироваться и Godot валил «Could not resolve class Enemy» + «Cannot infer the type of e».
-  - Восстановлены: строка про `func take_damage(dmg: int, attacker)` вернулась на своё место, убрана CJK-порча, все сцены/скрипты снова парсятся (проверено headless: `0 SCRIPT ERROR`).
-
-Детали боевой формулы:
-- Производные характеристики юнитов (`get_attack/get_defense/get_absorption/get_protection_*`) теперь в `enemy.gd`, `mercenary.gd` и расчитываются как у героя.
-- `Game.deal_damage` применяет:
-  - физика → `unit_absorption` (броня/поглощение) → потом `take_damage`
-  - магия → `unit_protection` по стихии (sphere) → потом `take_damage`
-  - снаряды/область → `deal_damage`/`deal_damage_area`
-
-Цель: единая точка урона — достигнута. Вредная магия, поглощение, защита стихий, щиты, промахи — всё через `Game`.
-
-- Снаряды `projectile.gd` и `deal_damage_area` пока напрямую вызывали `enemy.take_damage(...)` — НО это уже через `Game.deal_damage`/`deal_damage_area` (потому что их вызывает `player.gd` через магию; см ниже). Убедись, что `projectile.gd` при попадании зовёт `Game.deal_damage(target, dmg, "magic", sphere, owner)` — если ещё нет, поправить (см. план П0).
-
-### 2. Ближний бой, магия, снаряды, наёмники — через deal_damage
-- `player.gd` (ближняя атака ~594, мгновенная магия ~761) — `Game.deal_damage(target, dmg, ...)`.
-- `enemy.gd` (~125) — `Game.deal_damage(player, damage, "physical", "", self)` + промах.
-- `mercenary.gd` (~116) — `Game.deal_damage(attack_target, damage, "physical", "", self)` + промах.
-- `projectile.gd` (~92/101) — снаряд при попадании бьёт через `Game.deal_damage_area` / `Game.deal_damage` (урон мечуемой магии области). Проверить, что `sphere` передаётся (сфера → защита стихии).
-
-### 3. Наёмник, AoE, заклинания (завершено в этой сессии)
-- `mercenary.gd:_attack()` — переведён на `Game.is_miss(self, target)` + `Game.deal_damage(target, damage, "physical", "", self)`; добавлены `get_attack/get_defense/get_absorption/get_protection_*`.
-- `mercenary.gd:take_damage()` — входящий урон через `Game.shield_reduce(self, dmg)` (как герой/npc).
-- `player.gd:_damage_area_at()` — ушёл на `Game.deal_damage_area(targets, dmg, "magic", sphere, self)` (а не `enemy.take_damage` напрямую); неактуален (больше не вызывается) — мгновенный AoE убран, урон наносит только `projectile.gd` при прилёте (снят двойной урон для `range<=0`).
-- `mercenary.gd` — добавлен `lifespan` (призванные миньоны исчезают по таймеру и покидают `Game.party`).
-- `player.gd` — реализованы **Light** (`_cast_light()`: визуальная вспышка вокруг героя на 4 с) и **Summon** (`_cast_summon()`: союзный миньон `monsters/orc`/60hp/8dmg на 45 с в `Game.party`).
-- `game.gd:22` — `debug_magic = false` (маг больше не стартует со всеми 24 заклинаниями).
-
-## 15. План / что осталось (в порядке приоритета)
-
-### П0-П2 — завершено (единая точка урона, снаряды/область, маг-тактика)
-- [x] `deal_damage` единый в `Game`
-- [x] герой (ближний + мгновенная магия), враг, наёмник — через deal_damage
-- [x] снаряды `projectile.gd` — переведены на `Game.deal_damage(enemy, dmg, "magic", sphere, owner)` (одиночный) и `Game.deal_damage_area(targets, ...)` (AoE); `sphere` берётся из `SpellDB.sphere_of(spell_name)` — защита стихий работает у снарядов.
-- [x] дубль математики выпилен, `_ready` восстановлен, enemy.gd починен (CJK-порча вычищена)
-
-### П1 Магия героя — снаряды/область через deal_damage
-- [x] `projectile.gd` при попадании: `Game.deal_damage(target, dmg, "magic", sphere, owner)` / `deal_damage_area` вместо прямых `take_damage`.
-- [x] `player.gd` мгновенная магия/область → через deal_damage (сверено: `_cast_spell_effect` → `_fire_spell_projectile` → `deal_damage`; биндинг через `deal_damage_area` для AoE).
-
-### П2 Маг (посох + сферы) — класс мага как отдельная тактика
-- [x] Посох мага бьёт как мгновенная магия (как «сфера»): `player.gd:594-612` — для `weapon=="staff"` → магия сферы (`_active_sphere()`), урон по стихии + опыт сфере, а не физически.
-- [x] Панель сфер мага вместо навыков оружия в UI: `ui.gd:895-905` — для `Game.hero_class=="mage"` показываем сферы/защиты стихий, для остальных — навыки оружия.
-- [x] Стартовый набор мага: посох + книга (а не меч + щит): `player.gd:236-243`, `character_select.gd`.
-- [x] Мана/опыт сферы за каст: `player.gd:_apply_spell_experience` + `_apply_spell_experience(sphere)` при касте/попадании посохом.
-
-### Статистика / производные (принятое решение)
-- `hit_chance = clampi(50 + attack - defense, 5, 95)` (как в оригинале).
-- `absorption` — броня/поглощение (физика), `protection_*` — защита стихий (магия).
-- Шанс промаха `is_miss(attacker, attacker_defender)` через `hit_chance`. Промах = «тихий промах» без урона, для магии урона нет при промахе.
-- Всё применение урона через `take_damage` (внутри — щит юнита: `shield_reduce`, затем HP).
-
-
-## 16. Процедурная генерация карт (сессия 21.09 — активно)
-
-### Концепция игры (решения пользователя)
-- **Не копия Аллодов II**, а духовный наследник. Песочница + тактический RPG.
-- **Корень**: mmap-мир с тактическими боями, процедурная генерация карт, прогрессия через репутацию фракций.
-- **Зона = процедурная карта-биом** (одна карта = один биом, переход между зонами = портал на новой карте).
-- НЕ участки одной большой карты.
-
-### Фракции (5, на основе юнитов из units_db.json)
-1. **Альянс Света** — humans/ (militia, swordsman, archer, mage)
-2. **Орды Огня** — orc/goblin/troll/ogre (orc, orc_s, orc_sh, goblin, goblin_s, ogre, troll)
-3. **Пожинатели** — undead (skeleton, zombie, necromant, ghost)
-4. **Круг Друидов** — druid, nature spirits
-5. **Серые** (враги) — monsters/ (bat, bee, wolf, spider, dino, turtle, squirrel, legg) — ВСЕГДА враги
-
-### Отношения и репутация
-- Герой по умолчанию воюет **только с Серыми**.
-- С фракциями нейтралитет; можно улучшать/ухудшать до войны.
-- Минимальные пресеты отношений, дальше фракции сами: война/мир/нейтралитет.
-- Репутация → качество наёмников в тавернах + тир магазинов.
-
-### Прогрессия зон
-- **Z1** (стартовая): слабые Серые, обучение
-- **Z2**: средние Серые, возможны войны фракций, аванпосты фракций
-- **Z3**: тяжёлые Серые, разборки армий
-- **Z4a-d**: ответвления — базовые территории фракций
-
-### Боевая механика
-- Отряд: герой + 2-3 наёмника.
-- Наёмникам НЕЛЬЗЯ менять одежду/прокачивать навыки.
-- Магия — да, если маг. Наёмники нанимаются в тавернах фракций.
-- Активная пауза = полная пауза + выдача приказов.
-
-### Миникарта и мир
-- На карте героя = **реальный бой** с туманом войны, восклицательные знаки на миникарте.
-- На остальных территориях = **SIM-эмуляция** (экономия ресурсов).
-- Миникарта: точки/зоны с transparency 20-30 для нейтралов.
-- Лог боя = только на текущей карте (SIM-бои не засоряют лог).
-
-### Переход между зонами
-- Объект-портал у конца карты; вся команда перемещается в стартовую зону следующей.
-
-### Размеры карт
-- Пока маленькие (48x48), вырастим после отработки генерации.
-
-### Угроза
-- Антагонист НЕ копия Урда (Alods II).
-- Песочница без «конца мира» — вместо этого нарастающее давление/состояния мира.
-- Варианты: Растворение (рекомендация), Цикл, Шёпот — финального решения нет.
-
-### Юниты для фракций (из units_db.json, 89 наборов)
-- humans 18, monsters 41, heroes 30.
-- Ключевые怪物 типы: bat#70, bee#73, wolf#103, goblin#64, orc#65, orc_s#80, troll#68, spider#104.
-
----
-
-### Анализ .alm карт разработчиков (40 файлов в assets/maps/pvm/)
-
-#### Формат .alm (полный)
-- Заголовок 0x14: magic `0x0052374D` "M7R\0", headersize 0x14, sectioncount.
-- Секции: `[8 junk][size u32][id u32][4 junk][data]`.
-  - id 0: info (660 байт данных; width/height/name)
-  - id 1: tiles (uint16/клетка; file/variant/row编码)
-  - id 2: heights (int8/клетка; 0-127)
-  - id 3: obstacles (uint8/клетка)
-  - id 4: structures, id 5: players, id 6: units, id 7: logic
-
-#### Кодировка тайла (uint16)
-- `tile_type = (tile & 0xFF0) >> 8` — индекс файла-1 (0=grass, 1=mountain, 2=water, 3=road)
-- `tile_file = (tile & 0xFF0) >> 4` — file_n*16 + variant
-- `tile_frame = tile & 0xF` — row/кадр
-- `tile_from_spec({file:1-4, variant:0-15, row:0-13})` — сборка tile id
-
-#### Структура BMP тайлов
-- **tile1-XX.bmp** (трава): 32×448 px = **14 строк**, 16 файлов = 224 варианта
-- **tile2-XX.bmp** (горы): 32×448 px = **14 строк**, 16 файлов = 224 варианта
-- **tile3-XX.bmp** (вода): 32×256 px = **8 строк**, 16 файлов = 128 вариантов
-- **tile4-XX.bmp** (дорога): 32×448 px = **14 строк**, 4 файла = 56 вариантов
-
-#### Профили биомов (анализ 9 карт)
-| Биом | Трава | Горы | Вода | Дорога | Ср.высота |
-|------|------|------|------|--------|-----------|
-| greenlnd (равнина) | 33% | 30% | 35% | 2.5% | 18 |
-| tropic (тропики) | 27% | 9% | 60% | 4% | 10 |
-| canyon (каньон) | 56% | 29% | 7% | 7% | 39 |
-| orcish (орки) | 62% | 21% | 10% | 7% | 39 |
-| gothic (тёмная) | 47% | 31% | 18% | 5% | 42 |
-| som (пустыня) | 41% | 46% | 4% | 9% | 74 |
-| nord (север) | 36% | 38% | 17% | 9% | 37 |
-| islands (острова) | 33% | 18% | 35% | 14% | 64 |
-
-#### Правила переходов terrain (ключевое для генератора!)
-
-**Нет autotile!** Сценаристы ВРУЧНУЮ ставили过渡ные текстуры. Переходы = конкретные variant/row комбинации на клетках-границах.
-
-**Правило: row 4 = «универсальный край» для травы.**
-Все травяные клетки на границах с горами/водой/дорогами = `tile1 variant_any row=4`.
-Внутри карты = `row=1` (12%) и `row=3` (5.5%).
-
-**Таблица переходов (из анализа 9 карт, ~40K клеток на границах):**
-
-| Граница | Тайл на стороне A | Тайл на стороне B | Доминирование |
-|---------|------------------|------------------|---------------|
-| GRASS↔MOUNTAIN | tile1:variant:row=4 | tile2:1:4 | 27% от mountain→grass |
-| GRASS↔WATER | tile1:variant:row=4 | tile3:9:5 / 5:0 | ~3% каждый |
-| GRASS↔ROAD | tile1:variant:row=4 | tile4:1:8 / 2:8 / 1:3 | ~7% каждый |
-| MOUNTAIN↔WATER | tile2:1:4 | tile3:13:1 / 2:0 | 35% mountain→water |
-| MOUNTAIN↔ROAD | tile2:1:4 | tile4:0:0 / 2:0 / 1:11 | ~8% каждый |
-| WATER↔ROAD | tile3:5:2 / 1:2 | tile4:0:0 / 2:0 | ~6% каждый |
-
-**Внутренние тайлы (не на границе):**
-- GRASS: `1:1:1` (12%), `1:3:0` (5.5%), `1:3:1-4` (3% каждый)
-- MOUNTAIN: `2:1:4` (6.7%), `2:15:3/5/1/4` (3.8-4%), `2:13:1` (3.8%)
-- WATER: `3:9:1` (22%), `3:13:1` (20.6%), `3:1:1` (17.1%), `3:5:1` (16.7%)
-- ROAD: `4:3:1/5/0/2/4` (5%), `4:1:1/3/5/0/2` (4.5%)
-
-**Вывод для генератора:**
-1. Для каждой клетки определить тип terrain (0-3)
-2. Проверить 4 соседа — есть ли граница с другим типом
-3. Если ГРАНИЦА → выбрать переходный variant/row по таблице выше
-4. Если ВНУТРИ → выбрать внутренний variant/row (случайно из топ-N)
-
-#### Запись .alm с нуля (tests/gen_alm_map.gd)
-- Рабочий writer: `[header 0x14][info 680][tiles 20+W*H*2][heights 20+W*H][obstacles 20+W*H]`
-- Файл открывается в редакторе карт (godot scenes/map_editor.tscn --open-alm=...)
-- Файл открывается в игре (main.tscn alm_path)
-- Формат проверен: magic, section count, tile encoding — всё корректно.
-
-#### Тестовые скрипты
-- `tests/analyze_alm_maps.gd` — анализ terrain/structures/units из .alm (9 карт)
-- `tests/analyze_transitions.gd` — анализ переходов terrain-типов (9 карт)
-- `tests/analyze_dir_transitions.gd` — анализ directional переходов (N/S/E/W) из 9 карт
-- `tests/gen_biome.gd` — генератор terrain по профилю биома (noise + квантили + blur)
-- `tests/gen_alm_map.gd` — генератор .alm файла (terrain + transitions + heights)
-- `tests/gen_tile_placeholders.gd` — генератор placeholder PNG для tile5/6/7
-- `tests/test_simulation.gd` — просмотрщик world_sim (100 дней)
-
-#### Удалённые файлы
-- `scripts/tile_directions.gd` — захардкоженные константы (заменены на transition_db.json)
-- `assets/maps/tile_directions.json` — дубль
-- `assets/maps/transition_rules.json` — пер-клеточные overrides (не нужны)
-
----
-
-### Редактор переходов terrain-типов (сессия 21.09 вечер+ночь)
-
-#### Система terrain-типов (расширена до 7+2)
-| Тип | Tile-файл | Описание | WalkTable cost |
-|-----|-----------|----------|----------------|
-| 0 | tile1 (224 тайла) | Трава | 8 |
-| 1 | tile5 (224 тайла) | Почва | 8 |
-| 2 | tile6 (224 тайла) | Песок | 12 |
-| 3 | tile3 (128 тайлов) | Вода | 0 (блок) |
-| 4 | tile2 (224 тайла) | Горы | 14 |
-| 5 | tile4 (56 тайлов) | Дорога | 6 |
-| 6 | tile7 (224 тайла) | Грязь | 14 |
-| 7 | — | Строение (цвет-плейсхолдер) | — |
-| 8 | — | Спавн (цвет-плейсхолдер) | — |
-
-#### Кодировка tile id (tile_from_spec, alm_loader.gd)
-- `file_n` (1-7) × 16 + `variant` (0-15) → сдвиг на 4 бита → `| row` (0-15)
-- `tile_from_spec({file, variant, row})`: `n = (file-1)*16 + variant`, результат `(n<<4)|row`
-- `tile_type(tile)`: `(tile & 0xFF0) >> 8` — типterrain 0-6
-- `tile_file(tile)`: `(tile & 0xFF0) >> 4` — индекс файла-1
-- `tile_frame(tile)`: `tile & 0xF` — ряд/кадр
-
-#### Визуальный редактор переходов (`scripts/transition_editor.gd`)
-- Кнопка «Transitions» в редакторе карт → открывает окно
-- Два OptionButton: Тип A (клетка) / Тип B (сосед)
-- Сетка 3×3: центр = тип A, 8 ячеек = направления (N/NE/E/SE/S/SW/W/NW)
-- Клик по ячейке → палитра **только тайлов типа A** (из его tile-файла)
-- Кнопки: Сохранить / Импорт из .alm / Перечитать / Закрыть
-- База: `assets/maps/transition_db.json`
-
-#### База переходов (`assets/maps/transition_db.json`)
-- Ключ: `"типA:направление:типB"` → `{file, variant, row}`
-- Interior: `"тип"` → `{file, variant, row}` — тайл «внутри» без перехода
-- 96 правил для типов 0-3 (из 9 карт разработчиков) + дефолтные для типов 4-6
-- Импорт: анализ `analyze_dir_transitions.gd` → самый частотный тайл для каждой комбинации
-
-#### Генератор карт (`tests/gen_alm_map.gd`)
-- Читает `transition_db.json` вместо хардкода
-- `_edge(t, s, x, y)`: ищет cardinal правила, потом diagonal, fallback interior
-- `_interior(t, x, y)`: читает из DB `interior.type`
-
-#### Хранение земли под объектами (`under_tiles` в custom_map.gd)
-- Формат: `тип * 256 + tex_idx` (упаковано в один int)
-- `_under_pack(type, tex)` / `_under_type(v)` / `_under_tex(v)` — хелперы
-- Старый формат (0-6 = просто тип) совместим: при загрузке конвертируется
-- При размещении объекта (type >= 7): `under_tiles[i] = _under_pack(tiles[i], tex_ids[i])`
-- При рендере: `tilemap.set_cell(cell, _source_id_for(_under_type(under), _under_tex(under)))`
-- При ластике: восстанавливается и тип, и tex_idx
-
-#### Важные границы в коде
-- Terrain: 0-6, объекты: 7-8
-- `t < 7` = terrain, `t >= 7` = объект/спавн
-- `_source_id_for(type_id, tex_idx)`: проверка `type_id >= 9` → return -1
-- `texture_sets[type]` — набор текстур для типа; объекты хранятся в `texture_sets[7]`
-- `DEFAULT_TEX` в custom_map.gd — дефолтные текстуры для каждого типа
-
----
-
-### Transition editor — доделка (сессия 22.09)
-
-#### Плитки tile5/6/7 (почва/песок/грязь)
-- `tests/gen_tile_placeholders.gd` — генерирует **и PNG** (224 ячейки 32×32 в `assets/terrain/tiles/tileN-VV_RR.png` для палитры редактора), **и BMP** (16 полос 32×448 в `assets/terrain/tileN-VV.bmp` для AlmMap/CustomMap).
-- BMP пишется **вручную 24-бит bottom-up** (у Godot 4 нет `Image.save_bmp`; top-down с отрицательной высотой Godot **не импортирует** → `valid=false`).
-- После генерации обязательно `godot --headless --path ... --import` — иначе `ResourceLoader.exists` = false.
-- Текстуры — процедурный шум по базовому цвету (не плоская заливка).
-
-#### transition_editor.gd
-- `TERRAIN_FILE := {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}` — тип → tile-файл **для .alm/рендера** (генераторы пересчитывают по типу A).
-- `PALETTE_FILE := {0:1, 1:2, 2:3, 3:4, 4:5, 5:1, 6:1}` — что показывать в палитре. **Песок (5) и грязь (6) выбираются из tile1**; в transition_db у них file=1.
-- Палитра: `max_rows = 8` для tile3 (вода), `max_vars = 4` для tile4 (дорога), иначе 14×16.
-- **Центральная ячейка (interior) редактируется**: клик по «A» открывает палитру interior типа A; «Сбросить interior» чистит запись.
-- **Импорт из .alm**: сканирует `DirAccess` папку `assets/maps/pvm/` (все `*.alm`/`*.ALM`), импортирует **8 направлений** + interior.
-
-#### transition_db.json
-- **336 правил** + interior для всех 7.
-- `file` в правиле = **палитра** (для типов 5/6 это 1 = tile1). Генераторы `.alm` вызывают `_spec_for_type(type_a, spec)` → `file = TERRAIN_FILE[type_a]`, variant/row из правила.
-- Диагонали заполняются наследованием от кардинальных; format UTF-8 без BOM, TAB.
-
-#### Рендер tile5/6/7
-- `alm_map.gd:_build_atlas` — файлы `[1..7]`, `vmax_by_file` включает 5/6/7 (16 вариантов).
-- `custom_map.gd:_load_tile_region` — кламп `0..7` (был `0..4` → почва/песок/грязь рендерилась как дорога).
-- `texture_settings.gd` — вкладки tile1..tile7 + «Объекты».
-
-#### Тесты
-- `tests/test_transitions.gd` → `RESULT:OK transition_editor+db`: 336 правил, file-маппинг, 224 PNG × 3, BMP 32×448, roundtrip `tile_from_spec`/`tile_type` для типов 4/5/6, полнота пары 4↔5 (почва↔песок).
-- `tests/test_import_smoke.gd` → `RESULT:OK import_smoke`: сканирует `assets/maps/pvm/`, грузит все `.alm` (на домашнем 11 карт, только типы 0-3), считает edge-статистику (410974 клеток, 96 уникальных ключей) — та же логика, что `_on_import_alm`.
-- `tests/gen_alm_map.gd` / `gen_smart_map.gd` — читают 336 rules, генерируют карты OK.
-
-#### Два ПК
-- Рабочий ПК: `C:\Work\Allodshome`, Godot `C:\Games\Godot_...`.
-- Домашний ПК: `D:\Work\UnityProjects\Allodshome_Godot`, Godot `D:\Work\UnityProjects\Godot_v4.7.2-stable_win64_console.exe`.
-- Карты для обучения генератора — `assets/maps/pvm/` (на домашнем: 11 шт; на рабочем может отличаться — импорт сканирует каталог, не хардкод).
-
-#### Shape-based генератор и visual-фиксы (сессия 23.09)
-- **`tests/analyze_shapes.gd`** — аудит форм: для каждой border-клетки 8-бит маска соседей (битовые индексы `[N,NE,E,SE,S,SW,W,NW]`), копит топ-4 тайла по частоте → `assets/maps/shapes_db.json`: `{"shapes": {"тип:maskstr": {tiles[...top4, w], total}}, "interior": {"тип": {tiles[...top6], total}}}`. 603 формы, interior для типов 0-3.
-- **`tests/gen_smart_map.gd`** — `_pick_tile`: mask≠0 → (1) exact-форма, (2) hybrid для t≥4 (топология травы 0, файл из `TERRAIN_FILE[t]`), (3) ближайшая по Хэммингу, (4) rules-fallback. mask==0 → interior.
-- **Fix «квадрат почвы» на границе**: `_compute_edge_rows` — для типов 0 (трава) и 1 (горы) «универсальный край» row=4; в `_shape_tile` граничные клетки (mask & CARDINAL) берут ТОЛЬКО тайлы с краевым row, иначе → empty → rules-fallback. Итог: **100% граничных клеток травы/гор — краевая кромка** (было 44%). {edge: 0:4, 1:4}. Вода (2) и дорога (3) не навязываются (у них края зависят от соседа).
-- **Fix «чанков одной текстуры»**: `_interior_tile` вместо worley-сетки 8×8 (давала блоки одного тайла) → `_interior_value`: низкочастотный FastNoiseLite ~1/14 + слабый высокочастотный ~1/60, выбор по непрерывному значению в весовой диапазон топ-6 интерьера. Связные поля без жёстких границ, без шахматки. Интерьер травы: 5 разных тайлов, гор — 4, вода — 4.
-- **`tests/render_alm_png.gd`** — рендер .alm→PNG для визуального контроля (`missing_tiles=0`).
-- Соотношение: `Shapes: exact≈3850 subset≈437 rules-fallback≈300`; terrain трава 44.5% / горы 20% / вода 32% / дорога 3.5%.
-- Проверка: `--headless --quit` → `0 SCRIPT ERROR`.
-
-#### Дороги-коридоры и извилистый берег (сессия 23.09, вечер)
-- **Проблема дороги**: раньше дорога = шумовые пятна (578 клеток, 6 компонентов по 49/39/36/..., 228 прогонов ширины 1). В оригинале (greenlnd) — ОДИН связный коридор 1078 клеток, ширина ~2, не касается краёв карты, примыкание к воде 0–9%.
-- **Проблема берега**: «угловатость» = форма береговой линии (длинные прямые лестничные участки), не текстура кромки. Метрика: компактность травы area/perim (ориг ~1.5, было 7.1), уникальные 8-бит маски кромки (ориг ~230–245, было 42).
-- **Фикс дороги** в `tests/gen_smart_map.gd`:
-  - `_caw_roads` переписан на **A\*** по суше (`_a_star` + `_largest_land` + `_anchor_in`): якоря берутся из крупнейшего связного «материка», поэтому путь математически гарантирован и дорога НЕ рвётся у воды.
-  - Цены A*: шаг по траве 10, по горам 18 (горы дороже → дорога ложится на траву), штраф за поворот 6 (плавность), пер-клеточный шум `(hash%9)-4` (извилистость), +3 за соседство с водой (отталкивание).
-  - `_is_road_cell` пускает и тип 3 (дорога по дороге), чтобы второй коридор не блокировался первым.
-  - Запись ленты: по каждому пути `p` рисуются `p` и `p+lane` (lane = перпендикуляр сегмента) → ширина ровно 2.
-- **Фикс берега**: шум в `_place_terrain` = `base*0.55 + coastal(1/16, 4 октавы)*0.3 + ripple(1/7)*0.15`, box-blur 5×5 → 3×3. Дорога (тип 3) исключена из `mid_types` (рисуется отдельным проходом).
-- **Результат**: `ROAD: cells≈690 comps=[690]` (1 компонент, bbox почти на весь 128×128, ширины доминируют 2 и 4), water-adj ~11%. Трава compactness **1.80** (ориг 1.5–1.8), маски кромки **109**. Рендер `missing_tiles=0`, `--quit` → `0 SCRIPT ERROR`.
-- Диагностика в логе: `_road_stats()` печатает `ROAD: cells/comps/bbox/widths/adj`; статы травы — через python-скрипт по .alm (compactness, masks).
-
-#### Voronoi-биомы, псевдо-высоты, portal/spawn (сессия 23.09, ночь)
-- **Voronoi-биомы** в `_place_terrain`: вместо "полос шума" → опорные точки + шум для границ. Биомы теперь **связные регионы** (grass 28%, mountain 13%, water 8%, road 5%, soil 12%, sand 19%, mud 3%).
-- **Песок (5) и грязь (6)** добавлены: interior rules из transition_db (песок=tile1 variant 11, грязь=variant 7), BMP tile5/6/7 скопированы из tile1. `_spec_for_type` исправлен: перезапись file для типов ≥4 через `TERRAIN_FILE`.
-- **Псевдо-высоты**: `_pick_height` использует noise field — вода 0-15, горы 40-127, трава 10-60, песок 5-35, грязь 8-33, дорога = интерполяция от соседей. `_field`, `_water_thr`, `_mountain_thr` — class variables.
-- **Portal + Spawn**: `portal_marker.gd` (новый класс, Sprite2D + анимация 4 кадра), генератор размещает spawn рядом с дорогой / портал на противоположном краю, sidecar JSON (`.spawn.json`, `.portal.json`), `alm_map.gd` загружает маркеры, `game.gd` обнаруживает портал → телепорт на спавн.
-- **Исправления**: `_is_road_cell` пропускает все не-водные типы, дорога = 1 коридор (A*), fireball.png placeholder.
-- Коммит: `4c3f0983`, 60 файлов, 968 insertions.
-
-#### План: новый пайплайн генерации (следующая сессия)
-- **Порядок**: (1) почва Voronoi без гор/воды → (2) города (овалы ~11×11 из дорог) → (3) дороги MST + A* → (4) горы/вода Voronoi поверх (не перетирая type 3) → (5) высоты → (6) тайлы → (7) portal/spawn.
-- **Параметры**: количество городов 1-5 (от сложности), размер oval ~11×11, MST (ближайший сосед), горы/вода защищают дороги.
-- **Файл**: `tests/gen_smart_map.gd` — рефакторинг `_place_terrain` на этапы, `_place_cities`, `_connect_cities`, `_place_mountains_water`.
+| [`rpg`](.agents/skills/genres/rpg/SKILL.md) | Статы, инвентарь, квесты, диалоги, save/load, бой |
+| [`roguelike`](.agents/skills/genres/roguelike/SKILL.md) | Грид, процедурные данжи, permadeath, FOV, loot |
+| [`platformer`](.agents/skills/genres/platformer/SKILL.md) | Ран/джамп, буферизация, variable jump |
+| [`fps-shooter`](.agents/skills/genres/fps-shooter/SKILL.md) | Move+look, hitscan/projectile, оружие, TTK |
+| [`card-game`](.agents/skills/genres/card-game/SKILL.md) | Карты, deck/hand/discard, эффекты |
+| [`puzzle`](.agents/skills/genres/puzzle/SKILL.md) | Grid-головоломки, match-3, undo |
+| [`tower-defense`](.agents/skills/genres/tower-defense/SKILL.md) | Лейны, волны, башни, экономика |
+| [`survival-crafting`](.agents/skills/genres/survival-crafting/SKILL.md) | Крафт, нужды, tech tree |
+| [`visual-novel`](.agents/skills/genres/visual-novel/SKILL.md) | Скрипт, текст, сейвы, skip/auto |
+
+### Workflows
+
+| Skill | Scope |
+|-------|-------|
+| [`prototype-fast`](.agents/skills/workflows/prototype-fast/SKILL.md) | Прототип за час, greybox, keep/kill |
+| [`game-jam`](.agents/skills/workflows/game-jam/SKILL.md) | Скоп к дедлайну, кат фич, сабмит |
+| [`steam-publish`](.agents/skills/workflows/steam-publish/SKILL.md) | Steamworks/SteamPipe, depots, steamcmd |
+| [`itch-publish`](.agents/skills/workflows/itch-publish/SKILL.md) | itch.io, butler push, каналы |
+
+## 12. Журнал сессий
 
+Хронология изменений. **Новое — сверху.**
+
+### 24.09 — спавн на gen_smart_01: здания городов, НПЦ (стражи/жители), Серые, деревья
+
+- **Генератор (`tests/gen_smart_map.gd`), новые этапы 6–8 в `_generate`:** `_place_city_content` (здания + НПЦ) → `_place_objects` (деревья в `_obstacles`) → `_place_greys` (кластеры Серых). Результат — sidecar-ы `gen_smart_01.structures.json` (`{structures:[{x,y,type_id}]}`) и `gen_smart_01.npcs.json` (`{npcs:[{x,y,set,role,patrol,post,hp_max,damage}]}`), грузит `alm_map.gd:_load_sidecars`, спавнит `game._spawn_map_units`.
+- **Города:** в каждый город — магазин, таверна, кузница (`blacksmith1|2` — только размещение, клик не обработан: механика «разбитая броня → переплавка» в фоллоу-апе), тренировочные, жильё и декор (колодец/костёр/мельница) по `ZONE_HOUSES`. Здания ставятся в кольцо d 2–4 вокруг площади через `_footprint_fits` (только дорога, не площадь/спавн/портал/посты).
+- **НПЦ городов:** стражи (3–5, первые 2 — патруль по городу, остальные стоят на постах), капитан (`heroes/swordsman`, 120HP) и жители 4–10 (стоят, 30HP, не дерутся). НПЦ ставятся ДО зданий, здания обходят посты; `patrol_radius` 1 для стоящих / 4 для патрульных.
+- **Серые:** `GRAY_ZONE` по зоне (count/hp/dmg/pool — только `palette=5`, чтоб `is_hostile`); 50/50 кластеры 2–4 особей у дорог (`_side_road_cell` от `_road_anchor`, ≥24 от спавна) и в лесу (`_forest_anchor`, ≥2 деревьев вокруг, ≥20 от спавна).
+- **Деревья:** по биому (`TREE_GRASS/SOIL/SAND/MUD`), ID объектов из `alm_objects.json` в `_obstacles` (клетка непроходима), кластерный шум (~2.3%), клиренс от дороги 1 клетка, не в городах (≥6 от центра) и не у спавна/портала.
+- **Runtime:** `game.gd:_spawn_map_units`/`_spawn_npc`/`_spawn_monster` пробрасывают `role/post/patrol/hp_max/damage`. `npc.gd`: поле `role` (citizen|guard), `post`, `is_patrol`, `damage`, `aggro_radius`; страж атакует Серых (взаимный бой через `Game.deal_damage`, `is_miss`, `unit_sound`; не уходит от города дальше 380px), героя не трогает; добавлены `get_attack/defense/absorption/protection_*`. `enemy.gd`: `_combat_target()` — приоритет игроку (в агро, в погоне до deaggro), иначе ближайший страж из `Game.npcs`; `_chase_move(delta, target)` — по цели, а не хардкод `player`.
+- **Баг найден в поле:** пул стражи содержал `humans/pikeman` — такого набора в `units_db.json` нет (есть `humans/pikeman_`), 5 стражей не спавнились. Исправлено на `humans/pikeman_`.
+- **Контроль:** парсинг `--quit` → `0 SCRIPT ERROR`; генератор: зданий=18, НПЦ=49 (стражи=15/патруль=6, жители=19), Серые=15, 15/13 (кластер может чуть перевыполнить target); `spawn_smoke.gd` — recs=49 missing-sets=[], НПЦ=34, «серый повреждён=true серый отвечает=true» → **RESULT: OK** (взаимный бой); рендер `missing_tiles=0`.
+- **Ручная проверка пользователем:** «с большего хорошо» (24.09) → закоммичено и запушено.
+
+### 24.09 — «бегает по воде» на gen_smart_01 (клик в озеро)
+
+- **Симптом:** на gen_smart_01 герой реально пересекает озеро (консоль `DEBUG: герой в непроходимой клетке (58,47) file=3` и далее по ходу движения). Данные подтверждены headless-дампом: вода (file3) — блок (WalkTable cost 0), дебаг-клетки — честная вода, ряды в пределах BMP-листов.
+- **Истинная причина (найдена трассировкой `_move_checked`/`fuzz_water.gd`):** клик вглубь озера → `find_path` возвращал `[]` → `move_to_target` шёл в прямую трассировку к цели в воде. Гейт `_can_move_to` считает разрешённым шаг **внутри** непроходимой клетки (исключение `nxt == cur` — для «выхода из дерева»), а `move_and_slide` на кадре срабатывания гейта всё равно проезжает ~2px по текущей инерции `velocity` → нога «проваливается» за берег. Дальше герой в водной клетке движется на полной скорости (гейт доволен: `nxt == cur`), на каждой границе — снова провал → ходьба через всё озеро к цели. Раньше описано как «бег на месте» — это было неверно.
+- **Фикс 1 (player.gd `move_to_target`, прямая трассировка):** если пути нет (`find_path` = `[]`) и цель непроходима → `state="idle"` у кромки, а не марш в воду. Прямая трассировка остаётся только для ПРОХОДИМОЙ цели (доводка).
+- **Фикс 2 (alm_map.gd `find_path`):** при непроходимой цели и всех 4 непроходимых соседях — спираль `_nearest_walkable(goal, 24)` → герой идёт к ближайшей суше (обход озера по берегу). Ранее 12; оставлено 24 для крупных озёр.
+- **Верификация:** `tests/fuzz_water.gd` — 8 кликов (в т.ч. в центр озера), герой никогда не попадает в воду: **0 hits** (до фикса — 6, с `HIT cell=(58,48)` и движениями по воде). `--quit` → 0 SCRIPT ERROR.
+- **Debug (временный, удалить после ручной проверки):** player.gd `_dbg_walk_t` — печать `DEBUG: герой в непроходимой клетке` раз в 0.5 с в движении.
+- **Ручная проверка:** клик в озеро — герой обходит по берегу и останавливается; консоль без «DEBUG…». Пользователь подтвердил (24.09), debug-код удалён, закоммичено.
+
+### 23.09 (вечер) — движение/удар: панель-клики, physics interpolation, импакт
+
+- **Баг «вниз не идёт»:** `BottomPanel` (x 0–720, y 625–800) перехватывал клики — геометрически любые клики внизу экрана считались «по UI» и не двигали героя. **Фикс:** `main.tscn` → `mouse_filter = 2` (IGNORE); `ui.gd:_control_contains` — узлы с IGNORE не блокируют сами, но их дети-кнопки по-прежнему блокируются.
+- **Physics interpolation** (высокий refresh ступал по 60 Гц физике): `project.godot` → `physics/common/physics_interpolation=true`. После телепортов/спавна — `reset_physics_interpolation()` (спавн, портал, выход из здания, `_teleport_to`), чтобы не было «streaking». Снаряды — `Node2D`, интерполяция их не трогает.
+- **Звук/урон раньше анимации:** урон и звук срабатывали на кадре 0 замаха. Теперь — «кадр удара» через `UnitDB.attack_delay(набор)` (из units.txt): герой (player), враги (enemy), наёмники (mercenary) хранят `_impact_timer`/`_pending_*` и применяют урон+звук в момент удара. Анимация атаки — `speed_scale=1.0` (стабильный каденс).
+- **Мах по трупу:** `attack_enemy` прекращает бить мёртвую цель (нет в `Game.enemies`) → `state="idle"`; `enemy.take_damage` игнорирует труп/разложение (нет повторного лута); враг не сбрасывает замах при получении урона в состоянии `attack` (не прерывается на каждый хит).
+- **Каденс шагов:** `_anim.speed_scale` считается от КОМАНДНОЙ скорости (`_height_speed_factor`), а не мгновенной `velocity` — ровные шаги на разгоне/торможении.
+- **Контроль:** `--quit` → 0 SCRIPT ERROR; smoke `main.tscn` без SCRIPT ERROR/инвалидов (только отсутствующие PNG-кадры портала/спавна — предсуществующее). Ручная проверка — 24.09, закоммичено.
+
+### 23.09 — починка «редактор → игра» (F9 грузил Kids3.alm)
+
+- **Баг:** при «Назад в игру (F9)» всегда грузилась захардкоженная `Kids3.alm` — правая карта из редактора не приезжала. Причины: (1) `main.tscn` жёстко зашивал `alm_path`; (2) `_remember_last_alm` писал `user://last_alm_path.txt`, но никто его не читал; (3) клавиша F9 в редакторе не была обработана (только надпись на кнопке).
+- **Фикс:** `alm_map.gd:_ready` первым делом читает `user://last_alm_path.txt` и, если карта валидна, грузит её (`AlmMap: загрузка карты из редактора: ...`); fallback — экспортированный `alm_path`. В `map_editor.gd:_unhandled_input` добавлен `KEY_F9` → `_on_back()`.
+- **Контроль:** `--quit` → `0 SCRIPT ERROR`; headless `main.tscn` → `AlmMap: загрузка карты из редактора: gen_smart_01.alm` (128×128).
+
+### 23.09 (середина ночи) — города + MST-дороги + горы/вода поверх (§13)
+
+- `_generate` разбит на этапы: `_place_terrain` (только база 0/4/5/6, без гор/воды/дороги) → `_place_cities` → `_connect_cities` → `_place_mountains_water` → `_place_portal_spawn` → тайлы → высоты.
+- `_place_cities`: овалы дорогой ≈11×11 (type 3) по профилю зоны (`ZONE`: start 1 / mid 1–3 / hard 4–5 / faction 2–3), центры на базовой земле, мин. разнос 20 клеток. Городам — метки фракций.
+- `_connect_cities`: MST (Прим, ближайший сосед) + A*-коридоры ширины 2. Дорога теперь **дважды связна городами**: `ROAD: cells=365 comps=[365]` (было 1 коридор на края).
+- `_place_mountains_water`: горы/вода по `_field` и порогам `_water_thr`/`_mountain_thr`, клетки дороги (3) не перетираются.
+- `_place_portal_spawn`: спавн у города №0, портал на противоположном краю (уже на суше).
+- Удалён мёртвый код: `_place_roads`, `_carve_road`, `_largest_land`, `_anchor_in`, `_to_land`, `_detect_active_types`.
+- Контроль: парсинг `--quit` → `0 SCRIPT ERROR`; проверила связность дороги и спавн; рендер `missing_tiles=0`.
+- Исправлена таблица §8.4 (привязка типов к tile-файлам совпала с `TERRAIN_FILE`).
+
+### 23.09 (ночь) — Voronoi-биомы, псевдо-высоты, portal/spawn
+
+- Voronoi-биомы в `_place_terrain`: связные регионы (grass 28%, mountain 13%, water 8%, road 5%, soil 12%, sand 19%, mud 3%) вместо полос шума.
+- Песок/грязь: interior rules из transition_db, BMP tile5/6/7 скопированы из tile1; `_spec_for_type` перезаписывает file через `TERRAIN_FILE` для типов ≥4.
+- Псевдо-высоты `_pick_height` (диапазоны по биому), `_field`/`_water_thr`/`_mountain_thr` — class variables.
+- Portal + Spawn: `portal_marker.gd` (Sprite2D, 4 кадра), sidecar JSON, `alm_map.gd` загружает, `game.gd` телепортирует.
+- Коммит `4c3f0983` (60 файлов, +968).
+
+### 23.09 (вечер) — дороги-коридоры, извилистый берег
+
+- Дорога раньше: шумовые пятна (6 компонентов, ширина 1). Теперь: **один связный A*-коридор** шириной 2 по суше (трава 10 / горы 18 / штраф поворот 6 / шум / +3 у воды). `ROAD: cells≈690 comps=[690]`, water-adj ~11%.
+- Берег: shape-основанная кромка, компактность травы **1.80** (ориг 1.5–1.8), уникальных масок кромки **109**. Рендер `missing_tiles=0`, `--quit` → `0 SCRIPT ERROR`.
+
+### 23.09 (день) — shape-based генератор и visual-фиксы
+
+- `analyze_shapes.gd` → `shapes_db.json` (603 формы, interior для 0–3).
+- `gen_smart_map.gd`: `_pick_tile` — exact → hybrid → Хэмминг → rules-fallback.
+- Край травы/гор = row 4 на границах (100% кромки, было 44%).
+- Интерьер без «чанков» через двухчастотный FastNoiseLite.
+
+### 22.09 — transition_editor: tile5/6/7
+
+- Плейсхолдеры tile5/6/7 (PNG 32×32 + BMP 24-бит bottom-up, после генерации `--import`).
+- transition_db: **336 правил** + interior; диагонали наследуются; импорт сканирует `assets/maps/pvm/`.
+- Рендер: `vmax_by_file` включает 5/6/7; `_load_tile_region` кламп 0..7 (было 0..4).
+- `test_transitions` → OK; `test_import_smoke` → OK (410974 клеток, 96 ключей).
+
+### 21.09 (вечер+ночь) — система terrain 7+2 и редактор переходов
+
+- Terrain 0–6 + объекты 7/спавн 8; `transition_editor.gd` (сетка 3×3, interior, импорт из .alm).
+- `transition_db.json` — 96 правил для 0–3 + дефолты 4–6; ключ `типA:направление:типB`.
+- `under_tiles` в `custom_map.gd` — упаковка `тип*256+tex_idx`, восстановление при ластике.
+
+### 20.09 — анализ .alm и первый генератор
+
+- Полный разбор формата `.alm` (см. §8.3), структуры BMP, профили биомов (8 карт), правила переходов (row 4, таблица ребер).
+- `gen_alm_map.gd` — рабочий writer .alm, открывается в редакторе карт и в игре.
+- Удалены дубли: `scripts/tile_directions.gd`, `assets/maps/tile_directions.json`, `assets/maps/transition_rules.json`.
+
+### 19.09 — единая точка урона `Game` + маг-тактика (П0–П2)
+
+- Всё через `Game.deal_damage(...)`: герой (ближний + мгновенная магия), враги, наёмники, снаряды, AoE. Математика боя — один раз в `game.gd` (см. §6).
+- Посох мага бьёт как сфера (`"magic"` + sphere, опыт сфере); UI мага — панель сфер (`ui.gd`); стартовый набор мага: посох + книга.
+- Призванные миньоны (Light/Summon): визуальная вспышка / `monsters/orc` 60hp на 45 с в `Game.party`.
+- `debug_magic = false` (маг стартует не со всеми 24 заклинаниями).
+- Починена CJK-порча в `enemy.gd`/`game.gd` (метка «люди» в `return` ломала `take_damage` и парсинг) — всё снова парсится.
+
+### 18.09 — Слой мира (Слой-2), симулятор жив
+
+- `world_state.gd`: типизированный `journal`, `_id()` через `if/elif`.
+- `world_bus.gd:reseed()`: `:=` → `: Dictionary` в невыводимых местах.
+- `world_sim.gd`: явные типы `var d: float`.
+- Контроль: `--headless --quit` → `0 SCRIPT ERROR`; симулятор: `RESULT: world survived 100 days. day=100, threat=1.00, journal=208`.
+
+## 13. Дорожная карта
+
+### Генерация карт — новый пайплайн (в работе: этап `_place_terrain`→`_place_cities`→`_connect_cities`→`_place_mountains_water`→`_place_city_content`→`_place_objects`→`_place_greys` готов и проверен)
+
+- **Порядок:** (1) почва Voronoi без гор/воды → (2) города (овалы ~11×11 из дорог) → (3) дороги MST + A* → (4) горы/вода Voronoi поверх (не перетирая type 3) → (5) portal/spawn → (6) здания + НПЦ городов → (7) деревья/объекты → (8) Серые → (9) тайлы → (10) высоты.
+- **Параметры:** городов 1–5 (от сложности), oval ~11×11, MST (ближайший сосед), горы/вода защищают дороги.
+- **Файл:** `tests/gen_smart_map.gd` — этапы + sidecar-ы `structures/npcs` (24.09).
+- **Осталось:** шумные профили городов, арт городов, механика кузницы (переплавка разбитой брони), фракции городов по зонам.
+
+### Мир и фракции (дальний план)
+
+- SIM-эмуляция для территорий вне карты героя, «!»-маркеры на миникарте.
+- Таверны/наёмники по репутации, тиры магазинов.
+- Threat-система: финальный выбор между Растворение/Цикл/Шёпот.
