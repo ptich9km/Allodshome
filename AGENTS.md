@@ -174,23 +174,70 @@ Bad:
 
 ## 13. Available Skills
 
+Скилы лежат в `.agents/skills/` (папка в `.gitignore`, в репозиторий не коммитится). Каждый скил — папка с `SKILL.md`; frontmatter `description` задаёт, когда скил подтягивать. Категории: `godot/`, `disciplines/`, `genres/`, `workflows/`. Проект — Godot 4.7 → основные скилы: `godot/*`.
+
+### Godot (движок, 4.7)
+
 | Skill | Scope |
 |-------|-------|
-| [`godot-gdscript`](skills/godot/godot-gdscript/SKILL.md) | GDScript language: typing, lifecycle, `@export`, signals, idioms |
-| [`godot-nodes-scenes`](skills/godot/godot-nodes-scenes/SKILL.md) | Scene tree, node composition, instancing, autoloads, `PackedScene` |
-| [`godot-signals-groups`](skills/godot/godot-signals-groups/SKILL.md) | Event-driven design with signals + groups |
-| [`godot-2d-movement`](skills/godot/godot-2d-movement/SKILL.md) | `CharacterBody2D` kinematic movement, `move_and_slide`, slopes |
-| [`godot-tilemap`](skills/godot/godot-tilemap/SKILL.md) | `TileMapLayer`/`TileSet`: autotiling, terrain, collision/nav layers |
-| [`godot-physics`](skills/godot/godot-physics/SKILL.md) | Rigid/Area/Static bodies (2D+3D), collision layers, raycasts |
-| [`godot-ui-control`](skills/godot/godot-ui-control/SKILL.md) | `Control` nodes: anchors, containers, themes, focus nav |
-| [`godot-animation`](skills/godot/godot-animation/SKILL.md) | `AnimationPlayer`, `AnimationTree`, `Tween` |
-| [`godot-shaders`](skills/godot/godot-shaders/SKILL.md) | Godot shading language: 2D `canvas_item` + 3D `spatial` shaders |
-| [`godot-3d-essentials`](skills/godot/godot-3d-essentials/SKILL.md) | 3D nodes, cameras, lighting, environment/post, `GridMap` |
-| [`godot-resources`](skills/godot/godot-resources/SKILL.md) | Custom `Resource` classes, `.tres`, data-driven design |
-| [`godot-audio`](skills/godot/godot-audio/SKILL.md) | `AudioStreamPlayer`, buses, effects, sync-to-beat |
-| [`godot-multiplayer`](skills/godot/godot-multiplayer/SKILL.md) | High-level multiplayer: `MultiplayerAPI`, RPCs, spawner/sync |
-| [`godot-export`](skills/godot/godot-export/SKILL.md) | Export presets/templates, platform builds, headless CLI export |
-| [`godot-csharp`](skills/godot/godot-csharp/SKILL.md) | C#/.NET in Godot: bindings, signals as events, GDScript interop |
+| [`godot-gdscript`](.agents/skills/godot/godot-gdscript/SKILL.md) | GDScript 2.0: типизация, lifecycle, `@export`/`@onready`, сигналы, `await` |
+| [`godot-nodes-scenes`](.agents/skills/godot/godot-nodes-scenes/SKILL.md) | Scene tree, композиция узлов, инстансинг `PackedScene`, autoloads |
+| [`godot-signals-groups`](.agents/skills/godot/godot-signals-groups/SKILL.md) | Декаплинг через сигналы (Callable, `bind`, one-shot) + группы (`call_group`) |
+| [`godot-2d-movement`](.agents/skills/godot/godot-2d-movement/SKILL.md) | `CharacterBody2D` + `move_and_slide()`: платформер/топ-даун, склоны, coyote time |
+| [`godot-tilemap`](.agents/skills/godot/godot-tilemap/SKILL.md) | `TileMapLayer`/`TileSet`: слои, terrain/autotile, collision/nav, чтение/запись клеток |
+| [`godot-physics`](.agents/skills/godot/godot-physics/SKILL.md) | Rigid/Static/Character/Area, collision layers vs masks, raycasts (2D+3D) |
+| [`godot-ui-control`](.agents/skills/godot/godot-ui-control/SKILL.md) | `Control`: anchors, Containers, Theme, focus-навигация |
+| [`godot-animation`](.agents/skills/godot/godot-animation/SKILL.md) | `AnimationPlayer`, `AnimationTree` (state machine/blend space), `Tween` |
+| [`godot-shaders`](.agents/skills/godot/godot-shaders/SKILL.md) | Godot Shading Language: `canvas_item` (2D) + `spatial` (3D), uniform-хинты |
+| [`godot-3d-essentials`](.agents/skills/godot/godot-3d-essentials/SKILL.md) | Node3D, Camera3D, свет, WorldEnvironment/post, `GridMap` |
+| [`godot-resources`](.agents/skills/godot/godot-resources/SKILL.md) | Custom `Resource` + `.tres`, data-driven, `ResourceLoader`/`ResourceSaver` |
+| [`godot-audio`](.agents/skills/godot/godot-audio/SKILL.md) | `AudioStreamPlayer` (2D/3D), bus'ы, эффекты, sync-to-beat |
+| [`godot-multiplayer`](.agents/skills/godot/godot-multiplayer/SKILL.md) | ENet, `@rpc`, authority, `MultiplayerSpawner`/`MultiplayerSynchronizer` |
+| [`godot-export`](.agents/skills/godot/godot-export/SKILL.md) | Export presets, headless CLI export, web (COOP/COEP), dedicated server |
+| [`godot-csharp`](.agents/skills/godot/godot-csharp/SKILL.md) | C#/.NET: partial-классы, `[Export]`, `[Signal]` как события, interop |
+
+### Disciplines (крос-движковые ремёсла)
+
+| Skill | Scope |
+|-------|-------|
+| [`create-game-assets`](.agents/skills/disciplines/create-game-assets/SKILL.md) | Арт-дирекция, стиль-байблы, спрайты/тайлсеты/текстуры, пайплайн ассетов |
+| [`ai-behavior-trees-utility-ai`](.agents/skills/disciplines/ai-behavior-trees-utility-ai/SKILL.md) | Поведенческие деревья (Blackboard, композиты, декораторы) + Utility AI (кривые, considerations) |
+| [`game-ai`](.agents/skills/disciplines/game-ai/SKILL.md) | FSM, steering, флакинг, A*/navmesh, патруль/chase — выбор архитектуры ИИ |
+| [`procedural-gen`](.agents/skills/disciplines/procedural-gen/SKILL.md) | Seed-генерация, шум (Perlin/Simplex), данжен-генерация, loot-таблицы |
+| [`shader-programming`](.agents/skills/disciplines/shader-programming/SKILL.md) | Крос-движковые шейдеры: vertex→fragment, UV-математика, эффекты (GLSL/HLSL) |
+| [`audio-design`](.agents/skills/disciplines/audio-design/SKILL.md) | Микшерал/басы в дБ, ducking (sidechain), адаптивная музыка, SFX-вариации |
+| [`game-ui-ux`](.agents/skills/disciplines/game-ui-ux/SKILL.md) | Responsive UI, safe areas, фокус-навигация, стейк меню/экранов, event-driven HUD |
+| [`performance-optimization`](.agents/skills/disciplines/performance-optimization/SKILL.md) | Профилирование, frame budget, draw calls, batching, object pooling, GC |
+| [`game-feel`](.agents/skills/disciplines/game-feel/SKILL.md) | "Juice": screen shake, hit-stop, squash & stretch, knockback, easing |
+| [`physics-tuning`](.agents/skills/disciplines/physics-tuning/SKILL.md) | Fixed/variable timestep, интерполяция, CCD (анти-tunneling), jitter, layers |
+| [`camera-systems`](.agents/skills/disciplines/camera-systems/SKILL.md) | Follow-камера (deadzone, look-ahead), 3D orbit с коллизией, shake |
+| [`dialogue-systems`](.agents/skills/disciplines/dialogue-systems/SKILL.md) | Ветвящиеся диалоги, Ink/Yarn или свой runner, выборы, локализация |
+| [`input-systems`](.agents/skills/disciplines/input-systems/SKILL.md) | Action mapping, rebinding с конфликтами, мультиустройство, deadzone, buffering |
+| [`level-design`](.agents/skills/disciplines/level-design/SKILL.md) | Блокаут→playable, метрики, pacing (tension/rest), critical path, энкаунтеры |
+| [`save-systems`](.agents/skills/disciplines/save-systems/SKILL.md) | Сериализация, слоты, атомарная запись, versioning/миграция, autosave |
+
+### Genres (жанровые гайды — для текущего проекта особенно `rpg` и `roguelike`)
+
+| Skill | Scope |
+|-------|-------|
+| [`rpg`](.agents/skills/genres/rpg/SKILL.md) | Статы/leveling, инвентарь/экипировка, квесты, ветвящиеся диалоги, save/load, бой |
+| [`roguelike`](.agents/skills/genres/roguelike/SKILL.md) | Пошаговый грид, процедурные данжи, permadeath, FOV, loot |
+| [`platformer`](.agents/skills/genres/platformer/SKILL.md) | Ран/джамп с coyote time, буферизация прыжка, variable jump, hazards |
+| [`fps-shooter`](.agents/skills/genres/fps-shooter/SKILL.md) | Move+look контроллер, hitscan/projectile, оружие, отдача, TTK |
+| [`card-game`](.agents/skills/genres/card-game/SKILL.md) | Карты как данные, deck/hand/discard, ходы, стоимости, резолюция эффектов |
+| [`puzzle`](.agents/skills/genres/puzzle/SKILL.md) | Grid/board state, match-3 каскады, sokoban, scoring, undo |
+| [`tower-defense`](.agents/skills/genres/tower-defense/SKILL.md) | Лейны, волны спавна, авто-таргет башен, экономика, жизни |
+| [`survival-crafting`](.agents/skills/genres/survival-crafting/SKILL.md) | Сбор→крафт→стройка, нужды (голод/жажда/температура), tech tree |
+| [`visual-novel`](.agents/skills/genres/visual-novel/SKILL.md) | Ветвящийся скрипт, текстовое окно, сейвы, backlog, skip/auto |
+
+### Workflows (процессы)
+
+| Skill | Scope |
+|-------|-------|
+| [`prototype-fast`](.agents/skills/workflows/prototype-fast/SKILL.md) | Прототип за ~час, greybox, тайм-бокс, критерии keep/kill |
+| [`game-jam`](.agents/skills/workflows/game-jam/SKILL.md) | Скоп к дедлайну, расписание, кат фич, сабмит на джеме |
+| [`steam-publish`](.agents/skills/workflows/steam-publish/SKILL.md) | Steamworks/SteamPipe: depots, steamcmd, бета-ветки, чеки-листы релиза |
+| [`itch-publish`](.agents/skills/workflows/itch-publish/SKILL.md) | Страница на itch.io, butler push, именование каналов, версии билдов |
 
 ## 14. Что сделано сегодня (главное)
 
