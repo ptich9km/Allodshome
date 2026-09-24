@@ -1058,6 +1058,7 @@ func _update_bottom_panel_visibility():
 var _shop: ShopPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
+var _blacksmith: BlacksmithPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
 var _in_interior := false
 
@@ -1105,11 +1106,12 @@ func _on_panel_closed() -> void:
 	_shop = null
 	_school = null
 	_inn = null
+	_blacksmith = null
 	_exit_interior()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_school) or is_instance_valid(_inn)
+	return is_instance_valid(_shop) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1166,3 +1168,13 @@ func open_inn() -> void:
 	_inn.setup(player)
 	_inn.closed.connect(_on_panel_closed)
 	add_child(_inn)
+
+## Кузница: переплавка оружия/брони в слитки (клик по Blacksmith).
+func open_blacksmith() -> void:
+	if _blacksmith != null and is_instance_valid(_blacksmith):
+		return
+	_enter_interior()
+	_blacksmith = BlacksmithPanel.new()
+	_blacksmith.setup(player)
+	_blacksmith.closed.connect(_on_panel_closed)
+	add_child(_blacksmith)

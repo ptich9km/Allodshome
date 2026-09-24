@@ -412,6 +412,8 @@ func _structure_kind(type_id: int) -> String:
 		return "inn"
 	if folder.contains("train") or folder.contains("school"):
 		return "school"
+	if folder.contains("blacksmith"):
+		return "blacksmith"
 	return ""
 
 ## Клик по функциональному зданию: если герой далеко — сначала идёт к двери,
@@ -426,6 +428,7 @@ func _building_click(kind: String, s: Dictionary) -> void:
 			"shop": ui.open_shop()
 			"inn": ui.open_inn()
 			"school": ui.open_school()
+			"blacksmith": ui.open_blacksmith()
 		return
 	_pending_building = kind
 	_pending_s = s
@@ -468,6 +471,7 @@ func _process_pending_building() -> void:
 			"shop": ui.open_shop()
 			"inn": ui.open_inn()
 			"school": ui.open_school()
+			"blacksmith": ui.open_blacksmith()
 
 ## Юнит под курсором (враг ИЛИ мирный НПЦ) по видимой области корпуса.
 func _hover_unit() -> Node2D:

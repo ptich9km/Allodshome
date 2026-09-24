@@ -34,6 +34,8 @@ func _load_frames() -> void:
 			return
 	for i in range(4):
 		var path: String = "%s%s_frame_%02d.png" % [dir, prefix, i]
+		if not ResourceLoader.exists(path):
+			continue
 		var tex: Texture2D = load(path)
 		if tex != null:
 			_frames.append(tex)

@@ -373,6 +373,19 @@ ui/          — UI-сцены и скрипты
 - **Контроль:** парсинг `--quit` → `0 SCRIPT ERROR`; генератор: зданий=18, НПЦ=49 (стражи=15/патруль=6, жители=19), Серые=15, 15/13 (кластер может чуть перевыполнить target); `spawn_smoke.gd` — recs=49 missing-sets=[], НПЦ=34, «серый повреждён=true серый отвечает=true» → **RESULT: OK** (взаимный бой); рендер `missing_tiles=0`.
 - **Ручная проверка пользователем:** «с большего хорошо» (24.09) → закоммичено и запушено.
 
+### 24.09 — кузница (blacksmith), спрайты портала/спавна, реорганизация скриптов
+
+- **Кузница (`scripts/blacksmith_panel.gd`):** новый класс `BlacksmithPanel extends CanvasLayer`. Фон `blacksmith.jpeg` (1024×1024) уменьшен до 768×768 через `Image.resize()` + `ImageTexture.create_from_image()`, отцентрирован в 1280×800 (offset 256, 16). Зоны из README: `BLACKSMITH_OUTPUT` (7×1 слева), `PLAYER_INVENTORY` (2×6 снизу). Логика: клик «Плавить» → предмет из инвентаря → слиток в OUTPUT. Маппинг материалов: Iron→iron, Bronze→bronze, Steel→steel, Silver→argentum и т.д. (15 маппингов). Fallback: если `*_ingot.png` не найден → `*_weapon.png`.
+- **Подключение:** `game.gd:_structure_kind()` — добавлена проверка `folder.contains("blacksmith")` → `"blacksmith"`. `game.gd:_building_click()` + `_process_pending_building()` — case `"blacksmith"` → `ui.open_blacksmith()`. `ui.gd` — `_blacksmith` переменная, `open_blacksmith()`, обновлены `_on_panel_closed()` и `is_editor_open()`.
+- **Спрайты портала/спавна:** скопированы из `import/portal/` и `import/spawn/` в `assets/sprites/portal/` и `assets/sprites/spawn/` (по 5 PNG: 4 кадра + spritesheet). `portal_marker.gd` — добавлена проверка `ResourceLoader.exists()` перед `load()` (убирает ошибки при отсутствии файлов).
+- **Реорганизация:** скрипты генерации иконок/разметки (`markup_barracks.py`, `markup_blacksmith.py`, `recolor_*.py`, `split_herbs.py`, `generate_potion_icons.py`) перенесены из корня в `tests/`. Добавлены новые: `tests/markup_shop.py`, `tests/generate_loot_icons.py`, `tests/remap_inventory.py`, `tests/remodel_weapon.py`.
+- **План (следующие шаги):**
+  1. Таверна (обновление `inn_panel.gd`) — фон `taverna.jpeg`, зона `RECRUIT_PANEL` (7×2)
+  2. Магазин (обновление `shop_panel.gd`) — фон `shop_human.jpeg`, зоны из README
+  3. Травничество — добавить 8 трав в `item_db.json`, система сбора/крафта
+  4. Loot icons — обновить `_make_loot()` в `enemy.gd`, использовать `{material}_weapon/armor.png`
+- **Контроль:** `--quit` → 0 SCRIPT ERROR. Кузница работает: переплавка оружия → слитки из `assets/professions/blacksmith/`.
+
 ### 24.09 — «бегает по воде» на gen_smart_01 (клик в озеро)
 
 - **Симптом:** на gen_smart_01 герой реально пересекает озеро (консоль `DEBUG: герой в непроходимой клетке (58,47) file=3` и далее по ходу движения). Данные подтверждены headless-дампом: вода (file3) — блок (WalkTable cost 0), дебаг-клетки — честная вода, ряды в пределах BMP-листов.
