@@ -1065,6 +1065,7 @@ func _update_bottom_panel_visibility():
 # --- Экономика (P0): панели магазина / школы / таверны ---
 
 var _shop: ShopPanel = null
+var _alchemy: AlchemyPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
 var _blacksmith: BlacksmithPanel = null
@@ -1113,6 +1114,7 @@ func _clamp_to_walkable(from: Vector2) -> Vector2:
 ## Общий обработчик закрытия любой панели: показать героя у здания.
 func _on_panel_closed() -> void:
 	_shop = null
+	_alchemy = null
 	_school = null
 	_inn = null
 	_blacksmith = null
@@ -1120,7 +1122,7 @@ func _on_panel_closed() -> void:
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith)
+	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1156,6 +1158,17 @@ func open_shop() -> void:
 	_shop.closed.connect(_on_panel_closed)
 	_shop.inventory_changed.connect(refresh_inventory)
 	add_child(_shop)
+	refresh_inventory()
+
+func open_alchemy() -> void:
+	if _alchemy != null and is_instance_valid(_alchemy):
+		return
+	_enter_interior()
+	_alchemy = AlchemyPanel.new()
+	_alchemy.setup(player)
+	_alchemy.closed.connect(_on_panel_closed)
+	_alchemy.inventory_changed.connect(refresh_inventory)
+	add_child(_alchemy)
 	refresh_inventory()
 
 ## Школа тренировок: навыки за золото (клик по Training School).

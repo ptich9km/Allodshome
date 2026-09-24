@@ -216,6 +216,7 @@ const GRAY_ZONE := {
 
 # Здания в городах: функциональные + жильё + декор (folder -> StructureDB).
 const SHOP_FOLDERS := ["shop1", "shop2"]
+const ALCHEMY_FOLDERS := ["druidshop1", "druidshop2", "druidshop3"]
 const INN_FOLDERS := ["inn1", "inn2", "inn3"]
 const TRAIN_FOLDERS := ["train1", "train2", "train3"]
 const BLACKSMITH_FOLDERS := ["blacksmith1", "blacksmith2"]
@@ -435,10 +436,13 @@ func _structure_spec(folder: String) -> Dictionary:
 ## Этап 6: здания + НПЦ для каждого города. Запись в sidecar-ы structures/npcs.
 func _place_city_content(rng: RandomNumberGenerator) -> void:
 	var houses_n: int = int(ZONE_HOUSES.get(ZONE, 5))
-	for c in _cities:
+	for city_index in range(_cities.size()):
+		var c: Dictionary = _cities[city_index]
 		var center: Vector2i = c["pos"]
 		# Сначала НПЦ — посты резервируются; здания ниже обходят их.
 		_place_city_npcs(rng, center)
+		var alchemy_rng := rng_from_seed(7300 + city_index)
+		var alchemy_folder: String = str(_pick(alchemy_rng, ALCHEMY_FOLDERS))
 		var plan: Array = [
 			_pick(rng, SHOP_FOLDERS),
 			_pick(rng, INN_FOLDERS),
@@ -448,14 +452,20 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 		for i in range(houses_n):
 			plan.append(_pick(rng, HOUSE_FOLDERS))
 		plan.append(_pick(rng, DECOR_FOLDERS))
+		var replaceable_index := -1
 		for folder in plan:
 			var spec := _structure_spec(folder)
-			if not spec.is_empty():
-				_place_city_building(center, spec)
+			if spec.is_empty():
+				continue
+			if _place_city_building(center, spec) and (folder in HOUSE_FOLDERS or folder in DECOR_FOLDERS):
+				replaceable_index = _structures_out.size() - 1
+		var alchemy_spec := _structure_spec(alchemy_folder)
+		if replaceable_index >= 0 and not alchemy_spec.is_empty():
+			_structures_out[replaceable_index]["type_id"] = int(alchemy_spec["id"])
 	print("STRUCTURES_COUNT: %d" % _structures_out.size())
 
 ## Поставить здание (spec) в кольцо вокруг центра города, не на площадь.
-func _place_city_building(center: Vector2i, spec: Dictionary) -> void:
+func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	var w := int(spec["w"])
 	var h := int(spec["h"])
 	var rings: Array[int] = [2, 3, 4]
@@ -471,7 +481,8 @@ func _place_city_building(center: Vector2i, spec: Dictionary) -> void:
 				for yy in range(h):
 					for xx in range(w):
 						_reserved[tl + Vector2i(xx, yy)] = true
-				return
+				return true
+	return false
 
 ## Футпринт здания помещается внутри овала города на дороге, не на площади,
 ## не пересекая спавн/портал/уже занятые клетки.

@@ -1,0 +1,24 @@
+{
+  "recipes": [
+    {
+      "id": "medium_healing",
+      "name_ru": "Среднее зелье лечения",
+      "output": "Potion Medium Healing",
+      "output_count": 1,
+      "ingredients": [
+        {"item": "Herb Green Leaf", "count": 1},
+        {"item": "Herb White Flower", "count": 1}
+      ]
+    },
+    {
+      "id": "medium_mana",
+      "name_ru": "Среднее зелье маны",
+      "output": "Potion Medium Mana",
+      "output_count": 1,
+      "ingredients": [
+        {"item": "Herb Lavender", "count": 1},
+        {"item": "Herb Mint", "count": 1}
+      ]
+    }
+  ]
+}

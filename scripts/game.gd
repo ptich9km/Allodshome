@@ -413,6 +413,8 @@ func handle_click(world_position: Vector2):
 func _structure_kind(type_id: int) -> String:
 	var def := StructureDB.get_by_id(type_id)
 	var folder := str(def.get("folder", "")).to_lower()
+	if folder.contains("druidshop"):
+		return "alchemy"
 	if folder.contains("shop"):
 		return "shop"
 	if folder.contains("inn"):
@@ -433,6 +435,7 @@ func _building_click(kind: String, s: Dictionary) -> void:
 		_pending_building = ""
 		match kind:
 			"shop": ui.open_shop()
+			"alchemy": ui.open_alchemy()
 			"inn": ui.open_inn()
 			"school": ui.open_school()
 			"blacksmith": ui.open_blacksmith()
@@ -510,6 +513,7 @@ func _process_pending_building() -> void:
 		_pending_s = {}
 		match k:
 			"shop": ui.open_shop()
+			"alchemy": ui.open_alchemy()
 			"inn": ui.open_inn()
 			"school": ui.open_school()
 			"blacksmith": ui.open_blacksmith()
