@@ -117,6 +117,45 @@ static func tick_shields(delta: float) -> void:
 			u.set_meta("shield_time", 0.0)
 			u.set_meta("shield_strength", 0)
 
+static func configure_unit_body(unit: Node2D, radius: float = 12.0) -> void:
+	if not (unit is CharacterBody2D):
+		return
+	var body := unit as CharacterBody2D
+	body.collision_mask = 1
+	var shape_node: CollisionShape2D = null
+	for child in body.get_children():
+		if child is CollisionShape2D:
+			shape_node = child as CollisionShape2D
+			break
+	if shape_node == null:
+		shape_node = CollisionShape2D.new()
+		shape_node.name = "Collision"
+		body.add_child(shape_node)
+	if shape_node.shape == null:
+		var shape := CircleShape2D.new()
+		shape.radius = radius
+		shape_node.shape = shape
+
+static func movement_direction(unit: Node2D, desired: Vector2) -> Vector2:
+	if desired.length_squared() <= 0.0001:
+		return Vector2.ZERO
+	var units: Array = [Game.hero]
+	units.append_array(Game.enemies)
+	units.append_array(Game.npcs)
+	units.append_array(Game.party)
+	var separation := Vector2.ZERO
+	for other in units:
+		if other == unit or other == null or not is_instance_valid(other):
+			continue
+		if not (other is Node2D):
+			continue
+		var delta := unit.global_position - (other as Node2D).global_position
+		var distance := delta.length()
+		if distance > 0.1 and distance < 24.0:
+			separation += delta / distance * (24.0 - distance) / 24.0
+	var result := desired.normalized() + separation * 1.5
+	return result.normalized() if result.length_squared() > 0.0001 else desired.normalized()
+
 var _select_ring: SelectRing = null       # подсветка цели (ховер/атака)
 var _pending_building := ""               # здание, к которому герой подходит («вход»)
 var _pending_s: Dictionary = {}           # структура-цель ожидающего входа
@@ -226,11 +265,14 @@ func _spawn_map_units() -> void:
 			set_name = UnitDB.set_name_for_id(int(rec["type_id"]))
 		if set_name == "" or not UnitDB.has(set_name):
 			continue
-		var pos := Vector2(float(rec["x"]) * 32.0 + 16.0, float(rec["y"]) * 32.0 + 16.0)
+		var raw_cell := Vector2i(int(rec.get("x", 0)), int(rec.get("y", 0)))
+		var open_pos := _find_open_spot(raw_cell, int(alm_map.get("tile_size")))
+		if open_pos.x < 0.0:
+			continue
 		if UnitDB.is_hostile(set_name):
-			_spawn_monster(set_name, pos, rec)
+			_spawn_monster(set_name, open_pos, rec)
 		else:
-			_spawn_npc(set_name, pos, rec)
+			_spawn_npc(set_name, open_pos, rec)
 		spawned += 1
 	print("Карта: спавн юнитов %d" % spawned)
 
@@ -260,7 +302,9 @@ func _spawn_npc(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	n.is_patrol = bool(rec.get("patrol", false))
 	var post: Array = rec.get("post", [])
 	if post.size() >= 2:
-		n.post = Vector2(float(post[0]) * 32.0 + 16.0, float(post[1]) * 32.0 + 16.0)
+		var post_cell := Vector2i(int(post[0]), int(post[1]))
+		var post_pos := _find_open_spot(post_cell, int(alm_map.get("tile_size")))
+		n.post = post_pos if post_pos.x >= 0.0 else pos
 	var hp := int(rec.get("hp_max", 0))
 	if hp > 0:
 		n.max_hp = hp

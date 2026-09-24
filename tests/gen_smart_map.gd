@@ -174,11 +174,18 @@ func _generate() -> void:
 			var i: int = y * W + x
 			_tiles[i] = _pick_tile(_terrain[i], x, y)
 
-	# 11. Heights
+	# 11. Heights: non-road first, then road interpolation from the completed field
 	for y in range(H):
 		for x in range(W):
 			var i: int = y * W + x
-			_heights[i] = _pick_height(x, y, _terrain[i], _field[i])
+			if _terrain[i] != 3:
+				_heights[i] = _pick_height(x, y, _terrain[i], _field[i])
+	_smooth_nonroad_heights()
+	for y in range(H):
+		for x in range(W):
+			var i: int = y * W + x
+			if _terrain[i] == 3:
+				_heights[i] = _pick_height(x, y, _terrain[i], _field[i])
 
 func rng_from_seed(s: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -278,7 +285,7 @@ func _place_cities(rng: RandomNumberGenerator) -> void:
 		if not far_enough:
 			continue
 		_cities.append({"pos": p, "faction": _faction_for(_cities.size())})
-		_fill_city_oval(p, 5, 5)
+		_fill_city_oval(p, 7, 7)
 	print("CITIES: %d/%d (zone=%s)" % [_cities.size(), count, ZONE])
 
 ## Присвоение фракции городу (метка-данные; арта/маркеров пока нет).
@@ -439,36 +446,31 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 	for city_index in range(_cities.size()):
 		var c: Dictionary = _cities[city_index]
 		var center: Vector2i = c["pos"]
-		# Сначала НПЦ — посты резервируются; здания ниже обходят их.
-		_place_city_npcs(rng, center)
 		var alchemy_rng := rng_from_seed(7300 + city_index)
 		var alchemy_folder: String = str(_pick(alchemy_rng, ALCHEMY_FOLDERS))
 		var plan: Array = [
+			_pick(rng, TRAIN_FOLDERS),
+			alchemy_folder,
+			_pick(rng, BLACKSMITH_FOLDERS),
 			_pick(rng, SHOP_FOLDERS),
 			_pick(rng, INN_FOLDERS),
-			_pick(rng, BLACKSMITH_FOLDERS),
-			_pick(rng, TRAIN_FOLDERS),
 		]
-		for i in range(houses_n):
+		for i in range(mini(houses_n, 1)):
 			plan.append(_pick(rng, HOUSE_FOLDERS))
 		plan.append(_pick(rng, DECOR_FOLDERS))
-		var replaceable_index := -1
 		for folder in plan:
 			var spec := _structure_spec(folder)
 			if spec.is_empty():
 				continue
-			if _place_city_building(center, spec) and (folder in HOUSE_FOLDERS or folder in DECOR_FOLDERS):
-				replaceable_index = _structures_out.size() - 1
-		var alchemy_spec := _structure_spec(alchemy_folder)
-		if replaceable_index >= 0 and not alchemy_spec.is_empty():
-			_structures_out[replaceable_index]["type_id"] = int(alchemy_spec["id"])
+			_place_city_building(center, spec)
+		_place_city_npcs(rng, center)
 	print("STRUCTURES_COUNT: %d" % _structures_out.size())
 
 ## Поставить здание (spec) в кольцо вокруг центра города, не на площадь.
 func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	var w := int(spec["w"])
 	var h := int(spec["h"])
-	var rings: Array[int] = [2, 3, 4]
+	var rings: Array[int] = [2, 3, 4, 5, 6, 7]
 	for r in rings:
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
@@ -485,7 +487,7 @@ func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	return false
 
 ## Футпринт здания помещается внутри овала города на дороге, не на площади,
-## не пересекая спавн/портал/уже занятые клетки.
+## не пересекая спавн/портал/уже занятые клетки и оставляя зазор в одну клетку.
 func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 	for yy in range(h):
 		for xx in range(w):
@@ -494,10 +496,15 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 				return false
 			if _terrain[c.y * W + c.x] != 3:
 				return false
+	for yy in range(-1, h + 1):
+		for xx in range(-1, w + 1):
+			var c := tl + Vector2i(xx, yy)
+			if c.x < 1 or c.y < 1 or c.x >= W - 1 or c.y >= H - 1:
+				return false
 			if _reserved.has(c) or c == _spawn_pos or c == _portal_pos:
 				return false
 			var d := maxi(abs(c.x - center.x), abs(c.y - center.y))
-			if d <= 1 or d > 4:
+			if d <= 1 or d > 7:
 				return false
 	return true
 
@@ -513,6 +520,9 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 		Vector2i(3, 0), Vector2i(-3, 0), Vector2i(0, 3), Vector2i(0, -3),
 		Vector2i(3, 3), Vector2i(-3, 3), Vector2i(3, -3), Vector2i(-3, -3),
 		Vector2i(4, 0), Vector2i(-4, 0), Vector2i(0, 4), Vector2i(0, -4),
+		Vector2i(5, 0), Vector2i(-5, 0), Vector2i(0, 5), Vector2i(0, -5),
+		Vector2i(5, 3), Vector2i(-5, 3), Vector2i(5, -3), Vector2i(-5, -3),
+		Vector2i(3, 5), Vector2i(-3, 5), Vector2i(3, -5), Vector2i(-3, -5),
 	]
 	var guards_n := rng.randi_range(3, 5)
 	for i in range(guards_n):
@@ -528,7 +538,7 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 	if cap.x >= 0:
 		_npcs_out.append(_npc_rec(cap, CAPTAIN_SET, "guard", false, 120, 12))
 	# Жители (стоят, не патрулируют) — кольца 3–4
-	var cit_n := rng.randi_range(4, 10)
+	var cit_n := rng.randi_range(6, 10)
 	for i in range(cit_n):
 		var post := _post_cell(center, citizens_offsets, posts_taken)
 		if post.x < 0:
@@ -1300,6 +1310,29 @@ func _interpolate_road_height(x: int, y: int) -> int:
 	# Нет соседей — берём из field
 	return int(round(clampf(_field[y * W + x] * 40.0, 10.0, 40.0)))
 
+func _smooth_nonroad_heights() -> void:
+	var source := _heights.duplicate()
+	for y in range(H):
+		for x in range(W):
+			var i: int = y * W + x
+			if _terrain[i] == 3:
+				continue
+			var sum := 0.0
+			var count := 0
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var nx: int = x + dx
+					var ny: int = y + dy
+					if nx < 0 or ny < 0 or nx >= W or ny >= H:
+						continue
+					var ni: int = ny * W + nx
+					if _terrain[ni] == 3:
+						continue
+					sum += float(source[ni])
+					count += 1
+			if count > 0:
+				_heights[i] = clampi(int(round(sum / float(count))), 0, 127)
+
 func _box_blur(field: PackedFloat32Array) -> PackedFloat32Array:
 	# Лёгкое сглаживание (3×3): сохраняет извилистость берега, убирая только
 	# одиночные пиксели-артефакты шума.
@@ -1360,6 +1393,7 @@ func _save() -> void:
 		print("Объектов: %d (%.1f%%)" % [obj_count, obj_count * 100.0 / total])
 		# Спавн sidecar-ами (buildings + NPC)
 		_save_sidecars()
+		_validate_city_content()
 		var guards := 0
 		var citizens := 0
 		var greys := 0
@@ -1388,6 +1422,19 @@ func _save_sidecars() -> void:
 	if h:
 		h.store_string(JSON.stringify({"herbs": _herbs_out}))
 		h.close()
+
+func _validate_city_content() -> void:
+	var required := ["shop", "inn", "blacksmith", "train", "druidshop"]
+	var missing: Array = []
+	for prefix in required:
+		var count := 0
+		for structure in _structures_out:
+			var folder := str(StructureDB.get_by_id(int(structure.get("type_id", 0))).get("folder", ""))
+			if folder.begins_with(prefix):
+				count += 1
+		if count < _cities.size():
+			missing.append("%s=%d/%d" % [prefix, count, _cities.size()])
+	print("CITY_CONTENT: missing=%s" % str(missing))
 
 func _road_stats(road_cells: int) -> void:
 	# Компоненты связности дороги (4-соседи)

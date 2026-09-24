@@ -406,6 +406,14 @@ ui/          — UI-сцены и скрипты
 
 Хронология изменений. **Новое — сверху.**
 
+### 25.09 — рельеф, города и обход препятствий
+
+- **Skills-first:** задача выполнена по `procedural-gen`, `game-ai`, `godot-2d-movement`, `level-design`, `godot-physics`, `godot-gdscript`: единый heightmap, детерминированный layout, A* для городских юнитов и локальное разделение без новых зависимостей.
+- **Рельеф:** `AlmMap` использует реальные `_heights` и bilinear sampling; удалена бинарная `_height_grid`, подъём теперь умножает скорость мягко, с отдельным усилением в горах. Генератор сначала строит и сглаживает высоты не-дорог, затем интерполирует дороги.
+- **Города:** овалы увеличены до 15×15, здания ставятся до NPC с проверкой полного футпринта и зазора; NPC получают свободные посты. Все 5 функциональных типов (`shop`, `inn`, `blacksmith`, `train`, `druidshop`) проходят проверку генератора; 17 зданий на 3 города.
+- **Runtime:** навигация зданий использует `tile_width × tile_height`, а не selection box; спавн карты ищет свободную клетку. Патрули, стражи, наёмники и враги используют A*, прямой fallback при пустом маршруте удалён; добавлены runtime collision shapes и separation.
+- **Контроль:** headless-парсинг без `SCRIPT ERROR`; `CITY_CONTENT: missing=[]`; spawn smoke: `blocked_spawns=0`, `patrol_path_failures=0`, `separation=true`, бой страж↔Серые OK; `fuzz_water`: `TOTAL water-hits=0`; `import_smoke`: OK; render: `missing_tiles=0`. `test_transitions.gd` остаётся с pre-existing failure (ожидает старую БД 224/336 правил, текущая загружает 138). Требуется ручная визуальная проверка карты 1280×800, зданий, патрулей и разделения юнитов.
+
 ### 24.09 — минимальная алхимия: Druid Shop и 2 рецепта
 
 - **Skills-first:** задача выполнена по `rpg`, `godot-ui-control`, `game-ui-ux`, `godot-gdscript`: data-driven рецепты, контейнерный UI, единая тема, полный focus/input и атомарный расход ингредиентов.

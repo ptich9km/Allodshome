@@ -33,7 +33,7 @@ var _repath := 0.0
 
 func _ready() -> void:
 	add_to_group("npcs")
-	collision_mask = 0   # жители не толкают друг друга физикой
+	Game.configure_unit_body(self)
 	current_hp = max_hp
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	_anim = UnitAnim.new()
@@ -90,12 +90,25 @@ func _physics_process(delta: float) -> void:
 	# Идём к выбранной точке патруля
 	var d := global_position.distance_to(_target)
 	if d > 4.0:
-		var dir := (_target - global_position).normalized()
-		_move_checked(dir, walk_speed, delta)
-		_anim.play(UnitAnim.Anim.MOVE)
-		_anim.set_direction_vec(velocity)
-		_anim.advance(delta)
+		if _path.is_empty():
+			_repath -= delta
+			if _repath <= 0.0:
+				_repath = 0.6
+				if alm_map != null and alm_map.has_method("find_path"):
+					_path = alm_map.find_path(global_position, _target)
+		if not _path.is_empty():
+			var wp: Vector2 = _path[0]
+			if global_position.distance_to(wp) <= 8.0:
+				_path.pop_front()
+			if not _path.is_empty():
+				_move_checked((_path[0] - global_position).normalized(), walk_speed, delta)
+				_anim.play(_anim.Anim.MOVE)
+				_anim.set_direction_vec(velocity)
+				_anim.advance(delta)
+				return
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 	else:
+		_path.clear()
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 		_waiting = true
 		_pause_timer = randf_range(pause_min, pause_max)
@@ -193,17 +206,14 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			_path.pop_front()
 		if _path.size() > 0:
 			wp = _path[0]
-			velocity = velocity.move_toward((wp - global_position).normalized() * walk_speed, 1100.0 * delta)
+			_move_checked((wp - global_position).normalized(), walk_speed, delta)
 			_anim.play(UnitAnim.Anim.MOVE)
 			_anim.set_direction_vec(velocity)
 			_anim.advance(delta)
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 	else:
-		velocity = velocity.move_toward((tpos - global_position).normalized() * walk_speed, 1100.0 * delta)
-		_anim.play(UnitAnim.Anim.MOVE)
-		_anim.set_direction_vec(velocity)
-		_anim.advance(delta)
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 
 ## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
 func _unit_sound_at(idx: int) -> int:
@@ -245,6 +255,7 @@ func take_damage(dmg: int, _attacker: Node2D) -> void:
 
 ## Плавное движение с проверкой проходимости (без «льда» и «сквозь стены»).
 func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
+	direction = Game.movement_direction(self, direction)
 	var wanted := direction * speed
 	var can_step := true
 	if alm_map != null and alm_map.has_method("is_walkable_world"):

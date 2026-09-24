@@ -29,6 +29,8 @@ func _run() -> void:
 	var r_citizens := 0
 	var r_greys := 0
 	var miss: Array = []
+	var blocked_spawns: Array = []
+	var path_failures := 0
 	for r in recs:
 		var role := str(r.get("role", ""))
 		match role:
@@ -37,8 +39,19 @@ func _run() -> void:
 			_: r_greys += 1
 		if not UnitDB.has(str(r.get("set", ""))):
 			miss.append(str(r.get("set", "")))
+		var rec_pos := Vector2(float(r.get("x", 0)) * 32.0 + 16.0, float(r.get("y", 0)) * 32.0 + 16.0)
+		if am != null and not bool(am.call("is_walkable_world", rec_pos)):
+			blocked_spawns.append(rec_pos)
+		if role == "guard" and am != null and bool(r.get("patrol", false)):
+			var post: Array = r.get("post", [])
+			if post.size() >= 2:
+				var post_pos := Vector2(float(post[0]) * 32.0 + 16.0, float(post[1]) * 32.0 + 16.0)
+				if rec_pos.distance_to(post_pos) > 40.0 and am.call("find_path", rec_pos, post_pos).is_empty():
+					path_failures += 1
 	print("SMOKE: recs=%d (стражи=%d жители=%d серые=%d) missing-sets=%s" % [
 		recs.size(), r_guards, r_citizens, r_greys, str(miss)])
+	print("SMOKE: blocked_spawns=%d patrol_path_failures=%d" % [
+		blocked_spawns.size(), path_failures])
 
 	var guards: Array = []
 	var citizens := 0
@@ -55,6 +68,18 @@ func _run() -> void:
 			patrol += 1
 	print("SMOKE: всего НПЦ=%d (стражи=%d патруль=%d жители=%d) Серые=%d" % [
 		Game.npcs.size(), guards.size(), patrol, citizens, greys])
+	var separation_ok := true
+	if Game.npcs.size() >= 2:
+		var first: Node2D = Game.npcs[0]
+		var second: Node2D = Game.npcs[1]
+		var first_pos := first.global_position
+		var second_pos := second.global_position
+		first.global_position = Vector2(1000.0, 1000.0)
+		second.global_position = first.global_position + Vector2(2.0, 0.0)
+		separation_ok = Game.movement_direction(first, Vector2.RIGHT).x < 0.0
+		first.global_position = first_pos
+		second.global_position = second_pos
+	print("SMOKE: separation=%s" % separation_ok)
 
 	if guards.is_empty() or Game.enemies.is_empty():
 		print("SMOKE: НЕТ стражей или Серых — бой не проверить")
@@ -78,7 +103,7 @@ func _run() -> void:
 	await create_timer(4.0).timeout
 
 	var gray_damaged: bool = not is_instance_valid(gray) or gray.current_hp < before
-	var gray_eng: bool = false
+	var gray_eng: bool = not is_instance_valid(gray)
 	if is_instance_valid(gray) and is_instance_valid(guard):
 		gray_eng = gray.attack_target == guard or gray.state == "attack" or gray.state == "chase"
 	var guard_combat: bool = false

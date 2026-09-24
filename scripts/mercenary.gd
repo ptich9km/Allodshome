@@ -17,10 +17,12 @@ var lifespan: float = 0.0       # >0 — призванный миньон: ис
 var _lifetime: float = 0.0
 var _corpse_timer := 0.0
 var _anim: UnitAnim = null
+var _path: Array = []
+var _repath: float = 0.0
 
 func _ready() -> void:
 	add_to_group("mercenary")
-	collision_mask = 0   # юниты не толкают друг друга физикой
+	Game.configure_unit_body(self)
 	current_hp = max_hp
 	_anim = UnitAnim.new()
 	_anim.name = "UnitAnim"
@@ -115,19 +117,25 @@ func _nearest_enemy(radius: float) -> Node2D:
 	return best
 
 func _move_toward(p: Vector2, delta: float) -> void:
-	var dir := (p - global_position).normalized()
-	var wanted := dir * move_speed
-	var next := global_position + wanted * delta
-	var map_node := get_tree().get_first_node_in_group("alm_map")
-	var can := true
-	if map_node != null and map_node.has_method("is_walkable_world"):
-		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
-		can = map_node.is_walkable_world(next) \
-			or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
-				== Vector2i(int(next.x) / 32, int(next.y) / 32)
-	if not can:
-		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)   # упёрлись — стоп
+	if _path.is_empty():
+		_repath -= delta
+		if _repath <= 0.0:
+			_repath = 0.6
+			var map_node := get_tree().get_first_node_in_group("alm_map")
+			if map_node != null and map_node.has_method("find_path"):
+				_path = map_node.find_path(global_position, p)
+	if _path.is_empty():
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 		return
+	var waypoint: Vector2 = _path[0]
+	if global_position.distance_to(waypoint) <= 8.0:
+		_path.pop_front()
+		if _path.is_empty():
+			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+			return
+		waypoint = _path[0]
+	var direction := Game.movement_direction(self, (waypoint - global_position).normalized())
+	var wanted := direction * move_speed
 	velocity = velocity.move_toward(wanted, 1100.0 * delta)
 
 func _attack(target: Node2D) -> void:

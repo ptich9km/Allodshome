@@ -34,6 +34,7 @@ var buildings: Node2D           # слой зданий (y-sort)
 var herbs_root: Node2D
 var world_sort: Node2D          # общий y-sort: препятствия + здания (крона перекрывает фонтан)
 var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
+var _structure_nav: Array = []   # навигационные футпринты зданий
 var _portal_cells: Array = []   # координаты порталов (Vector2i)
 var _spawn_cell: Vector2i = Vector2i(-1, -1)
 var _portal_markers: Array = [] # PortalMarker instances
@@ -48,8 +49,6 @@ func _ensure_world_sort() -> Node2D:
 		add_child(world_sort)
 	return world_sort
 
-# Высотная сетка для движения (0/1: скала приподнята) — как раньше
-var _height_grid: Array = []
 
 const _DIRS_4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
@@ -81,7 +80,6 @@ func _ready() -> void:
 	var info: Dictionary = data.get("info", {})
 	solar_angle = float(info.get("solar_angle", 0.785398))
 	_load_obstacle_db()
-	_build_height_grid()
 	_build_atlas()
 	_build_relief_mesh()
 	_build_obstacles()
@@ -188,6 +186,10 @@ func _build_structures() -> void:
 				"type_id": type_id,
 				"ax": int(x), "ay": int(y),
 			})
+		_structure_nav.append({
+			"x0": int(x), "x1": int(x) + fw - 1,
+			"y0": int(y), "y1": int(y) + th - 1,
+		})
 	print("AlmMap: зданий создано %d, пропущено %d" % [placed, missing])
 
 func _build_herbs() -> void:
@@ -279,6 +281,13 @@ func _structure_def(type_id: int) -> Dictionary:
 	_structure_defs[type_id] = def
 	return def
 
+func _structure_blocks_cell(cell: Vector2i) -> bool:
+	for h in _structure_nav:
+		if cell.x >= int(h["x0"]) and cell.x <= int(h["x1"]) \
+				and cell.y >= int(h["y0"]) and cell.y <= int(h["y1"]):
+			return true
+	return false
+
 ## Здание под курсором (клетка cell) — для ховера; возвращает Dictionary или {}.
 func structure_at(cell: Vector2i) -> Dictionary:
 	for h in _structure_hits:
@@ -287,18 +296,6 @@ func structure_at(cell: Vector2i) -> Dictionary:
 			return h
 	return {}
 
-## Высотная сетка для движения (как раньше): скала = 1, остальное 0.
-func _build_height_grid() -> void:
-	_height_grid = []
-	if _heights.size() != map_width * map_height:
-		return
-	for y in range(map_height):
-		var row: Array = []
-		row.resize(map_width)
-		for x in range(map_width):
-			row[x] = 1 if AlmLoader.terrain_type(_hflags[y * map_width + x]) == 3 else 0
-		_height_grid.append(row)
-
 ## Рельеф: настоящие высоты (для визуала и скорости движения).
 func relief_at_tile(x: int, y: int) -> float:
 	if x < 0 or y < 0 or x >= map_width or y >= map_height:
@@ -306,7 +303,21 @@ func relief_at_tile(x: int, y: int) -> float:
 	return float(_heights[y * map_width + x]) * HEIGHT_SCALE
 
 func relief_at_world(pos: Vector2) -> float:
-	return relief_at_tile(int(pos.x) / TILE, int(pos.y) / TILE)
+	var gx := pos.x / float(TILE)
+	var gy := pos.y / float(TILE)
+	var x0 := int(floor(gx))
+	var y0 := int(floor(gy))
+	var x1 := x0 + 1
+	var y0_local := y0
+	var tx := gx - float(x0)
+	var ty := gy - float(y0)
+	var h00 := relief_at_tile(x0, y0_local)
+	var h10 := relief_at_tile(x1, y0_local)
+	var h01 := relief_at_tile(x0, y0_local + 1)
+	var h11 := relief_at_tile(x1, y0_local + 1)
+	var top := lerpf(h00, h10, tx)
+	var bottom := lerpf(h01, h11, tx)
+	return lerpf(top, bottom, ty)
 
 # --- Текстуры: атлас всех используемых (файл, вариант, ряд) ---
 
@@ -623,12 +634,13 @@ func _cell_of(pos: Vector2) -> Vector2i:
 func height_at_tile(tx: int, ty: int) -> int:
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return 0
-	if ty >= _height_grid.size():
+	var i := ty * map_width + tx
+	if i < 0 or i >= _heights.size():
 		return 0
-	return _height_grid[ty][tx]
+	return int(_heights[i])
 
 func height_at_world(pos: Vector2) -> int:
-	return height_at_tile(int(pos.x) / TILE, int(pos.y) / TILE)
+	return int(round(relief_at_world(pos)))
 
 func flag_at_world(pos: Vector2) -> int:
 	var tx := int(pos.x) / TILE
@@ -660,8 +672,8 @@ func is_walkable_world(pos: Vector2) -> bool:
 	# Объект (дерево/камень из obstacles) — непроходимо (кроме allowwalk-разметки)
 	if not allow and _obstacles.size() > i and _obstacles[i] > 0:
 		return false
-	# Здания (секция id=4) — непроходимы (кроме allowwalk-разметки)
-	if not allow and not structure_at(Vector2i(tx, ty)).is_empty():
+	# Здания (секция id=4) — непроходимы по навигационному футпринту
+	if not allow and _structure_blocks_cell(Vector2i(tx, ty)):
 		return false
 	return true
 
@@ -702,7 +714,7 @@ func blocked_reason(cell: Vector2i) -> String:
 		return "непроходимая текстура (tile%d-%02d)" % [file_n, variant]
 	if _obstacles.size() > i and _obstacles[i] > 0:
 		return "дерево/камень"
-	if not structure_at(cell).is_empty():
+	if _structure_blocks_cell(cell):
 		return "здание"
 	return ""
 

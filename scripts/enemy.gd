@@ -23,7 +23,7 @@ var _anim: UnitAnim = null
 
 func _ready():
 	add_to_group("enemy")
-	collision_mask = 0   # юниты не толкают друг друга физикой
+	Game.configure_unit_body(self)
 	current_hp = max_hp
 	home_position = global_position
 	_create_sprite()
@@ -179,6 +179,7 @@ const MOVE_DECEL := 1800.0
 
 ## Движение с проверкой проходимости карты (летающие игнорируют землю).
 func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
+	direction = Game.movement_direction(self, direction)
 	var wanted := direction * speed
 	var next := global_position + wanted * delta
 	var can_step := true
@@ -235,7 +236,7 @@ func _chase_move(delta: float, target: Node2D) -> void:
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 	else:
-		_move_checked((tpos - global_position).normalized(), move_speed, delta)
+		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 
 ## --- Производные характеристики (по данным монстра, как у героя) ---
 ## Применяются через Game.unit_*: атака->точность, защита->уклонение,
@@ -303,7 +304,9 @@ func _drop_loot():
 	# «тонет» ниже уровня земли на высоту рельефа)
 	var h := _relief_here()
 	bag.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16) - h)
-	get_tree().current_scene.add_child(bag)
+	var scene := get_tree().current_scene
+	if scene != null:
+		scene.add_child(bag)
 
 ## Высота рельефа под юнитом (0, если карты нет).
 func _relief_here() -> float:

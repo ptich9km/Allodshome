@@ -191,7 +191,7 @@ func _ready():
 	current_mana = max_mana
 	move_speed = _calc_speed()
 	alm_map = get_tree().get_first_node_in_group("alm_map")
-	collision_mask = 0   # юниты не толкают друг друга физикой — ходят по сетке проходимости
+	Game.configure_unit_body(self)
 	_ensure_sprite()
 	_create_health_bar()
 	_init_experience()
@@ -365,14 +365,18 @@ func refresh_animation() -> void:
 func _height_speed_factor(target_pos: Vector2) -> float:
 	if not alm_map:
 		return 1.0
-	var cur_h: int = alm_map.height_at_world(global_position)
-	var tgt_h: int = alm_map.height_at_world(target_pos)
+	var cur_h: float = float(alm_map.call("height_at_world", global_position))
+	var tgt_h: float = float(alm_map.call("height_at_world", target_pos))
 	var f := 1.0
-	if tgt_h > cur_h:
-		# Подъём — замедление (каждый уровень -30%, минимум 0.45 — «ползёт», а не стоит)
-		f = maxf(0.45, 1.0 - 0.3 * (tgt_h - cur_h))
+	var rise := maxf(0.0, tgt_h - cur_h)
+	var penalty := rise * 0.08
+	if rise > 0.0 and alm_map.has_method("cell_type_at"):
+		var cell := Vector2i(int(target_pos.x) / 32, int(target_pos.y) / 32)
+		if int(alm_map.call("cell_type_at", cell.x, cell.y)) == 1:
+			penalty = rise * 0.16
+	f = maxf(0.55, 1.0 - penalty)
 	if alm_map.has_method("speed_factor_at_world"):
-		f *= float(alm_map.call("speed_factor_at_world", global_position))
+		f *= float(alm_map.call("speed_factor_at_world", target_pos))
 	return f
 
 ## Можно ли двигаться в точку: проходимость (вода/барьер) + границы карты.
@@ -394,6 +398,7 @@ const MOVE_DECEL := 1800.0   # px/s² — тормоз с 120 px/s за ~0.07 с
 ## Движение с проверкой проходимости: если цель непроходима — мягкий стоп
 ## (без «скольжения вдоль стен», которое выглядело как лёд).
 func _move_checked(direction: Vector2, speed: float, delta: float):
+	direction = Game.movement_direction(self, direction)
 	var wanted := direction * speed
 	var next := global_position + wanted * delta
 	if _can_move_to(next):
@@ -516,18 +521,9 @@ func move_to_target(delta):
 			velocity = Vector2.ZERO
 		return
 	if Game.player_target.distance_to(global_position) > 5.0:
-		# Прямая трассировка — только к ПРОХОДИМОЙ цели. Пустой маршрут (find_path
-		# вернул []) + непроходимая цель (клик в озеро без берега в радиусе) —
-		# стоп у кромки, а не «бег по воде» (провал за грань + исключение nxt==cur).
-		if alm_map != null and alm_map.has_method("is_walkable_world") \
-				and not alm_map.is_walkable_world(Game.player_target):
-			state = "idle"
-			velocity = Vector2.ZERO
-			Game.player_target = global_position
-			return
-		var direction = (Game.player_target - global_position).normalized()
-		var speed_factor = _height_speed_factor(Game.player_target)
-		_move_checked(direction, move_speed * speed_factor, delta)
+		state = "idle"
+		velocity = Vector2.ZERO
+		Game.player_target = global_position
 	else:
 		state = "idle"
 		velocity = Vector2.ZERO
