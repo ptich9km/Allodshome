@@ -1,232 +1,551 @@
 class_name ShopPanel
 extends CanvasLayer
-## Магазин (Shop): покупка снаряжения/зелий за золото и продажа из склада
-## героя. Полки: «Оружие», «Броня», «Зелья». Цены — из item_db (покупка),
-## продажа — половина цены. Закрытие: кнопка «Закрыть» или ESC.
 
 signal closed
 signal inventory_changed
 
-const SHELVES := ["Оружие", "Броня", "Зелья", "Свитки"]
-const SHELF_MAX := 40   # предметов на полку (самые дешёвые)
+const CATEGORIES := [
+	{"id": "armor", "label": "Броня", "rect": Rect2(60, 40, 120, 160)},
+	{"id": "robe", "label": "Магическая броня", "rect": Rect2(850, 40, 130, 160)},
+	{"id": "weapon", "label": "Оружие", "rect": Rect2(30, 850, 150, 140)},
+	{"id": "potions", "label": "Зелья", "rect": Rect2(642, 842, 359, 156)},
+	{"id": "books", "label": "Книги и свитки", "rect": Rect2(819, 473, 178, 370)},
+]
+const MERCHANT_LINES := [
+	"Снаряжение дорожает с каждой новой стражей у ворот.",
+	"Зелья всегда пригодятся: герои тоже умеют получать раны.",
+	"Магические книги есть только у тех, кто действительно читает магию.",
+	"Не торопись: хорошая броня окупается после второй вылазки.",
+]
+const _BG_PATH := "res://assets/shop/shop_human.jpeg"
+const _DESIGN_SIZE := Vector2(1024, 1024)
+const _NPC_ORIGIN := Vector2(26, 231)
+const _NPC_CELL_SIZE := Vector2(95.5, 86.0)
+const _NPC_COLUMNS := 2
+const _NPC_ROWS := 7
+const _PLAYER_ORIGIN := Vector2(250, 578)
+const _PLAYER_CELL_SIZE := Vector2(90, 85.67)
+const _PLAYER_COLUMNS := 6
+const _PLAYER_ROWS := 3
+const _PLAYER_TAB_ORIGIN := Vector2(216, 899)
+const _PLAYER_TAB_CELL_SIZE := Vector2(100, 91)
+const _CLOSE_SIZE := Vector2(150, 42)
+const _CLOSE_POSITION := Vector2(742, 18)
 
 var player: Player
-var _mode := 0          # 0 покупка, 1 продажа
-var _shelf := 0
-var _grid: GridContainer
+var _panel_root: Control
+var _npc_scroll: ScrollContainer
+var _player_scroll: ScrollContainer
+var _npc_grid: GridContainer
+var _player_grid: GridContainer
+var _player_tabs: GridContainer
 var _gold_label: Label
-var _mode_hint: Label
+var _hint_label: Label
+var _merchant_label: Label
+var _merchant_button: Button
+var _close_button: Button
+var _category_buttons: Array[Button] = []
+var _category_group: ButtonGroup
+var _previous_focus: Control
+var _category_index := 0
 
-static var _all_cache: Array = []   # ItemDB.all() (кэш)
+static var _all_cache: Array = []
 
 func setup(p: Player) -> void:
 	player = p
 	layer = 10
 	if _all_cache.is_empty():
 		_all_cache = ItemDB.all()
+	_build_ui()
 
-	# Затемнение (блокирует клики ниже панели)
+func _ready() -> void:
+	_previous_focus = get_viewport().gui_get_focus_owner()
+	var viewport := get_viewport()
+	if not viewport.size_changed.is_connected(_update_layout):
+		viewport.size_changed.connect(_update_layout)
+	_update_layout()
+	_configure_category_focus()
+	_refresh()
+
+func _exit_tree() -> void:
+	if not is_inside_tree():
+		return
+	var viewport := get_viewport()
+	if viewport.size_changed.is_connected(_update_layout):
+		viewport.size_changed.disconnect(_update_layout)
+
+func _build_ui() -> void:
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.0, 0.0, 0.0, 0.58)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 
-	var panel := Panel.new()
-	panel.position = Vector2(220, 70)
-	panel.size = Vector2(840, 660)
-	add_child(panel)
+	_panel_root = Control.new()
+	_panel_root.name = "DesignRoot"
+	_panel_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_root.size = _DESIGN_SIZE
+	_panel_root.theme = _make_theme()
+	add_child(_panel_root)
+
+	var background := TextureRect.new()
+	background.name = "Background"
+	if ResourceLoader.exists(_BG_PATH):
+		background.texture = load(_BG_PATH)
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	background.position = Vector2.ZERO
+	background.size = _DESIGN_SIZE
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_root.add_child(background)
 
 	var title := Label.new()
-	title.text = "МАГАЗИН"
-	title.position = Vector2(20, 14)
-	title.size = Vector2(300, 32)
-	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
-	panel.add_child(title)
+	title.theme_type_variation = &"ShopTitle"
+	title.text = tr("МАГАЗИН")
+	title.position = Vector2(300, 18)
+	title.size = Vector2(250, 46)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_root.add_child(title)
 
 	_gold_label = Label.new()
-	_gold_label.position = Vector2(330, 20)
-	_gold_label.size = Vector2(220, 28)
-	_gold_label.add_theme_font_size_override("font_size", 18)
-	panel.add_child(_gold_label)
+	_gold_label.theme_type_variation = &"ShopGoldLabel"
+	_gold_label.position = Vector2(545, 24)
+	_gold_label.size = Vector2(180, 36)
+	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_gold_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_root.add_child(_gold_label)
 
-	_mode_hint = Label.new()
-	_mode_hint.position = Vector2(560, 20)
-	_mode_hint.size = Vector2(260, 28)
-	_mode_hint.add_theme_font_size_override("font_size", 15)
-	panel.add_child(_mode_hint)
+	_close_button = Button.new()
+	_close_button.name = "Close"
+	_close_button.text = tr("Закрыть")
+	_close_button.custom_minimum_size = _CLOSE_SIZE
+	_close_button.position = _CLOSE_POSITION
+	_close_button.size = _CLOSE_SIZE
+	_close_button.pressed.connect(close)
+	_panel_root.add_child(_close_button)
 
-	# Переключатели: Купить/Продать и полки
-	var buy_btn := Button.new()
-	buy_btn.text = "Купить"
-	buy_btn.toggle_mode = true
-	buy_btn.button_pressed = true
-	buy_btn.position = Vector2(20, 58)
-	buy_btn.size = Vector2(110, 34)
-	buy_btn.pressed.connect(func(): _set_mode(0))
-	panel.add_child(buy_btn)
-	var sell_btn := Button.new()
-	sell_btn.text = "Продать"
-	sell_btn.toggle_mode = true
-	sell_btn.position = Vector2(140, 58)
-	sell_btn.size = Vector2(110, 34)
-	sell_btn.pressed.connect(func(): _set_mode(1))
-	panel.add_child(sell_btn)
+	_build_category_buttons()
+	_build_shelves()
+	_build_player_tabs()
+	_build_merchant_panel()
 
-	for i in range(SHELVES.size()):
-		var b := Button.new()
-		b.text = SHELVES[i]
-		b.toggle_mode = true
-		b.button_pressed = (i == 0)
-		b.position = Vector2(300 + i * 130, 58)
-		b.size = Vector2(120, 34)
-		b.pressed.connect(func(idx=i): _set_shelf(idx))
-		panel.add_child(b)
-		_shelf_buttons[i] = b
+	_hint_label = Label.new()
+	_hint_label.name = "TradeHint"
+	_hint_label.theme_type_variation = &"ShopHintLabel"
+	_hint_label.position = Vector2(270, 544)
+	_hint_label.size = Vector2(500, 30)
+	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_root.add_child(_hint_label)
 
-	# Сетка предметов
-	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(20, 104)
-	scroll.size = Vector2(800, 500)
-	panel.add_child(scroll)
-	_grid = GridContainer.new()
-	_grid.columns = 6
-	_grid.add_theme_constant_override("h_separation", 6)
-	_grid.add_theme_constant_override("v_separation", 6)
-	scroll.add_child(_grid)
+func _build_category_buttons() -> void:
+	_category_group = ButtonGroup.new()
+	for index in range(CATEGORIES.size()):
+		var category: Dictionary = CATEGORIES[index]
+		var button := Button.new()
+		button.name = "Category%d" % index
+		button.text = str(category["label"])
+		button.tooltip_text = str(category["label"])
+		button.theme_type_variation = &"ShopCategoryButton"
+		button.toggle_mode = true
+		button.button_group = _category_group
+		button.button_pressed = index == _category_index
+		button.position = category["rect"].position
+		button.size = category["rect"].size
+		button.focus_mode = Control.FOCUS_ALL
+		button.pressed.connect(_set_category.bind(index))
+		_panel_root.add_child(button)
+		_category_buttons.append(button)
 
-	var close_btn := Button.new()
-	close_btn.text = "Закрыть"
-	close_btn.position = Vector2(690, 616)
-	close_btn.size = Vector2(130, 36)
-	close_btn.pressed.connect(close)
-	panel.add_child(close_btn)
+func _configure_category_focus() -> void:
+	for index in range(_category_buttons.size()):
+		var button := _category_buttons[index]
+		button.focus_previous = _category_buttons[maxi(index - 1, 0)].get_path()
+		button.focus_next = _category_buttons[mini(index + 1, _category_buttons.size() - 1)].get_path()
 
-	_refresh()
+func _build_shelves() -> void:
+	_npc_scroll = ScrollContainer.new()
+	_npc_scroll.name = "NpcShelfScroll"
+	_npc_scroll.position = _NPC_ORIGIN
+	_npc_scroll.size = Vector2(_NPC_CELL_SIZE.x * _NPC_COLUMNS, _NPC_CELL_SIZE.y * _NPC_ROWS)
+	_npc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_npc_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_npc_scroll.follow_focus = true
+	_npc_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel_root.add_child(_npc_scroll)
 
-var _shelf_buttons := {}
+	_npc_grid = GridContainer.new()
+	_npc_grid.name = "NpcShelf"
+	_npc_grid.columns = _NPC_COLUMNS
+	_npc_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_npc_grid.add_theme_constant_override("h_separation", 0)
+	_npc_grid.add_theme_constant_override("v_separation", 0)
+	_npc_scroll.add_child(_npc_grid)
 
-func _set_mode(m: int) -> void:
-	_mode = m
-	_refresh()
+	_player_scroll = ScrollContainer.new()
+	_player_scroll.name = "PlayerShelfScroll"
+	_player_scroll.position = _PLAYER_ORIGIN
+	_player_scroll.size = Vector2(_PLAYER_CELL_SIZE.x * _PLAYER_COLUMNS, _PLAYER_CELL_SIZE.y * _PLAYER_ROWS)
+	_player_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_player_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_player_scroll.follow_focus = true
+	_player_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel_root.add_child(_player_scroll)
 
-func _set_shelf(s: int) -> void:
-	_shelf = s
-	_refresh()
+	_player_grid = GridContainer.new()
+	_player_grid.name = "PlayerShelf"
+	_player_grid.columns = _PLAYER_COLUMNS
+	_player_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_player_grid.add_theme_constant_override("h_separation", 0)
+	_player_grid.add_theme_constant_override("v_separation", 0)
+	_player_scroll.add_child(_player_grid)
+
+func _build_player_tabs() -> void:
+	_player_tabs = GridContainer.new()
+	_player_tabs.name = "PlayerTab"
+	_player_tabs.columns = 4
+	_player_tabs.position = _PLAYER_TAB_ORIGIN
+	_player_tabs.size = Vector2(_PLAYER_TAB_CELL_SIZE.x * 4, _PLAYER_TAB_CELL_SIZE.y)
+	_player_tabs.add_theme_constant_override("h_separation", 0)
+	_player_tabs.add_theme_constant_override("v_separation", 0)
+	_panel_root.add_child(_player_tabs)
+	for index in range(4):
+		_player_tabs.add_child(_make_player_tab(index == 0))
+
+func _make_player_tab(active: bool) -> PanelContainer:
+	var tab := PanelContainer.new()
+	tab.theme_type_variation = &"ShopPlayerTab"
+	tab.custom_minimum_size = _PLAYER_TAB_CELL_SIZE
+	var margin := MarginContainer.new()
+	_set_margins(margin, 5, 4, 5, 4)
+	tab.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 1)
+	margin.add_child(content)
+	if active:
+		var portrait := TextureRect.new()
+		portrait.name = "HeroPortrait"
+		portrait.texture = _hero_portrait()
+		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		portrait.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.add_child(portrait)
+		var label := Label.new()
+		label.text = tr("Герой")
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.add_child(label)
+	else:
+		var empty := Label.new()
+		empty.theme_type_variation = &"ShopEmptyTabLabel"
+		empty.text = tr("Пусто")
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.add_child(empty)
+	return tab
+
+func _build_merchant_panel() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "MerchantPanel"
+	panel.theme_type_variation = &"ShopDialogPanel"
+	panel.position = Vector2(350, 486)
+	panel.size = Vector2(350, 78)
+	_panel_root.add_child(panel)
+	var margin := MarginContainer.new()
+	_set_margins(margin, 12, 8, 12, 8)
+	panel.add_child(margin)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	margin.add_child(row)
+	_merchant_label = Label.new()
+	_merchant_label.name = "MerchantText"
+	_merchant_label.text = tr("Торговец предлагает снаряжение и зелья.")
+	_merchant_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_merchant_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_merchant_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	row.add_child(_merchant_label)
+	_merchant_button = Button.new()
+	_merchant_button.name = "Talk"
+	_merchant_button.text = tr("Поговорить")
+	_merchant_button.custom_minimum_size = Vector2(150, 38)
+	_merchant_button.pressed.connect(_talk)
+	row.add_child(_merchant_button)
+
+func _update_layout() -> void:
+	if not is_instance_valid(_panel_root):
+		return
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var factor := minf(viewport_size.x / _DESIGN_SIZE.x, viewport_size.y / _DESIGN_SIZE.y)
+	_panel_root.scale = Vector2.ONE * factor
+	_panel_root.position = (viewport_size - _DESIGN_SIZE * factor) * 0.5
 
 func _refresh() -> void:
-	for c in _grid.get_children():
-		c.queue_free()
 	if not is_instance_valid(player):
 		return
-	_gold_label.text = "Золото: %d" % player.gold
-	_mode_hint.text = "Кликните, чтобы %s" % ("купить" if _mode == 0 else "продать")
-	for i in range(_shelf_buttons.size()):
-		_shelf_buttons[i].visible = (_mode == 0)
-		_shelf_buttons[i].button_pressed = (i == _shelf)
-	if _mode == 0:
-		_build_buy_shelf(_shelf)
+	_gold_label.text = tr("Золото: %d") % player.gold
+	_hint_label.text = tr("Сверху покупка · снизу продажа · заблокированное не хватает золота")
+	for index in range(_category_buttons.size()):
+		_category_buttons[index].button_pressed = index == _category_index
+	var npc_buttons := _build_buy_shelf(_category_index)
+	var player_buttons := _build_sell_list()
+	_configure_focus(npc_buttons, player_buttons)
+	if not npc_buttons.is_empty():
+		npc_buttons[0].call_deferred("grab_focus")
+	elif not player_buttons.is_empty():
+		player_buttons[0].call_deferred("grab_focus")
 	else:
-		_build_sell_list()
-	# Обновить подписи золота в слотах
-	_update_slot_gold()
+		_category_buttons[_category_index].call_deferred("grab_focus")
 
-## Полка покупки: предметы категории по возрастанию цены.
-## Полка «Свитки» (3): свитки — всем, книги магии — только магу.
-func _build_buy_shelf(kind: int) -> void:
-	var pool: Array = []
-	if kind == 3:
-		for it in _all_cache:
-			var q := str(it.get("quality", ""))
-			if q not in ["Scroll", "SuperScroll"]:
+func _set_category(index: int) -> void:
+	_category_index = clampi(index, 0, CATEGORIES.size() - 1)
+	_refresh()
+
+func _build_buy_shelf(category_index: int) -> Array[Button]:
+	_clear_grid(_npc_grid)
+	var pool := _category_items(category_index)
+	pool.sort_custom(func(a: Dictionary, b: Dictionary): return int(a.get("price", 0)) < int(b.get("price", 0)))
+	var buttons: Array[Button] = []
+	for item in pool:
+		var slot := _make_shop_slot(item, true, 1)
+		_npc_grid.add_child(slot)
+		var button := slot.find_child("Trade", true, false) as Button
+		if button != null:
+			button.disabled = player.gold < int(item.get("price", 0))
+			if not button.disabled:
+				buttons.append(button)
+	return buttons
+
+func _build_sell_list() -> Array[Button]:
+	_clear_grid(_player_grid)
+	var entries: Array[Dictionary] = []
+	if is_instance_valid(player):
+		var seen: Dictionary = {}
+		for key in player.inventory:
+			var item := ItemDB.find(str(key))
+			if item.is_empty():
 				continue
-			var price := int(it.get("price", 0))
-			if price <= 0 or price > 60000:
-				continue
-			pool.append(it)
-		if is_instance_valid(player) and player.has_mana:
-			for spell in SpellDB.catalog_spells():
-				pool.append(SpellDB.make_book_item(spell))
-	else:
-		for it in _all_cache:
-			var q := str(it.get("quality", ""))
-			if not ItemDB.is_equippable(it) and q != "Potion":
-				continue
-			var slot := ItemDB.slot_of(it)
-			match kind:
-				0:
-					if slot != "weapon":
-						continue
-				1:
-					if slot == "weapon" or q == "Potion":
-						continue
-				2:
-					if q != "Potion":
-						continue
-			var price := int(it.get("price", 0))
-			if price <= 0 or price > 60000:
-				continue   # без бесплатных и «непродаваемых»
-			pool.append(it)
-	pool.sort_custom(func(a, b): return int(a.get("price", 0)) < int(b.get("price", 0)))
-	var shown := mini(SHELF_MAX, pool.size())
-	for i in range(shown):
-		var it: Dictionary = pool[i]
-		_add_shop_slot(it, int(it.get("price", 0)), true)
+			var item_key := str(key)
+			seen[item_key] = int(seen.get(item_key, 0)) + 1
+		for item_key in seen:
+			entries.append({
+				"item": ItemDB.find(item_key),
+				"count": int(seen[item_key]),
+				"price": maxi(1, int(ItemDB.find(item_key).get("price", 0)) / 2),
+			})
+	entries.sort_custom(func(a: Dictionary, b: Dictionary): return int(a["price"]) < int(b["price"]))
+	var buttons: Array[Button] = []
+	for entry in entries:
+		var item: Dictionary = entry.get("item", {})
+		var slot := _make_shop_slot(item, false, int(entry.get("count", 1)))
+		_player_grid.add_child(slot)
+		var button := slot.find_child("Trade", true, false) as Button
+		if button != null:
+			buttons.append(button)
+	return buttons
 
-## Список продажи: владения героя.
-func _build_sell_list() -> void:
-	if player.inventory.is_empty():
-		var lab := Label.new()
-		lab.text = "Склад пуст — продавать нечего."
-		lab.add_theme_font_size_override("font_size", 16)
-		_grid.add_child(lab)
-		return
-	var seen := {}
-	for key in player.inventory:
-		var item := ItemDB.find(str(key))
-		if item.is_empty():
-			continue
-		var k := str(key)
-		seen[k] = seen.get(k, 0) + 1
-	for key in seen:
-		var item := ItemDB.find(str(key))
-		var price := maxi(1, int(item.get("price", 0)) / 2)
-		_add_shop_slot(item, price, false, int(seen[key]))
-
-## Слот: иконка предмета + кнопка действия (купить/продать).
-func _add_shop_slot(item: Dictionary, price: int, buying: bool, count: int = 1) -> void:
-	var cell := VBoxContainer.new()
-	cell.custom_minimum_size = Vector2(120, 92)
-	cell.add_theme_constant_override("separation", 2)
-
+func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContainer:
+	var slot := PanelContainer.new()
+	slot.theme_type_variation = &"ShopItemSlot"
+	slot.custom_minimum_size = _NPC_CELL_SIZE if buying else _PLAYER_CELL_SIZE
+	var margin := MarginContainer.new()
+	_set_margins(margin, 2, 2, 2, 2)
+	slot.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 1)
+	margin.add_child(content)
+	if item.is_empty():
+		return slot
+	var key := str(item.get("key", ""))
+	var name := str(item.get("name_ru", key))
+	var price := int(item.get("price", 0))
 	var icon := TextureRect.new()
-	icon.custom_minimum_size = Vector2(56, 56)
+	var icon_path := str(item.get("icon", ""))
+	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
+		icon.texture = load(icon_path)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture = load(str(item.get("icon", "")))
+	icon.custom_minimum_size = Vector2(0, 52 if buying else 42)
+	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cell.add_child(icon)
+	content.add_child(icon)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 1)
+	content.add_child(actions)
+	if not buying and count > 1:
+		var count_label := Label.new()
+		count_label.theme_type_variation = &"ShopCountLabel"
+		count_label.text = "×%d" % count
+		count_label.custom_minimum_size = Vector2(20, 22)
+		count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		actions.add_child(count_label)
+	var button := Button.new()
+	button.name = "Trade"
+	button.text = tr("Купить %d") % price if buying else tr("%d з") % (maxi(1, price / 2))
+	button.tooltip_text = "%s — %s" % [name, tr("продать за %d з") % (maxi(1, price / 2)) if not buying else tr("купить за %d з") % price]
+	button.custom_minimum_size = Vector2(0, 22)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_ALL
+	button.pressed.connect(_buy_item.bind(key, price) if buying else _sell_item.bind(key, maxi(1, price / 2)))
+	actions.add_child(button)
+	return slot
 
-	var btn := Button.new()
-	btn.text = "%s%d" % ["Купить" if buying else "Продать", price]
-	if count > 1:
-		btn.text += " ×%d" % count
-	btn.tooltip_text = str(item.get("name_ru", ""))
-	var key := str(item.get("key", ""))
-	btn.pressed.connect(func():
-		if buying:
-			_buy_item(key, price)
-		else:
-			_sell_item(key, price))
-	cell.add_child(btn)
-	_grid.add_child(cell)
+func _category_items(category_index: int) -> Array[Dictionary]:
+	var category := str(CATEGORIES[category_index]["id"])
+	var pool: Array[Dictionary] = []
+	for raw in _all_cache:
+		var item: Dictionary = raw
+		var quality := str(item.get("quality", ""))
+		var price := int(item.get("price", 0))
+		if price <= 0 or price > 60000:
+			continue
+		var matches := false
+		match category:
+			"armor":
+				matches = ItemDB.is_equippable(item) and ItemDB.slot_of(item) != "weapon" and ItemDB.armor_kind(item) == "heavy"
+			"robe":
+				matches = ItemDB.is_equippable(item) and ItemDB.slot_of(item) != "weapon" and ItemDB.armor_kind(item) == "light"
+			"weapon":
+				matches = ItemDB.slot_of(item) == "weapon"
+			"potions":
+				matches = quality == "Potion"
+			"books":
+				matches = quality in ["Scroll", "SuperScroll"]
+		if matches:
+			pool.append(item)
+	if category == "books" and is_instance_valid(player) and player.has_mana:
+		for spell in SpellDB.catalog_spells():
+			pool.append(SpellDB.make_book_item(spell))
+	return pool
+
+func _configure_focus(npc_buttons: Array[Button], player_buttons: Array[Button]) -> void:
+	_wire_grid_focus(npc_buttons, _NPC_COLUMNS)
+	_wire_grid_focus(player_buttons, _PLAYER_COLUMNS)
+	var first_target: Control = _category_buttons[_category_index]
+	if not npc_buttons.is_empty():
+		first_target = npc_buttons[0]
+	elif not player_buttons.is_empty():
+		first_target = player_buttons[0]
+	_category_buttons[_category_index].focus_next = first_target.get_path()
+	first_target.focus_previous = _category_buttons[_category_index].get_path()
+	if not npc_buttons.is_empty() and not player_buttons.is_empty():
+		npc_buttons[-1].focus_next = player_buttons[0].get_path()
+		player_buttons[0].focus_previous = npc_buttons[-1].get_path()
+	var last_action: Control = npc_buttons[-1] if not npc_buttons.is_empty() else (player_buttons[-1] if not player_buttons.is_empty() else first_target)
+	last_action.focus_next = _merchant_button.get_path()
+	_merchant_button.focus_previous = last_action.get_path()
+	_merchant_button.focus_next = _close_button.get_path()
+	_close_button.focus_previous = _merchant_button.get_path()
+	_close_button.focus_next = _category_buttons[0].get_path()
+
+func _wire_grid_focus(buttons: Array[Button], columns: int) -> void:
+	for index in range(buttons.size()):
+		var row := index / columns
+		var column := index % columns
+		var left := buttons[row * columns + maxi(column - 1, 0)]
+		var right := buttons[mini(row * columns + mini(column + 1, columns - 1), buttons.size() - 1)]
+		buttons[index].focus_neighbor_left = left.get_path()
+		buttons[index].focus_neighbor_right = right.get_path()
+		buttons[index].focus_neighbor_top = buttons[maxi(index - columns, 0)].get_path()
+		buttons[index].focus_neighbor_bottom = buttons[mini(index + columns, buttons.size() - 1)].get_path()
+		buttons[index].focus_previous = buttons[maxi(index - 1, 0)].get_path()
+		buttons[index].focus_next = buttons[mini(index + 1, buttons.size() - 1)].get_path()
+
+func _hero_portrait() -> Texture2D:
+	var equipment_path := "res://assets/equipment/%s/1.png" % Game.hero_character_id
+	if ResourceLoader.exists(equipment_path):
+		return load(equipment_path) as Texture2D
+	if is_instance_valid(player):
+		var preview := UnitDB.preview_frame(player.anim_set_name())
+		if preview != null:
+			return preview
+	if ResourceLoader.exists("res://assets/sprites/hero.png"):
+		return load("res://assets/sprites/hero.png") as Texture2D
+	return null
+
+func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
+	container.add_theme_constant_override("margin_left", left)
+	container.add_theme_constant_override("margin_top", top)
+	container.add_theme_constant_override("margin_right", right)
+	container.add_theme_constant_override("margin_bottom", bottom)
+
+func _make_theme() -> Theme:
+	var theme := Theme.new()
+	theme.default_font_size = 14
+	theme.set_color("font_color", "Label", Color(0.96, 0.90, 0.76))
+	theme.set_color("font_hover_color", "Button", Color(1.0, 0.92, 0.62))
+	theme.set_color("font_pressed_color", "Button", Color(1.0, 1.0, 0.90))
+	theme.set_color("font_focus_color", "Button", Color(1.0, 0.90, 0.48))
+	theme.set_color("font_disabled_color", "Button", Color(0.58, 0.53, 0.46))
+	theme.set_stylebox("normal", "Button", _button_style(Color(0.23, 0.13, 0.07, 0.96), Color(0.70, 0.40, 0.14)))
+	theme.set_stylebox("hover", "Button", _button_style(Color(0.36, 0.19, 0.08, 0.98), Color(1.0, 0.74, 0.26)))
+	theme.set_stylebox("pressed", "Button", _button_style(Color(0.15, 0.08, 0.04, 1.0), Color(0.66, 0.36, 0.12)))
+	theme.set_stylebox("disabled", "Button", _button_style(Color(0.15, 0.13, 0.12, 0.90), Color(0.34, 0.29, 0.25)))
+	theme.set_stylebox("focus", "Button", _button_style(Color(0.23, 0.13, 0.07, 0.0), Color(1.0, 0.78, 0.20), 3))
+	theme.set_type_variation(&"ShopTitle", &"Label")
+	theme.set_color("font_color", &"ShopTitle", Color(1.0, 0.78, 0.36))
+	theme.set_font_size("font_size", &"ShopTitle", 28)
+	theme.set_type_variation(&"ShopGoldLabel", &"Label")
+	theme.set_color("font_color", &"ShopGoldLabel", Color(1.0, 0.88, 0.42))
+	theme.set_font_size("font_size", &"ShopGoldLabel", 19)
+	theme.set_type_variation(&"ShopHintLabel", &"Label")
+	theme.set_color("font_color", &"ShopHintLabel", Color(0.90, 0.84, 0.68))
+	theme.set_font_size("font_size", &"ShopHintLabel", 14)
+	theme.set_type_variation(&"ShopCategoryButton", &"Button")
+	theme.set_color("font_color", &"ShopCategoryButton", Color(1.0, 0.82, 0.48))
+	theme.set_font_size("font_size", &"ShopCategoryButton", 16)
+	theme.set_stylebox("normal", &"ShopCategoryButton", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0))
+	theme.set_stylebox("hover", &"ShopCategoryButton", _button_style(Color(0.12, 0.06, 0.02, 0.18), Color(1.0, 0.78, 0.26, 0.60)))
+	theme.set_stylebox("pressed", &"ShopCategoryButton", _button_style(Color(0.14, 0.07, 0.02, 0.30), Color(0.96, 0.66, 0.20, 0.95)))
+	theme.set_stylebox("focus", &"ShopCategoryButton", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(1.0, 0.82, 0.28, 0.95), 3))
+	theme.set_type_variation(&"ShopItemSlot", &"PanelContainer")
+	theme.set_stylebox("panel", &"ShopItemSlot", _panel_style(Color(0.08, 0.07, 0.08, 0.80), Color(0.58, 0.36, 0.16, 0.96)))
+	theme.set_type_variation(&"ShopPlayerTab", &"PanelContainer")
+	theme.set_stylebox("panel", &"ShopPlayerTab", _panel_style(Color(0.09, 0.10, 0.15, 0.86), Color(0.48, 0.42, 0.24, 0.96)))
+	theme.set_type_variation(&"ShopEmptyTabLabel", &"Label")
+	theme.set_color("font_color", &"ShopEmptyTabLabel", Color(0.54, 0.50, 0.43))
+	theme.set_font_size("font_size", &"ShopEmptyTabLabel", 15)
+	theme.set_type_variation(&"ShopCountLabel", &"Label")
+	theme.set_color("font_color", &"ShopCountLabel", Color(1.0, 0.88, 0.58))
+	theme.set_font_size("font_size", &"ShopCountLabel", 12)
+	theme.set_type_variation(&"ShopDialogPanel", &"PanelContainer")
+	theme.set_stylebox("panel", &"ShopDialogPanel", _panel_style(Color(0.10, 0.08, 0.07, 0.88), Color(0.72, 0.46, 0.18, 0.96)))
+	theme.set_stylebox("scroll", &"VScrollBar", _panel_style(Color(0.04, 0.03, 0.02, 0.38), Color(0.0, 0.0, 0.0, 0.0)))
+	theme.set_stylebox("scroll_focus", &"VScrollBar", _panel_style(Color(0.04, 0.03, 0.02, 0.38), Color(0.0, 0.0, 0.0, 0.0)))
+	theme.set_stylebox("grabber", &"VScrollBar", _panel_style(Color(0.62, 0.38, 0.16, 0.72), Color(0.94, 0.66, 0.24, 0.90)))
+	theme.set_stylebox("grabber_highlight", &"VScrollBar", _panel_style(Color(0.82, 0.52, 0.20, 0.88), Color(1.0, 0.80, 0.34, 1.0)))
+	theme.set_stylebox("grabber_pressed", &"VScrollBar", _panel_style(Color(0.96, 0.64, 0.22, 0.96), Color(1.0, 0.88, 0.48, 1.0)))
+	return theme
+
+func _button_style(background: Color, border: Color, width: int = 2) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(width)
+	style.set_corner_radius_all(5)
+	style.set_content_margin_all(4)
+	return style
+
+func _panel_style(background: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(4)
+	return style
+
+func _clear_grid(grid: GridContainer) -> void:
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
 
 func _buy_item(key: String, price: int) -> void:
-	if not is_instance_valid(player):
-		return
-	if player.gold < price:
-		print("Не хватает золота!")
+	if not is_instance_valid(player) or player.gold < price:
 		return
 	player.gold -= price
 	player.add_item(key)
@@ -236,9 +555,7 @@ func _buy_item(key: String, price: int) -> void:
 	print("Куплено: " + key)
 
 func _sell_item(key: String, price: int) -> void:
-	if not is_instance_valid(player):
-		return
-	if not player.remove_item(key):
+	if not is_instance_valid(player) or not player.remove_item(key):
 		return
 	player.gold += price
 	SoundDB.play(9)
@@ -246,14 +563,19 @@ func _sell_item(key: String, price: int) -> void:
 	_refresh()
 	print("Продано: " + key)
 
-func _update_slot_gold() -> void:
-	pass
+func _talk() -> void:
+	if not is_instance_valid(_merchant_label):
+		return
+	var lines: Array = MERCHANT_LINES.duplicate()
+	_merchant_label.text = tr("Торговец: «%s»") % str(lines[randi() % lines.size()])
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		close()
 		get_viewport().set_input_as_handled()
 
 func close() -> void:
+	if _previous_focus != null and is_instance_valid(_previous_focus):
+		_previous_focus.call_deferred("grab_focus")
 	closed.emit()
 	queue_free()
