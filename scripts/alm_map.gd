@@ -20,6 +20,7 @@ var _heights: PackedByteArray   # int8 — рельеф (0..127)
 var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объект)
 var _structures: Array = []     # секция id=4 — здания (или sidecar .structures.json)
 var map_units: Array = []       # секция id=6 — юниты (или sidecar .npcs.json)
+var _herbs: Array = []
 var _nowalk: Dictionary = {}    # клетки «Нельзя пройти» (ручная разметка в редакторе)
 var _allowwalk: Dictionary = {} # клетки «Разрешить проход» — пускать сквозь препятствие
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
@@ -30,6 +31,7 @@ var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
 var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
 var obstacles_root: Node2D      # слой препятствий (y-sort)
 var buildings: Node2D           # слой зданий (y-sort)
+var herbs_root: Node2D
 var world_sort: Node2D          # общий y-sort: препятствия + здания (крона перекрывает фонтан)
 var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
 var _portal_cells: Array = []   # координаты порталов (Vector2i)
@@ -84,6 +86,7 @@ func _ready() -> void:
 	_build_relief_mesh()
 	_build_obstacles()
 	_build_structures()
+	_build_herbs()
 	_load_portal_spawn()
 	print("AlmMap: %s %dx%d клеток, структур %d, солнце %s°" % [alm_path.get_file(), map_width, map_height, _structures.size(), str(rad_to_deg(solar_angle))])
 
@@ -186,6 +189,39 @@ func _build_structures() -> void:
 				"ax": int(x), "ay": int(y),
 			})
 	print("AlmMap: зданий создано %d, пропущено %d" % [placed, missing])
+
+func _build_herbs() -> void:
+	if _herbs.is_empty():
+		return
+	if herbs_root == null:
+		herbs_root = Node2D.new()
+		herbs_root.name = "Herbs"
+		herbs_root.y_sort_enabled = true
+		_ensure_world_sort().add_child(herbs_root)
+	var placed := 0
+	for record in _herbs:
+		var item_key := str(record.get("item", ""))
+		var icon_path := str(record.get("icon", ""))
+		var grid_cell := Vector2i(int(record.get("x", -1)), int(record.get("y", -1)))
+		if ItemDB.find(item_key).is_empty() or not ResourceLoader.exists(icon_path):
+			continue
+		if grid_cell.x < 0 or grid_cell.y < 0 or grid_cell.x >= map_width or grid_cell.y >= map_height:
+			continue
+		var herb := HerbNode.new()
+		herb.setup(item_key, icon_path, grid_cell, relief_at_tile(grid_cell.x, grid_cell.y))
+		herbs_root.add_child(herb)
+		placed += 1
+	print("AlmMap: трав создано %d/%d" % [placed, _herbs.size()])
+
+func herb_at_position(world_position: Vector2) -> HerbNode:
+	for node in get_tree().get_nodes_in_group("herb_resource"):
+		var herb := node as HerbNode
+		if herb != null and herb.contains_point(world_position):
+			return herb
+	return null
+
+func get_herbs() -> Array:
+	return _herbs
 
 ## Собрать Node2D-здание: сетка house-NNN + тень houseb + анимация фаз.
 func _make_structure(job: Dictionary) -> Node2D:
@@ -530,6 +566,9 @@ func _load_sidecars() -> void:
 	var u: Variant = _read_sidecar(base + ".npcs.json")
 	if u != null and u is Array:
 		map_units = u
+	var h: Variant = _read_sidecar(base + ".herbs.json")
+	if h != null and h is Array:
+		_herbs = h
 	# Ручная разметка «Нельзя пройти» — редактор пишет её рядом с .alm
 	var n: Variant = _read_sidecar(base + ".nowalk.json")
 	_nowalk.clear()
@@ -560,6 +599,8 @@ func _read_sidecar(path: String) -> Variant:
 			return parsed["structures"]
 		if parsed.has("npcs") and parsed["npcs"] is Array:
 			return parsed["npcs"]
+		if parsed.has("herbs") and parsed["herbs"] is Array:
+			return parsed["herbs"]
 		if parsed.has("nowalk") and parsed["nowalk"] is Array:
 			return parsed["nowalk"]
 		if parsed.has("allowwalk") and parsed["allowwalk"] is Array:

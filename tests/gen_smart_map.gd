@@ -27,6 +27,7 @@ var _mountain_thr: float = 0.0
 var _reserved := {}           # Vector2i -> true (здания, спавн, портал)
 var _structures_out: Array = []   # {x, y, type_id}
 var _npcs_out: Array = []         # {x, y, set, role, patrol, post, hp_max, damage}
+var _herbs_out: Array = []        # {x, y, item, icon}
 var _obj_noise: FastNoiseLite
 
 # Transition DB
@@ -136,6 +137,7 @@ func _generate() -> void:
 	_reserved.clear()
 	_structures_out.clear()
 	_npcs_out.clear()
+	_herbs_out.clear()
 
 	# 1. Почва Voronoi (база, без гор/воды/дороги)
 	_place_terrain(n)
@@ -160,16 +162,19 @@ func _generate() -> void:
 	# 7. Деревья/объекты (заполняют _obstacles, обходя города/дороги/спавн)
 	_place_objects(rng)
 
-	# 8. Серые: кластеры у дорог и в лесу (только на не-занятых клетках)
+	# 8. Травы: отдельные collectible-узлы, не препятствия
+	_place_herbs(rng_from_seed(8642))
+
+	# 9. Серые: кластеры у дорог и в лесу (только на не-занятых клетках)
 	_place_greys(rng)
 
-	# 9. Tiles with transitions from DB
+	# 10. Tiles with transitions from DB
 	for y in range(H):
 		for x in range(W):
 			var i: int = y * W + x
 			_tiles[i] = _pick_tile(_terrain[i], x, y)
 
-	# 10. Heights
+	# 11. Heights
 	for y in range(H):
 		for x in range(W):
 			var i: int = y * W + x
@@ -228,6 +233,19 @@ const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]
 const TREE_SOIL := [41, 43, 53, 55, 47, 49, 51]
 const TREE_SAND := [128, 132, 134, 98, 99]
 const TREE_MUD := [7, 49, 51]
+const HERB_ITEMS := [
+	{"item": "Herb Green Leaf", "icon": "res://assets/professions/herbalism/green_leaf.png"},
+	{"item": "Herb White Flower", "icon": "res://assets/professions/herbalism/white_flower.png"},
+	{"item": "Herb Red Berry", "icon": "res://assets/professions/herbalism/red_berry.png"},
+	{"item": "Herb Tall Grass", "icon": "res://assets/professions/herbalism/tall_grass.png"},
+	{"item": "Herb Lavender", "icon": "res://assets/professions/herbalism/lavender.png"},
+	{"item": "Herb Mint", "icon": "res://assets/professions/herbalism/mint.png"},
+	{"item": "Herb Dandelion", "icon": "res://assets/professions/herbalism/dandelion.png"},
+	{"item": "Herb Broad Leaf", "icon": "res://assets/professions/herbalism/broad_leaf.png"},
+]
+const HERB_TARGET_COUNTS := {"start": 20, "mid": 26, "hard": 30, "faction": 28}
+const HERB_REGION_GRID := 4
+const HERB_MIN_DISTANCE := 6
 
 var _spawn_pos: Vector2i = Vector2i(-1, -1)
 var _portal_pos: Vector2i = Vector2i(-1, -1)
@@ -585,7 +603,69 @@ func _tree_id(rng: RandomNumberGenerator, t: int) -> int:
 		_: pool = TREE_GRASS
 	return int(_pick(rng, pool))
 
-## Этап 8: Серые — кластеры у дорог (сбоку) и в лесных массивах. Только на
+func _place_herbs(rng: RandomNumberGenerator) -> void:
+	var target_count: int = int(HERB_TARGET_COUNTS.get(ZONE, 26))
+	var herb_index := rng.randi() % HERB_ITEMS.size()
+	var regions_filled := 0
+	var region_width := W / HERB_REGION_GRID
+	var region_height := H / HERB_REGION_GRID
+	for region_y in range(HERB_REGION_GRID):
+		for region_x in range(HERB_REGION_GRID):
+			var min_x := region_x * region_width + 2
+			var max_x := mini((region_x + 1) * region_width - 3, W - 3)
+			var min_y := region_y * region_height + 2
+			var max_y := mini((region_y + 1) * region_height - 3, H - 3)
+			for attempt in range(80):
+				var cell := Vector2i(rng.randi_range(min_x, max_x), rng.randi_range(min_y, max_y))
+				if not _herb_cell_ok(cell) or not _herb_spacing_ok(cell):
+					continue
+				herb_index = _append_herb(cell, herb_index)
+				regions_filled += 1
+				break
+	var tries := 0
+	while _herbs_out.size() < target_count and tries < 1200:
+		tries += 1
+		var cell := Vector2i(rng.randi_range(2, W - 3), rng.randi_range(2, H - 3))
+		if not _herb_cell_ok(cell) or not _herb_spacing_ok(cell):
+			continue
+		herb_index = _append_herb(cell, herb_index)
+	print("HERBS: %d/%d regions=%d/%d min_distance=%d" % [
+		_herbs_out.size(), target_count, regions_filled, HERB_REGION_GRID * HERB_REGION_GRID, HERB_MIN_DISTANCE])
+
+func _append_herb(cell: Vector2i, herb_index: int) -> int:
+	var herb: Dictionary = HERB_ITEMS[herb_index % HERB_ITEMS.size()]
+	_herbs_out.append({
+		"x": cell.x, "y": cell.y,
+		"item": str(herb["item"]), "icon": str(herb["icon"]),
+	})
+	return herb_index + 1
+
+func _herb_spacing_ok(cell: Vector2i) -> bool:
+	for record in _herbs_out:
+		var dx := absi(cell.x - int(record.get("x", -1)))
+		var dy := absi(cell.y - int(record.get("y", -1)))
+		if dx < HERB_MIN_DISTANCE and dy < HERB_MIN_DISTANCE:
+			return false
+	return true
+
+func _herb_cell_ok(cell: Vector2i) -> bool:
+	if cell.x < 2 or cell.y < 2 or cell.x >= W - 2 or cell.y >= H - 2:
+		return false
+	var terrain := _terrain[cell.y * W + cell.x]
+	if terrain != 0 and terrain != 4:
+		return false
+	if _obstacles[cell.y * W + cell.x] != 0:
+		return false
+	if _reserved.has(cell) or _near_road(cell) or _near_city(cell, 6):
+		return false
+	if _near_point(cell, _spawn_pos, 8) or _near_point(cell, _portal_pos, 8):
+		return false
+	for record in _herbs_out:
+		if int(record.get("x", -1)) == cell.x and int(record.get("y", -1)) == cell.y:
+			return false
+	return true
+
+## Этап 9: Серые — кластеры у дорог (сбоку) и в лесных массивах. Только на
 ## свободных клетках, вне городов и не ближе 20 клеток к спавну.
 func _place_greys(rng: RandomNumberGenerator) -> void:
 	var cfg: Dictionary = GRAY_ZONE.get(ZONE, GRAY_ZONE["mid"])
@@ -1277,8 +1357,8 @@ func _save() -> void:
 				"guard": guards += 1
 				"citizen": citizens += 1
 				_: greys += 1
-		print("Спавн: зданий=%d НПЦ=%d (стражи=%d жители=%d серые=%d)" % [
-			_structures_out.size(), _npcs_out.size(), guards, citizens, greys])
+		print("Спавн: зданий=%d НПЦ=%d (стражи=%d жители=%d серые=%d) трав=%d" % [
+			_structures_out.size(), _npcs_out.size(), guards, citizens, greys, _herbs_out.size()])
 	else:
 		print("ERROR load_map")
 	print("Сохранено: " + path)
@@ -1293,6 +1373,10 @@ func _save_sidecars() -> void:
 	if n:
 		n.store_string(JSON.stringify({"npcs": _npcs_out}))
 		n.close()
+	var h := FileAccess.open(OUT_DIR + "gen_smart_01.herbs.json", FileAccess.WRITE)
+	if h:
+		h.store_string(JSON.stringify({"herbs": _herbs_out}))
+		h.close()
 
 func _road_stats(road_cells: int) -> void:
 	# Компоненты связности дороги (4-соседи)

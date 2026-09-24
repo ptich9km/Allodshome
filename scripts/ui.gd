@@ -483,6 +483,12 @@ func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D, count: int = 0) -
 	slot.custom_minimum_size = Vector2(68, 68)
 	slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	slot.stretch_mode = TextureRect.STRETCH_SCALE
+	var item_name := str(item.get("name_ru", item.get("key", "Предмет")))
+	if str(item.get("quality", "")) == "Herb":
+		slot.tooltip_text = "%s\nИнгредиент для травничества" % item_name
+	else:
+		slot.tooltip_text = "%s\nТип: %s · Вес: %.1f · Цена: %d" % [
+			item_name, str(item.get("type", "—")), float(item.get("weight", 0.0)), int(item.get("price", 0))]
 	if slot_bg:
 		slot.texture = slot_bg
 	else:
@@ -523,6 +529,9 @@ func _on_item_clicked(item: Dictionary):
 		return
 	var quality := str(item.get("quality", ""))
 	var item_key := str(item.get("key", ""))
+	if quality == "Herb":
+		print("Трава: %s — ингредиент для будущих рецептов." % str(item.get("name_ru", item_key)))
+		return
 
 	# Магические предметы: книга (маг) или свиток (любой). Учатся/читаются
 	# ДВОЙНЫМ кликом по ячейке склада; предмет при этом расходуется.

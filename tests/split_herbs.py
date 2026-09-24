@@ -1,66 +1,74 @@
-#!/usr/bin/env python3
-"""Split herb sheet into 8 individual 32x32 icons for herbalism profession."""
-
+from collections import deque
+from pathlib import Path
 from PIL import Image
-import os
 
-SRC = "/media/alexey/EEF4D0F9F4D0C4CD/Work/Allodshome/import/95462815-02f6-4e89-b114-7c109fe5e75c.png"
-DST = "/media/alexey/EEF4D0F9F4D0C4CD/Work/Allodshome/assets/professions/herbalism"
-
-# 8 herb names (4 columns × 2 rows)
+ROOT = Path(__file__).resolve().parents[1]
+DST = ROOT / "assets" / "professions" / "herbalism"
 HERBS = [
-    "green_leaf",      # row 0, col 0 - young green plant
-    "white_flower",    # row 0, col 1 - white daisy
-    "red_berry",       # row 0, col 2 - red berries
-    "tall_grass",      # row 0, col 3 - tall grass
-    "lavender",        # row 1, col 0 - purple lavender
-    "mint",            # row 1, col 1 - mint leaves
-    "dandelion",       # row 1, col 2 - yellow dandelion
-    "broad_leaf",      # row 1, col 3 - broad leaves
+    "green_leaf",
+    "white_flower",
+    "red_berry",
+    "tall_grass",
+    "lavender",
+    "mint",
+    "dandelion",
+    "broad_leaf",
 ]
 
-def main():
-    img = Image.open(SRC).convert("RGBA")
-    w, h = img.size
-    print(f"Source: {w}×{h}")
 
-    os.makedirs(DST, exist_ok=True)
+def background_candidate(r: int, g: int, b: int, a: int) -> bool:
+    if a == 0:
+        return True
+    high = max(r, g, b)
+    low = min(r, g, b)
+    chroma = high - low
+    return (high >= 175 and chroma <= 28) or (high <= 72 and chroma <= 20)
 
-    # Grid: 4 columns × 2 rows
-    cols, rows = 4, 2
-    cell_w = w // cols
-    cell_h = h // rows
 
-    for idx, name in enumerate(HERBS):
-        row = idx // cols
-        col = idx % cols
+def clean_icon(image: Image.Image) -> tuple[Image.Image, int]:
+    image = image.convert("RGBA")
+    width, height = image.size
+    pixels = image.load()
+    visited = [[False] * width for _ in range(height)]
+    queue: deque[tuple[int, int]] = deque()
 
-        # Crop cell
-        left = col * cell_w
-        top = row * cell_h
-        right = left + cell_w
-        bottom = top + cell_h
-        cell = img.crop((left, top, right, bottom))
+    def add(x: int, y: int) -> None:
+        if 0 <= x < width and 0 <= y < height and not visited[y][x]:
+            r, g, b, a = pixels[x, y]
+            if background_candidate(r, g, b, a):
+                visited[y][x] = True
+                queue.append((x, y))
 
-        # Remove white background (make it transparent)
-        pixels = cell.load()
-        cw, ch = cell.size
-        for y in range(ch):
-            for x in range(cw):
-                r, g, b, a = pixels[x, y]
-                # White/near-white background → transparent
-                if r > 240 and g > 240 and b > 240:
-                    pixels[x, y] = (r, g, b, 0)
+    for x in range(width):
+        add(x, 0)
+        add(x, height - 1)
+    for y in range(height):
+        add(0, y)
+        add(width - 1, y)
 
-        # Resize to 32x32
-        cell_resized = cell.resize((32, 32), Image.LANCZOS)
+    removed = 0
+    while queue:
+        x, y = queue.popleft()
+        r, g, b, _ = pixels[x, y]
+        pixels[x, y] = (r, g, b, 0)
+        removed += 1
+        add(x - 1, y)
+        add(x + 1, y)
+        add(x, y - 1)
+        add(x, y + 1)
 
-        # Save
-        path = f"{DST}/{name}.png"
-        cell_resized.save(path)
-        print(f"  {name}.png (row={row}, col={col})")
+    return image, removed
 
-    print(f"\nDone! {len(HERBS)} herb icons saved to {DST}")
+
+def main() -> None:
+    for name in HERBS:
+        path = DST / f"{name}.png"
+        image, removed = clean_icon(Image.open(path))
+        image.save(path, optimize=True)
+        alpha = image.getchannel("A")
+        transparent = alpha.histogram()[0]
+        print(f"{path.name}: removed={removed}, transparent={transparent}/{image.width * image.height}")
+
 
 if __name__ == "__main__":
     main()

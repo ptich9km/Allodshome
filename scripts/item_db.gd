@@ -96,7 +96,7 @@ static func armor_kind(item: Dictionary) -> String:
 ## Экипируемое ли (не книги/свитки/зелья/квест).
 static func is_equippable(item: Dictionary) -> bool:
 	var q := str(item.get("quality", ""))
-	return not (q in ["Book", "Potion", "Scroll", "SuperScroll", "Quest"])
+	return not (q in ["Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb"])
 
 ## Предметы для инвентаря: все экипируемые в порядке базы.
 static func equippable_items() -> Array:

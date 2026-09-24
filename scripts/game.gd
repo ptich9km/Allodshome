@@ -120,6 +120,7 @@ static func tick_shields(delta: float) -> void:
 var _select_ring: SelectRing = null       # подсветка цели (ховер/атака)
 var _pending_building := ""               # здание, к которому герой подходит («вход»)
 var _pending_s: Dictionary = {}           # структура-цель ожидающего входа
+var _pending_herb: HerbNode = null
 
 # --- Выбор героя на старте (сцена character_select) ---
 static var hero_class: String = "warrior"   # warrior | mage
@@ -377,6 +378,7 @@ func handle_click(world_position: Vector2):
 	if is_instance_valid(player) and player.state in ["dead", "decay"]:
 		return
 	print("Клик в: ", world_position)
+	_pending_herb = null
 
 	# Клик по функциональному зданию: магазин / таверна / школа (подход к двери)
 	var cell := Vector2i(int(world_position.x) / 32, int(world_position.y) / 32)
@@ -387,6 +389,11 @@ func handle_click(world_position: Vector2):
 			if kind != "":
 				_building_click(kind, s)
 				return
+	if alm_map != null and alm_map.has_method("herb_at_position"):
+		var herb := alm_map.call("herb_at_position", world_position) as HerbNode
+		if herb != null:
+			_herb_click(herb)
+			return
 
 	var enemy = get_enemy_at_position(world_position)
 	if enemy:
@@ -437,6 +444,40 @@ func _building_click(kind: String, s: Dictionary) -> void:
 	player.attack_target = null
 	if alm_map != null and alm_map.has_method("find_path"):
 		player.begin_path(alm_map.find_path(player.global_position, door))
+
+func _herb_click(herb: HerbNode) -> void:
+	if not is_instance_valid(herb) or not herb.is_available():
+		return
+	_pending_building = ""
+	player.attack_target = null
+	if player.global_position.distance_to(herb.global_position) <= 52.0:
+		_harvest_herb(herb)
+		return
+	_pending_herb = herb
+	player_target = herb.global_position
+	player.state = "move"
+	if alm_map != null and alm_map.has_method("find_path"):
+		player.begin_path(alm_map.find_path(player.global_position, herb.global_position))
+
+func _process_pending_herb() -> void:
+	if _pending_herb == null:
+		return
+	if not is_instance_valid(_pending_herb) or not _pending_herb.is_available():
+		_pending_herb = null
+		return
+	if player.global_position.distance_to(_pending_herb.global_position) <= 52.0:
+		var herb := _pending_herb
+		_pending_herb = null
+		_harvest_herb(herb)
+
+func _harvest_herb(herb: HerbNode) -> void:
+	if not is_instance_valid(herb) or not herb.harvest():
+		return
+	player.add_item(herb.item_key)
+	if is_instance_valid(ui):
+		ui.refresh_inventory()
+	SoundDB.play(1)
+	print("Собрана трава: %s" % herb.item_key)
 
 ## Точка входа (дверь): проходимая клетка под южным краем корпуса здания.
 func _door_point(s: Dictionary) -> Vector2:
@@ -691,6 +732,7 @@ func _process(delta):
 	_process_action_mode()
 	_update_target_ring()
 	_process_pending_building()
+	_process_pending_herb()
 	Game.tick_shields(delta)
 	_check_portal()
 
