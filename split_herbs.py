@@ -20,7 +20,7 @@ HERBS = [
 ]
 
 def main():
-    img = Image.open(SRC)
+    img = Image.open(SRC).convert("RGBA")
     w, h = img.size
     print(f"Source: {w}×{h}")
 
@@ -41,6 +41,16 @@ def main():
         right = left + cell_w
         bottom = top + cell_h
         cell = img.crop((left, top, right, bottom))
+
+        # Remove white background (make it transparent)
+        pixels = cell.load()
+        cw, ch = cell.size
+        for y in range(ch):
+            for x in range(cw):
+                r, g, b, a = pixels[x, y]
+                # White/near-white background → transparent
+                if r > 240 and g > 240 and b > 240:
+                    pixels[x, y] = (r, g, b, 0)
 
         # Resize to 32x32
         cell_resized = cell.resize((32, 32), Image.LANCZOS)
