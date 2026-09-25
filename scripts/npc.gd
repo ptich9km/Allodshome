@@ -100,13 +100,17 @@ func _physics_process(delta: float) -> void:
 			var wp: Vector2 = _path[0]
 			if global_position.distance_to(wp) <= 8.0:
 				_path.pop_front()
-			if not _path.is_empty():
-				_move_checked((_path[0] - global_position).normalized(), walk_speed, delta)
+		if not _path.is_empty():
+			_move_checked((_path[0] - global_position).normalized(), walk_speed, delta)
+			if velocity.length() > 10.0:
 				_anim.play(_anim.Anim.MOVE)
 				_anim.set_direction_vec(velocity)
 				_anim.advance(delta)
-				return
+			else:
+				_anim.play(UnitAnim.Anim.IDLE)
+			return
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+		_anim.play(UnitAnim.Anim.IDLE)
 	else:
 		_path.clear()
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
@@ -212,6 +216,7 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			_anim.advance(delta)
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+			_anim.play(UnitAnim.Anim.IDLE)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 

@@ -17,6 +17,7 @@ var fh := 1               # всего рядов по Y
 var sel_box := Rect2i(0, 0, 96, 96)  # хитбокс выделения [x1,y1,w,h]
 var shadow_y := 0         # сдвиг тени по Y из реестра
 var use_anim := true      # проигрывать анимацию фаз, если есть
+var max_blocks := 0       # ограничение числа блоков (0 = без ограничений)
 
 var _blocks := 1          # число блоков кадров (база + фазы)
 var _tiles: Array = []    # Sprite2D по тайлам (индекс = ly*fw+lx)
@@ -62,6 +63,9 @@ func _build() -> void:
 	_blocks = maxi(1, int(max_frame) / maxi(grid, 1))
 	if max_frame % grid != 0:
 		_blocks = 1  # частичная анимация: статичная база
+	# Ограничение по DB phases (чтобы не показывать лишние кадры, например у колодцев)
+	if max_blocks > 0:
+		_blocks = mini(_blocks, max_blocks)
 	_phase = 0
 	_active = use_anim and _blocks > 1
 

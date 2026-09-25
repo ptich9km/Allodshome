@@ -235,6 +235,7 @@ func _make_structure(job: Dictionary) -> Node2D:
 	var anim_times: Array = job.get("anim_times", [])
 	node.set_anim_times(anim_times)
 	node.use_anim = int(job.get("phases", 1)) > 1
+	node.max_blocks = int(job.get("phases", 0))
 	node.build()
 	return node
 

@@ -234,7 +234,7 @@ const ZONE_HOUSES := {"start": 4, "mid": 5, "hard": 7, "faction": 6}
 # НПЦ городов.
 const GUARD_SETS := ["humans/swordsman", "humans/archer", "humans/pikeman_"]
 const CITIZEN_SETS := ["humans/unarmed", "humans/clubman", "humans/axeman", "humans/mage_st"]
-const CAPTAIN_SET := "heroes/swordsman"
+const CAPTAIN_SET := "humans/cavalrysword"
 
 # Объекты по биому: подходящие ID из alm_objects.json.
 const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]
@@ -470,6 +470,8 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	var w := int(spec["w"])
 	var h := int(spec["h"])
+	var full_h: int = int(spec.get("fh", h))
+	var vis_rows: int = full_h - h  # визуальный выступ здания выше футпринта
 	var rings: Array[int] = [2, 3, 4, 5, 6, 7]
 	for r in rings:
 		for dy in range(-r, r + 1):
@@ -480,9 +482,14 @@ func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 				if not _footprint_fits(tl, w, h, center):
 					continue
 				_structures_out.append({"x": tl.x, "y": tl.y, "type_id": int(spec["id"])})
+				# Резервируем футпринт
 				for yy in range(h):
 					for xx in range(w):
 						_reserved[tl + Vector2i(xx, yy)] = true
+				# Резервируем визуальный выступ вверх (чтобы НПЦ не стояли на крыше)
+				for vy in range(vis_rows):
+					for xx in range(w):
+						_reserved[tl + Vector2i(xx, -vy - 1)] = true
 				return true
 	return false
 

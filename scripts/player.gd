@@ -331,7 +331,7 @@ func get_protection_astral() -> int: return spirit / 4  # астрал почт�
 
 ## Текущий набор анимаций по экипировке ("heroes/swordsman_").
 func anim_set_name() -> String:
-	var top := "heroes" if armor_kind == "heavy" else "heroes_l"
+	var top := "heroes" if armor_kind == "heavy" or weapon in ["staff", "magic"] else "heroes_l"
 	var base := weapon
 	match weapon:
 		"unarmed": base = "unarmed"
