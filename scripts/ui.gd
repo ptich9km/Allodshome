@@ -5,7 +5,9 @@ class_name GameUI
 @onready var bottom_panel: Control = $BottomPanel
 @onready var spell_panel: Control = $BottomPanel/SpellPanel
 @onready var inventory_panel: Control = $BottomPanel/InventoryPanel
-@onready var inventory_grid: GridContainer = $BottomPanel/InventoryPanel/InventoryScroll/InventoryGrid
+@onready var inventory_scroll: ScrollContainer = $BottomPanel/InventoryPanel/InventoryMargin/InventoryScroll
+@onready var inventory_margin: MarginContainer = $BottomPanel/InventoryPanel/InventoryMargin
+@onready var inventory_grid: GridContainer = $BottomPanel/InventoryPanel/InventoryMargin/InventoryScroll/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
 @onready var stats_label: Label = $StatsBorder/StatsLabel
 @onready var portrait_texture: TextureRect = $PortraitBorder/PortraitTexture
@@ -209,9 +211,8 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(ic)
 
-	b.tooltip_text = ("%s\nСфера: %s%s%s" % [title, sphere,
-		(" · зарядов: %d" % charges) if charges > 0 else "",
-		("\nмана: %d" % mana) if player.has_mana else ""])
+	# Тултип: сфера, стоимость, урон/лечение, радиус, длительность эффектов
+	b.tooltip_text = _spell_tooltip(name, title, sphere, charges, mana)
 
 	# Число зарядов свитка в ячейке (чётко читается поверх иконки)
 	if charges > 0:
@@ -241,6 +242,63 @@ func _spellback_tex() -> Texture2D:
 	if _spellback == null:
 		_spellback = load("res://assets/interface/spellback.bmp")
 	return _spellback
+
+
+## Тултип заклинания. Раньше показывал только имя/сферу/заряды/ману —
+## было невозможно понять, что заклинание делает и насколько оно далеко.
+func _spell_tooltip(name: String, title: String, sphere: String, charges: int, mana: int) -> String:
+	var spell := SpellDB.get_spell(name)
+	var lines: Array = [title, "Сфера: " + sphere]
+	if charges > 0:
+		lines.append("Зарядов: %d" % charges)
+	elif player.has_mana:
+		lines.append("Мана: %d" % mana)
+
+	# Урон или лечение с учётом силы магии героя
+	var base := int(spell.get("damage", 0))
+	if base > 0:
+		lines.append("Урон: %d" % Game.spell_damage(player, name, SpellDB.sphere_of(name), base))
+	elif base < 0:
+		lines.append("Лечение: %d" % Game.spell_damage(player, name, SpellDB.sphere_of(name), -base))
+
+	var area := float(spell.get("area", 0))
+	if area > 0.0:
+		lines.append("Радиус: %.1f м" % (area / 32.0))
+	var rng_range := float(spell.get("range", 0))
+	if rng_range > 0.0:
+		lines.append("Дальность: %.0f м" % (rng_range / 32.0))
+	if SpellDB.cooldown_of(name) > 0.0:
+		lines.append("Кулдаун: %.1f с" % SpellDB.cooldown_of(name))
+	if SpellDB.cast_time_of(name) > 0.0:
+		lines.append("Подготовка: %.2f с" % SpellDB.cast_time_of(name))
+
+	var eff := SpellDB.effects_of(name)
+	if not eff.is_empty():
+		lines.append("Эффекты: " + ", ".join(_effect_labels(eff)))
+	return "\n".join(lines)
+
+
+## Человеческие названия эффектов для тултипа.
+func _effect_labels(effects: Array) -> Array:
+	var out: Array = []
+	for e in effects:
+		var m := str((e as Dictionary).get("type", ""))
+		var dur := float((e as Dictionary).get("duration", 0.0))
+		var suffix := " (%.0f с)" % dur if dur > 0.0 else ""
+		match m:
+			"shield": out.append("щит %d%s" % [int((e as Dictionary).get("amount", 0)), suffix])
+			"resist": out.append("сопротивление %s +%d%s" % [str((e as Dictionary).get("sphere", "")), int((e as Dictionary).get("amount", 0)), suffix])
+			"bless": out.append("благословение%s" % suffix)
+			"haste": out.append("ускорение x%.2f%s" % [float((e as Dictionary).get("mult", 1.0)), suffix])
+			"slow": out.append("замедление x%.2f%s" % [float((e as Dictionary).get("mult", 1.0)), suffix])
+			"curse": out.append("проклятие%s" % suffix)
+			"invisibility": out.append("невидимость%s" % suffix)
+			"vision": out.append("ослепление%s" % suffix)
+			"vampirism": out.append("вампиризм %d%%" % int(float((e as Dictionary).get("ratio", 0.0)) * 100.0))
+			"dot": out.append("яд %d/с%s" % [int((e as Dictionary).get("dps", 0)), suffix])
+			"raise": out.append("поднимает труп")
+			_: out.append(m)
+	return out
 
 ## Клик по заклинанию в книге: как у разработчиков — входим в режим
 ## прицеливания (анимированный курсор cast/), магия улетает только по клику
@@ -404,13 +462,17 @@ func _update_targeting_hint(spell: String, on: bool) -> void:
 	_scroll_hint.visible = on
 	if not on:
 		return
-	var kind := SpellDB.kind_of(spell)
+	# Подсказка по цели берётся из поля target базы (enemy/ally/point/self),
+	# а не из kind — у debuff/raise цель враг, у wall/self — точка/себя.
+	var target_kind := SpellDB.target_of(spell)
 	var dir_text := ""
-	match kind:
-		"attack":
+	match target_kind:
+		"enemy":
 			dir_text = "ВРАГА"
-		"area", "wall":
+		"point":
 			dir_text = "ВРАГА ИЛИ ТОЧКУ"
+		"self":
+			dir_text = "СЕБЯ"
 		_:
 			dir_text = "СЕБЯ ИЛИ СОЮЗНИКА"
 	_scroll_hint.text = ("Примените «%s» на %s (ПКМ/ESC — отмена; Ctrl+1..9 — быстрая клавиша)"
@@ -433,11 +495,35 @@ func _magic_double_click(item_key: String) -> bool:
 	_magic_click_time = now
 	return hit
 
+## Размер ячейки склада и число колонок считаются от ширины панели, поэтому инвентарь
+## не «едет» при изменении размера окна.
+const INV_SLOT := 62
+const INV_GAP := 4
+const INV_MARGIN := 6
+
 func _setup_inventory():
-	# Сетка в ОДИН ряд (горизонтальный скролл), как в оригинале.
-	inventory_grid.columns = 100
-	var slot_bg = load("res://assets/interface/myitem.png")
-	build_inventory_grid(slot_bg)
+	_apply_inventory_theme()
+	build_inventory_grid()
+
+## Оформление склада: единая тема UiKit вместо фоновых картинок (myitem.png/invframe.bmp).
+func _apply_inventory_theme() -> void:
+	var theme := UiKit.base_theme()
+	inventory_panel.theme_type_variation = &"InvPanel"
+	UiKit.add_panel(theme, &"InvPanel", UiKit.SLOT_BG, UiKit.SLOT_BORDER, 4)
+	UiKit.add_slot(theme, &"SlotCell")
+	UiKit.apply_scrollbar(theme)
+	inventory_panel.theme = theme
+	UiKit.set_margins(inventory_margin, INV_MARGIN, INV_MARGIN, INV_MARGIN, INV_MARGIN)
+	inventory_grid.add_theme_constant_override("h_separation", INV_GAP)
+	inventory_grid.add_theme_constant_override("v_separation", INV_GAP)
+
+## Сколько ячеек влезает в панель по ширине.
+func _inventory_columns() -> int:
+	var w: float = inventory_panel.size.x
+	if w <= 0.0:
+		w = 720.0
+	var usable: float = w - INV_MARGIN * 2.0
+	return maxi(1, int((usable + INV_GAP) / float(INV_SLOT + INV_GAP)))
 
 ## Пересобрать сетку инвентаря после покупки/продажи/лута/зелья.
 func refresh_inventory() -> void:
@@ -447,13 +533,12 @@ func refresh_inventory() -> void:
 	inventory_slots.clear()
 	inventory_items.clear()
 	inventory_items_meta.clear()
-	var slot_bg = load("res://assets/interface/myitem.png")
-	build_inventory_grid(slot_bg)
+	build_inventory_grid()
 
-func build_inventory_grid(slot_bg: Texture2D) -> void:
+func build_inventory_grid() -> void:
 	if not is_instance_valid(player):
 		return
-	inventory_grid.columns = 100   # один ряд (скролл вправо)
+	inventory_grid.columns = _inventory_columns()
 	# Склад: подсчёт одинаковых предметов (стак) для счётчика в углу
 	var counts := {}
 	for key in player.inventory:
@@ -468,7 +553,7 @@ func build_inventory_grid(slot_bg: Texture2D) -> void:
 			item = SpellDB.book_item(str(key))
 			if item.is_empty():
 				continue
-		_add_inventory_slot(item, slot_bg, int(counts[str(key)]))
+		_add_inventory_slot(item, int(counts[str(key)]))
 	if inventory_slots.is_empty():
 		var lab := Label.new()
 		lab.text = "Склад пуст"
@@ -476,23 +561,18 @@ func build_inventory_grid(slot_bg: Texture2D) -> void:
 		lab.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
 		inventory_grid.add_child(lab)
 
-## Создать слот инвентаря для предмета item (экипировка или магия).
-## count>1 — показать количество стека в правом верхнем углу (как у разработчиков).
-func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D, count: int = 0) -> void:
-	var slot = TextureRect.new()
-	slot.custom_minimum_size = Vector2(68, 68)
-	slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	slot.stretch_mode = TextureRect.STRETCH_SCALE
+## Создать ячейку склада (PanelContainer + иконка), count>1 — счётчик стека.
+func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
+	var slot := PanelContainer.new()
+	slot.theme_type_variation = &"SlotCell"
+	slot.custom_minimum_size = Vector2(INV_SLOT, INV_SLOT)
+	slot.mouse_filter = Control.MOUSE_FILTER_STOP
 	var item_name := str(item.get("name_ru", item.get("key", "Предмет")))
 	if str(item.get("quality", "")) == "Herb":
 		slot.tooltip_text = "%s\nИнгредиент для травничества" % item_name
 	else:
 		slot.tooltip_text = "%s\nТип: %s · Вес: %.1f · Цена: %d" % [
 			item_name, str(item.get("type", "—")), float(item.get("weight", 0.0)), int(item.get("price", 0))]
-	if slot_bg:
-		slot.texture = slot_bg
-	else:
-		slot.modulate = Color(0.15, 0.15, 0.15, 1.0)
 	inventory_grid.add_child(slot)
 	inventory_slots.append(slot)
 	inventory_items.append(item)
@@ -506,7 +586,7 @@ func _add_inventory_slot(item: Dictionary, slot_bg: Texture2D, count: int = 0) -
 	}
 	_add_item(inventory_slots.size() - 1, str(item.get("icon", "")), str(item.get("name_ru", "")), gear)
 
-	# Счётчик количества (стак/деньги) в правом верхнем углу слота
+	# Счётчик количества (стак/деньги) в правом верхнем углу ячейки
 	if count > 1:
 		var cnt := Label.new()
 		cnt.text = str(count)
@@ -614,14 +694,18 @@ func _use_potion(item_key: String, item: Dictionary) -> void:
 func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictionary = {}):
 	if slot_idx >= 0 and slot_idx < inventory_slots.size():
 		var tex = load(icon_path)
-		var slot: TextureRect = inventory_slots[slot_idx]
+		var slot: Control = inventory_slots[slot_idx]
 		if tex:
-			# Иконка предмета поверх фона слота (не перехватывает клики!)
+			# Иконка предмета внутри ячейки (PanelContainer), не перехватывает клики
 			var icon_rect = TextureRect.new()
 			icon_rect.texture = tex
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+			icon_rect.offset_left = 4.0
+			icon_rect.offset_top = 4.0
+			icon_rect.offset_right = -4.0
+			icon_rect.offset_bottom = -4.0
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			slot.add_child(icon_rect)
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1199,4 +1283,5 @@ func open_blacksmith() -> void:
 	_blacksmith = BlacksmithPanel.new()
 	_blacksmith.setup(player)
 	_blacksmith.closed.connect(_on_panel_closed)
+	_blacksmith.inventory_changed.connect(refresh_inventory)
 	add_child(_blacksmith)

@@ -818,7 +818,9 @@ func _write_entity_sidecars() -> void:
 		faw.store_string(JSON.stringify({"allowwalk": aw_list}))
 		faw.close()
 
-## Запомнить, какую карту открыл пользователь: игра (main.tscn) грузит её при F9.
+## Запомнить, какую карту открыл пользователь (память редактора между сессиями).
+## Игра этот файл больше не читает: путь передаётся явно в _on_back через
+## Game.request_map_by_path().
 func _remember_last_alm(path: String) -> void:
 	var f := FileAccess.open("user://last_alm_path.txt", FileAccess.WRITE)
 	if f == null:
@@ -841,6 +843,13 @@ func _save_spawn_anchor() -> void:
 	f.close()
 
 func _on_back() -> void:
+	# Игра должна открыть именно ту карту, которую правили. Путь передаём явно через
+	# Game.pending_map_path, а не через user://last_alm_path.txt: тот файл раньше
+	# читался при каждом обычном старте и подменял карту новой игры.
+	if _alm_path != "" and FileAccess.file_exists(_alm_path):
+		Game.request_map_by_path(_alm_path)
+	else:
+		Game.request_map_by_path("")
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 ## --- Настройки текстур ---

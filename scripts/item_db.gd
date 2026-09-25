@@ -93,10 +93,41 @@ static func armor_kind(item: Dictionary) -> String:
 		return "light"
 	return "heavy"
 
-## Экипируемое ли (не книги/свитки/зелья/квест).
+## Типы, которые нельзя надеть, хотя quality у них обычный.
+## Слиток — сырьё, но slot_of() относит всё не-оружие-не-щит к "armor",
+## поэтому без этого игрок надел бы слиток как броню, а кузнец (он фильтрует
+## инвентарь по is_equippable) переплавлял бы слитки в слитки.
+const _INGOT_TYPE := "Ingot"
+
+## Экипируемое ли (не книги/свитки/зелья/квест/слитки).
 static func is_equippable(item: Dictionary) -> bool:
 	var q := str(item.get("quality", ""))
-	return not (q in ["Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb"])
+	if q in ["Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb"]:
+		return false
+	if str(item.get("type", "")) == _INGOT_TYPE:
+		return false
+	return true
+
+## Слиток какого металла даёт переплавка этого предмета ("" — не переплавляется).
+## Металлы описаны в assets/loot_icons/README.md; кожа/дерево/ткань кузнец не берут.
+const _SMELTABLE := [
+	"Bronze", "Iron", "Steel", "Silver", "Gold",
+	"Titanium", "Terbium", "Plutonium", "Radium",
+]
+
+static func is_smeltable(item: Dictionary) -> bool:
+	# Слиток — это уже результат переплавки. Материал у него металлический, но
+	# переплавлять его в себя нельзя (иначе «Iron Ingot → Iron Ingot»).
+	if str(item.get("type", "")) == _INGOT_TYPE:
+		return false
+	return str(item.get("material", "")) in _SMELTABLE
+
+## Ключ предмета-слитка для материала ("", если такого металла нет).
+static func ingot_key(material: String) -> String:
+	if material == "":
+		return ""
+	var ingot: Dictionary = find("%s Ingot" % material)
+	return str(ingot.get("key", ""))
 
 ## Предметы для инвентаря: все экипируемые в порядке базы.
 static func equippable_items() -> Array:

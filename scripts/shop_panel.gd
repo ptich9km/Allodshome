@@ -59,11 +59,8 @@ func setup(p: Player) -> void:
 	_build_ui()
 
 func _ready() -> void:
-	_previous_focus = get_viewport().gui_get_focus_owner()
-	var viewport := get_viewport()
-	if not viewport.size_changed.is_connected(_update_layout):
-		viewport.size_changed.connect(_update_layout)
-	_update_layout()
+	_previous_focus = UiKit.save_focus(self)
+	UiKit.bind_resize(get_viewport(), _update_layout)
 	_configure_category_focus()
 	_refresh()
 
@@ -75,10 +72,7 @@ func _exit_tree() -> void:
 		viewport.size_changed.disconnect(_update_layout)
 
 func _build_ui() -> void:
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.0, 0.0, 0.58)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := UiKit.make_dim(0.58)
 	add_child(dim)
 
 	_panel_root = Control.new()
@@ -276,12 +270,7 @@ func _build_merchant_panel() -> void:
 	row.add_child(_merchant_button)
 
 func _update_layout() -> void:
-	if not is_instance_valid(_panel_root):
-		return
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-	var factor := minf(viewport_size.x / _DESIGN_SIZE.x, viewport_size.y / _DESIGN_SIZE.y)
-	_panel_root.scale = Vector2.ONE * factor
-	_panel_root.position = (viewport_size - _DESIGN_SIZE * factor) * 0.5
+	UiKit.fit_design_root(_panel_root, _DESIGN_SIZE)
 
 func _refresh() -> void:
 	if not is_instance_valid(player):
@@ -444,17 +433,7 @@ func _configure_focus(npc_buttons: Array[Button], player_buttons: Array[Button])
 	_close_button.focus_next = _category_buttons[0].get_path()
 
 func _wire_grid_focus(buttons: Array[Button], columns: int) -> void:
-	for index in range(buttons.size()):
-		var row := index / columns
-		var column := index % columns
-		var left := buttons[row * columns + maxi(column - 1, 0)]
-		var right := buttons[mini(row * columns + mini(column + 1, columns - 1), buttons.size() - 1)]
-		buttons[index].focus_neighbor_left = left.get_path()
-		buttons[index].focus_neighbor_right = right.get_path()
-		buttons[index].focus_neighbor_top = buttons[maxi(index - columns, 0)].get_path()
-		buttons[index].focus_neighbor_bottom = buttons[mini(index + columns, buttons.size() - 1)].get_path()
-		buttons[index].focus_previous = buttons[maxi(index - 1, 0)].get_path()
-		buttons[index].focus_next = buttons[mini(index + 1, buttons.size() - 1)].get_path()
+	UiKit.wire_grid_focus(buttons, columns)
 
 func _hero_portrait() -> Texture2D:
 	var equipment_path := "res://assets/equipment/%s/1.png" % Game.hero_character_id
@@ -469,80 +448,50 @@ func _hero_portrait() -> Texture2D:
 	return null
 
 func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
-	container.add_theme_constant_override("margin_left", left)
-	container.add_theme_constant_override("margin_top", top)
-	container.add_theme_constant_override("margin_right", right)
-	container.add_theme_constant_override("margin_bottom", bottom)
+	UiKit.set_margins(container, left, top, right, bottom)
 
 func _make_theme() -> Theme:
-	var theme := Theme.new()
-	theme.default_font_size = 14
-	theme.set_color("font_color", "Label", Color(0.96, 0.90, 0.76))
-	theme.set_color("font_hover_color", "Button", Color(1.0, 0.92, 0.62))
-	theme.set_color("font_pressed_color", "Button", Color(1.0, 1.0, 0.90))
-	theme.set_color("font_focus_color", "Button", Color(1.0, 0.90, 0.48))
-	theme.set_color("font_disabled_color", "Button", Color(0.58, 0.53, 0.46))
-	theme.set_stylebox("normal", "Button", _button_style(Color(0.23, 0.13, 0.07, 0.96), Color(0.70, 0.40, 0.14)))
-	theme.set_stylebox("hover", "Button", _button_style(Color(0.36, 0.19, 0.08, 0.98), Color(1.0, 0.74, 0.26)))
-	theme.set_stylebox("pressed", "Button", _button_style(Color(0.15, 0.08, 0.04, 1.0), Color(0.66, 0.36, 0.12)))
-	theme.set_stylebox("disabled", "Button", _button_style(Color(0.15, 0.13, 0.12, 0.90), Color(0.34, 0.29, 0.25)))
-	theme.set_stylebox("focus", "Button", _button_style(Color(0.23, 0.13, 0.07, 0.0), Color(1.0, 0.78, 0.20), 3))
-	theme.set_type_variation(&"ShopTitle", &"Label")
-	theme.set_color("font_color", &"ShopTitle", Color(1.0, 0.78, 0.36))
-	theme.set_font_size("font_size", &"ShopTitle", 28)
-	theme.set_type_variation(&"ShopGoldLabel", &"Label")
-	theme.set_color("font_color", &"ShopGoldLabel", Color(1.0, 0.88, 0.42))
-	theme.set_font_size("font_size", &"ShopGoldLabel", 19)
-	theme.set_type_variation(&"ShopHintLabel", &"Label")
-	theme.set_color("font_color", &"ShopHintLabel", Color(0.90, 0.84, 0.68))
-	theme.set_font_size("font_size", &"ShopHintLabel", 14)
+	var theme := UiKit.base_theme({
+		"font_size": 14,
+		"font_color": Color(0.96, 0.90, 0.76),
+		"radius": 5, "margin": 4,
+		"normal_bg": Color(0.23, 0.13, 0.07, 0.96),
+		"normal_border": Color(0.70, 0.40, 0.14),
+		"hover_bg": Color(0.36, 0.19, 0.08, 0.98),
+		"hover_border": Color(1.0, 0.74, 0.26),
+		"pressed_bg": Color(0.15, 0.08, 0.04, 1.0),
+		"pressed_border": Color(0.66, 0.36, 0.12),
+		"disabled_bg": Color(0.15, 0.13, 0.12, 0.90),
+		"disabled_border": Color(0.34, 0.29, 0.25),
+		"focus_border": Color(1.0, 0.78, 0.20),
+		"scrollbar": true,
+	})
+	UiKit.add_title(theme, &"ShopTitle")
+	UiKit.add_gold_label(theme, &"ShopGoldLabel")
+	UiKit.add_label(theme, &"ShopHintLabel", UiKit.HINT_COLOR, UiKit.HINT_SIZE)
+	UiKit.add_slot(theme, &"ShopItemSlot")
+	UiKit.add_panel(theme, &"ShopPlayerTab",
+		Color(0.09, 0.10, 0.15, 0.86), Color(0.48, 0.42, 0.24, 0.96), 4)
+	UiKit.add_panel(theme, &"ShopDialogPanel",
+		Color(0.10, 0.08, 0.07, 0.88), UiKit.DIALOG_BORDER, 4)
+	UiKit.add_label(theme, &"ShopEmptyTabLabel", Color(0.54, 0.50, 0.43), 15)
+	UiKit.add_label(theme, &"ShopCountLabel", Color(1.0, 0.88, 0.58), 12)
+	# Категория — прозрачная кнопка-чип: в покое без заливки и рамки.
 	theme.set_type_variation(&"ShopCategoryButton", &"Button")
 	theme.set_color("font_color", &"ShopCategoryButton", Color(1.0, 0.82, 0.48))
 	theme.set_font_size("font_size", &"ShopCategoryButton", 16)
-	theme.set_stylebox("normal", &"ShopCategoryButton", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0, 0.0), 0))
-	theme.set_stylebox("hover", &"ShopCategoryButton", _button_style(Color(0.12, 0.06, 0.02, 0.18), Color(1.0, 0.78, 0.26, 0.60)))
-	theme.set_stylebox("pressed", &"ShopCategoryButton", _button_style(Color(0.14, 0.07, 0.02, 0.30), Color(0.96, 0.66, 0.20, 0.95)))
-	theme.set_stylebox("focus", &"ShopCategoryButton", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(1.0, 0.82, 0.28, 0.95), 3))
-	theme.set_type_variation(&"ShopItemSlot", &"PanelContainer")
-	theme.set_stylebox("panel", &"ShopItemSlot", _panel_style(Color(0.08, 0.07, 0.08, 0.80), Color(0.58, 0.36, 0.16, 0.96)))
-	theme.set_type_variation(&"ShopPlayerTab", &"PanelContainer")
-	theme.set_stylebox("panel", &"ShopPlayerTab", _panel_style(Color(0.09, 0.10, 0.15, 0.86), Color(0.48, 0.42, 0.24, 0.96)))
-	theme.set_type_variation(&"ShopEmptyTabLabel", &"Label")
-	theme.set_color("font_color", &"ShopEmptyTabLabel", Color(0.54, 0.50, 0.43))
-	theme.set_font_size("font_size", &"ShopEmptyTabLabel", 15)
-	theme.set_type_variation(&"ShopCountLabel", &"Label")
-	theme.set_color("font_color", &"ShopCountLabel", Color(1.0, 0.88, 0.58))
-	theme.set_font_size("font_size", &"ShopCountLabel", 12)
-	theme.set_type_variation(&"ShopDialogPanel", &"PanelContainer")
-	theme.set_stylebox("panel", &"ShopDialogPanel", _panel_style(Color(0.10, 0.08, 0.07, 0.88), Color(0.72, 0.46, 0.18, 0.96)))
-	theme.set_stylebox("scroll", &"VScrollBar", _panel_style(Color(0.04, 0.03, 0.02, 0.38), Color(0.0, 0.0, 0.0, 0.0)))
-	theme.set_stylebox("scroll_focus", &"VScrollBar", _panel_style(Color(0.04, 0.03, 0.02, 0.38), Color(0.0, 0.0, 0.0, 0.0)))
-	theme.set_stylebox("grabber", &"VScrollBar", _panel_style(Color(0.62, 0.38, 0.16, 0.72), Color(0.94, 0.66, 0.24, 0.90)))
-	theme.set_stylebox("grabber_highlight", &"VScrollBar", _panel_style(Color(0.82, 0.52, 0.20, 0.88), Color(1.0, 0.80, 0.34, 1.0)))
-	theme.set_stylebox("grabber_pressed", &"VScrollBar", _panel_style(Color(0.96, 0.64, 0.22, 0.96), Color(1.0, 0.88, 0.48, 1.0)))
+	theme.set_stylebox("normal", &"ShopCategoryButton",
+		UiKit.ghost_button_style(Color(0, 0, 0, 0), 0, 5, 4))
+	theme.set_stylebox("hover", &"ShopCategoryButton",
+		UiKit.button_style(Color(0.12, 0.06, 0.02, 0.18), Color(1.0, 0.78, 0.26, 0.60), 2, 5, 4))
+	theme.set_stylebox("pressed", &"ShopCategoryButton",
+		UiKit.button_style(Color(0.14, 0.07, 0.02, 0.30), Color(0.96, 0.66, 0.20, 0.95), 2, 5, 4))
+	theme.set_stylebox("focus", &"ShopCategoryButton",
+		UiKit.button_style(Color(0, 0, 0, 0), Color(1.0, 0.82, 0.28, 0.95), 3, 5, 4))
 	return theme
 
-func _button_style(background: Color, border: Color, width: int = 2) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(width)
-	style.set_corner_radius_all(5)
-	style.set_content_margin_all(4)
-	return style
-
-func _panel_style(background: Color, border: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(4)
-	return style
-
 func _clear_grid(grid: GridContainer) -> void:
-	for child in grid.get_children():
-		grid.remove_child(child)
-		child.queue_free()
+	UiKit.clear(grid)
 
 func _buy_item(key: String, price: int) -> void:
 	if not is_instance_valid(player) or player.gold < price:
@@ -570,12 +519,11 @@ func _talk() -> void:
 	_merchant_label.text = tr("Торговец: «%s»") % str(lines[randi() % lines.size()])
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if UiKit.esc_pressed(event):
 		close()
 		get_viewport().set_input_as_handled()
 
 func close() -> void:
-	if _previous_focus != null and is_instance_valid(_previous_focus):
-		_previous_focus.call_deferred("grab_focus")
+	UiKit.restore_focus(_previous_focus)
 	closed.emit()
 	queue_free()

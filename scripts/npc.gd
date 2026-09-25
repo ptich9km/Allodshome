@@ -226,37 +226,54 @@ func _unit_sound_at(idx: int) -> int:
 
 ## --- Статы (для Game.unit_*: атака->точность, защита->уклонение) ---
 func get_attack() -> int:
-	return damage / 2 + max_hp / 30
+	return damage / 2 + max_hp / 30 + StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	return max_hp / 25
+	var base := max_hp / 25
+	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
 	return max_hp / 40
 
-func get_protection_fire() -> int:   return max_hp / 60
-func get_protection_water() -> int:  return max_hp / 60
-func get_protection_air() -> int:    return max_hp / 60
-func get_protection_earth() -> int:  return max_hp / 70
-func get_protection_astral() -> int: return max_hp / 80
+func _resist(sphere: String) -> int:
+	return UnitDB.resist_of(anim_set, sphere) + StatusEffects.resist_bonus(self, sphere)
+
+func get_protection_fire() -> int:   return _resist("Fire")
+func get_protection_water() -> int:  return _resist("Water")
+func get_protection_air() -> int:    return _resist("Air")
+func get_protection_earth() -> int:  return _resist("Earth")
+func get_protection_astral() -> int: return _resist("Astral")
 
 ## Получить урон (герой/монстры могут зацепить мирного жителя). При смерти —
 ## падение DYING → разложение DECAY (если есть) → исчезновение.
-func take_damage(dmg: int, _attacker: Node2D) -> void:
+func take_damage(dmg: int, _attacker: Node2D) -> int:
 	if state == "dying" or state == "decay" or state == "corpse":
-		return
+		return 0
 	dmg = Game.shield_reduce(self, dmg)
 	if dmg <= 0:
-		return
+		SpellVFX.shield_hit(self)
+		return 0
 	current_hp -= dmg
 	if current_hp > 0:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))
-		return
+		return dmg
 	current_hp = 0
 	SoundDB.play(240)  # units\dead1
 	state = "dying"
 	velocity = Vector2.ZERO
 	Game.npcs.erase(self)
+	return dmg
+
+## Восстановить HP (лечение, вампиризм). Возвращает реально восстановленное.
+func heal_amount(amount: int) -> int:
+	if amount <= 0 or current_hp >= max_hp:
+		return 0
+	if state == "dying" or state == "decay" or state == "corpse":
+		return 0
+	var healed := mini(max_hp, current_hp + amount) - current_hp
+	current_hp += healed
+	DamageNumber.show_at(global_position, healed, "heal")
+	return healed
 
 ## Плавное движение с проверкой проходимости (без «льда» и «сквозь стены»).
 func _move_checked(direction: Vector2, speed: float, delta: float) -> void:

@@ -5,10 +5,13 @@ extends Node2D
 
 const COLORS := {
 	"damage": Color(1.0, 0.2, 0.1),
-	"heal": Color(0.2, 1.0, 0.3),
 	"crit": Color(1.0, 0.8, 0.0),
+	"heal": Color(0.2, 1.0, 0.3),
 	"miss": Color(0.6, 0.6, 0.6),
 	"mana": Color(0.3, 0.5, 1.0),
+	"dot": Color(0.6, 1.0, 0.2),
+	"buff": Color(0.7, 0.5, 1.0),
+	"absorb": Color(0.5, 0.7, 1.0),
 }
 
 var _label: Label
@@ -36,6 +39,10 @@ func setup(pos: Vector2, value: int, type: String = "damage") -> void:
 			_label.text = "Промах"
 		"mana":
 			_label.text = "+%d маны" % value
+		"absorb":
+			_label.text = "щит"
+		"dot":
+			_label.text = "%d" % value
 		_:
 			_label.text = str(value)
 

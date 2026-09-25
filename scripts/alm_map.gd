@@ -54,14 +54,7 @@ const _DIRS_4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1
 
 func _ready() -> void:
 	add_to_group("alm_map")
-	# Карта из редактора: при «Назад в игру (F9)» (или старте после правки)
-	# грузим ту карту, которую открывал пользователь, а не захардкоженную.
-	var last: String = _read_last_alm_path()
-	if last != "" and FileAccess.file_exists(last):
-		var ld: Dictionary = AlmLoader.load_map(last)
-		if not ld.is_empty():
-			print("AlmMap: загрузка карты из редактора: %s" % last)
-			alm_path = last
+	_resolve_map_path()
 	if alm_path.is_empty():
 		push_warning("AlmMap: alm_path не задан")
 		return
@@ -289,6 +282,18 @@ func _structure_blocks_cell(cell: Vector2i) -> bool:
 			return true
 	return false
 
+## Публичная блокировка клетки (стены огня/земли на время жизни).
+## Снимается тем же вызовом с value=false.
+func set_nowalk_cell(cell: Vector2i, value: bool) -> void:
+	if value:
+		_nowalk[cell] = true
+	else:
+		_nowalk.erase(cell)
+
+## Есть ли активная блокировка клетки.
+func is_nowalk_cell(cell: Vector2i) -> bool:
+	return _nowalk.has(cell)
+
 ## Здание под курсором (клетка cell) — для ховера; возвращает Dictionary или {}.
 func structure_at(cell: Vector2i) -> Dictionary:
 	for h in _structure_hits:
@@ -501,14 +506,26 @@ func get_spawn_pos() -> Vector2:
 		return Vector2(anchor.x * TILE + TILE / 2, anchor.y * TILE + TILE / 2)
 	return Vector2(map_width * TILE / 2, map_height * TILE / 2)
 
-## Последняя карта, открытая в редакторе (пишет map_editor._remember_last_alm).
-func _read_last_alm_path() -> String:
-	var f := FileAccess.open("user://last_alm_path.txt", FileAccess.READ)
-	if f == null:
-		return ""
-	var p := f.get_as_text().strip_edges()
-	f.close()
-	return p
+## Выбор карты при старте. Порядок:
+##  1. Явно запрошенный путь (Game.pending_map_path) — редактор карт, загрузка сохранения.
+##  2. Карта по сиду (Game.map_seed != 0) — новая игра: генерируем или переиспользуем
+##     карту в user://maps/. Именно здесь появляются неповторимые карты.
+##  3. Запасной путь из main.tscn — dev-режим и автотесты. Без запрошенного сида
+##     игра всегда грузила бы один и тот же gen_smart_01.alm.
+func _resolve_map_path() -> void:
+	var requested: String = Game.pending_map_path
+	if requested != "" and FileAccess.file_exists(requested):
+		print("AlmMap: запрошенная карта: %s" % requested)
+		alm_path = requested
+		return
+	if Game.map_seed != 0:
+		var generated: String = MapGenerator.ensure_map(Game.map_seed, Game.map_zone)
+		if generated != "" and FileAccess.file_exists(generated):
+			print("AlmMap: карта по сиду %d (%s): %s" % [Game.map_seed, Game.map_zone, generated])
+			alm_path = generated
+			return
+		push_warning("AlmMap: не удалось получить карту по сиду %d" % Game.map_seed)
+	# 3. Запасной вариант — alm_path из сцены.
 
 ## Клетка спавна из файла-якоря рядом с .alm, или (-1,-1).
 func _load_spawn_anchor() -> Vector2i:

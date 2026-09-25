@@ -14,7 +14,19 @@
       "super": "res://assets/inventory/0014035-000.png"
     },
     "kind": "attack",
-    "sound": 510
+    "sound": 510,
+    "cooldown": 0.8,
+    "cast_time": 0.35,
+    "projectile_speed": 420,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Fire_Ball": {
     "name": "Fire_Ball",
@@ -31,13 +43,25 @@
       "super": "res://assets/inventory/0014036-000.png"
     },
     "kind": "area",
-    "sound": 512
+    "sound": 512,
+    "cooldown": 2.0,
+    "cast_time": 0.55,
+    "projectile_speed": 300,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Wall_of_Fire": {
     "name": "Wall_of_Fire",
     "ru": "Стена огня",
     "sphere": "Fire",
-    "damage": 10,
+    "damage": 3,
     "mana_cost": 22,
     "range": 200,
     "area": 0,
@@ -47,8 +71,20 @@
       "scroll": "res://assets/inventory/0014008-000.png",
       "super": "res://assets/inventory/0014037-000.png"
     },
-    "kind": "attack",
-    "sound": 90
+    "kind": "wall",
+    "sound": 90,
+    "cooldown": 8.0,
+    "cast_time": 0.7,
+    "projectile_speed": 0,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "damage",
+    "wall_width": 72.0,
+    "wall_life": 6.0
   },
   "Protection_from_Fire": {
     "name": "Protection_from_Fire",
@@ -65,7 +101,26 @@
       "super": "res://assets/inventory/0014038-000.png"
     },
     "kind": "buff",
-    "sound": 516
+    "sound": 516,
+    "cooldown": 6.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.2,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "resist",
+        "sphere": "Fire",
+        "amount": 20,
+        "duration": 90
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Ice_Missile": {
     "name": "Ice_Missile",
@@ -82,7 +137,19 @@
       "super": "res://assets/inventory/0014039-000.png"
     },
     "kind": "attack",
-    "sound": 518
+    "sound": 518,
+    "cooldown": 1.0,
+    "cast_time": 0.4,
+    "projectile_speed": 380,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Poison_Cloud": {
     "name": "Poison_Cloud",
@@ -99,7 +166,26 @@
       "super": "res://assets/inventory/0014040-000.png"
     },
     "kind": "area",
-    "sound": 520
+    "sound": 520,
+    "cooldown": 4.0,
+    "cast_time": 0.6,
+    "projectile_speed": 240,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "dot",
+        "sphere": "Water",
+        "dps": 4,
+        "duration": 6
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Blizzard": {
     "name": "Blizzard",
@@ -116,7 +202,31 @@
       "super": "res://assets/inventory/0014041-000.png"
     },
     "kind": "area",
-    "sound": 523
+    "sound": 523,
+    "cooldown": 6.0,
+    "cast_time": 0.7,
+    "projectile_speed": 240,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "dot",
+        "sphere": "Water",
+        "dps": 3,
+        "duration": 5
+      },
+      {
+        "type": "slow",
+        "mult": 0.7,
+        "duration": 3
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Protection_from_Water": {
     "name": "Protection_from_Water",
@@ -133,7 +243,26 @@
       "super": "res://assets/inventory/0014042-000.png"
     },
     "kind": "buff",
-    "sound": 524
+    "sound": 524,
+    "cooldown": 6.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.2,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "resist",
+        "sphere": "Water",
+        "amount": 20,
+        "duration": 90
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Acid_Stream": {
     "name": "Acid_Stream",
@@ -150,7 +279,26 @@
       "super": "res://assets/inventory/0014043-000.png"
     },
     "kind": "attack",
-    "sound": 526
+    "sound": 526,
+    "cooldown": 2.0,
+    "cast_time": 0.5,
+    "projectile_speed": 340,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "dot",
+        "sphere": "Earth",
+        "dps": 3,
+        "duration": 4
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Lightning": {
     "name": "Lightning",
@@ -167,7 +315,19 @@
       "super": "res://assets/inventory/0014044-000.png"
     },
     "kind": "attack",
-    "sound": 528
+    "sound": 528,
+    "cooldown": 2.0,
+    "cast_time": 0.45,
+    "projectile_speed": 600,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.1,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Prismatic_Spray": {
     "name": "Prismatic_Spray",
@@ -184,7 +344,19 @@
       "super": "res://assets/inventory/0014045-000.png"
     },
     "kind": "area",
-    "sound": 530
+    "sound": 530,
+    "cooldown": 3.0,
+    "cast_time": 0.6,
+    "projectile_speed": 0,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Invisibility": {
     "name": "Invisibility",
@@ -201,7 +373,25 @@
       "super": "res://assets/inventory/0014046-000.png"
     },
     "kind": "buff",
-    "sound": 532
+    "sound": 532,
+    "cooldown": 12.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "invisibility",
+        "duration": 20,
+        "break_range": 40
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Protection_from_Air": {
     "name": "Protection_from_Air",
@@ -218,7 +408,26 @@
       "super": "res://assets/inventory/0014047-000.png"
     },
     "kind": "buff",
-    "sound": 534
+    "sound": 534,
+    "cooldown": 6.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.2,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "resist",
+        "sphere": "Air",
+        "amount": 20,
+        "duration": 90
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Darkness": {
     "name": "Darkness",
@@ -234,8 +443,26 @@
       "scroll": "res://assets/inventory/0014019-000.png",
       "super": "res://assets/inventory/0014048-000.png"
     },
-    "kind": "buff",
-    "sound": 536
+    "kind": "debuff",
+    "sound": 536,
+    "cooldown": 10.0,
+    "cast_time": 0.5,
+    "projectile_speed": 0,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "vision",
+        "mult": 0.5,
+        "duration": 20
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Stone_Missile": {
     "name": "Stone_Missile",
@@ -249,7 +476,19 @@
     "icon": "",
     "icons": {},
     "kind": "attack",
-    "sound": 540
+    "sound": 540,
+    "cooldown": 1.2,
+    "cast_time": 0.4,
+    "projectile_speed": 400,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Wall_of_Earth": {
     "name": "Wall_of_Earth",
@@ -266,7 +505,19 @@
       "super": "res://assets/inventory/0014051-000.png"
     },
     "kind": "wall",
-    "sound": 542
+    "sound": 542,
+    "cooldown": 8.0,
+    "cast_time": 0.7,
+    "projectile_speed": 0,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "block",
+    "wall_width": 64.0,
+    "wall_life": 8.0
   },
   "Stone_Curse": {
     "name": "Stone_Curse",
@@ -282,8 +533,30 @@
       "scroll": "res://assets/inventory/0014023-000.png",
       "super": "res://assets/inventory/0014052-000.png"
     },
-    "kind": "buff",
-    "sound": 544
+    "kind": "debuff",
+    "sound": 544,
+    "cooldown": 6.0,
+    "cast_time": 0.5,
+    "projectile_speed": 0,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "root",
+        "duration": 15
+      },
+      {
+        "type": "curse",
+        "defense": -0.6,
+        "duration": 30
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Protection_from_Earth": {
     "name": "Protection_from_Earth",
@@ -300,7 +573,26 @@
       "super": "res://assets/inventory/0014053-000.png"
     },
     "kind": "buff",
-    "sound": 546
+    "sound": 546,
+    "cooldown": 6.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.2,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "resist",
+        "sphere": "Earth",
+        "amount": 20,
+        "duration": 90
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Diamond_Dust": {
     "name": "Diamond_Dust",
@@ -317,7 +609,19 @@
       "super": "res://assets/inventory/0014050-000.png"
     },
     "kind": "area",
-    "sound": 540
+    "sound": 540,
+    "cooldown": 3.0,
+    "cast_time": 0.6,
+    "projectile_speed": 0,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Bless": {
     "name": "Bless",
@@ -334,7 +638,26 @@
       "super": "res://assets/inventory/0014054-000.png"
     },
     "kind": "buff",
-    "sound": 548
+    "sound": 548,
+    "cooldown": 5.0,
+    "cast_time": 0.4,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.1,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "bless",
+        "attack": 2,
+        "defense": 2,
+        "duration": 60
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Haste": {
     "name": "Haste",
@@ -351,7 +674,25 @@
       "super": "res://assets/inventory/0014055-000.png"
     },
     "kind": "buff",
-    "sound": 550
+    "sound": 550,
+    "cooldown": 10.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "haste",
+        "mult": 1.4,
+        "duration": 20
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Heal": {
     "name": "Heal",
@@ -368,7 +709,19 @@
       "super": "res://assets/inventory/0014058-000.png"
     },
     "kind": "heal",
-    "sound": 556
+    "sound": 556,
+    "cooldown": 1.5,
+    "cast_time": 0.45,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.3,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Drain_Life": {
     "name": "Drain_Life",
@@ -385,7 +738,24 @@
       "super": "res://assets/inventory/0014060-000.png"
     },
     "kind": "attack",
-    "sound": 560
+    "sound": 560,
+    "cooldown": 2.0,
+    "cast_time": 0.4,
+    "projectile_speed": 360,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.05,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "vampirism",
+        "ratio": 0.5
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Shield": {
     "name": "Shield",
@@ -402,7 +772,25 @@
       "super": "res://assets/inventory/0014061-000.png"
     },
     "kind": "self",
-    "sound": 562
+    "sound": 562,
+    "cooldown": 10.0,
+    "cast_time": 0.35,
+    "projectile_speed": 0,
+    "target": "ally",
+    "power_coef": 1.2,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "shield",
+        "amount": 18,
+        "duration": 60
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Summon": {
     "name": "Summon",
@@ -419,7 +807,19 @@
       "super": "res://assets/inventory/0014059-000.png"
     },
     "kind": "self",
-    "sound": 558
+    "sound": 558,
+    "cooldown": 20.0,
+    "cast_time": 0.6,
+    "projectile_speed": 0,
+    "target": "self",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Animate_Dead": {
     "name": "Animate_Dead",
@@ -432,8 +832,25 @@
     "projectile": "",
     "icon": "",
     "icons": {},
-    "kind": "attack",
-    "sound": 552
+    "kind": "raise",
+    "sound": 552,
+    "cooldown": 15.0,
+    "cast_time": 0.8,
+    "projectile_speed": 0,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "raise",
+        "lifespan": 30
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Teleport": {
     "name": "Teleport",
@@ -450,7 +867,19 @@
       "super": "res://assets/inventory/0014057-000.png"
     },
     "kind": "self",
-    "sound": 554
+    "sound": 554,
+    "cooldown": 8.0,
+    "cast_time": 0.25,
+    "projectile_speed": 0,
+    "target": "self",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Curse": {
     "name": "Curse",
@@ -466,8 +895,26 @@
       "scroll": "res://assets/inventory/0014033-000.png",
       "super": "res://assets/inventory/0014062-000.png"
     },
-    "kind": "buff",
-    "sound": 564
+    "kind": "debuff",
+    "sound": 564,
+    "cooldown": 4.0,
+    "cast_time": 0.4,
+    "projectile_speed": 0,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "curse",
+        "defense": -0.4,
+        "duration": 30
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Slow": {
     "name": "Slow",
@@ -483,8 +930,26 @@
       "scroll": "res://assets/inventory/0014034-000.png",
       "super": "res://assets/inventory/0014063-000.png"
     },
-    "kind": "buff",
-    "sound": 566
+    "kind": "debuff",
+    "sound": 566,
+    "cooldown": 4.0,
+    "cast_time": 0.35,
+    "projectile_speed": 0,
+    "target": "enemy",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "slow",
+        "mult": 0.55,
+        "duration": 12
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Light": {
     "name": "Light",
@@ -501,7 +966,19 @@
       "super": "res://assets/inventory/0014049-000.png"
     },
     "kind": "self",
-    "sound": 538
+    "sound": 538,
+    "cooldown": 12.0,
+    "cast_time": 0.3,
+    "projectile_speed": 0,
+    "target": "self",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   },
   "Control_Spirit": {
     "name": "Control_Spirit",
@@ -517,7 +994,30 @@
       "scroll": "res://assets/inventory/0014027-000.png",
       "super": "res://assets/inventory/0014056-000.png"
     },
-    "kind": "buff",
-    "sound": 552
+    "kind": "debuff",
+    "sound": 552,
+    "cooldown": 8.0,
+    "cast_time": 0.6,
+    "projectile_speed": 0,
+    "target": "point",
+    "power_coef": 1.0,
+    "crit_chance": 0.0,
+    "crit_mult": 1.5,
+    "min_damage": 1,
+    "effects": [
+      {
+        "type": "slow",
+        "mult": 0.7,
+        "duration": 15
+      },
+      {
+        "type": "curse",
+        "defense": -0.3,
+        "duration": 15
+      }
+    ],
+    "wall_mode": "",
+    "wall_width": 0.0,
+    "wall_life": 0.0
   }
 }

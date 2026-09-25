@@ -19,12 +19,17 @@ const TALK_LINES := [
 ]
 const _BG_PATH := "res://assets/taverna/taverna.jpeg"
 const _DESIGN_SIZE := Vector2(1024, 1024)
+## Сетка кандидатов: 3 колонки × 4 ряда = 12 ячеек (кандидатов 10).
+## Раньше было 2 × 7 в узкой колонке 208 px: подпись «HP 100 · У 8 · 79 з» и имя
+## наезжали на соседнюю колонку (замерено: 223 px текста в 94 px ячейки), а
+## справа от сетки пустовало 774 × 608 px. Теперь ячейка широкая, а панель
+## рекрутера переехала под сетку — вертикальный бюджет не изменился.
 const _RECRUIT_ORIGIN := Vector2(26, 136)
-const _RECRUIT_CELL_SIZE := Vector2(96.5, 107.57)
-const _RECRUIT_COLUMNS := 2
-const _RECRUIT_ROWS := 7
-const _TALK_PANEL_RECT := Rect2(250, 744, 744, 156)
-const _PARTY_HINT_RECT := Rect2(250, 912, 560, 52)
+const _RECRUIT_CELL_SIZE := Vector2(240, 126)
+const _RECRUIT_COLUMNS := 3
+const _RECRUIT_ROWS := 4
+const _TALK_PANEL_RECT := Rect2(26, 660, 968, 156)
+const _PARTY_HINT_RECT := Rect2(26, 830, 640, 52)
 const _CLOSE_SIZE := Vector2(170, 44)
 const _CLOSE_MARGIN := Vector2(24, 24)
 
@@ -45,11 +50,8 @@ func setup(p: Player) -> void:
 	_build_ui()
 
 func _ready() -> void:
-	_previous_focus = get_viewport().gui_get_focus_owner()
-	var viewport := get_viewport()
-	if not viewport.size_changed.is_connected(_update_layout):
-		viewport.size_changed.connect(_update_layout)
-	_update_layout()
+	_previous_focus = UiKit.save_focus(self)
+	UiKit.bind_resize(get_viewport(), _update_layout)
 	_generate_candidates()
 	_refresh()
 
@@ -61,10 +63,7 @@ func _exit_tree() -> void:
 		viewport.size_changed.disconnect(_update_layout)
 
 func _build_ui() -> void:
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.0, 0.0, 0.58)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := UiKit.make_dim(0.58)
 	add_child(dim)
 
 	_panel_root = Control.new()
@@ -172,18 +171,18 @@ func _build_close_button() -> void:
 	_close_button.text = tr("Закрыть")
 	_close_button.custom_minimum_size = _CLOSE_SIZE
 	_close_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_close_button.position = _DESIGN_SIZE - _CLOSE_MARGIN - _CLOSE_SIZE
-	_close_button.size = _CLOSE_SIZE
+	# После PRESET_BOTTOM_RIGHT Position/size задавать нельзя: якорь уже привязан
+	# к правому нижнему углу, и присваивание position уводило кнопку за экран
+	# (замерено: 1426 x 1160 при окне 1280x600). После якоря — только offset_*.
+	_close_button.offset_left = -(_CLOSE_MARGIN.x + _CLOSE_SIZE.x)
+	_close_button.offset_top = -(_CLOSE_MARGIN.y + _CLOSE_SIZE.y)
+	_close_button.offset_right = -_CLOSE_MARGIN.x
+	_close_button.offset_bottom = -_CLOSE_MARGIN.y
 	_close_button.pressed.connect(close)
 	_panel_root.add_child(_close_button)
 
 func _update_layout() -> void:
-	if not is_instance_valid(_panel_root):
-		return
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-	var factor := minf(viewport_size.x / _DESIGN_SIZE.x, viewport_size.y / _DESIGN_SIZE.y)
-	_panel_root.scale = Vector2.ONE * factor
-	_panel_root.position = (viewport_size - _DESIGN_SIZE * factor) * 0.5
+	UiKit.fit_design_root(_panel_root, _DESIGN_SIZE)
 
 func _generate_candidates() -> void:
 	_candidates.clear()
@@ -265,7 +264,8 @@ func _make_recruit_slot(entry: Dictionary) -> PanelContainer:
 	stats.text = "HP %d · У %d · %d з" % [int(entry["hp"]), int(entry["dmg"]), int(entry["cost"])]
 	stats.tooltip_text = "%s — %s" % [display_name, _hostile_note(set_name)]
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats.custom_minimum_size = Vector2(0, 16)
+	stats.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	stats.custom_minimum_size = Vector2(0, 18)
 	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(stats)
 
@@ -303,66 +303,38 @@ func _configure_focus(buttons: Array[Button]) -> void:
 		_talk_button.focus_neighbor_bottom = _close_button.get_path()
 
 func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
-	container.add_theme_constant_override("margin_left", left)
-	container.add_theme_constant_override("margin_top", top)
-	container.add_theme_constant_override("margin_right", right)
-	container.add_theme_constant_override("margin_bottom", bottom)
+	UiKit.set_margins(container, left, top, right, bottom)
 
 func _make_theme() -> Theme:
-	var theme := Theme.new()
-	theme.default_font_size = 14
-	theme.set_color("font_color", "Label", Color(0.96, 0.88, 0.70))
-	theme.set_color("font_hover_color", "Button", Color(1.0, 0.92, 0.62))
-	theme.set_color("font_pressed_color", "Button", Color(1.0, 1.0, 0.90))
-	theme.set_color("font_focus_color", "Button", Color(1.0, 0.90, 0.48))
-	theme.set_color("font_disabled_color", "Button", Color(0.60, 0.55, 0.48))
-	theme.set_stylebox("normal", "Button", _button_style(Color(0.24, 0.13, 0.07, 0.96), Color(0.70, 0.40, 0.14)))
-	theme.set_stylebox("hover", "Button", _button_style(Color(0.36, 0.19, 0.08, 0.98), Color(1.0, 0.74, 0.26)))
-	theme.set_stylebox("pressed", "Button", _button_style(Color(0.15, 0.08, 0.04, 1.0), Color(0.66, 0.36, 0.12)))
-	theme.set_stylebox("disabled", "Button", _button_style(Color(0.16, 0.14, 0.13, 0.88), Color(0.35, 0.30, 0.26)))
-	theme.set_stylebox("focus", "Button", _button_style(Color(0.24, 0.13, 0.07, 0.0), Color(1.0, 0.78, 0.20), 3))
-	theme.set_type_variation(&"InnTitle", &"Label")
-	theme.set_color("font_color", &"InnTitle", Color(1.0, 0.78, 0.36))
-	theme.set_font_size("font_size", &"InnTitle", 28)
-	theme.set_type_variation(&"InnGoldLabel", &"Label")
-	theme.set_color("font_color", &"InnGoldLabel", Color(1.0, 0.88, 0.42))
-	theme.set_font_size("font_size", &"InnGoldLabel", 19)
-	theme.set_type_variation(&"InnSectionLabel", &"Label")
-	theme.set_color("font_color", &"InnSectionLabel", Color(1.0, 0.76, 0.36))
-	theme.set_font_size("font_size", &"InnSectionLabel", 18)
-	theme.set_type_variation(&"InnHintLabel", &"Label")
-	theme.set_color("font_color", &"InnHintLabel", Color(0.88, 0.82, 0.68))
-	theme.set_font_size("font_size", &"InnHintLabel", 16)
-	theme.set_type_variation(&"InnCandidateStats", &"Label")
-	theme.set_color("font_color", &"InnCandidateStats", Color(0.82, 0.82, 0.74))
-	theme.set_font_size("font_size", &"InnCandidateStats", 12)
-	theme.set_type_variation(&"InnRecruitSlot", &"PanelContainer")
-	theme.set_stylebox("panel", &"InnRecruitSlot", _panel_style(Color(0.08, 0.07, 0.08, 0.80), Color(0.58, 0.36, 0.16, 0.96)))
-	theme.set_type_variation(&"InnDialogPanel", &"PanelContainer")
-	theme.set_stylebox("panel", &"InnDialogPanel", _panel_style(Color(0.10, 0.08, 0.07, 0.86), Color(0.72, 0.46, 0.18, 0.96)))
+	# Тёплая палитра интерьера. Отличия от магазина сохранены (кнопка чуть
+	# светлее, диалог чуть прозрачнее) — UiKit убирает копипаст, а не разницу.
+	var theme := UiKit.base_theme({
+		"font_size": 14,
+		"font_color": Color(0.96, 0.88, 0.70),
+		"radius": 6, "margin": 5,
+		"normal_bg": Color(0.24, 0.13, 0.07, 0.96),
+		"normal_border": Color(0.70, 0.40, 0.14),
+		"hover_bg": Color(0.36, 0.19, 0.08, 0.98),
+		"hover_border": Color(1.0, 0.74, 0.26),
+		"pressed_bg": Color(0.15, 0.08, 0.04, 1.0),
+		"pressed_border": Color(0.66, 0.36, 0.12),
+		"disabled_bg": Color(0.16, 0.14, 0.13, 0.88),
+		"disabled_border": Color(0.35, 0.30, 0.26),
+		"focus_border": Color(1.0, 0.78, 0.20),
+		"scrollbar": true,
+	})
+	UiKit.add_title(theme, &"InnTitle")
+	UiKit.add_gold_label(theme, &"InnGoldLabel")
+	UiKit.add_label(theme, &"InnSectionLabel", UiKit.SECTION_COLOR, UiKit.SECTION_SIZE)
+	UiKit.add_label(theme, &"InnHintLabel", Color(0.88, 0.82, 0.68), 16)
+	UiKit.add_label(theme, &"InnCandidateStats", Color(0.82, 0.82, 0.74), 12)
+	UiKit.add_slot(theme, &"InnRecruitSlot")
+	UiKit.add_panel(theme, &"InnDialogPanel",
+		Color(0.10, 0.08, 0.07, 0.86), UiKit.DIALOG_BORDER, 5)
 	return theme
 
-func _button_style(background: Color, border: Color, width: int = 2) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(width)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(5)
-	return style
-
-func _panel_style(background: Color, border: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(5)
-	return style
-
 func _clear_grid(grid: GridContainer) -> void:
-	for child in grid.get_children():
-		grid.remove_child(child)
-		child.queue_free()
+	UiKit.clear(grid)
 
 func _talk() -> void:
 	if not is_instance_valid(_talk_label):
@@ -403,12 +375,11 @@ func _hire(candidate: Dictionary) -> void:
 	print("Нанят наёмник: %s" % set_name)
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if UiKit.esc_pressed(event):
 		close()
 		get_viewport().set_input_as_handled()
 
 func close() -> void:
-	if _previous_focus != null and is_instance_valid(_previous_focus):
-		_previous_focus.call_deferred("grab_focus")
+	UiKit.restore_focus(_previous_focus)
 	closed.emit()
 	queue_free()

@@ -23,15 +23,12 @@ func setup(p: Player) -> void:
 	_build_ui()
 
 func _ready() -> void:
-	_previous_focus = get_viewport().gui_get_focus_owner()
+	_previous_focus = UiKit.save_focus(self)
 	_load_recipes()
 	_refresh()
 
 func _build_ui() -> void:
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.0, 0.0, 0.66)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := UiKit.make_dim(0.66)
 	add_child(dim)
 
 	var root := MarginContainer.new()
@@ -323,91 +320,85 @@ func _configure_focus() -> void:
 	_close_button.focus_previous = _create_button.get_path()
 
 func _clear_container(container: Container) -> void:
-	for child in container.get_children():
-		container.remove_child(child)
-		child.queue_free()
+	UiKit.clear(container)
 
 func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
-	container.add_theme_constant_override("margin_left", left)
-	container.add_theme_constant_override("margin_top", top)
-	container.add_theme_constant_override("margin_right", right)
-	container.add_theme_constant_override("margin_bottom", bottom)
+	UiKit.set_margins(container, left, top, right, bottom)
 
 func _make_theme() -> Theme:
-	var theme := Theme.new()
-	theme.default_font_size = 15
-	theme.set_color("font_color", "Label", Color(0.90, 0.94, 0.84))
-	theme.set_color("font_hover_color", "Button", Color(0.92, 1.0, 0.72))
-	theme.set_color("font_pressed_color", "Button", Color(1.0, 1.0, 0.88))
-	theme.set_color("font_focus_color", "Button", Color(0.94, 1.0, 0.72))
-	theme.set_color("font_disabled_color", "Button", Color(0.52, 0.56, 0.48))
-	theme.set_stylebox("normal", "Button", _button_style(Color(0.10, 0.20, 0.14, 0.96), Color(0.36, 0.58, 0.30)))
-	theme.set_stylebox("hover", "Button", _button_style(Color(0.18, 0.34, 0.20, 0.98), Color(0.78, 0.90, 0.38)))
-	theme.set_stylebox("pressed", "Button", _button_style(Color(0.07, 0.14, 0.10, 1.0), Color(0.55, 0.72, 0.30)))
-	theme.set_stylebox("disabled", "Button", _button_style(Color(0.10, 0.13, 0.11, 0.90), Color(0.28, 0.31, 0.26)))
-	theme.set_stylebox("focus", "Button", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.92, 0.96, 0.42), 3))
-	theme.set_type_variation(&"AlchemyPanel", &"PanelContainer")
-	theme.set_stylebox("panel", &"AlchemyPanel", _panel_style(Color(0.055, 0.10, 0.075, 0.98), Color(0.42, 0.62, 0.28)))
-	theme.set_type_variation(&"AlchemySection", &"PanelContainer")
-	theme.set_stylebox("panel", &"AlchemySection", _panel_style(Color(0.075, 0.14, 0.10, 0.94), Color(0.28, 0.45, 0.24)))
-	theme.set_type_variation(&"AlchemyIngredientSlot", &"PanelContainer")
-	theme.set_stylebox("panel", &"AlchemyIngredientSlot", _panel_style(Color(0.10, 0.18, 0.13, 0.92), Color(0.30, 0.44, 0.26)))
-	theme.set_type_variation(&"AlchemyTitle", &"Label")
-	theme.set_color("font_color", &"AlchemyTitle", Color(0.86, 0.96, 0.52))
-	theme.set_font_size("font_size", &"AlchemyTitle", 30)
-	theme.set_type_variation(&"AlchemySectionTitle", &"Label")
-	theme.set_color("font_color", &"AlchemySectionTitle", Color(0.72, 0.88, 0.48))
-	theme.set_font_size("font_size", &"AlchemySectionTitle", 18)
-	theme.set_type_variation(&"AlchemyRecipeTitle", &"Label")
-	theme.set_color("font_color", &"AlchemyRecipeTitle", Color(1.0, 0.92, 0.58))
-	theme.set_font_size("font_size", &"AlchemyRecipeTitle", 22)
-	theme.set_type_variation(&"AlchemyResultLabel", &"Label")
-	theme.set_color("font_color", &"AlchemyResultLabel", Color(0.82, 0.90, 0.72))
-	theme.set_font_size("font_size", &"AlchemyResultLabel", 16)
-	theme.set_type_variation(&"AlchemyHint", &"Label")
-	theme.set_color("font_color", &"AlchemyHint", Color(0.70, 0.78, 0.64))
-	theme.set_font_size("font_size", &"AlchemyHint", 14)
-	theme.set_type_variation(&"AlchemyIngredientOk", &"Label")
-	theme.set_color("font_color", &"AlchemyIngredientOk", Color(0.62, 0.90, 0.48))
-	theme.set_type_variation(&"AlchemyIngredientMissing", &"Label")
-	theme.set_color("font_color", &"AlchemyIngredientMissing", Color(1.0, 0.56, 0.42))
-	theme.set_type_variation(&"AlchemyRecipeButton", &"Button")
-	theme.set_stylebox("normal", &"AlchemyRecipeButton", _button_style(Color(0.09, 0.17, 0.12, 0.94), Color(0.25, 0.38, 0.22)))
-	theme.set_stylebox("hover", &"AlchemyRecipeButton", _button_style(Color(0.16, 0.30, 0.18, 0.98), Color(0.68, 0.84, 0.32)))
-	theme.set_stylebox("pressed", &"AlchemyRecipeButton", _button_style(Color(0.07, 0.13, 0.09, 1.0), Color(0.52, 0.68, 0.28)))
-	theme.set_stylebox("disabled", &"AlchemyRecipeButton", _button_style(Color(0.08, 0.11, 0.09, 0.90), Color(0.24, 0.28, 0.22)))
-	theme.set_stylebox("focus", &"AlchemyRecipeButton", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(0.92, 0.96, 0.42), 3))
-	theme.set_type_variation(&"AlchemySelectedRecipeButton", &"Button")
-	theme.set_stylebox("normal", &"AlchemySelectedRecipeButton", _button_style(Color(0.17, 0.31, 0.18, 0.98), Color(0.76, 0.88, 0.34)))
-	theme.set_stylebox("hover", &"AlchemySelectedRecipeButton", _button_style(Color(0.22, 0.39, 0.23, 0.98), Color(0.92, 0.96, 0.42)))
-	theme.set_stylebox("pressed", &"AlchemySelectedRecipeButton", _button_style(Color(0.10, 0.20, 0.12, 1.0), Color(0.62, 0.78, 0.28)))
-	theme.set_stylebox("focus", &"AlchemySelectedRecipeButton", _button_style(Color(0.0, 0.0, 0.0, 0.0), Color(1.0, 0.94, 0.42), 3))
+	# Зелёная палитра алхимии. Значения оставлены один в один — UiKit даёт
+	# только фабрики и базовую кнопку, цветовые константы свои.
+	var theme := UiKit.base_theme({
+		"font_size": 15,
+		"font_color": Color(0.90, 0.94, 0.84),
+		"font_hover_color": Color(0.92, 1.0, 0.72),
+		"font_pressed_color": Color(1.0, 1.0, 0.88),
+		"font_focus_color": Color(0.94, 1.0, 0.72),
+		"font_disabled_color": Color(0.52, 0.56, 0.48),
+		"radius": 6, "margin": 6,
+		"normal_bg": Color(0.10, 0.20, 0.14, 0.96),
+		"normal_border": Color(0.36, 0.58, 0.30),
+		"hover_bg": Color(0.18, 0.34, 0.20, 0.98),
+		"hover_border": Color(0.78, 0.90, 0.38),
+		"pressed_bg": Color(0.07, 0.14, 0.10, 1.0),
+		"pressed_border": Color(0.55, 0.72, 0.30),
+		"disabled_bg": Color(0.10, 0.13, 0.11, 0.90),
+		"disabled_border": Color(0.28, 0.31, 0.26),
+		"focus_border": Color(0.92, 0.96, 0.42),
+		"scrollbar": true,
+	})
+	UiKit.add_panel(theme, &"AlchemyPanel",
+		Color(0.055, 0.10, 0.075, 0.98), Color(0.42, 0.62, 0.28), 8)
+	UiKit.add_panel(theme, &"AlchemySection",
+		Color(0.075, 0.14, 0.10, 0.94), Color(0.28, 0.45, 0.24), 8)
+	UiKit.add_panel(theme, &"AlchemyIngredientSlot",
+		Color(0.10, 0.18, 0.13, 0.92), Color(0.30, 0.44, 0.26), 8)
+	UiKit.add_label(theme, &"AlchemyTitle", Color(0.86, 0.96, 0.52), 30)
+	UiKit.add_label(theme, &"AlchemySectionTitle", Color(0.72, 0.88, 0.48), 18)
+	UiKit.add_label(theme, &"AlchemyRecipeTitle", Color(1.0, 0.92, 0.58), 22)
+	UiKit.add_label(theme, &"AlchemyResultLabel", Color(0.82, 0.90, 0.72), 16)
+	UiKit.add_label(theme, &"AlchemyHint", Color(0.70, 0.78, 0.64), 14)
+	UiKit.add_label(theme, &"AlchemyIngredientOk", Color(0.62, 0.90, 0.48))
+	UiKit.add_label(theme, &"AlchemyIngredientMissing", Color(1.0, 0.56, 0.42))
+	_add_button_variation(theme, &"AlchemyRecipeButton",
+		Color(0.09, 0.17, 0.12, 0.94), Color(0.25, 0.38, 0.22),
+		Color(0.16, 0.30, 0.18, 0.98), Color(0.68, 0.84, 0.32),
+		Color(0.07, 0.13, 0.09, 1.0), Color(0.52, 0.68, 0.28),
+		Color(0.08, 0.11, 0.09, 0.90), Color(0.24, 0.28, 0.22),
+		Color(0.92, 0.96, 0.42))
+	_add_button_variation(theme, &"AlchemySelectedRecipeButton",
+		Color(0.17, 0.31, 0.18, 0.98), Color(0.76, 0.88, 0.34),
+		Color(0.22, 0.39, 0.23, 0.98), Color(0.92, 0.96, 0.42),
+		Color(0.10, 0.20, 0.12, 1.0), Color(0.62, 0.78, 0.28),
+		Color(0, 0, 0, 0), Color(0, 0, 0, 0),
+		Color(1.0, 0.94, 0.42))
 	return theme
 
-func _button_style(background: Color, border: Color, width: int = 2) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(width)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(6)
-	return style
 
-func _panel_style(background: Color, border: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	return style
+## Кнопка-вариация из пяти состояний. Цвета передаются явно, чтобы не
+## «выводить» pressed/disabled затемнением и не менять вид панели.
+func _add_button_variation(theme: Theme, name: StringName,
+		normal_bg: Color, normal_border: Color,
+		hover_bg: Color, hover_border: Color,
+		pressed_bg: Color, pressed_border: Color,
+		disabled_bg: Color, disabled_border: Color,
+		focus_border: Color) -> void:
+	theme.set_type_variation(name, &"Button")
+	theme.set_stylebox("normal", name, UiKit.button_style(normal_bg, normal_border))
+	theme.set_stylebox("hover", name, UiKit.button_style(hover_bg, hover_border))
+	theme.set_stylebox("pressed", name, UiKit.button_style(pressed_bg, pressed_border))
+	if disabled_bg.a > 0.0:
+		theme.set_stylebox("disabled", name, UiKit.button_style(disabled_bg, disabled_border))
+	theme.set_stylebox("focus", name,
+		UiKit.button_style(Color(0, 0, 0, 0), focus_border, 3))
+
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if UiKit.esc_pressed(event):
 		close()
 		get_viewport().set_input_as_handled()
 
 func close() -> void:
-	if _previous_focus != null and is_instance_valid(_previous_focus):
-		_previous_focus.call_deferred("grab_focus")
+	UiKit.restore_focus(_previous_focus)
 	closed.emit()
 	queue_free()

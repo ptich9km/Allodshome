@@ -7,6 +7,7 @@ class_name Mercenary
 @export var max_hp: int = 70
 @export var damage: int = 6
 @export var move_speed: float = 90.0
+@export var spirit: int = 5                # базовое сопротивление магии
 
 var current_hp: int
 var attack_cooldown: float = 0.0
@@ -135,7 +136,7 @@ func _move_toward(p: Vector2, delta: float) -> void:
 			return
 		waypoint = _path[0]
 	var direction := Game.movement_direction(self, (waypoint - global_position).normalized())
-	var wanted := direction * move_speed
+	var wanted := direction * (move_speed * StatusEffects.speed_mult(self))
 	velocity = velocity.move_toward(wanted, 1100.0 * delta)
 
 func _attack(target: Node2D) -> void:
@@ -148,13 +149,14 @@ func _attack(target: Node2D) -> void:
 	_pending_target = target
 	_impact_timer = UnitDB.attack_delay(anim_set)
 
-func take_damage(dmg: int, _attacker: Node2D) -> void:
+func take_damage(dmg: int, _attacker: Node2D) -> int:
 	# Мёртвый наёмник урона не получает
 	if state == "dying" or state == "decay" or state == "corpse":
-		return
+		return 0
 	dmg = Game.shield_reduce(self, dmg)
 	if dmg <= 0:
-		return
+		SpellVFX.shield_hit(self)
+		return 0
 	current_hp -= dmg
 	if current_hp <= 0:
 		current_hp = 0
@@ -164,22 +166,40 @@ func take_damage(dmg: int, _attacker: Node2D) -> void:
 		state = "dying"
 	else:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))
+	return dmg
+
+## Восстановить HP (лечение, вампиризм). Возвращает реально восстановленное.
+func heal_amount(amount: int) -> int:
+	if amount <= 0 or current_hp >= max_hp:
+		return 0
+	if state == "dying" or state == "decay" or state == "corpse":
+		return 0
+	var healed := mini(max_hp, current_hp + amount) - current_hp
+	current_hp += healed
+	DamageNumber.show_at(global_position, healed, "heal")
+	return healed
 
 ## --- Производные характеристики (как у врагов/героя) для Game.deal_damage ---
 func get_attack() -> int:
-	return damage / 2 + max_hp / 30
+	return damage / 2 + max_hp / 30 + StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	return max_hp / 25
+	var base := max_hp / 25
+	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
 	return max_hp / 40
 
-func get_protection_fire() -> int:   return 0
-func get_protection_water() -> int:  return 0
-func get_protection_air() -> int:    return 0
-func get_protection_earth() -> int:  return 0
-func get_protection_astral() -> int: return 0
+## Сопротивление в процентах. Раньше все get_protection_* были жёстко 0 —
+## наёмник получал полный урон магией по любой стихии.
+func _resist(sphere: String) -> int:
+	return spirit * 2 + StatusEffects.resist_bonus(self, sphere)
+
+func get_protection_fire() -> int:   return _resist("Fire")
+func get_protection_water() -> int:  return _resist("Water")
+func get_protection_air() -> int:    return _resist("Air")
+func get_protection_earth() -> int:  return _resist("Earth")
+func get_protection_astral() -> int: return _resist("Astral")
 
 func _apply_relief_stand() -> void:
 	var h := 0.0

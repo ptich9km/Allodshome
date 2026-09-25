@@ -202,5 +202,14 @@ static func unit_sound(name: String) -> Array:
 		return raw
 	return []
 
+## Сопротивление набора стихии (вычитается из урона магии). 0 = нет.
+## Таблица заполняется tests/gen_unit_resists.py в assets/units/units_db.json.
+static func resist_of(name: String, sphere: String) -> int:
+	var o := get_set(name)
+	var r: Variant = o.get("resist", null)
+	if r is Dictionary:
+		return int((r as Dictionary).get(str(sphere).to_lower(), 0))
+	return 0
+
 func _unused() -> void:
 	pass

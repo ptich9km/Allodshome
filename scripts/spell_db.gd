@@ -66,9 +66,92 @@ static func range_of(name: String) -> float:
 static func area_of(name: String) -> float:
 	return float(get_spell(name).get("area", 0))
 
-## Вид: attack/area/heal/buff/wall/self.
+## Вид: attack/area/heal/buff/wall/self/debuff/raise.
 static func kind_of(name: String) -> String:
 	return str(get_spell(name).get("kind", "buff"))
+
+## Все имена заклинаний базы (по алфавиту) — для тест-режима и валидации.
+static func all_spell_names() -> Array:
+	ensure_loaded()
+	var out: Array = []
+	for name in _db:
+		out.append(name)
+	out.sort()
+	return out
+
+## Кулдаун заклинания в секундах (был единый 0.8 с в коде).
+static func cooldown_of(name: String) -> float:
+	return float(get_spell(name).get("cooldown", 0.8))
+
+## Время подготовки каста в секундах (0 = мгновенный).
+static func cast_time_of(name: String) -> float:
+	return float(get_spell(name).get("cast_time", 0.0))
+
+## Скорость снаряда в px/с (0 = без снаряда).
+static func projectile_speed_of(name: String) -> float:
+	return float(get_spell(name).get("projectile_speed", 0.0))
+
+## Куда можно целиться: enemy/ally/point/self.
+static func target_of(name: String) -> String:
+	return str(get_spell(name).get("target", "enemy"))
+
+## Множитель силы заклинания (нюк 1.0, лечилка > 1).
+static func power_coef_of(name: String) -> float:
+	return float(get_spell(name).get("power_coef", 1.0))
+
+static func crit_chance_of(name: String) -> float:
+	return float(get_spell(name).get("crit_chance", 0.0))
+
+static func crit_mult_of(name: String) -> float:
+	return float(get_spell(name).get("crit_mult", 1.5))
+
+static func min_damage_of(name: String) -> int:
+	return int(get_spell(name).get("min_damage", 1))
+
+## Режим стены: "damage" (огонь — жжёт) или "block" (земля — преграда).
+static func wall_mode_of(name: String) -> String:
+	return str(get_spell(name).get("wall_mode", "damage"))
+
+static func wall_width_of(name: String) -> float:
+	return float(get_spell(name).get("wall_width", 64.0))
+
+static func wall_life_of(name: String) -> float:
+	return float(get_spell(name).get("wall_life", 6.0))
+
+## Эффекты заклинания: [{"type": "slow", "mult": 0.55, "duration": 12}, ...].
+static func effects_of(name: String) -> Array:
+	var raw: Variant = get_spell(name).get("effects", [])
+	return raw if raw is Array else []
+
+## Первый эффект типа type или {} (например "vampirism", "raise").
+static func effect_of_type(name: String, type: String) -> Dictionary:
+	for e in effects_of(name):
+		if str(e.get("type", "")) == type:
+			return e
+	return {}
+
+## Проверка базы: [ошибки] — каждый свиток резолвится, у каждого заклинания
+## есть звук и заполнены поля каста. Используется в tests/magic_smoke.gd.
+static func validate() -> Array:
+	ensure_loaded()
+	var errs: Array = []
+	for name in all_spell_names():
+		var o: Dictionary = _db[name]
+		if int(o.get("sound", 0)) <= 0:
+			errs.append("%s: нет звука" % name)
+		if str(o.get("ru", "")) == "":
+			errs.append("%s: нет ru" % name)
+		if str(o.get("target", "")) == "":
+			errs.append("%s: нет target" % name)
+		if float(o.get("cast_time", -1.0)) < 0.0:
+			errs.append("%s: некорректный cast_time" % name)
+		var folder := str(o.get("projectile", ""))
+		var kind := str(o.get("kind", ""))
+		if kind in ["attack", "area"] and folder == "":
+			errs.append("%s: атакующее без папки снаряда" % name)
+		if folder != "" and not DirAccess.dir_exists_absolute("res://assets/projectiles/%s" % folder):
+			errs.append("%s: нет папки снаряда %s" % [name, folder])
+	return errs
 
 ## Сфера заклинания.
 static func sphere_of(name: String) -> String:

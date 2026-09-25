@@ -15,6 +15,9 @@ const PANEL_H := 700.0
 var save_path: String = DEFAULT_SAVE_PATH
 
 ## Материалы с рангом качества (чем больше — тем лучше).
+## Названия и порядок — по assets/loot_icons/README.md (материалы проекта,
+## не оригинальной игры). Фэнтезийные мифрил/адамант/метеорит/кристалл ушли
+## в пользу придуманных terbium/titanium/plutonium/radium.
 const MATERIALS := {
 	"wood":      {"name": "дерево",          "quality": 1},
 	"leather":   {"name": "кожа",            "quality": 2},
@@ -23,22 +26,22 @@ const MATERIALS := {
 	"gold":      {"name": "золото",          "quality": 5},
 	"iron":      {"name": "железо",          "quality": 6},
 	"steel":     {"name": "сталь",           "quality": 7},
-	"mithril":   {"name": "мифрил",          "quality": 8},
-	"adamant":   {"name": "адамант",         "quality": 9},
-	"meteor":    {"name": "метеорит",        "quality": 10},
-	"crystal":   {"name": "кристалл",        "quality": 11},
+	"terbium":   {"name": "тербий",          "quality": 8},
+	"titanium":  {"name": "титаний",         "quality": 9},
+	"plutonium": {"name": "плутоний",        "quality": 10},
+	"radium":    {"name": "радий",           "quality": 11},
 	"dragonskin":{"name": "драконья кожа",   "quality": 12},
 }
 
 ## Категории: {key, name, group} — собираются из типов и материалов.
 ## group: weapon / armor / shield / accessory / ranged / mage / consumable.
-const TYPE_WEAPONS := ["bronze", "gold", "iron", "steel", "mithril", "adamant", "meteor", "crystal"]
-const TYPE_ARMOR := ["leather", "toughskin", "bronze", "gold", "iron", "steel", "mithril", "adamant", "meteor", "crystal", "dragonskin"]
-const TYPE_SHIELDS := ["wood", "bronze", "iron", "steel", "mithril", "adamant", "meteor", "crystal", "dragonskin"]
-const TYPE_AMULETS := ["iron", "steel", "mithril", "adamant", "meteor", "crystal"]
-const TYPE_RINGS := ["iron", "steel", "mithril", "adamant", "meteor", "crystal"]
-const TYPE_BOWS := ["wood", "bronze", "iron", "steel", "mithril", "adamant", "meteor", "crystal"]
-const TYPE_XBOWS := ["wood", "bronze", "iron", "steel", "mithril", "adamant", "meteor", "crystal"]
+const TYPE_WEAPONS := ["bronze", "gold", "iron", "steel", "terbium", "titanium", "plutonium", "radium"]
+const TYPE_ARMOR := ["leather", "toughskin", "bronze", "gold", "iron", "steel", "terbium", "titanium", "plutonium", "radium", "dragonskin"]
+const TYPE_SHIELDS := ["wood", "bronze", "iron", "steel", "terbium", "titanium", "plutonium", "radium", "dragonskin"]
+const TYPE_AMULETS := ["iron", "steel", "terbium", "titanium", "plutonium", "radium"]
+const TYPE_RINGS := ["iron", "steel", "terbium", "titanium", "plutonium", "radium"]
+const TYPE_BOWS := ["wood", "bronze", "iron", "steel", "terbium", "titanium", "plutonium", "radium"]
+const TYPE_XBOWS := ["wood", "bronze", "iron", "steel", "terbium", "titanium", "plutonium", "radium"]
 
 var catalog := {}          # "файл.png" -> {"cat": key, "quality": N}
 var active_category := "weapon_bronze"

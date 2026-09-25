@@ -137,7 +137,7 @@ func _physics_process(delta):
 						SoundDB.play(_unit_sound_at(0))
 		"flee":
 			var flee_direction = (global_position - target.global_position).normalized()
-			_move_checked(flee_direction, move_speed * 1.5, delta)
+			_move_checked(flee_direction, effective_speed() * 1.5, delta)
 			if distance_to_target > deaggro_radius * 1.5:
 				queue_free()
 
@@ -196,19 +196,26 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 
 ## Цель боя: игрок (приоритет; в агро или в погоне — до deaggro) или
 ## ближайший страж-НПЦ города в радиусе агро.
+## Невидимого героя враг «не замечает» дальше 40 px, но видит вплотную.
 func _combat_target() -> Node2D:
 	var player = get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player):
 		var dp := Game.units_range(self, player)
-		var lim := deaggro_radius if state == "chase" or state == "attack" or state == "flee" else aggro_radius
+		var committed := state == "chase" or state == "attack" or state == "flee"
+		var lim := deaggro_radius if committed else aggro_radius
+		lim *= StatusEffects.vision_mult(self)   # Darkness сужает обзор
+		if StatusEffects.is_invisible(player) and not committed:
+			lim = 40.0
 		if dp < lim:
 			return player
 	var best: Node2D = null
-	var bd := deaggro_radius
+	var bd := deaggro_radius * StatusEffects.vision_mult(self)
 	for n in Game.npcs:
 		if n == null or not is_instance_valid(n):
 			continue
 		if not (n is Npc) or n.role != "guard":
+			continue
+		if StatusEffects.is_invisible(n):
 			continue
 		var d := Game.units_range(self, n)
 		if d < bd:
@@ -232,7 +239,7 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			_path.pop_front()
 		if _path.size() > 0:
 			wp = _path[0]
-			_move_checked((wp - global_position).normalized(), move_speed, delta)
+			_move_checked((wp - global_position).normalized(), effective_speed(), delta)
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 	else:
@@ -243,19 +250,34 @@ func _chase_move(delta: float, target: Node2D) -> void:
 ## поглощение->броня, защиты -> защита от стихий (для магии).
 
 func get_attack() -> int:
-	return damage / 2 + max_hp / 30
+	return damage / 2 + max_hp / 30 + StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	return max_hp / 25
+	var base := max_hp / 25
+	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
 	return max_hp / 40
 
-func get_protection_fire() -> int:   return max_hp / 60
-func get_protection_water() -> int:  return max_hp / 60
-func get_protection_air() -> int:    return max_hp / 60
-func get_protection_earth() -> int:  return max_hp / 70
-func get_protection_astral() -> int: return max_hp / 80
+## Сопротивление стихии — из данных набора (assets/units/units_db.json, поле
+## "resist"). Раньше было max_hp/60, из-за чего босс с большим HP становился
+## почти неуязвимым к одной стихии.
+func _resist(sphere: String) -> int:
+	return UnitDB.resist_of(anim_set, sphere) + StatusEffects.resist_bonus(self, sphere)
+
+func get_protection_fire() -> int:   return _resist("Fire")
+func get_protection_water() -> int:  return _resist("Water")
+func get_protection_air() -> int:    return _resist("Air")
+func get_protection_earth() -> int:  return _resist("Earth")
+func get_protection_astral() -> int: return _resist("Astral")
+
+## Скорость с учётом Haste/Slow (move_speed — база, кэшировать нельзя).
+func effective_speed() -> float:
+	return move_speed * StatusEffects.speed_mult(self)
+
+## Обзор с учётом Darkness (Vision ×0.5 и т.п.).
+func effective_sight() -> int:
+	return maxi(1, int(get_sight() * StatusEffects.vision_mult(self)))
 
 ## Обзор в клетках (влияет на радиус агро — как просили: «обзор -> агро»).
 func get_sight() -> int:
@@ -263,17 +285,20 @@ func get_sight() -> int:
 
 ## Единая точка входящего урона: вызывается из Game.deal_damage
 ## (там уже применены промах, поглощение брони и защиты стихий).
-func take_damage(dmg: int, attacker) -> void:
+## Возвращает фактически снятое HP (после щита) — его рисует Game.deal_damage.
+func take_damage(dmg: int, attacker) -> int:
 	# Мёртвый монстр (труп/разложение) урона не получает — иначе повторный
 	# лут/звуки при махах по трупу
 	if state == "dying" or state == "decay" or state == "corpse":
-		return
+		return 0
 	if dmg <= 0:
-		return
-	current_hp -= dmg
-	# Визуальная обратная связь
-	SpellVFX.hit_flash(self)
-	DamageNumber.show_at(global_position, dmg, "damage")
+		return 0
+	# Раньше щит на враге не работал: shield_reduce здесь не вызывался
+	var shielded := Game.shield_reduce(self, dmg)
+	if shielded <= 0:
+		SpellVFX.shield_hit(self)
+		return 0
+	current_hp -= shielded
 	# При получении урона — сразу начинаем погоню (но не прерываем текущую атаку,
 	# иначе после каждого попадания монстр сбрасывает замах)
 	if is_instance_valid(attacker):
@@ -292,6 +317,7 @@ func take_damage(dmg: int, attacker) -> void:
 			health_bar.visible = false  # труп не показывает шкалу
 	else:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))  # боль
+	return shielded
 
 ## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
 func _unit_sound_at(idx: int) -> int:

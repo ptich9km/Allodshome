@@ -71,27 +71,39 @@ const FEMALE_NAMES := [
 
 const CARD_SIZE := Vector2(210, 330)
 const CARD_GAP := 24.0
+## Ширина карточки фиксирована, высота — нет: на низком окне (1280×600) ряд карточек
+## обязан сжиматься, иначе панель характеристик уезжает за нижний край.
+const CARD_WIDTH := 210.0
+const CARD_IMAGE_MIN := 120
 
 var selected := 0
 var name_input: LineEdit
 var _name_btn: Button
 var _cards: Array = []
 var _name_idx := -1  # последнее сгенерированное имя (для повторной кнопки)
+var _root: VBoxContainer   # корневая колонка-раскладка
+var _start_btn: Button
+var _name_row: HBoxContainer
 
 # --- Настройка героя (как в оригинале): атрибуты и склонность навыка ---
 var _edit: Dictionary = {}          # редактируемые статы (копия пресета)
 var _stat_labels := {}              # "body" -> Label значения
 var _pool_label: Label
-var _affinity_buttons: Array = []   # кнопки склонности (field)
+var _affinity_buttons: Array[Button] = []   # кнопки склонности (field)
 const AFFINITIES := [
 	["Меч", "blade"], ["Топор", "axe"], ["Булава", "bludgeon"], ["Копьё", "pike"],
 	["Стрельба", "shooting"], ["Огонь", "fire"], ["Вода", "water"],
 	["Воздух", "air"], ["Земля", "earth"], ["Астрал", "astral"],
 ]
 const STATS_ORDER := ["body", "agility", "mind", "spirit"]
+const STAT_TITLES := {
+	"body": "ТЕЛО", "agility": "ЛОВКОСТЬ", "mind": "РАЗУМ", "spirit": "ДУХ",
+}
 
 func _ready():
+	_apply_theme()
 	_setup_background()
+	_setup_layout()
 	_setup_title()
 	_setup_cards()
 	_setup_name_row()
@@ -99,136 +111,177 @@ func _ready():
 	_setup_editor()
 	# Отложенный выбор: в _ready корень сцены занят, а звук создаёт шину в root
 	_select.call_deferred(0)
+	# Стартовый фокус — на кнопке старта: сцена управляется и с клавиатуры, и с геймпада
+	if is_instance_valid(_start_btn):
+		_start_btn.call_deferred("grab_focus")
+
+## Единая тема экрана вместо разнобоя локальных override на каждом узле.
+func _apply_theme() -> void:
+	theme = UiKit.base_theme()
+	UiKit.add_title(theme, &"CsTitle")
+	UiKit.add_label(theme, &"CsSub", Color(0.75, 0.70, 0.60), 18)
+	UiKit.add_label(theme, &"CsName", Color(0.95, 0.90, 0.80), 20)
+	UiKit.add_label(theme, &"CsDesc", Color(0.85, 0.82, 0.75), 12)
+	UiKit.add_label(theme, &"CsStatTitle", UiKit.SECTION_COLOR, 13)
+	UiKit.add_gold_label(theme, &"CsPool")
+	UiKit.add_panel(theme, &"CsCard", Color(0.12, 0.10, 0.09, 0.92), UiKit.SLOT_BORDER, 6)
+	UiKit.add_panel(theme, &"CsEditor", Color(0.10, 0.09, 0.08, 0.94), UiKit.DIALOG_BORDER, 6)
 
 func _setup_background() -> void:
 	# Тёмный фон-панель на весь экран
 	var bg := ColorRect.new()
 	bg.color = Color(0.08, 0.06, 0.05, 1.0)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 	# Горизонт-лента снизу (как каменный пол в оригинале)
 	var floor := ColorRect.new()
 	floor.color = Color(0.16, 0.12, 0.09, 1.0)
 	floor.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	floor.offset_top = -120.0
+	floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(floor)
 
+## Корневая раскладка экрана: одна колонка-контейнер вместо координат 1280×800.
+func _setup_layout() -> void:
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiKit.set_margins(margin, 28, 20, 28, 20)
+	add_child(margin)
+	_root = VBoxContainer.new()
+	_root.add_theme_constant_override("separation", 10)
+	margin.add_child(_root)
+	UiKit.bind_resize(get_window(), _fit_root)
+
+## Подгонка под окно: карточки сжимаются по высоте, отступы не растут.
+func _fit_root() -> void:
+	if not is_instance_valid(_root):
+		return
+	var available: float = size.y - 40.0
+	var wanted: float = float(CHARACTERS.size()) * 0.0
+	# Высота карточек задаётся контейнером; ограничиваем только минимальную,
+	# чтобы панель характеристик не уехала за экран на маленьком окне.
+	_root.custom_minimum_size = Vector2(0.0, minf(available, 800.0) + wanted)
+
 func _setup_title() -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	_root.add_child(box)
 	var title := Label.new()
+	title.theme_type_variation = &"CsTitle"
 	title.text = "АЛЛОДЫ: ДОМ"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 42)
-	title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
-	title.position = Vector2(0, 26)
-	title.size = Vector2(1280, 56)
-	add_child(title)
-
+	box.add_child(title)
 	var sub := Label.new()
+	sub.theme_type_variation = &"CsSub"
 	sub.text = "Выберите героя"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.add_theme_font_size_override("font_size", 18)
-	sub.add_theme_color_override("font_color", Color(0.75, 0.7, 0.6))
-	sub.position = Vector2(0, 84)
-	sub.size = Vector2(1280, 28)
-	add_child(sub)
+	box.add_child(sub)
 
 func _setup_cards() -> void:
-	var total_w := CARD_SIZE.x * CHARACTERS.size() + CARD_GAP * (CHARACTERS.size() - 1)
-	var x0 := (1280.0 - total_w) / 2.0
-	var y := 130.0
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", int(CARD_GAP))
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_root.add_child(row)
 	for i in range(CHARACTERS.size()):
-		var c: Dictionary = CHARACTERS[i]
-		var card := _make_card(c, Vector2(x0 + i * (CARD_SIZE.x + CARD_GAP), y))
-		_cards.append(card)
-		add_child(card)
+		row.add_child(_make_card(CHARACTERS[i], i))
 
-func _make_card(c: Dictionary, pos: Vector2) -> Control:
-	var panel := Panel.new()
-	panel.position = pos
-	panel.size = CARD_SIZE
+## Клик/фокус карточки выбирают персонажа (мышь, клавиатура, геймпад).
+func _on_card_input(event: InputEvent, idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_select(idx)
+
+func _make_card(c: Dictionary, idx: int) -> Control:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"CsCard"
+	panel.custom_minimum_size = Vector2(CARD_WIDTH, 0)
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.focus_mode = Control.FOCUS_ALL
+	_cards.append(panel)
+
+	# Единственный прямой потомок карточки: контейнер, который НЕ перехватывает
+	# клик (у прямых детей должен быть IGNORE — на этом держится клик по карточке).
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 4)
+	panel.add_child(box)
 
 	# Миниатюра персонажа (полноростовой спрайт)
-	var tex := load(str(c["image"]))
 	var img := TextureRect.new()
-	img.texture = tex
+	img.texture = load(str(c["image"]))
+	img.custom_minimum_size = Vector2(0, CARD_IMAGE_MIN)
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	img.mouse_filter = Control.MOUSE_FILTER_IGNORE  # не перехватывать клик
-	img.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	img.offset_top = 8.0
-	img.offset_bottom = 250.0
-	panel.add_child(img)
+	box.add_child(img)
 
 	# Подпись: класс + пол
 	var label := Label.new()
+	label.theme_type_variation = &"CsName"
 	label.text = "%s\n%s" % [c["title"], "Мужчина" if c["gender"] == "male" else "Женщина"]
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.8))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	label.offset_top = -64.0
-	label.offset_bottom = -20.0
-	panel.add_child(label)
+	box.add_child(label)
 
 	# Описание (имя героя появится после выбора)
 	var desc := Label.new()
 	desc.name = "Desc"
+	desc.theme_type_variation = &"CsDesc"
 	desc.text = ""
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 11)
-	desc.add_theme_color_override("font_color", Color(0.85, 0.82, 0.75))
+	desc.custom_minimum_size = Vector2(0, 40)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	desc.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	desc.offset_top = -18.0
-	desc.offset_bottom = 0.0
-	panel.add_child(desc)
+	box.add_child(desc)
 
-	# Клик по карточке. idx фиксируем на момент создания (в GDScript default-аргументы
-	# лямбды пересчитываются на каждый вызов — _cards.size() к моменту клика уже 4).
-	var card_idx := _cards.size()
-	panel.gui_input.connect(func(event: InputEvent, idx := card_idx):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			_select(idx))
-	panel.mouse_entered.connect(func(idx := card_idx):
-		panel.modulate = Color(1.06, 1.06, 1.02))
-	panel.mouse_exited.connect(func():
-		_update_card_style(panel))
+	panel.gui_input.connect(_on_card_input.bind(idx))
+	panel.focus_entered.connect(func(): _select(idx))
+	panel.mouse_entered.connect(func(): panel.modulate = Color(1.06, 1.06, 1.02))
+	panel.mouse_exited.connect(func(): _update_card_style(panel))
 	return panel
 
 func _update_card_style(panel: Control) -> void:
-	var idx := _cards.find(panel)
-	var selected_idx := int(idx == selected)
+	var idx: int = _cards.find(panel)
 	if idx == selected:
-		panel.modulate = Color(1.12, 1.12, 1.0)
+		panel.modulate = Color(1.10, 1.10, 1.0)
+		panel.add_theme_stylebox_override("panel",
+			UiKit.panel_style(Color(0.21, 0.15, 0.09, 0.96), UiKit.DIALOG_BORDER, 6, 3))
 	else:
 		panel.modulate = Color.WHITE
+		panel.remove_theme_stylebox_override("panel")
 
 func _setup_name_row() -> void:
-	var y := 505.0
+	# Имя и кнопка старта — в одной строке: на невысоком окне отдельная строка
+	# на кнопку съедала высоту и выдавливала панель характеристик за край.
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	_root.add_child(row)
+	_name_row = row
+
 	var lab := Label.new()
 	lab.text = "Имя героя:"
-	lab.position = Vector2(360, y + 6)
 	lab.add_theme_font_size_override("font_size", 18)
-	add_child(lab)
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(lab)
 
 	name_input = LineEdit.new()
-	name_input.position = Vector2(480, y)
-	name_input.size = Vector2(360, 40)
+	name_input.custom_minimum_size = Vector2(320, 40)
 	name_input.max_length = 20
 	name_input.add_theme_font_size_override("font_size", 18)
 	name_input.placeholder_text = "Введите имя..."
-	add_child(name_input)
+	row.add_child(name_input)
 
 	# Кнопка случайного греческого имени
 	_name_btn = Button.new()
 	_name_btn.text = "🎲 Случайное греческое имя"
-	_name_btn.position = Vector2(860, y)
-	_name_btn.size = Vector2(240, 40)
+	_name_btn.custom_minimum_size = Vector2(240, 40)
 	_name_btn.pressed.connect(_random_name)
-	add_child(_name_btn)
+	row.add_child(_name_btn)
 
 	if name_input.text == "":
 		_random_name()
@@ -244,84 +297,106 @@ func _random_name() -> void:
 	name_input.text = str(pool[i])
 
 func _setup_start_button() -> void:
-	var btn := Button.new()
-	btn.text = "В ПУТЬ!"
-	btn.position = Vector2(540, 610)
-	btn.size = Vector2(200, 60)
-	btn.add_theme_font_size_override("font_size", 26)
-	btn.pressed.connect(_start_game)
-	add_child(btn)
+	var row: HBoxContainer = _name_row if is_instance_valid(_name_row) else HBoxContainer.new()
+	if not is_instance_valid(_name_row):
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 10)
+		_root.add_child(row)
+	_start_btn = Button.new()
+	_start_btn.text = "В ПУТЬ!"
+	_start_btn.custom_minimum_size = Vector2(220, 48)
+	_start_btn.add_theme_font_size_override("font_size", 24)
+	_start_btn.pressed.connect(_start_game)
+	row.add_child(_start_btn)
 
 ## Панель настройки внизу: атрибуты (очки) и склонность навыка (+20).
 func _setup_editor() -> void:
-	var panel := Panel.new()
-	panel.position = Vector2(12, 676)
-	panel.size = Vector2(1256, 116)
-	add_child(panel)
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"CsEditor"
+	_root.add_child(panel)
+
+	var margin := MarginContainer.new()
+	UiKit.set_margins(margin, 12, 8, 12, 8)
+	panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	margin.add_child(col)
+
+	# --- Строка 1: заголовок, четыре характеристики, остаток очков ---
+	var row1 := HBoxContainer.new()
+	row1.add_theme_constant_override("separation", 10)
+	col.add_child(row1)
 
 	var lab := Label.new()
 	lab.text = "Характеристики:"
-	lab.position = Vector2(14, 10)
 	lab.add_theme_font_size_override("font_size", 15)
-	panel.add_child(lab)
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row1.add_child(lab)
 
-	var x := 130.0
-	for name in STATS_ORDER:
+	for stat in STATS_ORDER:
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 2)
+		row1.add_child(box)
+
 		var title := Label.new()
-		title.text = {"body": "ТЕЛО", "agility": "ЛОВКОСТЬ", "mind": "РАЗУМ", "spirit": "ДУХ"}[name]
-		title.position = Vector2(x, 8)
-		title.size = Vector2(90, 22)
-		title.add_theme_font_size_override("font_size", 13)
-		panel.add_child(title)
+		title.theme_type_variation = &"CsStatTitle"
+		title.text = str(STAT_TITLES[stat])
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(title)
+
+		var line := HBoxContainer.new()
+		line.alignment = BoxContainer.ALIGNMENT_CENTER
+		line.add_theme_constant_override("separation", 4)
+		box.add_child(line)
 
 		var minus := Button.new()
 		minus.text = "−"
-		minus.position = Vector2(x, 32)
-		minus.size = Vector2(26, 26)
-		minus.pressed.connect(func(n=name): _change_stat(n, -1))
-		panel.add_child(minus)
+		minus.custom_minimum_size = Vector2(30, 30)
+		minus.pressed.connect(_change_stat.bind(stat, -1))
+		line.add_child(minus)
 
 		var val := Label.new()
 		val.text = "10"
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		val.position = Vector2(x + 28, 32)
-		val.size = Vector2(44, 26)
-		val.add_theme_font_size_override("font_size", 17)
-		panel.add_child(val)
-		_stat_labels[name] = val
+		val.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		val.custom_minimum_size = Vector2(40, 30)
+		line.add_child(val)
+		_stat_labels[stat] = val
 
 		var plus := Button.new()
 		plus.text = "+"
-		plus.position = Vector2(x + 74, 32)
-		plus.size = Vector2(26, 26)
-		plus.pressed.connect(func(n=name): _change_stat(n, 1))
-		panel.add_child(plus)
-		x += 118.0
+		plus.custom_minimum_size = Vector2(30, 30)
+		plus.pressed.connect(_change_stat.bind(stat, 1))
+		line.add_child(plus)
 
 	_pool_label = Label.new()
-	_pool_label.position = Vector2(640, 12)
-	_pool_label.size = Vector2(240, 28)
-	_pool_label.add_theme_font_size_override("font_size", 15)
-	_pool_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
-	panel.add_child(_pool_label)
+	_pool_label.theme_type_variation = &"CsPool"
+	_pool_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_pool_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row1.add_child(_pool_label)
+
+	# --- Строка 2: склонность (+20 к навыку) ---
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 8)
+	col.add_child(row2)
 
 	var alab := Label.new()
 	alab.text = "Склонность (+20 к навыку):"
-	alab.position = Vector2(14, 64)
-	alab.size = Vector2(220, 26)
 	alab.add_theme_font_size_override("font_size", 13)
-	panel.add_child(alab)
-	var ax := 240.0
+	alab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row2.add_child(alab)
+
 	for i in range(AFFINITIES.size()):
 		var b := Button.new()
 		b.text = str(AFFINITIES[i][0])
 		b.toggle_mode = true
-		b.position = Vector2(ax, 62)
-		b.size = Vector2(88, 28)
-		b.pressed.connect(func(idx=i): _pick_affinity(idx))
-		panel.add_child(b)
+		b.custom_minimum_size = Vector2(92, 30)
+		b.pressed.connect(_pick_affinity.bind(i))
+		row2.add_child(b)
 		_affinity_buttons.append(b)
-		ax += 96.0
+	# Сквозная навигация по ряду кнопок (мышь/клавиатура/геймпад)
+	UiKit.wire_grid_focus(_affinity_buttons, AFFINITIES.size())
 
 func _change_stat(name: String, delta: int) -> void:
 	if not _edit.has(name):
@@ -427,6 +502,9 @@ func _start_game() -> void:
 		Game.hero_start_book = SpellDB.book_key_for_spell(starter)
 	Game.hero_stats = st
 	Game.hero_character_id = str(c["id"])
+	# Новая игра — новая карта: случайный сид, карта генерируется в user://maps/.
+	# Продолжение сохранения (пакет B) переставит сид ДО этого вызова.
+	Game.new_random_map()
 	SoundDB.play(2)  # click_ok
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 

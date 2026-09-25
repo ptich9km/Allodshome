@@ -21,7 +21,7 @@ static var pending_scroll: Dictionary = {}   # прицеливание свит
 static var pending_spell: Dictionary = {}    # выбор заклинания из книги: {"name"}
 static var hotbar: Dictionary = {}           # быстрый вызов: слот 0..8 (клавиши 1..9) -> имя заклинания
 static var _spell_targeting_frame: int = -1  # кадр, когда начато прицеливание (защита от двойного каста)
-static var debug_magic: bool = false  # отладка: маг на старте знает все 24 книжные магии
+static var debug_magic: bool = true  # ВРЕМЕННО: все заклинания + бесконечная мана
 
 # --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
 static func apply_shield(unit: Node2D, strength: int, seconds: float) -> void:
@@ -70,31 +70,87 @@ static func unit_defense(u: Node2D) -> int:
 static func unit_absorption(u: Node2D) -> int:
 	return int(u.call("get_absorption")) if u != null and u.has_method("get_absorption") else 0
 
-## Защита от стихии (магический урон): get_protection_<сфера>.to_lower().
+## Сопротивление стихии в ПРОЦЕНТАХ: сколько процентов магического урона
+## не пройдёт. Так в оригинале (main.txt: «shows the percentage of the
+## magical effects… which will not affect the character») и это не ломается
+## от больших чисел, в отличие от плоского вычитания.
 static func unit_protection(u: Node2D, sphere: String) -> int:
 	if u == null or sphere == "":
 		return 0
 	var m := "get_protection_%s" % sphere.to_lower()
 	if u.has_method(m):
-		return int(u.call(m))
+		return clampi(int(u.call(m)), 0, 95)
 	return 0
 
+## --- Сила магии: ОДИН стат на урон, лечение, щит и вампиризм ---
+## Формула оригинала (Allods II): SP = навык сферы + разум - 30.
+## Кламп в ноль обязателен: при навыке 5 и разуме 9 выходит -16, а оригинал
+## на таких значениях ломается (SP>255 — баг переполнения байта).
+static func spell_power(caster: Node2D, sphere: String) -> float:
+	if caster == null or not is_instance_valid(caster):
+		return 0.0
+	var mind := 0.0
+	if "mind" in caster:
+		mind = float(caster.get("mind"))
+	var skill := 0.0
+	if caster.has_method("sphere_skill"):
+		skill = float(caster.call("sphere_skill", sphere))
+	return maxf(0.0, skill + mind - SP_OFFSET) + float(StatusEffects.stat_flat(caster, "power"))
+
+
+## Порог «минус 30» из оригинала: ниже него заклинание почти ничего не делает.
+const SP_OFFSET := 30.0
+
+
+## Урон заклинания с учётом силы кастера и множителя заклинания.
+## final = base * power_coef * (1 + spell_power/100)
+static func spell_damage(caster: Node2D, spell_name: String, sphere: String, base_damage: int) -> int:
+	var coef := SpellDB.power_coef_of(spell_name)
+	var power := spell_power(caster, sphere)
+	var raw := float(base_damage) * coef * (1.0 + power / 100.0)
+	return maxi(SpellDB.min_damage_of(spell_name), int(round(raw)))
+
+
 ## ЕДИНАЯ точка урона: физика -> поглощение; магия -> защиты стихий; далее щит и HP.
-## Возвращает фактически нанесённый урон (0 — если всё поглощено/промах).
+## Возвращает фактически нанесённый урон (0 — если всё поглощён/промах).
 static func deal_damage(target: Node2D, dmg: int, kind: String, sphere: String, attacker: Node2D) -> int:
 	if not is_instance_valid(target) or dmg <= 0:
 		return 0
 	var final := dmg
 	if kind == "magic":
-		final = maxi(0, final - unit_protection(target, sphere))
+		# Сопротивление — процент от урона (как в оригинале)
+		var prot := unit_protection(target, sphere)
+		final = maxi(0, int(round(float(dmg) * (1.0 - float(prot) / 100.0))))
 	else:
 		final = maxi(0, final - unit_absorption(target))
 	if final <= 0:
 		print("%s: урон поглощён полностью (%s)." % [target.name,
 			"защита стихии" if kind == "magic" else "броня"])
+		DamageNumber.show_at(target.global_position, 0, "absorb")
 		return 0
-	target.take_damage(final, attacker)   # внутри take_damage — щит, затем HP
+	var dealt := 0
+	if target.has_method("take_damage"):
+		dealt = target.call("take_damage", final, attacker)
+		if dealt is int and int(dealt) > 0:
+			final = int(dealt)
+	# Единственное место, где рисуется урон: иначе числа дублировались
+	# в projectile.gd и enemy.gd, и показывали сырое, а не фактическое значение.
+	DamageNumber.show_at(target.global_position, final, "damage")
+	SpellVFX.hit_flash(target)
+	if kind == "magic" and is_instance_valid(attacker):
+		_apply_vampirism(attacker, final)
 	return final
+
+
+## Вампиризм (Drain_Life): часть нанесённого магией урона возвращается кастеру.
+static func _apply_vampirism(caster: Node2D, dealt: int) -> void:
+	var ratio := StatusEffects.vampirism_ratio(caster)
+	if ratio <= 0.0 or dealt <= 0:
+		return
+	var amount := maxi(1, int(float(dealt) * ratio))
+	if caster.has_method("heal_amount"):
+		caster.call("heal_amount", amount)
+
 
 ## Нанести урон всем целям в радиусе (для областных заклинаний/взрывов).
 static func deal_damage_area(targets: Array, dmg: int, kind: String, sphere: String, attacker: Node2D) -> void:
@@ -170,6 +226,34 @@ static var hero_name: String = "Герой"
 static var hero_character_id: String = "mfighter"  # id из character_select
 static var hero_stats: Dictionary = {}      # стартовые характеристики
 static var hero_start_book: String = ""     # книга простейшего заклинания школы мага
+
+# --- Выбор карты ---
+## Явно запрошенный путь к .alm. Не пусто только когда путь задан вручную:
+## редактор карт (F9 «Назад в игру») или загрузка сохранения. Имеет приоритет над сидом.
+static var pending_map_path: String = ""
+## Сид карты новой игры. 0 = карта не запрошена, AlmMap берёт запасной путь из main.tscn
+## (детерминированный dev-режим и автотесты — им случайная карта мешала бы).
+static var map_seed: int = 0
+static var map_zone: String = "mid"   # start | mid | hard | faction
+
+## Новая карта со случайным сидом. Вызывается из character_select перед стартом.
+static func new_random_map(zone: String = "mid") -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	map_seed = rng.randi()
+	map_zone = zone
+	pending_map_path = ""
+
+## Конкретная карта по сиду (загрузка сохранения, тесты).
+static func request_map_by_seed(seed_value: int, zone: String = "mid") -> void:
+	map_seed = seed_value
+	map_zone = zone
+	pending_map_path = ""
+
+## Явно заданный файл карты (редактор, отладочные сцены).
+static func request_map_by_path(path: String) -> void:
+	pending_map_path = path
+	map_seed = 0
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
@@ -638,26 +722,56 @@ func _resolve_scroll_click(world_position: Vector2) -> void:
 	var spell := str(Game.pending_scroll.get("spell", ""))
 	if spell == "":
 		return
-	var kind := SpellDB.kind_of(spell)
+	var target_kind := SpellDB.target_of(spell)
 	var target: Node2D = null
-	if kind in ["attack", "area", "wall"]:
+	if target_kind == "enemy":
 		target = get_enemy_at_position(world_position)
 		if target == null:
 			target = player.get_nearest_enemy(world_position, 220.0)
 		if target == null:
-			print("Нет врага под курсором — укажите противника.")
+			_flash_cast_error("Нет врага под курсором — укажите противника.")
 			return
+	elif target_kind == "point":
+		var under := get_enemy_at_position(world_position)
+		if under != null:
+			world_position = under.global_position
 	else:
 		target = _ally_at_position(world_position)
 		if target == null:
-			print("Укажите героя или союзника для этого заклинания.")
-			return
-	# Применяем 1 раз и расходуем свиток
-	player.apply_scroll_to_target(spell, target)
+			# Аналогично книгам: щит/бафф накладывается на героя по умолчанию
+			if SpellDB.kind_of(spell) == "buff":
+				target = player
+			else:
+				_flash_cast_error("Укажите героя или союзника для этого заклинания.")
+				return
+
+	# Дальность из базы (раньше не проверялась вообще)
+	var max_range := SpellDB.range_of(spell)
+	if max_range > 0.0 and target_kind != "self" \
+			and player.cast_origin().distance_to(world_position) > max_range:
+		_flash_cast_error("Слишком далеко: «%s» достаёт на %d м." % [spell, int(max_range / 32.0)])
+		return
+
+	# Предмет списывается ТОЛЬКО если эффект применился: раньше remove_item
+	# вызывался безусловно, и свитки «Scroll Fire Wall» просто исчезали.
+	var applied := false
+	if target != null:
+		applied = player.apply_scroll_to_target(spell, target)
+	else:
+		applied = player.apply_scroll_to_target_point(spell, world_position)
+	if not applied:
+		_flash_cast_error("Заклинание не сработало — предмет не потрачен.")
+		return
 	player.remove_item(str(Game.pending_scroll.get("item_key", "")))
 	Game.pending_scroll = {}
 	if ui != null and ui.has_method("_finish_scroll_targeting"):
 		ui._finish_scroll_targeting()
+
+
+func _flash_cast_error(msg: String) -> void:
+	print(msg)
+	if ui != null and ui.has_method("_flash_targeting_error"):
+		ui._flash_targeting_error(msg)
 
 ## Заклинание из книги: клик выбрал цель. Атака/область/стена — по врагу или
 ## точке, лечение/защита/бафф — по герою или союзнику. Мана/заряд списываются
@@ -671,38 +785,60 @@ func _resolve_spell_click(world_position: Vector2) -> void:
 	# Защита: не кастовать в тот же кадр, что и выбор магии из книги
 	if Engine.get_process_frames() == Game._spell_targeting_frame:
 		return
-	var kind := SpellDB.kind_of(name)
+	var target_kind := SpellDB.target_of(name)
 	var target_position := world_position
 	var target_node: Node2D = null
 	var ok := true
+	var enemy := get_enemy_at_position(world_position)
 
-	if kind in ["attack", "area", "wall"]:
-		var enemy := get_enemy_at_position(world_position)
-		if enemy != null:
-			target_position = enemy.global_position
-		elif kind in ["area", "wall"]:
-			pass   # можно кастовать и по точке на земле
-		else:
-			enemy = player.get_nearest_enemy(world_position, 220.0)
-			if enemy == null:
-				ok = false
-			else:
+	match target_kind:
+		"enemy":
+			if enemy != null:
+				target_node = enemy
 				target_position = enemy.global_position
-	else:
-		var ally := _ally_at_position(world_position)
-		if ally == null:
-			ok = false
-		else:
-			target_position = ally.global_position
-			target_node = ally
+			else:
+				enemy = player.get_nearest_enemy(world_position, 220.0)
+				if enemy == null:
+					ok = false
+				else:
+					target_node = enemy
+					target_position = enemy.global_position
+		"point":
+			if enemy != null:
+				target_position = enemy.global_position
+		"ally":
+			var ally := _ally_at_position(world_position)
+			if ally == null:
+				# Щиты/баффи удобно накладывать на себя, не целясь точно
+				if SpellDB.kind_of(name) == "buff":
+					ally = player
+				else:
+					ok = false
+			if ally != null:
+				target_position = ally.global_position
+				target_node = ally
+		_:
+			target_node = player
+			target_position = player.global_position
 
 	if not ok:
-		var msg := "Укажите ВРАГА для «%s» (ПКМ/ESC — отмена)." % name if kind == "attack" \
-			else "Укажите ГЕРОЯ или СОЮЗНИКА для «%s»." % name
+		var msg := "Укажите ВРАГА для «%s» (ПКМ/ESC — отмена)." % name \
+			if target_kind == "enemy" else "Укажите ГЕРОЯ или СОЮЗНИКА для «%s»." % name
 		print(msg)
 		if ui != null and ui.has_method("_flash_targeting_error"):
 			ui._flash_targeting_error(msg)
 		return
+
+	# Дальность из базы: раньше поле range вообще не читалось, поэтому можно
+	# было кастовать через полкарты (включая телепорт).
+	var max_range := SpellDB.range_of(name)
+	if max_range > 0.0 and target_kind != "self":
+		var origin: Vector2 = player.cast_origin()
+		if origin.distance_to(target_position) > max_range:
+			var rmsg := "Слишком далеко: «%s» достаёт на %d м." % [name, int(max_range / 32.0)]
+			if ui != null and ui.has_method("_flash_targeting_error"):
+				ui._flash_targeting_error(rmsg)
+			return
 
 	if not player.cast_spell(name, target_position, target_node):
 		print("Не удалось кастовать: " + name)
@@ -786,12 +922,9 @@ func _process(delta):
 	if is_instance_valid(ui) and is_instance_valid(player):
 		ui.update_ui(player, delta)
 	
-	# Регенерация маны игрока — 1 мана в секунду
-	if is_instance_valid(player) and player.current_mana < player.max_mana:
-		mana_regen_accum += delta
-		if mana_regen_accum >= 1.0:
-			mana_regen_accum -= 1.0
-			player.current_mana = min(player.max_mana, player.current_mana + 1)
+	# Регенерация героя: HP и мана по статам, а не жёсткая «+1 мана/с».
+	# Раньше мана качалась 1/с независимо от Spirit, а HP не регенерировался.
+	_regen_hero(delta)
 	
 	# Обработка режимов действий
 	_process_action_mode()
@@ -799,7 +932,26 @@ func _process(delta):
 	_process_pending_building()
 	_process_pending_herb()
 	Game.tick_shields(delta)
+	StatusEffects.tick(delta)
 	_check_portal()
+
+
+## Регенерация героя раз в секунду: HP = 1 + Body/5, мана = 1 + Spirit/10.
+func _regen_hero(delta: float) -> void:
+	if not is_instance_valid(player):
+		return
+	if player.state == "dead" or player.state == "decay":
+		return
+	mana_regen_accum += delta
+	if mana_regen_accum < 1.0:
+		return
+	mana_regen_accum -= 1.0
+	if player.current_hp < player.max_hp:
+		player.heal_amount(player._calc_hp_regen())
+	if player.has_mana and player.current_mana < player.max_mana:
+		var gain: int = player._calc_mana_regen()
+		player.current_mana = mini(player.max_mana, player.current_mana + gain)
+		DamageNumber.show_at(player.global_position, gain, "mana")
 
 func _check_portal() -> void:
 	# Проверка: игрок на клетке портала?
