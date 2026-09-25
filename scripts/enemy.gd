@@ -271,6 +271,9 @@ func take_damage(dmg: int, attacker) -> void:
 	if dmg <= 0:
 		return
 	current_hp -= dmg
+	# Визуальная обратная связь
+	SpellVFX.hit_flash(self)
+	DamageNumber.show_at(global_position, dmg, "damage")
 	# При получении урона — сразу начинаем погоню (но не прерываем текущую атаку,
 	# иначе после каждого попадания монстр сбрасывает замах)
 	if is_instance_valid(attacker):

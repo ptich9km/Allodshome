@@ -791,6 +791,9 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 	var range_f := float(spell.get("range", 0))
 	_play_spell_sound(name, sphere)
 
+	# Визуальная вспышка при касте
+	SpellVFX.cast_flash(global_position, sphere)
+
 	match kind:
 		"attack", "area":
 			_fire_spell_projectile(name, sphere, dmg, area, range_f, target_position)

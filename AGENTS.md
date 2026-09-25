@@ -406,6 +406,25 @@ ui/          — UI-сцены и скрипты
 
 Хронология изменений. **Новое — сверху.**
 
+### 25.09 — баг-фикс и процедурные VFX магии
+
+- **Исправлено 6 багов:**
+  1. Маг-спрайты: `player.gd:334` — `weapon in ["staff","magic"]` → всегда `heroes/` (нет heroes_l/mage_st).
+  2. Анимация НПЦ: `npc.gd:104` — MOVE только если `velocity > 10`, иначе IDLE. Исправлен `else` indent на строке 214.
+  3. НПЦ на здании: `gen_smart_map.gd:_place_city_building` — резервирование `full_height - tile_height` строк выше футпринта.
+  4. Капитан = игрок: `CAPTAIN_SET` изменён с `heroes/swordsman` на `humans/cavalrysword`.
+  5. Чёрный кадр колодца: `structure_node.gd` — добавлен `max_blocks` из DB phases, `_build()` ограничивает `_blocks`.
+  6. Переходы грязь/песок: +144 правила в `transition_db.json` для типов 4/5/6 (скрипт `tests/gen_transitions_456.py`).
+- **Карта:** `main.tscn` изменён на `gen_smart_01.alm`, удалён `last_alm_path.txt`, карта перегенерирована с новыми переходами.
+- **Процедурные VFX магии (гибрид: шейдеры + частицы + tween):**
+  - `scripts/spell_vfx.gd` — базовый фреймворк: 5 шейдеров (огонь/вода/молния/камень/астрал), cast_flash, impact_burst, hit_flash, shield_hit.
+  - `scripts/damage_number.gd` — летающие числа урона/лечения с Tween (подъём + fade out).
+  - `scripts/projectile.gd` — замена sprite-анимации на SpellVFX + след + damage numbers + screen shake.
+  - `scripts/player.gd` — cast_flash при касте заклинания.
+  - `scripts/enemy.gd` — hit_flash + damage_number при получении урона.
+  - `scripts/game.gd` — camera_trauma (truma-based screen shake).
+- **Контроль:** `--quit` → 0 SCRIPT ERROR. Магия проверена: снаряды летят, взрывы частицами, damage numbers, screen shake.
+
 ### 25.09 — рельеф, города и обход препятствий
 
 - **Skills-first:** задача выполнена по `procedural-gen`, `game-ai`, `godot-2d-movement`, `level-design`, `godot-physics`, `godot-gdscript`: единый heightmap, детерминированный layout, A* для городских юнитов и локальное разделение без новых зависимостей.

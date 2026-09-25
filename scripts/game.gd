@@ -13,6 +13,8 @@ static var npcs: Array = []               # мирные жители (Npc) вн
 static var hero: Node2D = null            # игрок (для наёмников/лута)
 static var party: Array = []              # наёмники (Mercenary) из таверны
 static var mana_regen_accum: float = 0.0
+static var _trauma: float = 0.0
+static var _trauma_t: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
 static var pending_scroll: Dictionary = {}   # прицеливание свитка: {"spell","item_key"}
@@ -761,11 +763,26 @@ static func units_range(a: Node2D, b: Node2D) -> float:
 		rb.position.y - (ra.position.y + ra.size.y)))
 	return sqrt(dx * dx + dy * dy)
 
+## Добавить травму камере (экранная тряска). amount: 0.0–1.0.
+static func camera_trauma(amount: float) -> void:
+	_trauma = clampf(_trauma + amount, 0.0, 1.0)
+
 func _process(delta):
 	if is_paused:
 		return
 	if is_instance_valid(player) and camera:
 		camera.position = camera.position.lerp(player.camera_focus(), 5.0 * delta)
+		# Camera shake (trauma-based)
+		if _trauma > 0.0:
+			_trauma = maxf(_trauma - 1.2 * delta, 0.0)
+			var shake := _trauma * _trauma
+			_trauma_t += delta * 30.0
+			camera.offset = Vector2(
+				8.0 * shake * sin(_trauma_t * 1.7),
+				6.0 * shake * sin(_trauma_t * 2.3)
+			)
+		else:
+			camera.offset = Vector2.ZERO
 	if is_instance_valid(ui) and is_instance_valid(player):
 		ui.update_ui(player, delta)
 	
