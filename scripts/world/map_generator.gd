@@ -151,6 +151,8 @@ func _load_db() -> void:
 		if BiomeTileSelectorClass:
 			_biome_selector = BiomeTileSelectorClass.new()
 			print("BiomeTileSelector initialized")
+		else:
+			push_error("Failed to load BiomeTileSelector!")
 
 ## «Краевой» row на тип: самый частотный row среди форм с >=1 кардинальным
 ## битом (N/E/S/W) и >= MIN_CELLS клеток. Для травы/гор это «универсальный
@@ -1093,9 +1095,13 @@ func _place_terrain(n: int) -> void:
 
 func _pick_tile(t: int, x: int, y: int) -> int:
 	# Если включён режим биомных текстур
-	if use_biome_textures and _biome_selector != null:
-		return _pick_biome_tile(t, x, y)
-	
+	if use_biome_textures:
+		if _biome_selector != null:
+			return _pick_biome_tile(t, x, y)
+		else:
+			if x == 0 and y == 0:
+				print("map_generator: use_biome_textures=true but _biome_selector is null!")
+
 	# Старая система
 	var s: Dictionary = _sides(x, y)
 	var mask := _mask_from_sides(s, t)

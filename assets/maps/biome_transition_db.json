@@ -13,6 +13,16 @@
         "res://assets/terrain/biomes/grass/grass_06.png"
       ]
     },
+    "4": {
+      "textures": [
+        "res://assets/terrain/biomes/soil/soil_01.png",
+        "res://assets/terrain/biomes/soil/soil_02.png",
+        "res://assets/terrain/biomes/soil/soil_03.png",
+        "res://assets/terrain/biomes/soil/soil_04.png",
+        "res://assets/terrain/biomes/soil/soil_05.png",
+        "res://assets/terrain/biomes/soil/soil_06.png"
+      ]
+    },
     "5": {
       "textures": [
         "res://assets/terrain/biomes/sand/sand_01.png",
@@ -21,6 +31,36 @@
         "res://assets/terrain/biomes/sand/sand_04.png",
         "res://assets/terrain/biomes/sand/sand_05.png",
         "res://assets/terrain/biomes/sand/sand_06.png"
+      ]
+    },
+    "6": {
+      "textures": [
+        "res://assets/terrain/biomes/mud/mud_01.png",
+        "res://assets/terrain/biomes/mud/mud_02.png",
+        "res://assets/terrain/biomes/mud/mud_03.png",
+        "res://assets/terrain/biomes/mud/mud_04.png",
+        "res://assets/terrain/biomes/mud/mud_05.png",
+        "res://assets/terrain/biomes/mud/mud_06.png"
+      ]
+    },
+    "1": {
+      "textures": [
+        "res://assets/terrain/biomes/mountain/mountain_01.png",
+        "res://assets/terrain/biomes/mountain/mountain_02.png",
+        "res://assets/terrain/biomes/mountain/mountain_03.png",
+        "res://assets/terrain/biomes/mountain/mountain_04.png",
+        "res://assets/terrain/biomes/mountain/mountain_05.png",
+        "res://assets/terrain/biomes/mountain/mountain_06.png"
+      ]
+    },
+    "2": {
+      "textures": [
+        "res://assets/terrain/biomes/water/water_01.png",
+        "res://assets/terrain/biomes/water/water_02.png",
+        "res://assets/terrain/biomes/water/water_03.png",
+        "res://assets/terrain/biomes/water/water_04.png",
+        "res://assets/terrain/biomes/water/water_05.png",
+        "res://assets/terrain/biomes/water/water_06.png"
       ]
     }
   },
