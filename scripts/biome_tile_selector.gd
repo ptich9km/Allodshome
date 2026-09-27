@@ -24,10 +24,9 @@ func _load_db():
     
     if json is Dictionary:
         _db = json
-        print("BiomeTileSelector: загружено %d interior, %d transitions" % [
-            _db.get("interior", {}).size(),
-            _db.get("transitions", {}).size()
-        ])
+        var interior = _db.get("interior", {})
+        print("BiomeTileSelector: загружено %d interior биомов: %s" % [interior.size(), str(interior.keys())])
+        print("BiomeTileSelector: загружено %d transitions" % _db.get("transitions", {}).size())
 
 func get_interior_texture(biome_type: int, variant: int = 0) -> Texture2D:
     """Получить текстуру интерьера биома."""
