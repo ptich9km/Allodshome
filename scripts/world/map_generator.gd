@@ -82,8 +82,8 @@ var _stat_exact := 0
 var _stat_subset := 0
 var _stat_rules := 0
 
-# Режим биомных текстур
-var use_biome_textures: bool = false
+# Режим биомных текстур (по умолчанию включён)
+var use_biome_textures: bool = true
 var _biome_selector: RefCounted = null  # BiomeTileSelector instance
 
 ## Базовое имя файлов карты по сиду: map_<seed>_<zone>.
@@ -463,31 +463,28 @@ func _place_mountains_water() -> void:
 			elif elev > _mountain_thr:
 				_terrain[i] = 1
 
-## Этап 5: спавн у города №0, портал на противоположном краю.
+## Этап 5: спавн в центре карты, портал на противоположном краю.
 func _place_portal_spawn() -> void:
 	if _cities.is_empty():
 		return
 	var city0: Vector2i = _cities[0]["pos"]
 	
-	# Для тестовой карты — спавн в центре
-	if _basename == "test_biome":
-		_spawn_pos = Vector2i(W / 2, H / 2)
-		# Ищем ближайшую проходимую клетку
-		for r in range(0, 10):
-			for dy in range(-r, r + 1):
-				for dx in range(-r, r + 1):
-					var c = Vector2i(W/2 + dx, H/2 + dy)
-					if c.x >= 0 and c.y >= 0 and c.x < W and c.y < H:
-						var t = _terrain[c.y * W + c.x]
-						if t != 1 and t != 2:  # Не горы и не вода
-							_spawn_pos = c
-							break
-				if _spawn_pos != Vector2i(-1, -1):
-					break
+	# Спавн в центре карты
+	_spawn_pos = Vector2i(W / 2, H / 2)
+	# Ищем ближайшую проходимую клетку
+	for r in range(0, 15):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var c = Vector2i(W/2 + dx, H/2 + dy)
+				if c.x >= 0 and c.y >= 0 and c.x < W and c.y < H:
+					var t = _terrain[c.y * W + c.x]
+					if t != 1 and t != 2:  # Не горы и не вода
+						_spawn_pos = c
+						break
 			if _spawn_pos != Vector2i(-1, -1):
 				break
-	else:
-		_spawn_pos = _find_land_near(city0, 8)
+		if _spawn_pos != Vector2i(-1, -1):
+			break
 	
 	_portal_pos = _find_land_far(city0, 40)
 	_save_spawn_json()

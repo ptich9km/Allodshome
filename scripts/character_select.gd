@@ -504,9 +504,7 @@ func _start_game() -> void:
 	Game.hero_character_id = str(c["id"])
 	# Новая игра — новая карта: случайный сид, карта генерируется в user://maps/.
 	# Продолжение сохранения (пакет B) переставит сид ДО этого вызова.
-	# ВРЕМЕННО: используем тестовую карту с биомными текстурами
-	Game.request_map_by_path("res://assets/maps/gen/test_biome.alm")
-	# Game.new_random_map()
+	Game.new_random_map()
 	SoundDB.play(2)  # click_ok
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
