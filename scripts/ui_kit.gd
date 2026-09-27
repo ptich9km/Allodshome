@@ -278,3 +278,82 @@ static func bind_resize(source: Node, handler: Callable) -> void:
 		source.connect(signal_name, handler)
 	if handler.is_valid():
 		handler.call()
+
+# --- Карточка предмета у курсора (наведение) ---
+
+## Панель-карточка, которая показывается рядом с курсором при наведении на ячейку.
+## Заменяет попытку запихнуть название и характеристики в ячейку: в ячейке магазина
+## 95 px по ширине, туда не влезает ничего, а расширять сетку нельзя — она
+## привязана к фоновому арту. Карточка одна на панель, переиспользуется.
+##
+## mouse_filter = IGNORE обязателен: карточка лежит поверх ячеек и не должна
+## перехватывать клик по кнопке «Купить» под ней.
+static func make_hover_card(width: float = 300.0) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.name = "HoverCard"
+	card.visible = false
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.z_index = 60
+	card.custom_minimum_size = Vector2(width, 0)
+	card.add_theme_stylebox_override("panel",
+		panel_style(Color(0.06, 0.05, 0.07, 0.97), Color(0.78, 0.60, 0.26, 0.98), 4, 2))
+	var margin := MarginContainer.new()
+	set_margins(margin, 10, 8, 10, 8)
+	card.add_child(margin)
+	var box := VBoxContainer.new()
+	box.name = "Box"
+	box.add_theme_constant_override("separation", 3)
+	margin.add_child(box)
+	return card
+
+
+## Заполнить карточку строками и показать у точки экрана (координаты панели).
+static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
+		bounds: Vector2) -> void:
+	if card == null or not is_instance_valid(card):
+		return
+	# find_child, а не get_node_or_null: "Box" лежит внутри MarginContainer,
+	# а get_node_or_null ищет только ПРЯМОГО потомка и возвращал null.
+	var box: Node = card.find_child("Box", true, false)
+	if box == null or not (box is VBoxContainer):
+		return
+	clear(box)
+	var first := true
+	for raw in lines:
+		var line := str(raw)
+		if line.is_empty():
+			continue
+		var label := Label.new()
+		label.text = line
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size = Vector2(card.custom_minimum_size.x - 20.0, 0)
+		if first:
+			label.theme_type_variation = &"HoverCardTitle"
+			first = false
+		else:
+			label.theme_type_variation = &"HoverCardLine"
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		(box as VBoxContainer).add_child(label)
+	if first:
+		hide_hover_card(card)
+		return
+	card.visible = true
+	# Прижать к краю окна, чтобы карточка не уезжала за пределы панели.
+	var size := card.size
+	var pos := at + Vector2(18, 10)
+	if pos.x + size.x > bounds.x - 8.0:
+		pos.x = maxf(8.0, at.x - size.x - 18.0)
+	if pos.y + size.y > bounds.y - 8.0:
+		pos.y = maxf(8.0, bounds.y - size.y - 8.0)
+	card.position = pos
+
+
+static func hide_hover_card(card: PanelContainer) -> void:
+	if card != null and is_instance_valid(card):
+		card.visible = false
+
+
+## Стили variation-имён карточки — общие для всех панелей.
+static func add_hover_card_styles(theme: Theme) -> void:
+	add_label(theme, &"HoverCardTitle", TITLE_COLOR, 15)
+	add_label(theme, &"HoverCardLine", HINT_COLOR, 13)

@@ -49,6 +49,32 @@ static func find_index(unit: Node2D, type: String) -> int:
 	return -1
 
 
+## Слот эффекта с учётом сферы. Нужен для сопротивлений: `find_index(unit,
+## "resist")` возвращал ПЕРВУЮ запись типа resist, не глядя на сферу, и
+## Protection_from_Water затирал Protection_from_Fire. В итоге одновременно
+## жил только ОДИН тип защиты, а resist_bonus() для перебитой стихии давал 0 —
+## четыре стихии работали как взаимоисключающие.
+## Остальные типы (haste, slow, dot...) ищутся по типу, как раньше: dot копится
+## отдельной веткой, остальное обновляет один слот.
+static func find_index_sphere(unit: Node2D, type: String, sphere: String) -> int:
+	if sphere == "":
+		return find_index(unit, type)
+	var list := _all(unit)
+	for i in range(list.size()):
+		var e: Dictionary = list[i]
+		if str(e.get("type", "")) == type and str(e.get("sphere", "")) == sphere:
+			return i
+	return -1
+
+
+## Есть ли сейчас активный эффект конкретной стихии. Ауре сопротивления нужно
+## знать, что ИМЕННО ЕЁ стихия ещё действует: active_types() возвращает
+## список типов (без сфер), поэтому при четырёх защитах дал бы один «resist»
+## и не дал понять, которая из аур должна исчезнуть.
+static func has_effect(unit: Node2D, type: String, sphere: String = "") -> bool:
+	return find_index_sphere(unit, type, sphere) >= 0
+
+
 # --- Применение -----------------------------------------------------------
 
 ## Наложить все эффекты заклинания на юнита. Повторное наложение обновляет
@@ -115,7 +141,10 @@ static func _apply_one(unit: Node2D, effect: Dictionary, caster: Node2D) -> bool
 	entry["caster"] = caster
 	entry["target"] = unit
 
-	var i := find_index(unit, type)
+	# Сопротивление занимает слот на КАЖДУЮ стихию: иначе четыре
+	# Protection_from_* затирали друг друга (см. find_index_sphere).
+	var effect_sphere := str(effect.get("sphere", ""))
+	var i := find_index_sphere(unit, type, effect_sphere)
 	if i < 0:
 		list.append(entry)
 	else:
@@ -127,7 +156,7 @@ static func _apply_one(unit: Node2D, effect: Dictionary, caster: Node2D) -> bool
 		else:
 			for key in entry.keys():
 				var key_s := str(key)
-				if key_s in ["time_left", "type", "caster"]:
+				if key_s in ["time_left", "type", "caster", "sphere"]:
 					continue
 				if key_s in old and _is_numeric(key_s):
 					entry[key] = _stronger(key_s, old[key], entry[key])

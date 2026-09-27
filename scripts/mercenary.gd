@@ -135,7 +135,7 @@ func _move_toward(p: Vector2, delta: float) -> void:
 			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
 			return
 		waypoint = _path[0]
-	var direction := Game.movement_direction(self, (waypoint - global_position).normalized())
+	var direction := Game.movement_direction(self, Game.safe_dir(global_position, waypoint))
 	var wanted := direction * (move_speed * StatusEffects.speed_mult(self))
 	velocity = velocity.move_toward(wanted, 1100.0 * delta)
 

@@ -101,7 +101,7 @@ func _physics_process(delta: float) -> void:
 			if global_position.distance_to(wp) <= 8.0:
 				_path.pop_front()
 		if not _path.is_empty():
-			_move_checked((_path[0] - global_position).normalized(), walk_speed, delta)
+			_move_checked(Game.safe_dir(global_position, _path[0]), walk_speed, delta)
 			if velocity.length() > 10.0:
 				_anim.play(_anim.Anim.MOVE)
 				_anim.set_direction_vec(velocity)
@@ -210,7 +210,7 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			_path.pop_front()
 		if _path.size() > 0:
 			wp = _path[0]
-			_move_checked((wp - global_position).normalized(), walk_speed, delta)
+			_move_checked(Game.safe_dir(global_position, wp), walk_speed, delta)
 			_anim.play(UnitAnim.Anim.MOVE)
 			_anim.set_direction_vec(velocity)
 			_anim.advance(delta)

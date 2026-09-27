@@ -19,16 +19,26 @@ const MERCHANT_LINES := [
 ]
 const _BG_PATH := "res://assets/shop/shop_human.jpeg"
 const _DESIGN_SIZE := Vector2(1024, 1024)
+## Полка торговца. Координаты и размер ячейки подобраны ПОД ФОНОВЫЙ АРТ:
+## shop_human.jpeg нарисован под 2×7 полок, и в CATEGORIES пять интерактивных
+## зон, привязанных к полкам на картинке (броня 60,40; роба 850,40; оружие
+## 30,850; зелья 642,842; книги 819,473).
+## Менять эту раскладку нельзя: сетка 3×5, которую ставили ради «названия и
+## характеристик в ячейке», разъехалась с артом и полки перестали на него
+## попадать. Всё читаемое вынесено в карточку по наведению (см. _attach_hover).
 const _NPC_ORIGIN := Vector2(26, 231)
 const _NPC_CELL_SIZE := Vector2(95.5, 86.0)
 const _NPC_COLUMNS := 2
 const _NPC_ROWS := 7
+## Полка игрока — под основной частью прилавка, 6×3.
 const _PLAYER_ORIGIN := Vector2(250, 578)
 const _PLAYER_CELL_SIZE := Vector2(90, 85.67)
 const _PLAYER_COLUMNS := 6
 const _PLAYER_ROWS := 3
 const _PLAYER_TAB_ORIGIN := Vector2(216, 899)
 const _PLAYER_TAB_CELL_SIZE := Vector2(100, 91)
+const _MERCHANT_PANEL_POSITION := Vector2(350, 486)
+const _MERCHANT_PANEL_SIZE := Vector2(350, 78)
 const _CLOSE_SIZE := Vector2(150, 42)
 const _CLOSE_POSITION := Vector2(742, 18)
 
@@ -47,6 +57,8 @@ var _close_button: Button
 var _category_buttons: Array[Button] = []
 var _category_group: ButtonGroup
 var _previous_focus: Control
+## Карточка описания товара у курсора (одна на панель, переиспользуется).
+var _hover_card: PanelContainer = null
 var _category_index := 0
 
 static var _all_cache: Array = []
@@ -119,6 +131,7 @@ func _build_ui() -> void:
 	_panel_root.add_child(_close_button)
 
 	_build_category_buttons()
+	_build_hover_card()
 	_build_shelves()
 	_build_player_tabs()
 	_build_merchant_panel()
@@ -156,6 +169,79 @@ func _configure_category_focus() -> void:
 		var button := _category_buttons[index]
 		button.focus_previous = _category_buttons[maxi(index - 1, 0)].get_path()
 		button.focus_next = _category_buttons[mini(index + 1, _category_buttons.size() - 1)].get_path()
+
+func _build_hover_card() -> void:
+	_hover_card = UiKit.make_hover_card(300.0)
+	_panel_root.add_child(_hover_card)
+
+
+## Показать описание товара у курсора. Работает и по наведению мышью, и по
+## фокусу с клавиатуры/геймпада — иначе с пульта товар не прочитать.
+## Координаты переводятся в систему панели: карточка — дочерний узел
+## design_root, который масштабируется вместе с интерьером.
+func _attach_hover(slot: Control, item: Dictionary, buying: bool, count: int) -> void:
+	if _hover_card == null or item.is_empty():
+		return
+	var show_at := func() -> void:
+		if not is_instance_valid(slot):
+			return
+		UiKit.show_hover_card(_hover_card, _hover_lines(item, buying, count),
+			slot.global_position, _DESIGN_SIZE)
+	slot.mouse_entered.connect(show_at)
+	slot.mouse_exited.connect(func() -> void: UiKit.hide_hover_card(_hover_card))
+	# Фокус: панель уже навигируется кнопками, но ячейка сама по себе не
+	# фокусируема — повесим на родительскую кнопку, если она есть.
+	var focus_target: Control = slot
+	if slot.get_node_or_null("Margin") == null:
+		var btn := _find_trade_button(slot)
+		if btn != null:
+			focus_target = btn
+	focus_target.focus_entered.connect(show_at)
+	focus_target.focus_exited.connect(func() -> void: UiKit.hide_hover_card(_hover_card))
+
+
+func _find_trade_button(node: Node) -> Button:
+	for child in node.get_children():
+		if child is Button:
+			return child as Button
+		var found := _find_trade_button(child)
+		if found != null:
+			return found
+	return null
+
+
+## Строки описания из РЕАЛЬНЫХ полей item_db: те же цифры, что участвуют в бою.
+func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
+	var key := str(item.get("key", ""))
+	var lines: Array = [str(item.get("name_ru", key))]
+	var sub: Array[String] = []
+	var type := str(item.get("type", ""))
+	if type != "":
+		sub.append(type)
+	var material := str(item.get("material", ""))
+	if material != "" and material != "None":
+		sub.append(material)
+	var quality := str(item.get("quality", ""))
+	if quality != "" and quality != "Common":
+		sub.append(quality)
+	if not sub.is_empty():
+		lines.append(" · ".join(sub))
+	var stats := _item_stats(item)
+	if stats != "":
+		lines.append(stats)
+	var level := int(item.get("level", 0))
+	if level > 0:
+		lines.append(tr("Нужен уровень: %d") % level)
+	lines.append(tr("Вес: %.1f") % float(item.get("weight", 0.0)))
+	if not buying and count > 1:
+		lines.append(tr("В складе: %d шт.") % count)
+	var price := int(item.get("price", 0))
+	if buying:
+		lines.append(tr("Цена: %d з") % price)
+	else:
+		lines.append(tr("Продать за: %d з") % maxi(1, price / 2))
+	return lines
+
 
 func _build_shelves() -> void:
 	_npc_scroll = ScrollContainer.new()
@@ -246,8 +332,8 @@ func _build_merchant_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "MerchantPanel"
 	panel.theme_type_variation = &"ShopDialogPanel"
-	panel.position = Vector2(350, 486)
-	panel.size = Vector2(350, 78)
+	panel.position = _MERCHANT_PANEL_POSITION
+	panel.size = _MERCHANT_PANEL_SIZE
 	_panel_root.add_child(panel)
 	var margin := MarginContainer.new()
 	_set_margins(margin, 12, 8, 12, 8)
@@ -362,6 +448,9 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(icon)
+	# В ячейке только иконка и кнопка — как было. Название и характеристики
+	# показываются карточкой у курсора при наведении: в ячейку 95 px они не
+	# влезали, и вариант «вывести в ячейку» разъехался с фоновым артом.
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 1)
 	content.add_child(actions)
@@ -382,7 +471,36 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 	button.focus_mode = Control.FOCUS_ALL
 	button.pressed.connect(_buy_item.bind(key, price) if buying else _sell_item.bind(key, maxi(1, price / 2)))
 	actions.add_child(button)
+	# Карточку цепляем ПОСЛЕ создания кнопки: по фокусу показывать описание
+	# должна именно кнопка, а её на момент конца функции уже нет в дереве.
+	_attach_hover(slot, item, buying, count)
 	return slot
+
+## Характеристики предмета одной строкой. Поля берём те же, что реально
+## участвуют в бою (item_db.json: damage_min/max, to_hit, defence, absorption,
+## magcap, level) — иначе игрок видит цифры, которых в бою нет.
+func _item_stats(item: Dictionary) -> String:
+	var parts: Array[String] = []
+	var dmin := int(item.get("damage_min", 0))
+	var dmax := int(item.get("damage_max", 0))
+	if dmax > 0 or dmin > 0:
+		parts.append("Урон %d-%d" % [dmin, dmax] if dmin != dmax else "Урон %d" % dmax)
+	var to_hit := int(item.get("to_hit", 0))
+	if to_hit != 0:
+		parts.append("Точн. %+d" % to_hit)
+	var defence := int(item.get("defence", 0))
+	if defence != 0:
+		parts.append("Броня %d" % defence)
+	var absorption := int(item.get("absorption", 0))
+	if absorption != 0:
+		parts.append("Погл. %d" % absorption)
+	var magcap := int(item.get("magcap", 0))
+	if magcap != 0:
+		parts.append("Мана %d" % magcap)
+	var level := int(item.get("level", 0))
+	if level > 0:
+		parts.append("ур. %d" % level)
+	return " · ".join(parts)
 
 func _category_items(category_index: int) -> Array[Dictionary]:
 	var category := str(CATEGORIES[category_index]["id"])
@@ -474,6 +592,7 @@ func _make_theme() -> Theme:
 		Color(0.09, 0.10, 0.15, 0.86), Color(0.48, 0.42, 0.24, 0.96), 4)
 	UiKit.add_panel(theme, &"ShopDialogPanel",
 		Color(0.10, 0.08, 0.07, 0.88), UiKit.DIALOG_BORDER, 4)
+	UiKit.add_hover_card_styles(theme)
 	UiKit.add_label(theme, &"ShopEmptyTabLabel", Color(0.54, 0.50, 0.43), 15)
 	UiKit.add_label(theme, &"ShopCountLabel", Color(1.0, 0.88, 0.58), 12)
 	# Категория — прозрачная кнопка-чип: в покое без заливки и рамки.

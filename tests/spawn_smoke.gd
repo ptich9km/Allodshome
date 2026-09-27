@@ -105,7 +105,12 @@ func _run() -> void:
 	var gray_damaged: bool = not is_instance_valid(gray) or gray.current_hp < before
 	var gray_eng: bool = not is_instance_valid(gray)
 	if is_instance_valid(gray) and is_instance_valid(guard):
-		gray_eng = gray.attack_target == guard or gray.state == "attack" or gray.state == "chase"
+		# Серый мог и не успеть ответить, а быть УБИТЫМ стражем — это тоже бой
+		# (победа стража), а не «бой не завязался». Раньше герой успевал убить
+		# серого раньше, чем тот начинал бить в ответ, и проверка читала это
+		# как провал, хотя урон и убийство как раз состоялись.
+		gray_eng = gray.attack_target == guard or gray.state in ["attack", "chase", "dying", "decay"] \
+			or int(gray.current_hp) <= 0
 	var guard_combat: bool = false
 	if is_instance_valid(gray) and is_instance_valid(guard):
 		guard_combat = guard.attack_cooldown < 1.0

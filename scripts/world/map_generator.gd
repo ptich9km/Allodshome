@@ -268,6 +268,18 @@ const ZONE_CITY_COUNTS := {
 	"faction": [2, 3],
 }
 
+# Геометрия города.
+# CITY_RADIUS — половина овала дороги: 8 даёт овал 17×17 (было 7 -> 15×15,
+# и дома на 4-6 клетках не помещались в кольцо, здания вытеснялись наружу).
+# CITY_GAP — свободных клеток вокруг каждого здания (была 1, дома слипались).
+const CITY_RADIUS := 8
+const CITY_GAP := 2
+
+## Выступ здания вверх для КАЖДОГО проверяемого футпринта (full_height − h).
+## Передаётся в _footprint_fits через поле: GDScript не даёт передавать его
+## аргументом без засорения сигнатуры у всех вызывающих.
+var _pending_vis_rows: int = 0
+
 # Серые (монстры palette=5 — UnitDB.is_hostile) по зоне: кластеры у дорог и в лесах.
 const GRAY_ZONE := {
 	"start": {
@@ -352,7 +364,7 @@ func _place_cities(rng: RandomNumberGenerator) -> void:
 		if not far_enough:
 			continue
 		_cities.append({"pos": p, "faction": _faction_for(_cities.size())})
-		_fill_city_oval(p, 7, 7)
+		_fill_city_oval(p, CITY_RADIUS, CITY_RADIUS)
 	print("CITIES: %d/%d (zone=%s)" % [_cities.size(), count, _zone])
 
 ## Присвоение фракции городу (метка-данные; арта/маркеров пока нет).
@@ -493,7 +505,14 @@ func _find_land_far(origin: Vector2i, min_dist: int) -> Vector2i:
 
 # === Спавн: здания + НПЦ городов, деревья, Серые ===
 
-## Спека здания по папке: {id, w, h} из structure_db.json или {}.
+## Спека здания по папке: {id, w, h, fh} из structure_db.json или {}.
+## `fh` (full_height) — полная высота СПРАЙТА, а `h` (tile_height) — только
+## футпринт. Разница идёт ВВЕРХ от футпринта (крыша, башня, вывеска).
+## Раньше `fh` здесь не возвращался, из-за чего vis_rows всегда был 0: выступ
+## здания не резервировался, и дома наезжали друг на друга визуально.
+## `sel` из базы НЕ используем осознанно: в structure_db.json он
+## самопротиворечив (у kaarginn3 — [12, 82, 0, 82], x0 > x1), брать из него
+## футпринт значило бы угадывать.
 func _structure_spec(folder: String) -> Dictionary:
 	if not StructureDB.has(folder):
 		return {}
@@ -501,10 +520,12 @@ func _structure_spec(folder: String) -> Dictionary:
 	var tid := int(def.get("id", 0))
 	if tid <= 0:
 		return {}
+	var tile_h := int(def.get("tile_height", 1))
 	return {
 		"id": tid,
 		"w": int(def.get("tile_width", 1)),
-		"h": int(def.get("tile_height", 1)),
+		"h": tile_h,
+		"fh": maxi(tile_h, int(def.get("full_height", tile_h))),
 	}
 
 ## Этап 6: здания + НПЦ для каждого города. Запись в sidecar-ы structures/npcs.
@@ -534,13 +555,15 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 	print("STRUCTURES_COUNT: %d" % _structures_out.size())
 
 ## Поставить здание (spec) в кольцо вокруг центра города, не на площадь.
+## Кольцо расширено до CITY_RADIUS (было 7) под овал 17×17, а в проверку
+## передаётся выступ вверх (fh - h), чтобы здания не наезжали друг на друга.
 func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	var w := int(spec["w"])
 	var h := int(spec["h"])
 	var full_h: int = int(spec.get("fh", h))
-	var vis_rows: int = full_h - h  # визуальный выступ здания выше футпринта
-	var rings: Array[int] = [2, 3, 4, 5, 6, 7]
-	for r in rings:
+	var vis_rows: int = maxi(0, full_h - h)  # визуальный выступ здания выше футпринта
+	_pending_vis_rows = vis_rows
+	for r in range(2, CITY_RADIUS + 1):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if abs(dx) != r and abs(dy) != r:
@@ -561,7 +584,10 @@ func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	return false
 
 ## Футпринт здания помещается внутри овала города на дороге, не на площади,
-## не пересекая спавн/портал/уже занятые клетки и оставляя зазор в одну клетку.
+## не пересекая спавн/портал/уже занятые клетки и оставляя зазор.
+## Зазор CITY_GAP клетки с каждой стороны (была 1 — дома стояли вплотную и
+## визуально слипались). Проверяется и сам футпринт, и выступ вверх на fh - h
+## строк: иначе крыша одного дома попадала на крышу соседнего.
 func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 	for yy in range(h):
 		for xx in range(w):
@@ -570,15 +596,17 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 				return false
 			if _terrain[c.y * W + c.x] != 3:
 				return false
-	for yy in range(-1, h + 1):
+	var vis_rows := _pending_vis_rows
+	for yy in range(-1 - vis_rows, h + 1):
 		for xx in range(-1, w + 1):
 			var c := tl + Vector2i(xx, yy)
 			if c.x < 1 or c.y < 1 or c.x >= W - 1 or c.y >= H - 1:
 				return false
 			if _reserved.has(c) or c == _spawn_pos or c == _portal_pos:
 				return false
+			# Кольцо вокруг здания шириной CITY_GAP свободно от других зданий.
 			var d := maxi(abs(c.x - center.x), abs(c.y - center.y))
-			if d <= 1 or d > 7:
+			if d <= 1 or d > CITY_RADIUS:
 				return false
 	return true
 

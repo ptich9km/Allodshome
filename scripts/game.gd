@@ -6,6 +6,17 @@ class_name Game
 @onready var camera: Camera2D = $Camera2D
 @onready var ui: CanvasLayer = $UI
 
+## Единое направление между двумя точками. Vector2.normalized() на НУЛЕВОМ векторе
+## (юнит стоит ровно на вейпоинте) печатает в консоль C++-предупреждение
+## «Vector2 cannot be normalized, the elements must be finite», поэтому нормализуем
+## только вектор длиной больше порога.
+static func safe_dir(from: Vector2, to: Vector2, fallback: Vector2 = Vector2.ZERO) -> Vector2:
+	var d := to - from
+	if d.length_squared() < 0.0001:
+		return fallback
+	return d.normalized()
+
+## Разрешён ли шаг юнита по карте (общая проходимость для игрока и NPC).
 static var is_paused: bool = false
 static var player_target: Vector2 = Vector2.ZERO
 static var enemies: Array = []
@@ -44,9 +55,30 @@ static func shield_reduce(unit: Node2D, dmg: int) -> int:
 
 ## --- Общая математика боя: характеристики -> шанс/урон (для ЛЮБОГО юнита) ---
 
-## Шанс попадания, %: 50 + атака − защита, кламп 5..95.
+## Шанс попадания, % — ОТНОСИТЕЛЬНАЯ формула.
+##
+## Раньше было `50 + атака − защита` (кламп 5..95). Это абсолютная разность, и
+## она ломалась, как только в бой включилась экипировка: тяжёлая броня даёт
+## defence 14, щит ещё 4, и герой с бронёй держал 50 + 8 − 23 = 35 %, а гоблин
+## с атакой 4 — 5 % (нижний кламп). Вся броня мира упиралась в пол, и
+## «статы экипировки не работают» выглядело как «работает, но незаметно».
+##
+## Теперь шанс — отношение силы атаки к силе защиты, поэтому одинаково
+## работает и для гоблина (атака 4), и для тролля (атака 30), и для брони.
+##   равные статы            -> BASE (70 %)
+##   защита вдвое выше       -> примерно вдвое ниже
+##   атака вдвое выше        -> упёрётся в MAX
+const HIT_BASE := 70        # шанс при равных статах, %
+const HIT_SOFTEN := 5       # сглаживание: единица в знаменателе не даёт деления на ноль
+const HIT_MIN := 5
+const HIT_MAX := 95
+
 static func hit_chance(attack: int, defense: int) -> int:
-	return clampi(50 + attack - defense, 5, 95)
+	var a := float(attack) + HIT_SOFTEN
+	var d := float(defense) + HIT_SOFTEN
+	if d <= 0.0:
+		return HIT_MAX
+	return clampi(int(round(float(HIT_BASE) * a / d)), HIT_MIN, HIT_MAX)
 
 ## Промах? Юниты с методами get_attack()/get_defense() участвуют полностью.
 static func is_miss(attacker: Node2D, defender: Node2D) -> bool:
@@ -180,6 +212,13 @@ static func configure_unit_body(unit: Node2D, radius: float = 12.0) -> void:
 		return
 	var body := unit as CharacterBody2D
 	body.collision_mask = 1
+	# motion_mode НЕ трогаем: в top-down интуитивно хочется MOTION_MODE_FLOATING,
+	# но это проверено и отвергнуто — на dev-карте герой застревал в кармане между
+	# двумя препятствиями (fuzz_edge: 1 застревание из 62 вместо 0), потому что
+	# в GROUNDED скользящая поверхность классифицируется как «пол» и выталкивает
+	# героя из узкого места, а в FLOATING любая коллизия — глухая стена.
+	# Настоящая причина «езды по рельсам» была не в этом, а в гашении скорости
+	# целиком — починено раздельным скольжением по осям в player/enemy.
 	var shape_node: CollisionShape2D = null
 	for child in body.get_children():
 		if child is CollisionShape2D:
@@ -261,8 +300,142 @@ const ATTACK_COOLDOWN: float = 1.0
 const AGGRO_RADIUS: float = 150.0
 const DEAGGRO_RADIUS: float = 200.0
 
+const POSTFX_SHADER := """shader_type canvas_item;
+render_mode unshaded, blend_mix;
+
+// Виньетка и зерно. В Environment в Godot 4 таких полей нет ни в одной версии.
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear;
+uniform float vignette_strength : hint_range(0.0, 1.0) = 0.34;
+uniform float vignette_softness : hint_range(0.05, 1.5) = 0.62;
+uniform float grain : hint_range(0.0, 0.15) = 0.022;
+
+float hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void fragment() {
+	vec2 c = SCREEN_UV - vec2(0.5);
+	// Учитываем соотношение сторон, иначе виньетка овальная на широком окне.
+	c.x *= 0.62;
+	float v = 1.0 - vignette_strength * smoothstep(0.18, 0.72, length(c) * vignette_softness * 2.0);
+	vec3 col = textureLod(screen_texture, SCREEN_UV, 0.0).rgb * v;
+	col += (hash21(SCREEN_UV * 1024.0 + fract(TIME) * 91.7) - 0.5) * grain;
+	COLOR = vec4(col, 1.0);
+}"""
+
+# --- Свет и пост-обработка 2D ---
+
+## Приглушение окружения. Почти нейтральное.
+## Первая версия была 0.88 — и игрок пожаловался, что «все объекты, НПЦ и
+## строения стали тёмные». Причина в том, что у рельефа своя яркость от солнца
+## зашита в вершинные цвета (`AlmMap._brightness`), а спрайты её не имеют и
+## живут в средних тонах — там AgX сажает яркость вниз сильнее всего.
+## Свет заклинаний при 0.97 не гаснет: он кратковременный и идёт с энергией
+## 1.5–2.2, запаса хватает.
+const AMBIENT := Color(0.97, 0.98, 1.0, 1.0)
+
+func _setup_rendering() -> void:
+	_setup_ambient()
+	_setup_environment()
+	_setup_post_pass()
+
+
+## CanvasModulate — базовая яркость всего холста. Без него аддитивные
+## источники света не могут ничего добавить: холст и так рисуется в полную
+## яркость. Действует ТОЛЬКО на свой слой, поэтому UI на своём CanvasLayer
+## не затрагивается.
+func _setup_ambient() -> void:
+	if get_node_or_null("Ambient") != null:
+		return
+	var ambient := CanvasModulate.new()
+	ambient.name = "Ambient"
+	ambient.color = AMBIENT
+	add_child(ambient)
+
+
+## WorldEnvironment: glow + тональная компрессия для 2D.
+##
+## background_mode ОБЯЗАН быть BG_CANVAS (3). Со значением по умолчанию
+## (BG_CLEAR_COLOR) Environment влияет ТОЛЬКО на 3D, а в чисто 2D-проекте это
+## значит «ничего не делает» — самая частая потеря времени при настройке.
+##
+## Цвета каналов > 1.0 в шейдерах заклинаний дают избирательное свечение:
+## раньше 2D был RGBA8 и значения обрезались до 1.0, то есть «ярче белого»
+## было невозможно в принципе. Теперь работает hdr_2d.
+func _setup_environment() -> void:
+	if get_node_or_null("WorldEnvironment") != null:
+		return
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CANVAS
+	env.glow_enabled = true
+	env.glow_intensity = 0.45
+	env.glow_bloom = 0.08
+	env.glow_strength = 1.1
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	# Порог чуть ниже 1.0: с hdr_2d в кадре почти нет по-настоящему белых
+	# пикселей, и при 1.0 не светилось бы ничего.
+	env.glow_hdr_threshold = 0.92
+	# Имена уровней glow содержат «/», к таким свойствам нельзя обращаться
+	# присваиванием (только через set()) — прямой доступ не парсится.
+	env.set("glow_levels/4", 0.2)
+	env.set("glow_levels/5", 0.35)
+	env.set("glow_levels/6", 0.18)
+	# AgX оставлен: он даёт «цветную» землю, которая понравилась. Но он же
+	# сажает средние тона вниз, а спрайты живут именно в них — компенсируем
+	# экспозицией и убираем лишний контраст теней.
+	env.tonemap_mode = Environment.TONE_MAPPER_AGX
+	env.tonemap_exposure = 1.25
+	env.tonemap_agx_contrast = 0.85
+	# UI на CanvasLayer с layer > 0 и так исключён из пост-обработки.
+	env.background_canvas_max_layer = 0
+
+	var node := WorldEnvironment.new()
+	node.name = "WorldEnvironment"
+	node.environment = env
+	add_child(node)
+
+
+## Пост-пасс: виньетка + зерно. В Environment в Godot 4 виньетки НЕТ ни в одной
+## версии — её всегда делают своим шейдером.
+##
+## Кладётся ПЕРВЫМ потомком UI-CanvasLayer: тогда HUD рисуется поверх и не
+## затемняется, а сам слой (layer 1) не попадает под glow.
+func _setup_post_pass() -> void:
+	# Узел UI в main.tscn НЕ состоит в группе "ui" (там нет строки groups = [...]),
+	# поэтому искать его по группе нельзя — берём уже сохранённую ссылку `ui`.
+	var ui_node: Node = ui
+	if ui_node == null:
+		ui_node = get_tree().get_first_node_in_group("ui")
+	if ui_node == null:
+		ui_node = find_child("UI", true, false)
+	if ui_node == null:
+		return
+	if ui_node.get_node_or_null("PostFX") != null:
+		return
+	var layer: CanvasLayer = ui_node as CanvasLayer
+	if layer == null:
+		return
+	var rect := ColorRect.new()
+	rect.name = "PostFX"
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = POSTFX_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	rect.material = mat
+	rect.color = Color(1, 1, 1, 1)
+	layer.add_child(rect)
+	# Переносим наверх списка детей, чтобы HUD был ПОВЕРХ пост-обработки.
+	layer.move_child(rect, 0)
+
+
 func _ready():  # Инициализация мира и боя
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
+
+	# Свет и пост-обработка 2D. Без них эффекты рисуются «как есть» и выглядят
+	# наклейками: правило VFX — эффект должен излучать и освещать мир.
+	_setup_rendering()
 
 	# Сброс режимов прицеливания (статика переживает перезапуск сцены)
 	pending_scroll = {}
@@ -661,19 +834,48 @@ func _hover_unit() -> Node2D:
 			return e
 	return null
 
-## Размер спрайта юнита (w, h).
-func _unit_metrics(u: Node2D) -> Array:
+## ВЫСОТА спрайта юнита над его основанием (px) — то, насколько высоко надо
+## поднять эффект, чтобы он оказался над головой, а не внутри тела.
+##
+## Берётся из UnitAnim.visual_height(): это реальная высота кадра с учётом
+## масштаба. Нельзя брать _unit_metrics() — это ФУТПРИНТ (сколько клеток
+## занимает юнит): для героя с tile_size 1 это 32 px, тогда как спрайт выше, и
+## эффект по этой высоте оказывался у персонажа внутри (жалоба игрока).
+##
+## У всех четырёх типов юнитов (player/enemy/npc/mercenary) узел анимации
+## называется "UnitAnim".
+static func unit_visual_height(u: Node2D) -> float:
+	if not is_instance_valid(u):
+		return 32.0
+	var anim: Node = u.get_node_or_null("UnitAnim")
+	if anim == null:
+		return 32.0
+	if anim.has_method("visual_height"):
+		var h := float(anim.call("visual_height"))
+		if h > 0.0:
+			return h
+	return 32.0
+
+## Размер спрайта юнита (w, h). static: считается только по anim_set, своего
+## состояния не читает — вызывается и из Game, и из SpellAura.
+##
+## ВНИМАНИЕ: это ФУТПРИНТ (сколько клеток занимает юнит), а НЕ высота спрайта.
+## Для высоты (куда вешать эффекты над головой) есть unit_visual_height().
+static func _unit_metrics(u: Node2D) -> Array:
 	var set_name := ""
 	if "anim_set" in u:
 		set_name = str(u.get("anim_set"))
 	if set_name == "" and u is Player:
 		set_name = (u as Player).anim_set_name()
-	var w := 128
-	var h := 128
+	# Размер спрайта юнита в пикселях. Раньше читались поля "w"/"h" из units_db.json,
+	# но их там НЕТ — срабатывала заглушка 128, и кольцо выделения было шириной 144 px
+	# независимо от юнита (для гнома — круг втрое шире него самого).
+	var w := 32
+	var h := 32
 	if set_name != "":
-		var o := UnitDB.get_set(set_name)
-		w = int(o.get("w", 128))
-		h = int(o.get("h", 128))
+		var ts: int = maxi(1, UnitDB.tile_size(set_name))
+		w = ts * 32
+		h = ts * 32
 	return [w, h]
 
 ## Точка кольца выделения: центр тела юнита. Спрайт рисуется вверх от точки

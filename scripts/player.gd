@@ -36,6 +36,12 @@ var _repath_timer := 0.0
 # --- Экономика (P0): золото и склад владений ---
 var gold: int = 20
 var inventory: Array = []   # ключи предметов item_db ("Common Iron Long Sword", "Potion ...")
+## Экипированные предметы: слот ("weapon"/"shield"/"armor") -> ключ item_db.
+## Раньше экипировка меняла ТОЛЬКО набор анимации (armor_kind/weapon/has_shield) и
+## не сохраняла, какой предмет надет, — поэтому get_defense/get_attack/get_absorption
+## считали чистые формулы по атрибутам, и тяжёлая броня с защитой 14 давала ровно
+## столько же, сколько её отсутствие.
+var equipped: Dictionary = {}
 
 # --- Опыт по навыкам (как у разработчиков UnityAllods/ROM2): ---
 # навык растёт от опыта: exp = (1.1^skill - 1) * 1000; skill = log_1.1(exp/1000 + 1).
@@ -236,10 +242,17 @@ func _apply_hero_choice() -> void:
 
 ## Стартовое снаряжение по классу героя (в склад — можно одеть/продать сразу).
 func _grant_starter_set() -> void:
-	inventory.append("Common Iron Long Sword" if Game.hero_class != "mage" else "Common Wood Staff")
+	var weapon_key := "Common Iron Long Sword" if Game.hero_class != "mage" else "Common Wood Staff"
+	inventory.append(weapon_key)
 	if Game.hero_stats.get("shield", false):
 		inventory.append("Common Iron Buckler")
 	inventory.append("Common Leather Mail")
+	# Стартовое снаряжение надевается сразу: иначе новый герой выходил бы в бой
+	# голым (все статы — базовые, атрибуты), хотя вещи лежат в инвентаре.
+	equip_item(ItemDB.find(weapon_key))
+	equip_item(ItemDB.find("Common Leather Mail"))
+	if Game.hero_stats.get("shield", false):
+		equip_item(ItemDB.find("Common Iron Buckler"))
 	# Маг на старте получает книгу простейшего заклинания выбранной школы
 	# (учится двойным кликом по ячейке склада; книга расходуется).
 	if Game.hero_class == "mage" and Game.hero_start_book != "":
@@ -306,20 +319,74 @@ func _calc_speed() -> float:
 	return speed
 
 func get_damage_min() -> int:
+	# Оружие задаёт СВОЙ урон (min/max из item_db), а не прибавляется к «body/2».
+	# Иначе герой с мечом на 3-7 и герой с кулаками били бы одинаково, а клинок
+	# за 500 золотых ничего не значил.
+	var w := _equipped_item("weapon")
+	if not w.is_empty():
+		var dmin := int(w.get("damage_min", 0))
+		if dmin > 0:
+			return dmin
 	return body / 2 + blade_skill / 10     # Body + навык меча -> урон
 
 func get_damage_max() -> int:
+	var w := _equipped_item("weapon")
+	if not w.is_empty():
+		var dmax := int(w.get("damage_max", 0))
+		if dmax > 0:
+			return dmax
 	return body + blade_skill / 5 + 5
 
 func get_attack() -> int:
-	return agility / 2 + blade_skill / 10 + StatusEffects.stat_flat(self, "attack")
+	# to_hit оружия идёт в атаку (шанс попадания), а не выбрасывается.
+	var w := _equipped_item("weapon")
+	return agility / 2 + blade_skill / 10 \
+		+ int(w.get("to_hit", 0)) + StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
 	var base := agility / 2 + body / 4    # Agility -> уклонение/защита
-	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
+	# Броня и щит дают свою defence, и она берётся ПОЛНОСТЬЮ: /10, как было
+	# в черновике, превращал броню с защитой 14 в +1 и делал экипировку
+	# бессмысленной. Атрибуты остаются базой, вещи — поверх.
+	var bonus := int(_equipped_item("armor").get("defence", 0)) \
+		+ int(_equipped_item("shield").get("defence", 0))
+	return int(round((base + bonus + StatusEffects.stat_flat(self, "defense")) \
+		* StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	return body / 4
+	# Поглощение брони (в оригинале — отдельная характеристика брони).
+	return body / 4 + int(_equipped_item("armor").get("absorption", 0))
+
+## Предмет в слоте (пустой словарь, если слот пуст или предмета нет в базе).
+func _equipped_item(slot: String) -> Dictionary:
+	var key := str(equipped.get(slot, ""))
+	if key == "":
+		return {}
+	var it := ItemDB.find(key)
+	return it if not it.is_empty() else {}
+
+## Надеть предмет: запоминаем ключ в слоте и обновляем набор анимации.
+## true, если предмет экипирован.
+func equip_item(item: Dictionary) -> bool:
+	if not ItemDB.is_equippable(item):
+		return false
+	var slot := ItemDB.slot_of(item)
+	if slot == "shield" and two_handed:
+		return false
+	equipped[slot] = str(item.get("key", ""))
+	match slot:
+		"armor":
+			armor_kind = ItemDB.armor_kind(item)
+		"weapon":
+			weapon = ItemDB.weapon_kind(item)
+			two_handed = ItemDB.is_two_handed(item)
+			if two_handed:
+				has_shield = false
+				equipped.erase("shield")
+		"shield":
+			has_shield = true
+	refresh_animation()
+	return true
 
 func get_sight() -> int:
 	return 6 + agility / 3                 # по манифесту
@@ -332,7 +399,11 @@ func get_magic_power() -> int:
 ## сопротивление) + навык сферы + временные баффы Protection_from_*.
 func _sphere_protection(sphere: String) -> int:
 	var skill := sphere_skill(sphere)
-	return spirit + skill / 10 + StatusEffects.resist_bonus(self, sphere)
+	# magcap брони/оружия — вклад в сопротивление стихии: у одежды он и есть
+	# (у Common Leather Mail magcap=3, у тяжёлой брони — 150).
+	var gear := int(_equipped_item("armor").get("magcap", 0)) \
+		+ int(_equipped_item("weapon").get("magcap", 0))
+	return spirit + skill / 10 + gear / 10 + StatusEffects.resist_bonus(self, sphere)
 
 func get_protection_fire() -> int: return _sphere_protection("Fire")
 func get_protection_water() -> int: return _sphere_protection("Water")
@@ -671,7 +742,7 @@ func _follow_path(delta: float) -> void:
 		if _path.is_empty():
 			return
 		wp = _path[0]
-	var dir := (wp - global_position).normalized()
+	var dir := Game.safe_dir(global_position, wp)
 	var speed_factor := _height_speed_factor(wp)
 	_move_checked(dir, move_speed * speed_factor, delta)
 	if velocity.length_squared() < 1.0:
@@ -707,7 +778,7 @@ func chase_target(delta):
 		if _path.size() > 0:
 			_follow_path(delta)
 		else:
-			var direction = (attack_target.global_position - global_position).normalized()
+			var direction = Game.safe_dir(global_position, attack_target.global_position)
 			var speed_factor = _height_speed_factor(attack_target.global_position)
 			_move_checked(direction, move_speed * speed_factor, delta)
 	else:
@@ -1000,7 +1071,14 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 
 	match kind:
 		"attack", "area":
-			_fire_spell_projectile(name, sphere, dmg, area, target_position)
+			# Призматическое сияние бьёт по нескольким целям сразу.
+			if str(spell.get("projectile", "")) == "chain":
+				_cast_chain_spell(name, spell, sphere, dmg, area, target_position)
+			# Метель и ядовитое облако — не снаряд, а зона с длительностью.
+			elif str(spell.get("zone_style", "")) != "":
+				_create_zone(target_position, name, sphere)
+			else:
+				_fire_spell_projectile(name, sphere, dmg, area, target_position)
 		"heal":
 			_heal_target(target_node, name, dmg)
 		"buff":
@@ -1036,11 +1114,50 @@ func _apply_self_effects(spell: Dictionary) -> void:
 		StatusEffects.apply_spell(self, {"effects": [e]}, self)
 
 
-## Наложить эффекты заклинания на цель и показать кольцо ауры.
+## Наложить эффекты заклинания на цель и показать постоянную ауру.
+## Раньше был только одноразовый aura_ring на 0.45 с: «Защита от огня» живёт
+## 90 секунд, но была видна меньше секунды, и игрок не понимал, что бафф держится.
 func _apply_effects(target: Node2D, spell: Dictionary) -> void:
 	var applied := StatusEffects.apply_spell(target, spell, self)
-	if applied > 0:
+	if applied <= 0:
+		return
+	_attach_auras(target, spell)
+	# Одноразовое кольцо рисуем ТОЛЬКО если постоянной ауры нет: иначе на касте
+	# сразу два эффекта в одной точке, и выглядит как «дёрнулось и наложилось».
+	if not _has_persistent_aura(target):
 		SpellVFX.aura_ring(target, str(spell.get("sphere", "")), "buff")
+	else:
+		SpellVFX.ground_dust(target)
+
+
+## Есть ли на цели постоянная аура (сопротивление/щит/ветер).
+func _has_persistent_aura(target: Node2D) -> bool:
+	if not is_instance_valid(target):
+		return false
+	for c in target.get_children():
+		if c is SpellAura:
+			return true
+	return false
+
+
+## Постоянные ауры по типу эффекта: щит — сетка, сопротивление — свечение
+## над головой в цвет стихии, ускорение — ветер у ног.
+func _attach_auras(target: Node2D, spell: Dictionary) -> void:
+	for e in spell.get("effects", []):
+		if not (e is Dictionary):
+			continue
+		var effect := e as Dictionary
+		var etype := str(effect.get("type", ""))
+		var esphere := str(effect.get("sphere", spell.get("sphere", "")))
+		match etype:
+			"shield":
+				SpellAura.attach(target, "shield", esphere, "shield")
+			"resist":
+				SpellAura.attach(target, "resist", esphere, "resist")
+			"haste":
+				SpellAura.attach(target, "haste", esphere, "haste")
+			_:
+				pass
 
 ## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).
 ## Если папки снаряда нет (эффект отсутствует — Haste/Invisibility/Summon...),
@@ -1091,7 +1208,12 @@ func _heal_target(target: Node2D, spell_name: String, base: int) -> void:
 		target = self
 	var sphere := SpellDB.sphere_of(spell_name)
 	var amount := Game.spell_damage(self, spell_name, sphere, maxi(1, -base))
+	var before: Variant = target.get("current_hp")
 	target.call("heal_amount", amount)
+	# Красный крест над головой — появление лечения было видно только цифрой.
+	var after: Variant = target.get("current_hp")
+	if after is int and before is int and int(after) > int(before):
+		SpellAura.heal_cross(target)
 
 
 ## Восстановить HP себе или союзнику. Возвращает реально восстановленное.
@@ -1109,18 +1231,108 @@ func heal_amount(amount: int) -> int:
 		health_bar.update_bars(current_hp, current_mana)
 	return healed
 
+## Призматическое сияние: молнии от мага сразу к нескольким целям.
+## Раньше это был одиночный снаряд — попадание было одно, а по названию
+## «сияние» ожидалось веерное сражение. Цели — до CHAIN_MAX ближайших врагов
+## в радиусе area от точки каста; между ними рисуются молнии.
+const CHAIN_MAX := 6
+const CHAIN_MIN := 4
+## Радиус поиска целей. Раньше брался max(area, 96) = 96 px — при радиусе
+## каста 72 это всё равно было тесно, и «сияние» накрывало 2-3 цели вместо
+## веера. Игрок попросил 160.
+const CHAIN_RADIUS := 160.0
+
+func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
+		dmg: int, area: float, target_position: Vector2) -> void:
+	var targets: Array = _chain_targets(target_position, maxf(area, CHAIN_RADIUS))
+	if targets.is_empty():
+		# Никого рядом — бьём в точку прицела, чтобы каст не пропадал впустую.
+		_fire_spell_projectile(spell_name, sphere, dmg, area, target_position)
+		return
+	# Урон через общий Game.spell_damage: сила заклинания, разум и навык должны
+	# влиять на «сияние» так же, как на снаряды. Раньше здесь передавался сырой
+	# dmg из БД, и призматическое сияние было единственным заклинанием,
+	# полностью игнорировавшим развитие мага.
+	var final_dmg := Game.spell_damage(self, spell_name, sphere, dmg)
+	var origin := cast_origin()
+	# Каждой цели — свой цвет радуги, иначе все лучи выходили цветом сферы.
+	var color_index := 0
+	for t in targets:
+		if not is_instance_valid(t):
+			continue
+		Game.deal_damage(t, final_dmg, "magic", sphere, self)
+		SpellVFX.chain_arc(origin, t.global_position, sphere,
+			SpellVFX.rainbow_color(color_index))
+		SpellVFX.hit_flash(t)
+		color_index += 1
+	_apply_spell_experience(sphere)
+
+
+## Ближайшие враги в радиусе — от 4 до 6 штук (CHAIN_MAX предел).
+func _chain_targets(center: Vector2, radius: float) -> Array:
+	var found: Array = []
+	for e in Game.enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		# Node.get() в Godot 4 принимает ОДИН аргумент, поэтому состояние
+		# трупа проверяем через "поле в узле", а не get("state", "").
+		if "state" in e and str(e.get("state")) in ["dying", "decay", "corpse"]:
+			continue
+		found.append(e)
+	# Сортируем по расстоянию до точки каста, чтобы лучи шли веером от цели.
+	found.sort_custom(func(a: Node2D, b: Node2D) -> bool:
+		return a.global_position.distance_squared_to(center) \
+			< b.global_position.distance_squared_to(center))
+	var out: Array = []
+	for e in found:
+		if out.size() >= CHAIN_MAX:
+			break
+		if (e as Node2D).global_position.distance_to(center) <= radius:
+			out.append(e)
+	return out
+
+
 ## Стена (Wall of Fire / Wall of Earth). В оригинале они РАЗНЫЕ
 ## (spells.txt): огонь непрерывно жжёт, земля — непроходимая преграда.
 ## Раньше это был ColorRect 32×32 на 2 секунды: без урона и без блокировки.
+## Размер стены задаётся в КЛЕТКАХ (zone_cells) — по решению игрока 6 × 2,
+## и урон, спрайт и блокировка берут размер из одного и того же прямоугольника.
 func _create_wall(target_position: Vector2, spell_name: String, sphere: String) -> void:
 	var spell := SpellDB.get_spell(spell_name)
 	var mode := str(spell.get("wall_mode", "damage"))
-	var width := float(spell.get("wall_width", 64.0))
 	var life := float(spell.get("wall_life", 6.0))
+	var cells := _zone_cells(spell, Vector2i(6, 2))
 	var dmg := 0
 	if mode != "block":
 		dmg = Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)))
-	SpellVFX.spawn_wall(target_position, sphere, self, life, mode, width, dmg)
+	SpellVFX.spawn_wall(target_position, sphere, self, life, mode, cells, dmg)
+
+
+## Зона с длительностью: метель и ядовитое облако. Раньше это был одиночный
+## снаряд с одним попаданием — «метель» бросала один метеор, а «облако» не
+## оставляло после себя ничего, хотя в базе у обоих dot на 5–6 секунд.
+func _create_zone(target_position: Vector2, spell_name: String, sphere: String) -> void:
+	var spell := SpellDB.get_spell(spell_name)
+	var style := str(spell.get("zone_style", "cloud"))
+	var life := float(spell.get("zone_life", 4.0))
+	var cells := _zone_cells(spell, Vector2i(3, 3))
+	var dmg := Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)))
+	SpellVFX.spawn_zone(target_position, style, sphere, self, life, cells, dmg, 0.5)
+	# Зона наносит урон и эффекты (медлен, яд) всем, кто в ней стоит.
+	StatusEffects.apply_area(target_position, _zone_radius(cells), spell, self)
+
+
+## Размер зоны в клетках из базы; при отсутствии поля — значение по умолчанию.
+func _zone_cells(spell: Dictionary, fallback: Vector2i) -> Vector2i:
+	var raw: Variant = spell.get("zone_cells", null)
+	if raw is Array and (raw as Array).size() >= 2:
+		return Vector2i(maxi(1, int((raw as Array)[0])), maxi(1, int((raw as Array)[1])))
+	return fallback
+
+
+## Радиус зоны в пикселях — половина её диагонали, для area-эффектов.
+func _zone_radius(cells: Vector2i) -> float:
+	return Vector2(cells.x * 32, cells.y * 32).length() * 0.5
 
 
 ## Animate_Dead: поднять ближайший труп в союзника на lifespan секунд.
@@ -1180,11 +1392,18 @@ func _cast_summon() -> void:
 	print("Призыв: союзный монстр")
 
 ## Телепорт к точке (в пределах карты).
+## Телепорт в точку прицела. Точку выбирает игрок (target "point" в базе),
+## раньше заклинание было target "self" — прицела не было, и герой просто
+## никуда не перемещался. Отказ по непроходимой клетке теперь виден.
 func _teleport_to(target_position: Vector2) -> void:
 	if alm_map and alm_map.has_method("is_walkable_world") and not alm_map.is_walkable_world(target_position):
+		SpellVFX.cast_telegraph(target_position, "Astral", 0.2)
 		return
+	SpellVFX.cast_flash(global_position, "Astral")
 	global_position = target_position
 	reset_physics_interpolation()
+	SpellVFX.cast_flash(target_position, "Astral")
+	SpellVFX.aura_ring(self, "Astral", "buff")
 	if health_bar:
 		health_bar.update_bars(current_hp, current_mana)
 

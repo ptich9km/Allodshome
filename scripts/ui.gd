@@ -649,21 +649,18 @@ func _on_item_clicked(item: Dictionary):
 		_use_potion(item_key, item)
 		return
 
+	# Экипировка идёт через player.equip_item(): он запоминает КЛЮЧ предмета
+	# в слоте. Раньше здесь выставлялись только armor_kind/weapon/has_shield —
+	# то есть менялся набор анимации, а сам предмет нигде не сохранялся и в бой
+	# не попадал (статы считались по атрибутам).
 	var slot := str(item.get("slot", ""))
-	if slot == "armor":
-		player.armor_kind = str(item.get("armor", "light"))
-	elif slot == "weapon":
-		player.weapon = str(item.get("weapon", "sword"))
-		player.two_handed = bool(item.get("two_handed", false))
-		player.has_shield = false
-	elif slot == "shield":
-		if player.two_handed:
-			print("Щит нельзя с двуручным оружием!")
-			return
-		player.has_shield = true
-	player.refresh_animation()
-	_update_stats()
-	print("Экипировано: " + str(item.get("name_ru", item_key)))
+	if slot == "shield" and player.two_handed:
+		print("Щит нельзя с двуручным оружием!")
+		return
+	if player.equip_item(item):
+		_update_stats()
+		print("Экипировано: " + str(item.get("name_ru", item_key)))
+	refresh_inventory()
 
 ## Зелья из склада: лечение/мана (объём по названию), предмет расходуется.
 func _use_potion(item_key: String, item: Dictionary) -> void:
@@ -1155,6 +1152,11 @@ var _inn: InnPanel = null
 var _blacksmith: BlacksmithPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
 var _in_interior := false
+## Узлы HUD, которые прячем на время интерьера. Раньше они оставались видимыми:
+## вокруг модального окна было видно «воду» и объекты мира, а кнопка «Закрыть»
+## интерьера попадала в полосу склада.
+const _HUD_NODES := ["BottomPanel", "MinimapBorder", "HeroName", "PortraitBorder",
+	"StatsBorder", "CommandL", "CommandBar", "CoordsLabel", "PauseLabel"]
 
 ## Вход в здание: герой «уходит внутрь» (скрыт на карте), выходит при закрытии.
 func _enter_interior() -> void:
@@ -1166,11 +1168,19 @@ func _enter_interior() -> void:
 	player.stop_movement()          # не «ускакивает» по старой цели, пока в меню
 	player.visible = false
 	_in_interior = true
+	for path in _HUD_NODES:
+		var node: Control = get_node_or_null(path) as Control
+		if node != null:
+			node.visible = false
 
 func _exit_interior() -> void:
 	if not _in_interior:
 		return
 	_in_interior = false
+	for path in _HUD_NODES:
+		var node2: Control = get_node_or_null(path) as Control
+		if node2 != null:
+			node2.visible = true
 	if is_instance_valid(player):
 		player.visible = true
 		# Точка выхода: исходная позиция, но на ПРОХОДИМОЙ клетке (не «в здании»)

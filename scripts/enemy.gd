@@ -136,7 +136,7 @@ func _physics_process(delta):
 							Game.deal_damage(target, damage, "physical", "", self)
 						SoundDB.play(_unit_sound_at(0))
 		"flee":
-			var flee_direction = (global_position - target.global_position).normalized()
+			var flee_direction = Game.safe_dir(target.global_position, global_position)
 			_move_checked(flee_direction, effective_speed() * 1.5, delta)
 			if distance_to_target > deaggro_radius * 1.5:
 				queue_free()
@@ -178,21 +178,39 @@ const MOVE_ACCEL := 1100.0
 const MOVE_DECEL := 1800.0
 
 ## Движение с проверкой проходимости карты (летающие игнорируют землю).
+## Как у игрока: полный вектор -> X-only -> Y-only. Иначе, упираясь в стену или
+## дерево, враг гасил скорость целиком и «прилипал» — скользить вдоль препятствия
+## он не умел вовсе.
 func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	direction = Game.movement_direction(self, direction)
 	var wanted := direction * speed
-	var next := global_position + wanted * delta
-	var can_step := true
-	var map_node = get_tree().get_first_node_in_group("alm_map")
-	if UnitDB.fly_z(anim_set) <= 0 and map_node != null and map_node.has_method("is_walkable_world"):
-		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
-		can_step = map_node.is_walkable_world(next) \
-			or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
-				== Vector2i(int(next.x) / 32, int(next.y) / 32)
-	if can_step:
+	var step := wanted * delta
+	if _can_step(step):
 		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
-	else:
+		return
+	if delta <= 0.0:
+		velocity = Vector2.ZERO
+		return
+	var slide := Vector2.ZERO
+	if _can_step(Vector2(step.x, 0.0)):
+		slide = Vector2(step.x, 0.0)
+	elif _can_step(Vector2(0.0, step.y)):
+		slide = Vector2(0.0, step.y)
+	if slide == Vector2.ZERO:
 		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+	else:
+		velocity = velocity.move_toward(slide / delta, MOVE_ACCEL * delta)
+
+## Разрешён ли сдвиг: проходимая клетка (летающие игнорируют землю). Выход из
+## СВОЕЙ непроходимой клетки разрешаем — иначе враг не сможет выбраться сам.
+func _can_step(step: Vector2) -> bool:
+	var map_node = get_tree().get_first_node_in_group("alm_map")
+	if UnitDB.fly_z(anim_set) > 0 or map_node == null or not map_node.has_method("is_walkable_world"):
+		return true
+	var next := global_position + step
+	return bool(map_node.is_walkable_world(next)) \
+		or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
+			== Vector2i(int(next.x) / 32, int(next.y) / 32)
 
 ## Цель боя: игрок (приоритет; в агро или в погоне — до deaggro) или
 ## ближайший страж-НПЦ города в радиусе агро.
@@ -239,7 +257,7 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			_path.pop_front()
 		if _path.size() > 0:
 			wp = _path[0]
-			_move_checked((wp - global_position).normalized(), effective_speed(), delta)
+			_move_checked(Game.safe_dir(global_position, wp), effective_speed(), delta)
 		else:
 			velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
 	else:
