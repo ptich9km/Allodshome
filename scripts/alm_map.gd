@@ -51,6 +51,10 @@ func _ensure_world_sort() -> Node2D:
 
 
 const _DIRS_4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+const _DIRS_8: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)
+]
 
 func _ready() -> void:
 	add_to_group("alm_map")
@@ -779,7 +783,7 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 		else:
 			goal = best
 
-	# BFS по 4 соседям
+	# BFS по 8 соседям (с проверкой диагоналей — нельзя срезать угол)
 	var prev := {}
 	var queue: Array = [start]
 	var seen := {start: true}
@@ -787,10 +791,17 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 		var cur: Vector2i = queue.pop_front()
 		if cur == goal:
 			break
-		for d in _DIRS_4:
+		for d in _DIRS_8:
 			var n := cur + d
 			if seen.has(n) or not _cell_walkable(n):
 				continue
+			# Проверка диагонали: если движемся по диагонали, обе кардинальные
+			# соседи должны быть проходимы (иначе срезаем угол через препятствие)
+			if d.x != 0 and d.y != 0:
+				var side1 := cur + Vector2i(d.x, 0)
+				var side2 := cur + Vector2i(0, d.y)
+				if not _cell_walkable(side1) or not _cell_walkable(side2):
+					continue
 			seen[n] = true
 			prev[n] = cur
 			queue.append(n)
