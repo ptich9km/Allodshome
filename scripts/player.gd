@@ -1237,16 +1237,23 @@ func heal_amount(amount: int) -> int:
 ## в радиусе area от точки каста; между ними рисуются молнии.
 const CHAIN_MAX := 6
 const CHAIN_MIN := 4
-## Радиус поиска целей. Раньше брался max(area, 96) = 96 px — при радиусе
-## каста 72 это всё равно было тесно, и «сияние» накрывало 2-3 цели вместо
-## веера. Игрок попросил 160.
+## Радиус веера вокруг точки прицела. Раньше он же был и радиусом поиска целей
+## (max(area, 96) = 96 px), и теснота была не в веере, а в том, что цели искались
+## от КУРСОРА без всякой проверки расстояния до мага.
 const CHAIN_RADIUS := 160.0
 
 func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
 		dmg: int, area: float, target_position: Vector2) -> void:
-	var targets: Array = _chain_targets(target_position, maxf(area, CHAIN_RADIUS))
+	var origin := cast_origin()
+	# Дальность заклинания — единственный предел досягаемости. Раньше она из
+	# базы не читалась вообще, и клик в 260 px бил врагов там, сколько бы
+	# далеко от мага они ни стояли: молния летела через полкарты.
+	var reach := SpellDB.range_of(spell_name)
+	var targets: Array = _chain_targets(target_position, maxf(area, CHAIN_RADIUS),
+		origin, reach)
 	if targets.is_empty():
-		# Никого рядом — бьём в точку прицела, чтобы каст не пропадал впустую.
+		# Никого в досягаемости — бьём в точку прицела, чтобы каст не пропадал
+		# впустую.
 		_fire_spell_projectile(spell_name, sphere, dmg, area, target_position)
 		return
 	# Урон через общий Game.spell_damage: сила заклинания, разум и навык должны
@@ -1254,7 +1261,6 @@ func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
 	# dmg из БД, и призматическое сияние было единственным заклинанием,
 	# полностью игнорировавшим развитие мага.
 	var final_dmg := Game.spell_damage(self, spell_name, sphere, dmg)
-	var origin := cast_origin()
 	# Каждой цели — свой цвет радуги, иначе все лучи выходили цветом сферы.
 	var color_index := 0
 	for t in targets:
@@ -1268,8 +1274,18 @@ func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
 	_apply_spell_experience(sphere)
 
 
-## Ближайшие враги в радиусе — от 4 до 6 штук (CHAIN_MAX предел).
-func _chain_targets(center: Vector2, radius: float) -> Array:
+## Живые враги в веере вокруг aim, но не дальше reach от точки кастера.
+##
+## Только ВРАГИ: лучи идут от мага, и бить своих, нейтральных жителей или
+## наёмников «призматическим сиянием» неправильно — это урон по врагам.
+##
+## Два ограничения делают разные вещи и оба нужны:
+##   * reach (дальность заклинания) — жёсткая досягаемость от мага;
+##   * radius (веер) — размер вспышки вокруг прицела, то есть прицел по-прежнему
+##     выбирает, в кого бить первым. Без сортировки по прицелу в драке с толпой
+##     цель выбиралась бы случайно.
+func _chain_targets(aim: Vector2, radius: float, origin: Vector2,
+		reach: float) -> Array:
 	var found: Array = []
 	for e in Game.enemies:
 		if e == null or not is_instance_valid(e):
@@ -1278,17 +1294,21 @@ func _chain_targets(center: Vector2, radius: float) -> Array:
 		# трупа проверяем через "поле в узле", а не get("state", "").
 		if "state" in e and str(e.get("state")) in ["dying", "decay", "corpse"]:
 			continue
+		var pos := (e as Node2D).global_position
+		if reach > 0.0 and origin.distance_to(pos) > reach:
+			continue
+		if pos.distance_to(aim) > radius:
+			continue
 		found.append(e)
-	# Сортируем по расстоянию до точки каста, чтобы лучи шли веером от цели.
+	# Сортируем по расстоянию до точки прицела, чтобы лучи шли веером от цели.
 	found.sort_custom(func(a: Node2D, b: Node2D) -> bool:
-		return a.global_position.distance_squared_to(center) \
-			< b.global_position.distance_squared_to(center))
+		return a.global_position.distance_squared_to(aim) \
+			< b.global_position.distance_squared_to(aim))
 	var out: Array = []
 	for e in found:
 		if out.size() >= CHAIN_MAX:
 			break
-		if (e as Node2D).global_position.distance_to(center) <= radius:
-			out.append(e)
+		out.append(e)
 	return out
 
 

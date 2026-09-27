@@ -229,7 +229,12 @@ func _test_wall() -> void:
 func _test_chain() -> void:
 	_check(SpellDB.get_spell("Prismatic_Spray").get("projectile", "") == "chain",
 		"Prismatic_Spray помечен как chain")
-	var center := _hero.global_position + Vector2(0, 240)
+	# Дальность заклинания меряется от cast_origin(), а не от ног: во всём
+	# проекте так же (game.gd проверяет max_range через cast_origin). У мага
+	# cast_origin() примерно на 43 px ВЫШЕ ног, поэтому 240 px от global_position
+	# дают 283 от точки отсчёта — а reach у сияния 260, и все шесть целей
+	# отсекались. Ставим группу на 170 px от ног.
+	var center := _hero.global_position + Vector2(0, 170)
 	var foes: Array = []
 	for i in range(6):
 		var e := _spawn_foe(center + Vector2((i - 3) * 24, 0))

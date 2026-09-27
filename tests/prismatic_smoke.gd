@@ -57,7 +57,11 @@ func _run() -> void:
 
 	_test_db()
 	_test_scaling()
-	_test_radius()
+	# await ОБЯЗАТЕЛЕН: внутри есть await process_frame, без него корутина
+	# возвращается на первой паузе и все проверки дальности молча пропускаются.
+	# На этом уже споткнулся тест сопротивлений — там выглядело как «1 запись
+	# из 4», а код был исправен.
+	await _test_radius()
 	_test_rainbow()
 	_test_arc_taper()
 	_finish()
@@ -103,34 +107,65 @@ func _test_scaling() -> void:
 # --- 2. Радиус ------------------------------------------------------------
 
 func _test_radius() -> void:
-	# Константа в коде должна совпадать с БД, иначе заявленный радиус
-	# и фактический расходятся.
+	# Регрессия из ручного аудита: дальность заклинания из базы не читалась
+	# вообще, и клик в 260 px бил врагов там, сколько бы далеко от мага они ни
+	# стояли — молния летела через полкарты. Теперь reach от кастера режет.
 	var code_radius := 160.0
 	var spell := SpellDB.get_spell(SPELL)
 	_check(float(spell.get("area", 0.0)) >= code_radius,
-		"радиус в БД (%.0f) не меньше кода (%.0f) — зона не уже заявленной"
-			% [float(spell.get("area", 0.0)), code_radius])
-	# Поиск целей реально находит врагов в радиусе: кладём врага в 120 px
-	# (внутри 160) и в 200 px (снаружи) и проверяем выбор.
-	var origin := _hero.global_position
+		"веер вокруг прицела = %.0f (радиус зоны в БД)" % float(spell.get("area", 0.0)))
+	var reach := SpellDB.range_of(SPELL)
+	_check(reach > 0.0, "у сияния есть дальность в БД (%.0f)" % reach)
+	_check(reach > code_radius,
+		("дальность (%.0f) больше веера (%.0f) — иначе веер обрезан радиусом "
+			% [reach, code_radius]) + "раньше, чем дальностью")
 	var enemy := _enemy_near_hero()
-	_check(enemy != null, "на карте есть живой враг для проверки радиуса")
+	_check(enemy != null, "на карте есть живой враг для проверки дальности")
 	if enemy == null:
 		return
+	var origin := _hero.global_position
 	var home := enemy.global_position
-	# 120 px — внутри радиуса 160; 200 px — снаружи.
+	# 120 px от мага: внутри и веера, и дальности — цель должна попасть.
 	enemy.global_position = origin + Vector2(120.0, 0.0)
 	await process_frame
-	var targets := _hero.call("_chain_targets", origin, 160.0) as Array
-	_check(targets.has(enemy),
-		"цель в 120 px найдена (внутри радиуса 160)")
+	var near_targets := _chain_targets(origin, code_radius, reach) as Array
+	_check(near_targets.has(enemy),
+		"цель в 120 px от мага попадает в сияние")
+	# 200 px от мага, но прицел НА ЦЕЛИ: веер 160 накрывает её с нуля, а
+	# дальности 260 хватает — значит цель попадает. (Проверять 200 px с
+	# прицелом в ноги мага бессмысленно: веер центрирован на прицеле, и 200 > 160
+	# отсекается веером, а не дальностью.)
 	enemy.global_position = origin + Vector2(200.0, 0.0)
 	await process_frame
-	var far_targets := _hero.call("_chain_targets", origin, 160.0) as Array
+	var aimed := _chain_targets(enemy.global_position, code_radius, reach) as Array
+	_check(aimed.has(enemy),
+		"цель в 200 px попадает, когда прицел наведён на неё (веер 160, дальность 260)")
+	# Тот же враг, но прицел в ноги мага: до прицела 200 > 160, веер не дотягивается.
+	var at_feet := _chain_targets(origin, code_radius, reach) as Array
+	_check(not at_feet.has(enemy),
+		"при прицеле в ноги мага та же цель не попадает — веер режет по прицелу")
+	# 400 px от мага: веер попал бы, но дальность — нет. Раньше бил бы.
+	enemy.global_position = origin + Vector2(400.0, 0.0)
+	await process_frame
+	var far_targets := _chain_targets(origin, code_radius, reach) as Array
 	_check(not far_targets.has(enemy),
-		"цель в 200 px НЕ найдена (вне радиуса 160)")
-	# Возвращаем на место, чтобы не сломать другие тесты на той же карте.
+		"цель в 400 px от мага НЕ попадает — дальность заклинания режет")
+	# И прицел за пределами досягаемости тоже не бьёт через полкарты.
+	enemy.global_position = origin + Vector2(400.0, 0.0)
+	var far_aim := _chain_targets(enemy.global_position, code_radius, reach) as Array
+	_check(not far_aim.has(enemy),
+		"прицел в 400 px не достаёт до врага, даже если веер накрывает его")
+	# Своих сияние не бьёт: лучи идут от мага, и «удар по жителям» неуместен.
+	_check(_chain_targets(origin, code_radius, reach).all(
+		func(t: Node2D) -> bool: return t in Game.enemies),
+		"в целях только враги (Game.enemies), никого из своих")
 	enemy.global_position = home
+
+
+## Цели цепного сияния с новой сигнатурой.
+func _chain_targets(aim: Vector2, radius: float, reach: float) -> Array:
+	return _hero.call("_chain_targets", aim, radius, _hero.global_position,
+		reach) as Array
 
 
 # --- 3. Радуга по целям ----------------------------------------------------

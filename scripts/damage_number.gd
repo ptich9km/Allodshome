@@ -12,6 +12,8 @@ const COLORS := {
 	"dot": Color(0.6, 1.0, 0.2),
 	"buff": Color(0.7, 0.5, 1.0),
 	"absorb": Color(0.5, 0.7, 1.0),
+	"resist": Color(0.55, 0.75, 1.0),
+	"armor": Color(0.8, 0.75, 0.6),
 }
 
 var _label: Label
@@ -19,6 +21,35 @@ var _time := 0.0
 var _duration := 1.2
 var _rise_speed := 40.0
 var _start_pos := Vector2.ZERO
+
+## Текст подписи по типу. Вынесено отдельно от узла, чтобы тесты могли
+## проверить подписи поглощения, не строя сцену.
+##
+## Раньше ВСЕ виды поглощения подписывались словом «щит», хотя щит при полном
+## поглощении стихией или бронёй ни при чём не участвует: щиты считаются
+## внутри take_damage. Игрок не понимал, что именно его спасает.
+static func text_for(value: int, type: String = "damage") -> String:
+	match type:
+		"heal":
+			return "+%d" % value
+		"miss":
+			return "Промах"
+		"mana":
+			return "+%d маны" % value
+		"absorb":
+			# Щит съел урон целиком (поглощение внутри take_damage).
+			return "щит"
+		"resist":
+			# Урон срезала защита стихии.
+			return "стойкость"
+		"armor":
+			# Урон съела броня (физический удар).
+			return "броня"
+		"dot":
+			return "%d" % value
+		_:
+			return str(value)
+
 
 func setup(pos: Vector2, value: int, type: String = "damage") -> void:
 	_start_pos = pos + Vector2(randf_range(-8.0, 8.0), 0.0)
@@ -32,19 +63,7 @@ func setup(pos: Vector2, value: int, type: String = "damage") -> void:
 	_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_label.add_theme_constant_override("outline_size", 2)
 
-	match type:
-		"heal":
-			_label.text = "+%d" % value
-		"miss":
-			_label.text = "Промах"
-		"mana":
-			_label.text = "+%d маны" % value
-		"absorb":
-			_label.text = "щит"
-		"dot":
-			_label.text = "%d" % value
-		_:
-			_label.text = str(value)
+	_label.text = text_for(value, type)
 
 	# Центрируем текст
 	_label.position = Vector2(-_label.size.x / 2.0, -_label.size.y / 2.0)

@@ -166,15 +166,22 @@ static func deal_damage(target: Node2D, dmg: int, kind: String, sphere: String, 
 	else:
 		final = maxi(0, final - unit_absorption(target))
 	if final <= 0:
-		print("%s: урон поглощён полностью (%s)." % [target.name,
-			"защита стихии" if kind == "magic" else "броня"])
-		DamageNumber.show_at(target.global_position, 0, "absorb")
+		# Полное поглощение ДО take_damage. Причина важна игроку: «стойкость» —
+		# защита стихии, «броня» — физический удар. Раньше обе подписи были
+		# «щит», и щит тут ни при чём (щиты считаются внутри take_damage).
+		DamageNumber.show_at(target.global_position, 0,
+			"resist" if kind == "magic" else "armor")
 		return 0
 	var dealt := 0
 	if target.has_method("take_damage"):
 		dealt = target.call("take_damage", final, attacker)
-		if dealt is int and int(dealt) > 0:
-			final = int(dealt)
+	# take_damage вернул 0 — урон съел ЩИТ внутри юнита. Показывать полное
+	# число было прямой ложью: игрок видел «40» там, где не пришлось ни одного
+	# урона. Теперь показываем, что удар дошёл, но его закрыл щит.
+	if not (dealt is int) or int(dealt) <= 0:
+		DamageNumber.show_at(target.global_position, 0, "absorb")
+		return 0
+	final = int(dealt)
 	# Единственное место, где рисуется урон: иначе числа дублировались
 	# в projectile.gd и enemy.gd, и показывали сырое, а не фактическое значение.
 	DamageNumber.show_at(target.global_position, final, "damage")

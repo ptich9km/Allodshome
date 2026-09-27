@@ -202,6 +202,31 @@ func _run() -> void:
 	StatusEffects.tick(31.0)
 	_check(not StatusEffects.is_rooted(foe), "корень истёк по tick")
 
+	# --- Обратная связь при поглощения -----------------------------------------
+	# Из аудита: deal_damage показывал "щит" на ЛЮБОЙ поглощении, а щит считается внутри take_damage
+	# и вовсе не попадает в эту ветку. Кроме того, поглощение щитом стрельный урон показывался полным числом.
+	_check(DamageNumber.text_for(0, "absorb") == "щит",
+		"поглощение щитом подписывает «щит»")
+	_check(DamageNumber.text_for(0, "resist") == "стойкость",
+		"поглощение защитой стихии подписывает «стойкость», а не «щит»")
+	_check(DamageNumber.text_for(0, "armor") == "броня",
+		"поглощение броней подписывает «броня»")
+	# Щит съел урон внутри take_damage — теперь deal_damage вовсу показывал
+	# полное число. Проверяем: урон снизу не дошёл, а deal_damage всё равно рисовал полное число.
+	StatusEffects.clear(foe)
+	foe.current_hp = 100
+	var shield_hp0 := int(foe.get("current_hp"))
+	Game.apply_shield(foe, 500, 30.0)
+	var shielded := Game.deal_damage(foe, 40, "physical", "", hero)
+	_check(shielded == 0, "урон, съеденный щитом, не пронёс (возвращено %d)" % shielded)
+	_check(int(foe.get("current_hp")) == shield_hp0,
+		"HP не сдвинулось, когда урон съел щит (%d)" % int(foe.get("current_hp")))
+	# А без щита тот же урон должен пройти, иначе проверка выше ничего не значит.
+	Game.tick_shields(31.0)
+	Game.deal_damage(foe, 40, "physical", "", hero)
+	_check(int(foe.get("current_hp")) < shield_hp0,
+		"без щита тот же урон проходит (HP %d)" % int(foe.get("current_hp")))
+
 	# --- Яд растёт от силы магии ---------------------------------------------
 	# Регрессия из ручного аудита: _tick_dot слал РОВНО dps из базы (Blizzard 3,
 	# Poison_Cloud 4) независимо от разума и навыка, то есть два самых долгих
