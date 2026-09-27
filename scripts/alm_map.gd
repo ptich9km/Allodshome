@@ -70,6 +70,9 @@ func _ready() -> void:
 	var BiomeTileSelectorClass = load("res://scripts/biome_tile_selector.gd")
 	if BiomeTileSelectorClass:
 		_biome_selector = BiomeTileSelectorClass.new()
+		print("AlmMap: BiomeTileSelector initialized")
+	else:
+		push_error("AlmMap: failed to load BiomeTileSelector!")
 	
 	var data := AlmLoader.load_map(alm_path)
 	if data.is_empty():
