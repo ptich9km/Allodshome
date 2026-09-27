@@ -212,7 +212,9 @@ func _make_quad(z: int, edge_boost: float) -> Sprite2D:
 	s.material = SpellVFX.ground_material(sphere, style)
 	s.z_index = z
 	var ps := pixel_size()
-	s.scale = Vector2(ps.x / 32.0, ps.y / 32.0)
+	# Текстура 4×4 пикселя, масштабируем чтобы покрыть ps пикселей
+	var tex_size := s.texture.get_size()
+	s.scale = Vector2(ps.x / tex_size.x, ps.y / tex_size.y)
 	s.modulate.a = edge_boost
 	add_child(s)
 	return s
@@ -228,7 +230,9 @@ func _make_flame_quad() -> Sprite2D:
 	f.z_index = FLAME_Z
 	var ps := pixel_size()
 	var rise := float(TILE) * FLAME_RISE
-	f.scale = Vector2(ps.x / 32.0, (ps.y + rise) / 32.0)
+	# Текстура 4×4 пикселя, масштабируем чтобы покрыть нужную область
+	var tex_size := f.texture.get_size()
+	f.scale = Vector2(ps.x / tex_size.x, (ps.y + rise) / tex_size.y)
 	# Спрайт растёт вверх от своего центра, поэтому сдвигаем центр вниз на
 	# половину добавленной высоты — тогда низ совпадёт с низом зоны.
 	f.position = Vector2(0.0, -rise * 0.5)

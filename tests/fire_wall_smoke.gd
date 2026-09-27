@@ -130,13 +130,18 @@ func _test_geometry(fire: SpellWall) -> void:
 	if flame == null:
 		return
 	var ps := fire.pixel_size()
-	# Ширина спрайта в пикселях = scale.x * 32 (текстура 32x32).
-	var width := flame.scale.x * 32.0
+	# Размер спрайта в пикселях = scale * РЕАЛЬНЫЙ размер текстуры. Раньше здесь
+	# стояло жёсткое 32, и тест врал: текстура белая квадратная 4x4, а не 32x32,
+	# поэтому ширина выходила в 8 раз больше настоящей. Тот же magic number
+	# был и в коде зоны — игрок заменил его на texture.get_size(), и здесь
+	# проверка обязана считать так же.
+	var tex := flame.texture.get_size()
+	var width := flame.scale.x * tex.x
 	_check(absf(width - ps.x) <= 1.0,
 		("ширина пламени = ширине зоны (%.1f против %.1f) — визуал не врёт "
 			+ "про лишние клетки") % [width, ps.x])
 	# Вверх пламя выходит за прямоугольник зоны: огонь растёт вверх.
-	var height := flame.scale.y * 32.0
+	var height := flame.scale.y * tex.y
 	_check(height > ps.y,
 		("пламя выше прямоугольника зоны (%.1f против %.1f)" % [height, ps.y]))
 	_check(absf(height - (ps.y + 32.0 * RISE)) <= 1.0,
