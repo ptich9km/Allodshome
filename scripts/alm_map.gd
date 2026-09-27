@@ -40,6 +40,9 @@ var _spawn_cell: Vector2i = Vector2i(-1, -1)
 var _portal_markers: Array = [] # PortalMarker instances
 var _spawn_marker: Node2D = null
 
+# Новая система биомов
+var _biome_selector: RefCounted  # BiomeTileSelector instance
+
 ## Единый слой с y-сортировкой для препятствий и зданий: южнее — поверх.
 func _ensure_world_sort() -> Node2D:
 	if world_sort == null:
@@ -62,6 +65,12 @@ func _ready() -> void:
 	if alm_path.is_empty():
 		push_warning("AlmMap: alm_path не задан")
 		return
+	
+	# Инициализируем селектор биомов
+	var BiomeTileSelectorClass = load("res://scripts/biome_tile_selector.gd")
+	if BiomeTileSelectorClass:
+		_biome_selector = BiomeTileSelectorClass.new()
+	
 	var data := AlmLoader.load_map(alm_path)
 	if data.is_empty():
 		return
@@ -385,6 +394,33 @@ func _build_atlas() -> void:
 		_cell_uv[key] = Vector4(u0, v0, u1, v1)
 	_atlas = ImageTexture.create_from_image(atlas)
 	print("AlmMap: атлас %d ячеек" % cells.size())
+	
+	# Загружаем текстуры биомов (новая система)
+	if _biome_selector != null:
+		_load_biome_textures()
+
+## Загрузить текстуры биомов в атлас (новая система)
+func _load_biome_textures() -> void:
+	"""Загружает текстуры из BiomeTileSelector в атлас."""
+	if _biome_selector == null:
+		return
+	
+	# Получаем список биомов
+	var biome_types = _biome_selector.get_biome_types()
+	
+	# Для каждого биома загружаем interior текстуры
+	for biome_type in biome_types:
+		for variant in range(6):  # 6 вариантов на биом
+			var tex = _biome_selector.get_interior_texture(biome_type, variant)
+			if tex:
+				var key = "biome_%d_v%d" % [biome_type, variant]
+				var img = tex.get_image()
+				img.convert(Image.FORMAT_RGBA8)
+				
+				# Добавляем в атлас (упрощённо - пока просто кэшируем)
+				_cell_uv[key] = Vector4(0, 0, 1, 1)  # Заглушка - нужно правильно добавить в атлас
+	
+	print("AlmMap: загружено биомов %d" % biome_types.size())
 
 ## Для отладки: сама текстура атласа.
 func get_atlas_texture() -> ImageTexture:
