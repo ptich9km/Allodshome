@@ -208,6 +208,9 @@ func _generate() -> void:
 
 	# 1. Почва Voronoi (база, без гор/воды/дороги)
 	_place_terrain(n)
+	
+	# 1b. Очистка одиночных клеток — морфологическое сглаживание
+	_smooth_terrain_isolated()
 
 	var rng := rng_from_seed(_seed)
 
@@ -219,6 +222,9 @@ func _generate() -> void:
 
 	# 4. Горы/вода поверх экстремумов рельефа, не перетирая дорогу (3)
 	_place_mountains_water()
+	
+	# 4b. Ещё одно сглаживание после гор/воды — они могут создавать одиночные клетки
+	_smooth_terrain_isolated()
 
 	# 5. Portal + Spawn маркеры (у города №0)
 	_place_portal_spawn()
@@ -1080,6 +1086,43 @@ func _place_terrain(n: int) -> void:
 	_water_thr = sorted[clampi(int(0.10 * n), 0, n - 1)]
 	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
 
+## Очистка одиночных клеток: если клетка окружена соседями другого типа
+## (3 из 4 кардинальных или все 4), меняем её на тип большинства.
+## Убирает "усы" и одиночные пиксели от Voronoi с шумовым смещением.
+## Запускаем 2 прохода для очистки тонких "усов".
+func _smooth_terrain_isolated() -> void:
+	var total_changes := 0
+	for pass_num in range(2):
+		var changes: Array = []
+		for y in range(1, H - 1):
+			for x in range(1, W - 1):
+				var i: int = y * W + x
+				var t: int = _terrain[i]
+				# Считаем кардинальных соседей
+				var n_count: Dictionary = {}
+				for d in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+					var ni: int = (y + d.y) * W + (x + d.x)
+					var nt: int = _terrain[ni]
+					n_count[nt] = n_count.get(nt, 0) + 1
+				# Если наш тип не встречается среди соседей И есть явное большинство (3+)
+				if n_count.get(t, 0) == 0:
+					# Находим тип с максимальным количеством
+					var best_type: int = -1
+					var best_count: int = 0
+					for nt in n_count:
+						if n_count[nt] > best_count:
+							best_count = n_count[nt]
+							best_type = nt
+					# Меняем если 3+ соседа одного типа
+					if best_count >= 3 and best_type != t:
+						changes.append([i, best_type])
+		# Применяем изменения
+		for c in changes:
+			_terrain[c[0]] = c[1]
+		total_changes += changes.size()
+	if total_changes > 0:
+		print("SMOOTH: %d isolated cells fixed" % total_changes)
+
 func _pick_tile(t: int, x: int, y: int) -> int:
 	var s: Dictionary = _sides(x, y)
 	var mask := _mask_from_sides(s, t)
@@ -1200,7 +1243,15 @@ func _shape_tile(t: int, entry: Dictionary, x: int, y: int, mask: int) -> Dictio
 		"variant": int(picked.get("variant", 0)),
 		"row": int(picked.get("row", 0)),
 	}
-	if t >= 4:
+	# Для типов 4-6 (почва/песок/грязь) используем tile1 (трава) с другими
+	# вариантами — тайлы 5/6/7 не имеют переходных текстур.
+	# Variant mapping: grass uses v1/5/9/13, soil/mud use v6-10, sand uses v11-14
+	if t == 4 or t == 6:  # soil/mud: brownish variants 6-10
+		out["variant"] = 6 + (out["variant"] % 5)
+	elif t == 5:  # sand: beige variants 11-14
+		out["variant"] = 11 + (out["variant"] % 4)
+	# Only override file for types 1-3 (mountain/water/road have own tiles)
+	if t == 1 or t == 2 or t == 3:
 		out["file"] = int(TERRAIN_FILE.get(t, out["file"]))
 	return out
 
@@ -1256,7 +1307,15 @@ func _interior_tile(t: int, x: int, y: int = -1) -> int:
 			"variant": int(pick.get("variant", 0)),
 			"row": int(pick.get("row", 0)),
 		}
-		if t >= 4:
+		# Для типов 4-6 (почва/песок/грязь) используем tile1 (трава) с другими
+		# вариантами — тайлы 5/6/7 не имеют переходных текстур.
+		# Variant mapping: grass v0-5, soil/mud v6-10, sand v11-14
+		if t == 4 or t == 6:  # soil/mud: brownish variants 6-10
+			spec["variant"] = 6 + (spec["variant"] % 5)
+		elif t == 5:  # sand: beige variants 11-14
+			spec["variant"] = 11 + (spec["variant"] % 4)
+		# Only override file for types 1-3 (mountain/water/road have own tiles)
+		if t == 1 or t == 2 or t == 3:
 			spec["file"] = int(TERRAIN_FILE.get(t, spec["file"]))
 		return AlmLoader.tile_from_spec(spec)
 
@@ -1286,7 +1345,11 @@ func _interior_tile(t: int, x: int, y: int = -1) -> int:
 		1: return AlmLoader.tile_from_spec({"file": 2, "variant": 15, "row": 3})
 		2: return AlmLoader.tile_from_spec({"file": 3, "variant": 3, "row": 0})
 		3: return AlmLoader.tile_from_spec({"file": 4, "variant": 3, "row": 0})
-	return 0
+		# Типы 4-6 используют tile1 (трава) — у тайлов 5/6/7 нет переходов
+		4: return AlmLoader.tile_from_spec({"file": 1, "variant": 3, "row": 5})
+		5: return AlmLoader.tile_from_spec({"file": 1, "variant": 11, "row": 5})
+		6: return AlmLoader.tile_from_spec({"file": 1, "variant": 7, "row": 5})
+	return AlmLoader.tile_from_spec({"file": 1, "variant": 1, "row": 1})
 
 ## Плавный низкочастотный шум (частота ~1/14) + лёгкий локальный компонент.
 	## Возвращает индекс в диапазоне [0, total): соседние клетки коррелируют —
@@ -1347,10 +1410,19 @@ func _edge_tile(t: int, s: Dictionary, x: int, y: int) -> int:
 ## Теперь palette хранит правильный file, remap не нужен.
 func _spec_for_type(type_a: int, spec: Dictionary) -> Dictionary:
 	var out := spec.duplicate(true)
-	out["variant"] = int(spec.get("variant", 0))
+	var v: int = int(spec.get("variant", 0))
+	# Для типов 4-6 (почва/песок/грязь) используем tile1 с другими вариантами.
+	# Variant mapping: grass v0-5, soil/mud v6-10, sand v11-14
+	if type_a == 4 or type_a == 6:  # soil/mud: brownish variants 6-10
+		out["variant"] = 6 + (v % 5)
+	elif type_a == 5:  # sand: beige variants 11-14
+		out["variant"] = 11 + (v % 4)
+	else:
+		out["variant"] = v
 	out["row"] = int(spec.get("row", 0))
-	# Для типов >=4: перезаписываем file через TERRAIN_FILE
-	if type_a >= 4:
+	# Только горы (1), вода (2), дорога (3) имеют свои tile-файлы.
+	# Типы 4-6 используют tile1 (трава) — тайлы 5/6/7 не имеют переходов.
+	if type_a == 1 or type_a == 2 or type_a == 3:
 		out["file"] = int(TERRAIN_FILE.get(type_a, out["file"]))
 	return out
 
