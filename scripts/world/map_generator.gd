@@ -81,6 +81,7 @@ const _NOISE_OFFSETS := {0: 1234, 1: 5678, 2: 9012, 3: 3456, 4: 7890, 5: 2345, 6
 var _stat_exact := 0
 var _stat_subset := 0
 var _stat_rules := 0
+var _stat_biome := 0  # Счётчик биомных тайлов
 
 # Режим биомных текстур (по умолчанию включён)
 var use_biome_textures: bool = true
@@ -1137,7 +1138,8 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 func _pick_biome_tile(t: int, x: int, y: int) -> int:
 	"""Выбирает биомный тайл используя BiomeTileSelector."""
 	if _biome_selector == null:
-		print("map_generator: _biome_selector is null!")
+		if x == 0 and y == 0:
+			print("map_generator: _biome_selector is null!")
 		return _pick_tile_old(t, x, y)
 	
 	var s: Dictionary = _sides(x, y)
@@ -1152,12 +1154,14 @@ func _pick_biome_tile(t: int, x: int, y: int) -> int:
 				# Используем file=8 + бит 12 для обозначения биомного тайла
 				var dir_row = {"right": 0, "left": 1, "top": 2, "bottom": 3}.get(dir_name.to_lower(), 0)
 				var base_id = AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": dir_row})
+				_stat_biome += 1
 				return base_id | 0x1000  # Устанавливаем бит 12 = биомный тайл
 	
 	# Interior тайл
 	var tex = _biome_selector.get_interior_texture(t, (x + y) % 6)
 	if tex:
 		var base_id = AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": 4})
+		_stat_biome += 1
 		return base_id | 0x1000  # Бит 12 = биомный тайл
 	
 	# Fallback на старую систему
@@ -1570,6 +1574,8 @@ func _save() -> void:
 		print("Terrain: " + ", ".join(terrain_parts))
 		print("Shapes: exact=%d subset=%d rules-fallback=%d" % [
 			_stat_exact, _stat_subset, _stat_rules])
+		if _stat_biome > 0:
+			print("Biome tiles: %d (%.1f%%)" % [_stat_biome, _stat_biome * 100.0 / total])
 		_road_stats(tc.get(3, 0))
 		var obj_count := 0
 		for v in _obstacles:
