@@ -428,9 +428,12 @@ func _load_biome_textures() -> void:
 func _add_biome_cells(cells: Array, key_to_cell: Dictionary, used: Dictionary) -> void:
 	"""Добавляет текстуры биомов в список клеток для атласа."""
 	if _biome_selector == null:
+		print("AlmMap: _biome_selector is null!")
 		return
 
 	var biome_types = _biome_selector.get_biome_types()
+	print("AlmMap: biome_types = %s" % str(biome_types))
+	
 	var added_count = 0
 
 	for biome_type in biome_types:
@@ -447,6 +450,10 @@ func _add_biome_cells(cells: Array, key_to_cell: Dictionary, used: Dictionary) -
 						cells.append([key, cell_img])
 						key_to_cell[key] = cells.size() - 1
 						added_count += 1
+					else:
+						print("AlmMap: texture too small %dx%d" % [img.get_width(), img.get_height()])
+			else:
+				print("AlmMap: no interior texture for biome %d variant %d" % [biome_type, variant])
 
 		# Добавляем transition текстуры (file=8, row=0-3 для направлений)
 		for other_biome in biome_types:

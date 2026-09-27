@@ -1114,6 +1114,7 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 func _pick_biome_tile(t: int, x: int, y: int) -> int:
 	"""Выбирает биомный тайл используя BiomeTileSelector."""
 	if _biome_selector == null:
+		print("map_generator: _biome_selector is null!")
 		return _pick_tile_old(t, x, y)
 	
 	var s: Dictionary = _sides(x, y)
@@ -1128,12 +1129,18 @@ func _pick_biome_tile(t: int, x: int, y: int) -> int:
 				# Возвращаем специальный tile_id для биомных тайлов
 				# Используем file=8, variant=0-5, row=0-3 для направлений
 				var dir_row = {"right": 0, "left": 1, "top": 2, "bottom": 3}.get(dir_name.to_lower(), 0)
-				return AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": dir_row})
+				var tile_id = AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": dir_row})
+				if x == 64 and y == 64:  # Отладка для одной клетки
+					print("map_generator: transition tile %d->%d %s = f8-v%d-r%d (id=%d)" % [t, neighbor, dir_name, (x+y)%6, dir_row, tile_id])
+				return tile_id
 	
 	# Interior тайл
 	var tex = _biome_selector.get_interior_texture(t, (x + y) % 6)
 	if tex:
-		return AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": 4})
+		var tile_id = AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": 4})
+		if x == 64 and y == 64:  # Отладка
+			print("map_generator: interior tile biome %d = f8-v%d-r4 (id=%d)" % [t, (x+y)%6, tile_id])
+		return tile_id
 	
 	# Fallback на старую систему
 	return _pick_tile_old(t, x, y)
