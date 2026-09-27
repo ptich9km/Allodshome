@@ -229,9 +229,21 @@ static func _tick_dot(e: Dictionary, delta: float) -> void:
 		return
 	e["acc"] = float(e["acc"]) - 1.0
 	var target: Variant = e.get("target", null)
-	if is_instance_valid(target):
-		Game.deal_damage(target as Node2D, maxi(1, int(dps)), "magic",
-			str(e.get("sphere", "")), e.get("caster", null) as Node2D)
+	if not is_instance_valid(target):
+		return
+	# Яд тоже растёт от силы магии. Раньше урон тикал РОВНО dps из базы
+	# (Blizzard 3, Poison_Cloud 4) независимо от разума, навыка и уровня:
+	# два самых долгих заклинания были единственными, чей урон не зависел от
+	# развития мага. Множитель тот же, что у Game.spell_damage, — иначе «яда»
+	# и «огненного шара» считались бы по разным правилам.
+	var sphere := str(e.get("sphere", ""))
+	var caster: Variant = e.get("caster", null)
+	var power := 0.0
+	if is_instance_valid(caster):
+		power = Game.spell_power(caster as Node2D, sphere)
+	var final_dps := dps * (1.0 + power / 100.0)
+	Game.deal_damage(target as Node2D, maxi(1, int(round(final_dps))), "magic",
+		sphere, caster as Node2D)
 
 
 static func _all_units() -> Array:
