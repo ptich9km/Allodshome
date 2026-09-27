@@ -357,9 +357,15 @@ func _build_atlas() -> void:
 	# Соберём фактические (файл, вариант, ряд) с реальным числом рядов в файле
 	var cells: Array = []  # [key, Image32]
 	var key_to_cell := {}
-	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16}
+	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16, 8: 16}
 	# Порядок: сначала все ряды файла 1, потом файла 2 ... (для обхода файлов)
-	for file_n in [1, 2, 3, 4, 5, 6, 7]:
+	for file_n in [1, 2, 3, 4, 5, 6, 7, 8]:
+		if file_n == 8:
+			# Биомные тайлы (file=8)
+			if _biome_selector != null:
+				_add_biome_cells(cells, key_to_cell, used)
+			continue
+		
 		var vmax: int = vmax_by_file[file_n]
 		for variant in range(vmax):
 			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
@@ -376,10 +382,6 @@ func _build_atlas() -> void:
 				var cell_img: Image = img.get_region(Rect2i(0, row * TILE, TILE, TILE))
 				cells.append([key, cell_img])
 				key_to_cell[key] = cells.size() - 1
-
-	# Добавляем биомные текстуры (новая система)
-	if _biome_selector != null:
-		_add_biome_cells(cells, key_to_cell, used)
 
 	# Собираем атлас 64x64 ячейки (до 4096)
 	var atlas := Image.create(64 * TILE, 64 * TILE, false, Image.FORMAT_RGBA8)
@@ -432,11 +434,11 @@ func _add_biome_cells(cells: Array, key_to_cell: Dictionary, used: Dictionary) -
 	var added_count = 0
 
 	for biome_type in biome_types:
-		# Добавляем interior текстуры
+		# Добавляем interior текстуры (file=8, row=4)
 		for variant in range(6):
 			var tex = _biome_selector.get_interior_texture(biome_type, variant)
 			if tex:
-				var key = "biome_%d_v%d" % [biome_type, variant]
+				var key = "f8-v%d-r4" % variant  # file=8, row=4 для interior
 				if not used.has(key) and not key_to_cell.has(key):
 					var img = tex.get_image()
 					img.convert(Image.FORMAT_RGBA8)
@@ -446,15 +448,17 @@ func _add_biome_cells(cells: Array, key_to_cell: Dictionary, used: Dictionary) -
 						key_to_cell[key] = cells.size() - 1
 						added_count += 1
 
-		# Добавляем transition текстуры
+		# Добавляем transition текстуры (file=8, row=0-3 для направлений)
 		for other_biome in biome_types:
 			if other_biome == biome_type:
 				continue
-			for direction in ["right", "left", "top", "bottom"]:
+			var dir_rows = {"right": 0, "left": 1, "top": 2, "bottom": 3}
+			for direction in dir_rows:
+				var row = dir_rows[direction]
 				for variant in range(6):
 					var tex = _biome_selector.get_transition_texture(biome_type, other_biome, direction, variant)
 					if tex:
-						var key = "trans_%d_%d_%s_v%d" % [biome_type, other_biome, direction, variant]
+						var key = "f8-v%d-r%d" % [variant, row]
 						if not used.has(key) and not key_to_cell.has(key):
 							var img = tex.get_image()
 							img.convert(Image.FORMAT_RGBA8)
