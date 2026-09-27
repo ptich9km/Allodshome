@@ -114,6 +114,10 @@ const SPHERE_RU := {"Fire": "Огонь", "Water": "Вода", "Air": "Возд�
 	"Earth": "Земля", "Astral": "Астрал"}
 var spell_buttons: Array = []       # ВСЕ ячейки (включая пустые квадратики)
 var _spell_buttons_filled: Array = []  # только ячейки с заклинаниями (аляйно с names)
+## заклинание -> последнее показанное ЧИСЛО секунд кулдауна. Ключ нужен,
+## чтобы не трогать узлы каждый кадр: пока целое число не изменилось,
+## картинка та же.
+var _cd_shown: Dictionary = {}
 var inventory_visible: bool = true
 var spells_visible: bool = true
 
@@ -140,6 +144,7 @@ func refresh_spell_book() -> void:
 	spell_buttons.clear()
 	_spell_buttons_filled.clear()
 	_spell_button_names.clear()
+	_cd_shown.clear()
 
 	# Каноничная таблица из 24 книжных заклинаний: порядок = порядок иконок
 	# assets/spells/spell_NN.png (нарезаны из spellbook.bmp, слот книги = индекс)
@@ -236,6 +241,50 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	spell_buttons.append(b)
 	_spell_buttons_filled.append(b)
 	_spell_button_names.append(name)
+	# Метка обратного отсчёта кулдауна. Прямоугольная заливка поверх иконки
+	# выглядит грязно на 36 px, поэтому вместо неё — число оставшихся секунд
+	# по центру ячейки, тем же шрифтом, что счётчик зарядов свитка.
+	var cd := Label.new()
+	cd.name = "Cooldown"
+	cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cd.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cd.add_theme_font_size_override("font_size", 15)
+	cd.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
+	cd.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	cd.add_theme_constant_override("outline_size", 4)
+	cd.visible = false
+	b.add_child(cd)
+	# Иконку запоминаем, чтобы гасить только её, а не кнопку целиком: текст
+	# зарядов свитка и сам счётчик кулдауна остаются читаемыми.
+	if icon != "":
+		b.set_meta("icon", get_child(2))
+	_set_cooldown_visual(b, 0.0, SpellDB.cooldown_of(name))
+
+
+## Обновить вид клетки под текущим кулдауном: left секунд, либо 0 = готово.
+## Работает и для отрицательного total (неизвестно), тогда total = 0.
+func _set_cooldown_visual(b: Button, left: float, total: float) -> void:
+	if not is_instance_valid(b):
+		return
+	var cd := b.get_node_or_null("Cooldown") as Label
+	var on := left > 0.0
+	if cd != null:
+		cd.visible = on
+		# Целое число секунд: «3» читается как «осталось 3 секунды», а «2.7»
+		# мигает и не говорит ничего. Показываем ceil, чтобы не показывать 0
+		# при положительном остатке.
+		cd.text = str(int(ceil(left))) if on else ""
+	var icon_node := b.get_meta("icon") as CanvasItem
+	if icon_node != null:
+		# Плавное гашение по мере восстановления: чем меньше осталось, тем
+		# светлее иконка. Прыжок из тёмной в светлую раз в 3 секунды читается
+		# как «сломанная кнопка», а не как «готово».
+		var t := 0.0
+		if total > 0.0:
+			t = clampf(left / total, 0.0, 1.0)
+		icon_node.modulate = Color(1, 1, 1, 1.0 - 0.65 * t)
 
 var _spellback: Texture2D = null
 func _spellback_tex() -> Texture2D:
@@ -1084,6 +1133,28 @@ func _process(_delta):
 	else:
 		if _cast_cursor != null and is_instance_valid(_cast_cursor):
 			_cast_cursor.visible = false
+	# Обратный отсчёт кулдаунов в книге магии. Раньше кулдаун был только в
+	# тултипе, и игрок спамил клавиши, не понимая, почему заклинание не
+	# срабатывает. Обновляем каждый кадр, но только когда что-то изменилось:
+	# 24 клетки, лупать их без надобности — лишняя работа в каждом кадре.
+	_update_cooldowns()
+
+
+func _update_cooldowns() -> void:
+	if not is_instance_valid(player):
+		return
+	for i in range(_spell_buttons_filled.size()):
+		var b := _spell_buttons_filled[i] as Button
+		if not is_instance_valid(b):
+			continue
+		var name := str(_spell_button_names[i])
+		var left := float(player.cast_cooldowns.get(name, 0.0))
+		# Считать округлённые секунды: показывать «0.3 с» бессмысленно.
+		var shown := int(ceil(left))
+		if shown == _cd_shown.get(name, -1):
+			continue
+		_cd_shown[name] = shown
+		_set_cooldown_visual(b, left, SpellDB.cooldown_of(name))
 
 func toggle_inventory():
 	inventory_visible = !inventory_visible
