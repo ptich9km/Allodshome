@@ -109,7 +109,7 @@ func _get_texture(biome: int, x: int, y: int) -> Texture2D:
     
     return null
 
-func _get_neighbor_biome(x: int) -> int:
+func _get_neighbor_biome(x: int, y: int) -> int:
     """Получить биом соседа справа (для демонстрации)."""
     # Упрощённо: всегда возвращаем противоположный биом
     if x < 4:
