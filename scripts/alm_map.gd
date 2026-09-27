@@ -377,6 +377,10 @@ func _build_atlas() -> void:
 				cells.append([key, cell_img])
 				key_to_cell[key] = cells.size() - 1
 
+	# Добавляем биомные текстуры (новая система)
+	if _biome_selector != null:
+		_add_biome_cells(cells, key_to_cell, used)
+
 	# Собираем атлас 64x64 ячейки (до 4096)
 	var atlas := Image.create(64 * TILE, 64 * TILE, false, Image.FORMAT_RGBA8)
 	atlas.fill(Color(0, 0, 0, 0))
@@ -393,21 +397,17 @@ func _build_atlas() -> void:
 		var v1 := v0 + 1.0 / 64.0
 		_cell_uv[key] = Vector4(u0, v0, u1, v1)
 	_atlas = ImageTexture.create_from_image(atlas)
-	print("AlmMap: атлас %d ячеек" % cells.size())
-	
-	# Загружаем текстуры биомов (новая система)
-	if _biome_selector != null:
-		_load_biome_textures()
+	print("AlmMap: атлас %d ячеек (включая биомы)" % cells.size())
 
 ## Загрузить текстуры биомов в атлас (новая система)
 func _load_biome_textures() -> void:
 	"""Загружает текстуры из BiomeTileSelector в атлас."""
 	if _biome_selector == null:
 		return
-	
+
 	# Получаем список биомов
 	var biome_types = _biome_selector.get_biome_types()
-	
+
 	# Для каждого биома загружаем interior текстуры
 	for biome_type in biome_types:
 		for variant in range(6):  # 6 вариантов на биом
@@ -416,11 +416,55 @@ func _load_biome_textures() -> void:
 				var key = "biome_%d_v%d" % [biome_type, variant]
 				var img = tex.get_image()
 				img.convert(Image.FORMAT_RGBA8)
-				
+
 				# Добавляем в атлас (упрощённо - пока просто кэшируем)
 				_cell_uv[key] = Vector4(0, 0, 1, 1)  # Заглушка - нужно правильно добавить в атлас
-	
+
 	print("AlmMap: загружено биомов %d" % biome_types.size())
+
+## Добавить биомные клетки в массив cells
+func _add_biome_cells(cells: Array, key_to_cell: Dictionary, used: Dictionary) -> void:
+	"""Добавляет текстуры биомов в список клеток для атласа."""
+	if _biome_selector == null:
+		return
+
+	var biome_types = _biome_selector.get_biome_types()
+	var added_count = 0
+
+	for biome_type in biome_types:
+		# Добавляем interior текстуры
+		for variant in range(6):
+			var tex = _biome_selector.get_interior_texture(biome_type, variant)
+			if tex:
+				var key = "biome_%d_v%d" % [biome_type, variant]
+				if not used.has(key) and not key_to_cell.has(key):
+					var img = tex.get_image()
+					img.convert(Image.FORMAT_RGBA8)
+					if img.get_width() >= TILE and img.get_height() >= TILE:
+						var cell_img = img.get_region(Rect2i(0, 0, TILE, TILE))
+						cells.append([key, cell_img])
+						key_to_cell[key] = cells.size() - 1
+						added_count += 1
+
+		# Добавляем transition текстуры
+		for other_biome in biome_types:
+			if other_biome == biome_type:
+				continue
+			for direction in ["right", "left", "top", "bottom"]:
+				for variant in range(6):
+					var tex = _biome_selector.get_transition_texture(biome_type, other_biome, direction, variant)
+					if tex:
+						var key = "trans_%d_%d_%s_v%d" % [biome_type, other_biome, direction, variant]
+						if not used.has(key) and not key_to_cell.has(key):
+							var img = tex.get_image()
+							img.convert(Image.FORMAT_RGBA8)
+							if img.get_width() >= TILE and img.get_height() >= TILE:
+								var cell_img = img.get_region(Rect2i(0, 0, TILE, TILE))
+								cells.append([key, cell_img])
+								key_to_cell[key] = cells.size() - 1
+								added_count += 1
+
+	print("AlmMap: добавлено %d биомных клеток" % added_count)
 
 ## Для отладки: сама текстура атласа.
 func get_atlas_texture() -> ImageTexture:
