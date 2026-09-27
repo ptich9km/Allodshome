@@ -13,6 +13,7 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/magic_smoke.gd
 
 const SPELL := "monsters/orc"
+const DB_PATH := "res://assets/spells/spells_db.json"
 
 var _fails: Array = []
 
@@ -37,6 +38,7 @@ func _run() -> void:
 	# --- 1. База ---------------------------------------------------------
 	var db_errors := SpellDB.validate()
 	_check(db_errors.is_empty(), "база заклинаний консистентна (%s)" % str(db_errors))
+	_test_no_duplicate_keys()
 	_check(SpellDB.all_spell_names().size() == 31,
 		"в базе 31 заклинание (найдено %d)" % SpellDB.all_spell_names().size())
 
@@ -98,11 +100,32 @@ func _run() -> void:
 	hero.set("fire_skill", 5)
 	hero.set("mind", 9)
 	_check(Game.spell_power(hero, "Fire") >= 0.0, "SP клампится в ноль, не уходит в минус")
-	# Формула совпадает с оригиналом: навык + разум - 30
+	# Форма формулы совпадает с оригиналом: навык + разум - SP_OFFSET.
 	hero.set("fire_skill", 45)
 	hero.set("mind", 20)
-	_check(absf(Game.spell_power(hero, "Fire") - 35.0) < 0.01,
-		"SP = навык+разум-30 (получено %.1f, ждём 35)" % Game.spell_power(hero, "Fire"))
+	# Ожидание считаем ОТ КОНСТАНТЫ. Раньше здесь стояло 35.0, то есть был
+	# зашит сдвиг 30, и любая его смена валила тест вместо того, чтобы
+	# проверять формулу.
+	var want_sp := 45.0 + 20.0 - Game.SP_OFFSET
+	_check(absf(Game.spell_power(hero, "Fire") - want_sp) < 0.01,
+		("SP = навык+разум-SP_OFFSET (получено %.1f, ждём %.1f)"
+			% [Game.spell_power(hero, "Fire"), want_sp]))
+	# Регрессия из ручного аудита: маг НА СТАРТЕ обязан иметь силу больше нуля.
+	# При SP_OFFSET = 30 было 5 + 13 - 30 = -12 -> кламп в ноль, то есть на
+	# всю раннюю игру заклинания не росли с уровнем.
+	hero.set("fire_skill", 5)
+	hero.set("mind", 13)
+	var start_sp := Game.spell_power(hero, "Fire")
+	_check(start_sp > 0.0,
+		("маг на старте (навык 5, разум 13) имеет SP = %.1f > 0 — сила растёт "
+			% start_sp) + "с уровнем, а не забита в ноль")
+	# Прокачка навыка сферы обязана поднимать SP: это тот рычаг, которого
+	# раньше не было.
+	hero.set("fire_skill", 15)
+	var trained_sp := Game.spell_power(hero, "Fire")
+	_check(trained_sp > start_sp,
+		("прокачка навыка сферы 5 -> 15 поднимает SP (%.1f -> %.1f)"
+			% [start_sp, trained_sp]))
 	hero.set("fire_skill", 25)
 	hero.set("mind", 13)
 	var base := int(SpellDB.get_spell("Fire_Ball").get("damage", 0))
@@ -178,6 +201,40 @@ func _run() -> void:
 	_check(foe.call("effective_speed") == 0.0, "корень обнуляет скорость врага")
 	StatusEffects.tick(31.0)
 	_check(not StatusEffects.is_rooted(foe), "корень истёк по tick")
+
+	# --- Яд растёт от силы магии ---------------------------------------------
+	# Регрессия из ручного аудита: _tick_dot слал РОВНО dps из базы (Blizzard 3,
+	# Poison_Cloud 4) независимо от разума и навыка, то есть два самых долгих
+	# заклинания были единственными, чей урон не зависел от развития мага.
+	# ВАЖНО: яд у Poison_Cloud водяной (sphere = Water), поэтому растить надо
+	# water_skill. Мой первый вариант менял fire_skill и мерил одно и то же
+	# значение дважды — тест был зелёным только потому, что сравнивал 5 с 5.
+	var dot_spell := SpellDB.get_spell("Poison_Cloud")
+	var base_dps := 4.0
+	hero.set("water_skill", 5)
+	hero.set("mind", 13)
+	StatusEffects.clear(foe)
+	StatusEffects.apply_spell(foe, dot_spell, hero)
+	var weak_dps := _measure_dot(foe)
+	var weak_sp := Game.spell_power(hero, "Water")
+	_check(absf(weak_dps - base_dps * (1.0 + weak_sp / 100.0)) < 0.6,
+		("на старте мага (навык воды 5, разум 13, SP=%.0f) яд = %.1f — "
+			% [weak_sp, weak_dps]) + "почти базовые %.0f" % base_dps)
+	StatusEffects.clear(foe)
+	hero.set("water_skill", 40)
+	StatusEffects.apply_spell(foe, dot_spell, hero)
+	var strong_dps := _measure_dot(foe)
+	var strong_sp := Game.spell_power(hero, "Water")
+	_check(strong_dps > weak_dps,
+		"сильный маг (навык воды 40, SP=%.0f) яд сильнее стартового: %.1f против %.1f"
+			% [strong_sp, strong_dps, weak_dps])
+	# Тот же множитель, что у spell_damage: 1 + SP/100.
+	var expect := base_dps * (1.0 + strong_sp / 100.0)
+	_check(absf(strong_dps - expect) < 0.6,
+		"яд масштабируется тем же множителем, что урон заклинания: %.1f против ожидаемых %.1f" % [strong_dps, expect])
+	StatusEffects.clear(foe)
+	hero.set("water_skill", 20)
+	hero.set("mind", 13)
 
 	# Невидимость
 	var inv := SpellDB.get_spell("Invisibility")
@@ -282,6 +339,117 @@ func _spawn_foe(pos: Vector2) -> Enemy:
 	root.add_child(e)
 	Game.enemies.append(e)
 	return e
+
+
+## Дубликаты ключей в spells_db.json. JSON их допускает, и БД читает
+## ПОСЛЕДНЕЕ вхождение, поэтому старый "range": 0 молча проигрывал новому
+## 320, и баг жил незамеченным, пока не попал в ручной аудит. SpellDB.validate()
+## такие вещи не видит — он работает с уже разобранным словарём.
+## Снять фактический урон одного тика яда (один тик = секунда урона).
+##
+## Снимаем урон без влияния на врага: специя каждый тик.
+func _measure_dot(foe: Node2D) -> float:
+	var hp0 := int(foe.get("current_hp"))
+	StatusEffects.tick(1.05)
+	return float(hp0 - int(foe.get("current_hp")))
+
+
+func _test_no_duplicate_keys() -> void:
+	var text := FileAccess.get_file_as_string(DB_PATH)
+	_check(not text.is_empty(), "spells_db.json читается текстом (для поиска дублей)")
+	if text.is_empty():
+		return
+	var dups: Array = []
+	for spell_name in SpellDB.all_spell_names():
+		var dups_here := _direct_key_dups(text, '"%s": {' % spell_name)
+		for k in dups_here:
+			dups.append("%s: ключ \"%s\" встречается в блоке дважды" % [spell_name, k])
+	_check(dups.is_empty(),
+		"в spells_db.json нет дублирующихся ключей (найдено: %s)" % str(dups))
+
+
+## Ключи ТОЛЬКО на первом уровне вложенности блока заклинания.
+##
+## Считать все ключи подряд нельзя: у Blizzard два эффекта в массиве effects,
+## и у каждого свои "type"/"duration"/"sphere" — это разные объекты, а не
+## дубликаты. Дубликат — это когда одно и то же имя повторяется среди
+## СОседних ключей самого заклинания, где JSON берёт последнее значение,
+## и старое молча пропадает (именно так в базе жил Teleport: "range": 0
+## рядом с "range": 320).
+func _direct_key_dups(text: String, block_key: String) -> Array:
+	var out: Array = []
+	var i := text.find(block_key)
+	if i < 0:
+		return out
+	# Открывающая скобка блока идёт сразу за block_key.
+	var start := i + block_key.length() - 1
+	var depth := 0
+	var in_string := false
+	var escaped := false
+	var seen: Dictionary = {}
+	var j := start
+	while j < text.length():
+		var ch := text[j]
+		if in_string:
+			if escaped:
+				escaped = false
+			elif ch == "\\":
+				escaped = true
+			elif ch == '"':
+				in_string = false
+			j += 1
+			continue
+		# Ключ первого уровня проверяем ДО обработки кавычки как начала строки.
+		# Порядок важен: если сначала ловить in_string, то кавычка ключа на
+		# глубине 1 всегда съедалась как «начало строки», и проверка ключа
+		# становилась мёртвым кодом.
+		if depth == 1 and ch == '"':
+			var name := _read_key_at(text, j)
+			if name != "":
+				# Нужны две структуры: все встреченные ключи и отдельно повторы.
+				if name in seen:
+					if not out.has(name):
+						out.append(name)
+				else:
+					seen[name] = true
+				# Обязательно перепрыгиваем через двоеточие, а не на один символ:
+				# иначе сканирование попадает ВНУТРЬ имени ключа, следующая же
+				# кавычка читается как «начало строки», и весь остальной файл
+				# уходит в бесконечное чередование кавычек (тест был зелёным).
+				var colon := text.find(":", j)
+				j = colon + 1 if colon >= 0 else j + 1
+				continue
+		if ch == '"':
+			in_string = true
+			j += 1
+			continue
+		if ch == "{":
+			depth += 1
+			j += 1
+			continue
+		if ch == "}":
+			depth -= 1
+			if depth == 0:
+				break
+			j += 1
+			continue
+		j += 1
+	return out
+
+
+## Имя ключа, начинающегося на позиции i (сама кавычка), если сразу после
+## закрывающей кавычки идёт двоеточие. Иначе "" — это не ключ.
+func _read_key_at(text: String, i: int) -> String:
+	var end_q := text.find('"', i + 1)
+	if end_q < 0:
+		return ""
+	var name := text.substr(i + 1, end_q - i - 1)
+	var k := end_q + 1
+	while k < text.length() and text[k] == " ":
+		k += 1
+	if k < text.length() and text[k] == ":":
+		return name
+	return ""
 
 
 func _finish() -> void:
