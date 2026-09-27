@@ -344,14 +344,15 @@ func relief_at_world(pos: Vector2) -> float:
 # --- Текстуры: атлас всех используемых (файл, вариант, ряд) ---
 
 func _used_cells() -> Dictionary:
-	## Ключ "f{file}-v{variant}-r{row}" -> true. file 1..4, variant 0..15, row 0..nrows-1
+	## Ключ "f{file}-v{variant}-r{row}" -> true. file 1..8, variant 0..15, row 0..nrows-1
 	var used := {}
 	for i in range(map_width * map_height):
+		var tile_id := _terrain[i] | (_hflags[i] << 8)
 		# Проверяем бит 12 = биомный тайл
-		if _terrain[i] & 0x1000:
+		if tile_id & 0x1000:
 			# Биомный тайл: file=8, variant/row из младших битов
-			var variant := (_terrain[i] >> 4) & 0xF
-			var row := _terrain[i] & 0xF
+			var variant := (tile_id >> 4) & 0xF
+			var row := tile_id & 0xF
 			used["f8-v%d-r%d" % [variant, row]] = true
 		else:
 			# Обычный тайл
@@ -359,7 +360,6 @@ func _used_cells() -> Dictionary:
 			var vmax := 4 if file_n == 4 else 16
 			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
 			var row := _terrain[i] & 0xF
-			# ряд может превышать реальную высоту файла — проверка позже в _build_atlas
 			used["f%d-v%d-r%d" % [file_n, variant, row]] = true
 	return used
 
