@@ -83,8 +83,8 @@ var _stat_subset := 0
 var _stat_rules := 0
 var _stat_biome := 0  # Счётчик биомных тайлов
 
-# Режим биомных текстур (по умолчанию включён)
-var use_biome_textures: bool = true
+# Режим биомных текстур (отключён — недостаточно текстур)
+var use_biome_textures: bool = false
 var _biome_selector: RefCounted = null  # BiomeTileSelector instance
 
 ## Базовое имя файлов карты по сиду: map_<seed>_<zone>.
