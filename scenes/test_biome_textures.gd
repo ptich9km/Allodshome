@@ -89,15 +89,21 @@ func _get_biome(x: int, y: int, width: int, height: int) -> int:
 
 func _get_texture(biome: int, x: int, y: int) -> Texture2D:
 	"""Получить текстуру для клетки."""
-	# Проверяем есть ли переход
-	var neighbor_biome = _get_neighbor_biome(x, y)
+	# Определяем соседние биомы
+	var left_biome = _get_biome_at(x - 1, y, 8, 8)
+	var right_biome = _get_biome_at(x + 1, y, 8, 8)
 	
-	if neighbor_biome != biome:
-		# Нужен transition тайл
-		var direction = _get_direction(biome, neighbor_biome)
-		var variant = (x + y) % 6  # Вариативность
-		var key = "%s_%d" % [direction, variant]
-		
+	# Если есть переход слева
+	if left_biome != biome and left_biome != -1:
+		var variant = (x + y) % 6
+		var key = "left_%d" % variant
+		if key in transition_textures:
+			return transition_textures[key]
+	
+	# Если есть переход справа
+	if right_biome != biome and right_biome != -1:
+		var variant = (x + y) % 6
+		var key = "right_%d" % variant
 		if key in transition_textures:
 			return transition_textures[key]
 	
@@ -108,6 +114,15 @@ func _get_texture(biome: int, x: int, y: int) -> Texture2D:
 		return sand_textures[(x + y) % sand_textures.size()]
 	
 	return null
+
+func _get_biome_at(x: int, y: int, width: int, height: int) -> int:
+	"""Получить биом в конкретной позиции (-1 если вне карты)."""
+	if x < 0 or x >= width or y < 0 or y >= height:
+		return -1
+	if x < width / 2:
+		return 0  # Grass
+	else:
+		return 5  # Sand
 
 func _get_neighbor_biome(x: int, y: int) -> int:
 	"""Получить биом соседа справа (для демонстрации)."""
