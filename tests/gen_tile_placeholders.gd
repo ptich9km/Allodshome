@@ -9,18 +9,18 @@ const TILE_PNG_DIR := "res://assets/terrain/tiles/"
 const TILE_BMP_DIR := "res://assets/terrain/"
 
 var _configs := {
-	5: {"name": "soil", "base": Color(0.42, 0.28, 0.14), "contrast": 0.14},
-	6: {"name": "sand", "base": Color(0.82, 0.76, 0.48), "contrast": 0.10},
-	7: {"name": "mud",  "base": Color(0.28, 0.21, 0.12), "contrast": 0.12},
+	5: {"name": "soil", "base": Color(0.38, 0.25, 0.12), "contrast": 0.28, "detail": 0.15},
+	6: {"name": "sand", "base": Color(0.78, 0.68, 0.35), "contrast": 0.22, "detail": 0.12},
+	7: {"name": "mud",  "base": Color(0.22, 0.16, 0.08), "contrast": 0.25, "detail": 0.14},
 }
 
 func _init() -> void:
 	for file_n in _configs:
 		var cfg: Dictionary = _configs[file_n]
-		_generate_file(int(file_n), cfg["name"], cfg["base"], cfg["contrast"])
+		_generate_file(int(file_n), cfg["name"], cfg["base"], cfg["contrast"], cfg["detail"])
 	quit(0)
 
-func _generate_file(file_n: int, tname: String, base: Color, contrast: float) -> void:
+func _generate_file(file_n: int, tname: String, base: Color, contrast: float, detail: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = file_n * 7919
 	var png_count := 0
@@ -30,7 +30,7 @@ func _generate_file(file_n: int, tname: String, base: Color, contrast: float) ->
 		# --- BMP-полоса 14 рядов (32×448) ---
 		var strip := Image.create_empty(32, 32 * 14, false, Image.FORMAT_RGB8)
 		for row in range(14):
-			var cell := _make_cell(rng, base, contrast, variant, row)
+			var cell := _make_cell(rng, base, contrast, detail, variant, row)
 			strip.blit_rect(cell, Rect2i(0, 0, 32, 32), Vector2i(0, row * 32))
 		var bmp_path := TILE_BMP_DIR + "tile%d-%02d.bmp" % [file_n, variant]
 		_save_bmp(strip, bmp_path)
@@ -38,7 +38,7 @@ func _generate_file(file_n: int, tname: String, base: Color, contrast: float) ->
 
 		# --- PNG-ячейки для палитры ---
 		for row in range(14):
-			var cell2 := _make_cell(rng, base, contrast, variant, row)
+			var cell2 := _make_cell(rng, base, contrast, detail, variant, row)
 			var png_path := TILE_PNG_DIR + "tile%d-%02d_%02d.png" % [file_n, variant, row]
 			cell2.convert(Image.FORMAT_RGBA8)
 			cell2.save_png(png_path)
@@ -47,23 +47,32 @@ func _generate_file(file_n: int, tname: String, base: Color, contrast: float) ->
 	print("tile%d (%s): %d BMP strips, %d PNG cells" % [file_n, tname, bmp_count, png_count])
 
 ## Ячейка 32×32: шум + лёгкая вертикальная градация (как у оригинальных тайлов).
-func _make_cell(rng: RandomNumberGenerator, base: Color, contrast: float, variant: int, row: int) -> Image:
+func _make_cell(rng: RandomNumberGenerator, base: Color, contrast: float, detail: float, variant: int, row: int) -> Image:
 	var img := Image.create_empty(32, 32, false, Image.FORMAT_RGB8)
-	# Смещение тона по variant/row, чтобы тайлы отличались глазом
-	var tone := Color(
-		rng.randf_range(-contrast * 0.5, contrast * 0.5),
-		rng.randf_range(-contrast * 0.5, contrast * 0.5),
-		rng.randf_range(-contrast * 0.5, contrast * 0.5))
-	var c0 := base + tone
+	# Multi-scale noise for organic look
+	var freq_low := 4.0 + variant * 0.5
+	var freq_high := 12.0 + row * 2.0
 	for py in range(32):
-		var grad := 1.0 - float(py) / 32.0 * 0.10
-		var row_c := c0 * grad
 		for px in range(32):
-			# Value-noise: два случайных «пикселя» + сглаживание
-			var n := rng.randf_range(-contrast, contrast)
-			var n2 := rng.randf_range(-contrast * 0.3, contrast * 0.3)
-			var c := row_c + Color(n + n2, n + n2, n + n2)
-			img.set_pixel(px, py, _clamp_col(c))
+			# Low-frequency variation (large shapes)
+			var nx := float(px) / 32.0 * freq_low + variant * 7.3
+			var ny := float(py) / 32.0 * freq_low + row * 5.1
+			var n1 := sin(nx * 3.7 + ny * 2.3) * 0.5 + 0.5
+			n1 = n1 * n1  # sharpen
+			# High-frequency detail (grain)
+			var hx := float(px) / 32.0 * freq_high + variant * 11.7
+			var hy := float(py) / 32.0 * freq_high + row * 8.3
+			var n2 := sin(hx * 7.1 + hy * 5.9) * 0.5 + 0.5
+			n2 = n2 * n2
+			# Random micro-detail
+			var n3 := rng.randf_range(-0.03, 0.03)
+			# Combine: base + low-freq + high-freq + micro
+			var val := n1 * contrast + n2 * detail + n3
+			var c := Color(
+				clampf(base.r + val - contrast * 0.3, 0.0, 1.0),
+				clampf(base.g + val * 0.8 - contrast * 0.2, 0.0, 1.0),
+				clampf(base.b + val * 0.5 - contrast * 0.15, 0.0, 1.0))
+			img.set_pixel(px, py, c)
 	return img
 
 func _clamp_col(c: Color) -> Color:
