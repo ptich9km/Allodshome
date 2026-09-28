@@ -201,6 +201,22 @@ static func has_autosave() -> bool:
 	return not _read_doc(slot_path(AUTOSAVE_SLOT)).is_empty()
 
 
+## Самая свежая запись среди всех слотов. "" — сохранять нечего.
+## Сравнение по meta.stamp: порядок файлов в каталоге о порядке сохранений
+## ничего не говорит, а полагаться на него нельзя.
+static func newest_slot() -> String:
+	var best := ""
+	var best_stamp := -1
+	for entry in list_slots():
+		if not bool(entry.get("exists", false)):
+			continue
+		var stamp := int((entry.get("meta", {}) as Dictionary).get("stamp", 0))
+		if stamp > best_stamp:
+			best_stamp = stamp
+			best = str(entry.get("slot", ""))
+	return best
+
+
 # --- Состав сохранения (v1) ---
 
 ## Собрать payload из живого состояния игры.
@@ -247,6 +263,9 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"day": int(world_dict.get("day", 0)),
 		"zone": str(Game.map_zone),
 		"seed": int(Game.map_seed),
+		# Unix-время записи: экран «Продолжить» обязан уметь выбрать самый
+		# свежий слот, а порядок в списке определяется только им.
+		"stamp": int(Time.get_unix_time_from_system()),
 	}
 	meta.merge(world_meta, true)
 	payload["meta"] = meta
@@ -263,12 +282,15 @@ static func _hero_level(player) -> int:
 
 ## Применить payload к игре. Вызывать ДО загрузки сцены карты: сначала
 ## ставим Game.map_seed/map_zone, потом создаём мир.
+##
+## player может быть null - тогда применяются только Game.* (выбор героя на
+## экране character_select применяет их ДО перехода на игровую сцену, где
+## игрока ещё нет). Раньше проверка player == null стояла выше блока
+## Game.hero_*, и весь герой молча терялся.
 static func apply_payload(d: Dictionary, player) -> void:
 	var map_d: Dictionary = d.get("map", {})
 	Game.map_seed = int(map_d.get("seed", 0))
 	Game.map_zone = str(map_d.get("zone", "mid"))
-	if player == null:
-		return
 	var h: Dictionary = d.get("hero", {})
 	Game.hero_class = str(h.get("class", Game.hero_class))
 	Game.hero_gender = str(h.get("gender", Game.hero_gender))
@@ -278,6 +300,8 @@ static func apply_payload(d: Dictionary, player) -> void:
 	if st is Dictionary:
 		Game.hero_stats = (st as Dictionary).duplicate(true)
 	Game.hero_start_book = str(h.get("start_book", ""))
+	if player == null:
+		return
 	player.max_hp = int(h.get("max_hp", 100))
 	player.max_mana = int(h.get("max_mana", 50))
 	player.current_hp = int(h.get("current_hp", player.max_hp))
