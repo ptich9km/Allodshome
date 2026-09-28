@@ -19,6 +19,8 @@ func _initialize() -> void:
 	_test_world_roundtrip()
 	_test_json_is_actually_safe()
 	_test_missing_fields()
+	_test_slots_and_backups()
+	_test_version_and_corruption()
 	_report()
 
 # --- 1. Кодек сам по себе ---
@@ -146,6 +148,134 @@ func _test_missing_fields() -> void:
 	# Совсем мусор — не должно падать.
 	var junk = (load(WORLD_SCRIPT) as GDScript).from_json_text("не json вовсе")
 	_check(junk == null, "битый текст даёт null, а не падение")
+
+# --- 5. Слоты, атомарность, .bak ---
+
+func _wipe_saves() -> void:
+	SaveSystem.ensure_dir()
+	for slot in SaveSystem.PLAYER_SLOTS + [SaveSystem.AUTOSAVE_SLOT]:
+		for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
+			if FileAccess.file_exists(p):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+
+
+func _payload(tag: String, hp: int) -> Dictionary:
+	return {
+		"version": 1,
+		"map": { "seed": 12345, "zone": "mid" },
+		"hero": {
+			"class": "mage", "name": tag,
+			"current_hp": hp, "gold": 77, "pos": Vector2(64.5, 128.25),
+			"inventory": ["Common Iron Long Sword", "Potion Medium Healing"],
+		},
+		"world": { "day": hp, "cities": { "c-1": { "pos": Vector2(10, 20) } } },
+		"quests": [],
+		"meta": { "hero_name": tag, "day": hp },
+	}
+
+
+func _test_slots_and_backups() -> void:
+	_wipe_saves()
+	# Первая запись: .bak быть не должно - старого файла не было.
+	var err := SaveSystem.save("slot_0", _payload("Первый", 10))
+	_check(err == "", "первая запись без ошибки (%s)" % err)
+	_check(FileAccess.file_exists(SaveSystem.slot_path("slot_0")), "файл слота создан")
+	_check(not FileAccess.file_exists(SaveSystem.bak_path("slot_0")),
+		"после первой записи .bak не существует (нечего страховать)")
+	_check(not FileAccess.file_exists(SaveSystem.tmp_path("slot_0")),
+		"временный .tmp не остался на диске")
+
+	var r1 := SaveSystem.load_slot("slot_0")
+	_check(not r1.has("error"), "слот читается без ошибки")
+	_check(str(r1.get("data", {}).get("hero", {}).get("name", "")) == "Первый",
+		"имя героя из файла совпало")
+	_check(str(r1.get("meta", {}).get("hero_name", "")) == "Первый",
+		"meta читается отдельно от данных")
+	# Vector2 должен пережить и save, и load.
+	var pos: Variant = r1.get("data", {}).get("hero", {}).get("pos", null)
+	_check(pos is Vector2 and pos == Vector2(64.5, 128.25),
+		"координата героя пережила запись в файл (%s)" % str(pos))
+	var city_pos: Variant = r1.get("data", {}).get("world", {}).get("cities", {}) \
+		.get("c-1", {}).get("pos", null)
+	_check(city_pos is Vector2, "координата города пережила запись в файл")
+
+	# Вторая запись: предыдущая должна уехать в .bak.
+	var err2 := SaveSystem.save("slot_0", _payload("Второй", 20))
+	_check(err2 == "", "вторая запись без ошибки (%s)" % err2)
+	_check(FileAccess.file_exists(SaveSystem.bak_path("slot_0")), ".bak появился после второй записи")
+	var r2 := SaveSystem.load_slot("slot_0")
+	_check(str(r2.get("data", {}).get("hero", {}).get("name", "")) == "Второй",
+		"после перезаписи в слоте новое имя")
+	var b := SaveSystem._read_doc(SaveSystem.bak_path("slot_0"))
+	_check(str((b.get("data", {}) as Dictionary).get("hero", {}).get("name", "")) == "Первый",
+		"в .bak лежит ПРЕДЫДУЩАЯ версия, а не текущая")
+
+	# Список слотов для экрана.
+	var lst := SaveSystem.list_slots()
+	_check(lst.size() == 4, "в списке 3 слота + автосейв (%d)" % lst.size())
+	var first: Dictionary = lst[0]
+	_check(first.get("exists") == true, "слот_0 отмечен как существующий")
+	_check(str(first.get("meta", {}).get("hero_name", "")) == "Второй",
+		"в списке слотов видно имя героя без загрузки данных")
+	_check(lst[1].get("exists") == false, "пустой слот отмечен как несуществующий")
+	_check(SaveSystem.has_autosave() == false, "автосейва пока нет")
+
+	# Пустой слот - не ошибка, а отсутствие.
+	var empty := SaveSystem.load_slot("slot_2")
+	_check(empty.is_empty(), "чтение пустого слота даёт пустой словарь, не ошибку")
+
+	# Автосейв.
+	var err3 := SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _payload("Авто", 33))
+	_check(err3 == "", "автосейв записан (%s)" % err3)
+	_check(SaveSystem.has_autosave(), "has_autosave() стал true")
+	_wipe_saves()
+
+
+# --- 6. Версия и битый файл ---
+
+func _test_version_and_corruption() -> void:
+	_wipe_saves()
+	SaveSystem.save("slot_1", _payload("Обычный", 5))
+	# Файл из будущей версии должен быть отклонён ЦЕЛИКОМ.
+	var raw := FileAccess.get_file_as_string(SaveSystem.slot_path("slot_1"))
+	var doc: Dictionary = JSON.parse_string(raw) as Dictionary
+	doc["version"] = 99
+	var f := FileAccess.open(SaveSystem.slot_path("slot_1"), FileAccess.WRITE)
+	f.store_string(JSON.stringify(doc))
+	f.close()
+	var rv := SaveSystem.load_slot("slot_1")
+	_check(str(rv.get("error", "")) == "version", "файл новее текущего отклонён")
+	_check(int(rv.get("file_version", 0)) == 99, "в отказе видна версия файла")
+	_check(not rv.has("data"), "данные из будущей версии НЕ применены частично")
+
+	# Битый файл + валидный .bak -> чтение чинится само.
+	# Сначала ДВЕ записи, чтобы .bak содержал валидную v1 (файл из прошлой
+	# части проверки версии содержит version=99 и в .bak попал бы именно он).
+	_wipe_saves()
+	SaveSystem.save("slot_1", _payload("До отката", 4))
+	SaveSystem.save("slot_1", _payload("После отката", 5))   # .bak = "До отката", день 4
+	var f2 := FileAccess.open(SaveSystem.slot_path("slot_1"), FileAccess.WRITE)
+	f2.store_string("{ это не json")
+	f2.close()
+	var rc := SaveSystem.load_slot("slot_1")
+	_check(not rc.has("error"), "битый файл восстановлен из .bak")
+	_check(int(rc.get("data", {}).get("world", {}).get("day", -1)) == 4,
+		"прочитан именно .bak (день 4), а не текущий файл")
+	_check(SaveSystem._reads_ok(SaveSystem.slot_path("slot_1")),
+		"основной файл после отката снова читается")
+
+	# Битый файл БЕЗ .bak - честная ошибка, а не тихая пустая игра.
+	_wipe_saves()
+	SaveSystem.save("slot_2", _payload("Единственная", 9))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.bak_path("slot_2")))
+	var f3 := FileAccess.open(SaveSystem.slot_path("slot_2"), FileAccess.WRITE)
+	f3.store_string("{{{")
+	f3.close()
+	var rd := SaveSystem.load_slot("slot_2")
+	_check(str(rd.get("error", "")) == "corrupt", "битый файл без .bak даёт ошибку corrupt")
+	_check(not rd.has("data"), "битые данные не подставлены в игру")
+	_wipe_saves()
+
 
 # --- вспомогательное ---
 
