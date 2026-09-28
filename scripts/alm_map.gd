@@ -482,7 +482,6 @@ func _build_relief_mesh() -> void:
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_custom_format(0, 7)  # CUSTOM_RGBA_FLOAT
 
 	# Cache terrain types for all cells
 	var types := PackedInt32Array()
@@ -521,10 +520,10 @@ func _build_relief_mesh() -> void:
 						blend = 1.0
 						break
 
-			# CUSTOM0.r = terrain type (NOT multiplied by modulate!)
+			# UV2.r = terrain type (NOT modulated by Godot)
 			# COLOR: g=brightness, b=blend, a=1.0
 			var br := _brightness(x, y)
-			st.set_custom(0, Color(float(t) / 7.0, 0.0, 0.0, 0.0))
+			st.set_uv2(Vector2(float(t) / 7.0, 0.0))
 			st.set_color(Color(1.0, br, blend, 1.0))
 
 			# Quad corners with height
@@ -562,7 +561,7 @@ func _build_relief_mesh() -> void:
 uniform sampler2D u_atlas;
 varying float v_type;
 void vertex() {
-	v_type = CUSTOM0.r;
+	v_type = UV2.x;
 }
 void fragment() {
 	vec4 tex = texture(u_atlas, UV);
