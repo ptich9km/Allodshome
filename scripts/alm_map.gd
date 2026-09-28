@@ -496,6 +496,15 @@ func _build_relief_mesh() -> void:
 			if t < 0:
 				continue
 
+			# Get atlas UV for this cell
+			var file_n := (_hflags[i] & 0xF) + 1
+			var vmax := 4 if file_n == 4 else 16
+			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
+			var row := _terrain[i] & 0xF
+			var uv := _uv_for_cell(file_n, variant, row)
+			if uv == Vector4(0, 0, 0, 0):
+				continue
+
 			# Determine blend: check cardinal neighbors
 			var blend := 0.0
 			var neighbor_type := t
@@ -529,41 +538,35 @@ func _build_relief_mesh() -> void:
 			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
 			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
 
-			# UV is unused by shader but required by SurfaceTool for correct attribute format
-			var uv0 := Vector2(x, y)
-			var uv1 := Vector2(x + 1, y)
-			var uv2 := Vector2(x, y + 1)
-			var uv3 := Vector2(x + 1, y + 1)
+			# UV from atlas
+			var u0 := uv.x
+			var v0 := uv.y
+			var u1 := uv.z
+			var v1 := uv.w
 
-			st.set_color(c); st.set_uv(uv0); st.add_vertex(p00)
-			st.set_color(c); st.set_uv(uv1); st.add_vertex(p10)
-			st.set_color(c); st.set_uv(uv2); st.add_vertex(p01)
+			st.set_color(c); st.set_uv(Vector2(u0, v0)); st.add_vertex(p00)
+			st.set_color(c); st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
+			st.set_color(c); st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
 
-			st.set_color(c); st.set_uv(uv1); st.add_vertex(p10)
-			st.set_color(c); st.set_uv(uv3); st.add_vertex(p11)
-			st.set_color(c); st.set_uv(uv2); st.add_vertex(p01)
-
-	# Debug: terrain type histogram
-	var hist := {}
-	for i in range(types.size()):
-		var t: int = types[i]
-		hist[t] = hist.get(t, 0) + 1
-	print("DEBUG terrain types: %s" % str(hist))
+			st.set_color(c); st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
+			st.set_color(c); st.set_uv(Vector2(u1, v1)); st.add_vertex(p11)
+			st.set_color(c); st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
 
 	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
 	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 
-	# Load procedural terrain shader
+	# Load terrain shader with atlas texture
 	var mat := ShaderMaterial.new()
 	var shader: Shader = load("res://shaders/terrain.gdshader")
 	if shader == null:
 		push_error("AlmMap: terrain shader failed to load!")
 	else:
 		mat.shader = shader
+		mat.set_shader_parameter("u_atlas", _atlas)
 	mesh.mesh = amesh
 	mesh.material = mat
-	print("AlmMap: меш собран (%d клеток, shader=%s)" % [map_width * map_height, str(shader != null)])
+	print("AlmMap: меш собран (%d клеток, atlas+shader)" % (map_width * map_height))
 
 func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
 	st.set_uv(Vector2(u, v))
