@@ -274,6 +274,13 @@ var _select_ring: SelectRing = null       # подсветка цели (хов�
 var _pending_building := ""               # здание, к которому герой подходит («вход»)
 var _pending_s: Dictionary = {}           # структура-цель ожидающего входа
 var _pending_herb: HerbNode = null
+var _save_menu: SaveMenu = null
+var _autosave_accum: float = 0.0
+## Интервал автосейва. 60 с - компромисс: чаще - лишний ввод-вывод, реже -
+## можно потерять минуты прогресса при аварии. Первый автосейв приходит
+## через 60 с после старта, а не сразу, поэтому отдельного "минимального
+## времени" не нужно.
+const AUTOSAVE_INTERVAL := 60.0
 
 # --- Выбор героя на старте (сцена character_select) ---
 static var hero_class: String = "warrior"   # warrior | mage
@@ -499,6 +506,12 @@ func _ready():  # Инициализация мира и боя
 	add_child(_select_ring)
 	_select_ring.visible = false
 
+	# Сохранения: троттл автосейва. Первый автосейв не раньше, чем
+	# AUTOSAVE_MIN_SECONDS от старта, иначе он сработал бы на пустой партии
+	# сразу при входе в игру.
+	_autosave_accum = 0.0
+	set_process_unhandled_input(true)
+
 func _spawn_player_on_walkable():
 	var mw: int = int(alm_map.get("map_width"))
 	var mh: int = int(alm_map.get("map_height"))
@@ -635,6 +648,11 @@ func _input(event):
 		if not Game.pending_scroll.is_empty() or not Game.pending_spell.is_empty():
 			cancel_targeting()
 			return
+		# Открытое меню сохранений само перехватывает Esc и закрывается.
+		if _save_menu != null and is_instance_valid(_save_menu):
+			return
+		open_save_menu()
+		return
 
 	# Быстрые клавиши заклинаний (как у разработчиков): во время выбора магии
 	# Ctrl+1..9 назначает её на цифровую клавишу; 1..9 (без Ctrl) входит в
@@ -1126,6 +1144,7 @@ func _process(delta):
 	if is_paused:
 		return
 	if is_instance_valid(player) and camera:
+		_autosave_tick(delta)
 		camera.position = camera.position.lerp(player.camera_focus(), 5.0 * delta)
 		# Camera shake (trauma-based)
 		if _trauma > 0.0:
@@ -1226,3 +1245,126 @@ func _process_action_mode():
 						player.attack_target = e
 						player.state = "chase"
 						break
+
+# === Сохранения ===
+#
+# Меню само ничего не сохраняет: оно только сообщает о нажатии. Всё
+# сохранение и загрузка - здесь, потому что только у game.gd есть живой
+# игрок, WorldBus с состоянием мира и сцена, которую надо пересобрать.
+
+## Открыть меню сохранений (Esc). Повторный вызов игнорируется.
+func open_save_menu() -> void:
+	if _save_menu != null and is_instance_valid(_save_menu):
+		return
+	_save_menu = SaveMenu.new()
+	_save_menu.setup()
+	_save_menu.save_requested.connect(_save_to_slot)
+	_save_menu.load_requested.connect(_load_from_slot)
+	_save_menu.delete_requested.connect(_delete_slot)
+	_save_menu.quit_requested.connect(_quit_to_menu)
+	_save_menu.closed.connect(func() -> void: _save_menu = null)
+	add_child(_save_menu)
+
+
+## Собрать payload из живого состояния. world приходит снаружи, чтобы
+## тест мог подставить свой WorldState без поднятия сцены.
+func _build_save_payload() -> Dictionary:
+	var world_dict: Dictionary = {}
+	# WorldBus - это AUTOLOAD, а не GDExtension-синглтон, поэтому
+	# Engine.has_singleton() его не видит: берём узел из дерева сцены.
+	var bus = get_node_or_null("/root/WorldBus")
+	if bus != null and "state" in bus and bus.state != null:
+		world_dict = bus.state.to_dict()
+	return SaveSystem.build_payload(player, world_dict)
+
+
+func _save_to_slot(slot: String) -> void:
+	var err := SaveSystem.save(slot, _build_save_payload())
+	if err != "":
+		if _save_menu != null and is_instance_valid(_save_menu):
+			_save_menu.set_status(tr("Не удалось сохранить: %s") % err)
+		else:
+			push_error("SaveSystem: " + err)
+		return
+	if _save_menu != null and is_instance_valid(_save_menu):
+		_save_menu.set_status(tr("Сохранено в слот."))
+		_save_menu._refresh()
+
+
+func _load_from_slot(slot: String) -> void:
+	var res := SaveSystem.load_slot(slot)
+	var err_kind := str(res.get("error", ""))
+	if err_kind == "version":
+		_set_menu_status(tr("Сохранение сделано более новой версией игры (файл v%d, игра v%d) — загрузка отменена.")
+			% [int(res.get("file_version", 0)), SaveSystem.VERSION])
+		return
+	if err_kind == "corrupt":
+		_set_menu_status(tr("Файл сохранения повреждён и резервной копии нет."))
+		return
+	if res.is_empty():
+		_set_menu_status(tr("Слот пуст."))
+		return
+	# Сначала применяем героя и сид карты, потом пересобираем сцену:
+	# AlmMap читает Game.map_seed/map_zone в _ready.
+	SaveSystem.apply_payload(res.get("data", {}), player)
+	_restart_scene(slot)
+
+
+func _delete_slot(slot: String) -> void:
+	for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	if _save_menu != null and is_instance_valid(_save_menu):
+		_save_menu.set_status(tr("Слот удалён."))
+		_save_menu._refresh()
+
+
+func _quit_to_menu() -> void:
+	_save_to_slot(SaveSystem.AUTOSAVE_SLOT)
+	get_tree().change_scene_to_file("res://scenes/character_select.tscn")
+
+
+## Пересобрать игру из сохранённого состояния. Мир сначала кладём в
+## WorldBus - иначе новая сцена поднимется со старым сидом, а состояние
+## мира потеряется.
+func _restart_scene(slot: String) -> void:
+	var res := SaveSystem.load_slot(slot)
+	var data: Dictionary = res.get("data", {})
+	var world_text := JsonSafe.dump(data.get("world", {}))
+	var ws_script: GDScript = load("res://scripts/world/world_state.gd")
+	var restored = ws_script.from_json_text(world_text)
+	var bus = get_node_or_null("/root/WorldBus")
+	if bus != null and "state" in bus and restored != null:
+		bus.state = restored
+		# Симулятор держит ссылку на СТАРЫЙ WorldState, иначе после загрузки
+		# он продолжит тикать по прежнему миру, а не по загруженному.
+		if "sim" in bus and bus.sim != null and "state" in bus.sim:
+			bus.sim.state = restored
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+
+func _set_menu_status(text: String) -> void:
+	if _save_menu != null and is_instance_valid(_save_menu):
+		_save_menu.set_status(text)
+
+
+## Автосейв по таймеру. Пропускаем, если открыто меню сохранений (иначе
+## игрок жмёт «Сохранить» и тут же получает автосейв поверх).
+func _autosave_tick(delta: float) -> void:
+	_autosave_accum += delta
+	if _autosave_accum < AUTOSAVE_INTERVAL:
+		return
+	_autosave_accum = 0.0
+	if _save_menu != null and is_instance_valid(_save_menu):
+		return
+	if not is_instance_valid(player):
+		return
+	SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _build_save_payload())
+
+
+## Сохранить при выходе из игры. Вызывается из project.godot
+## (autoload-free), поэтому подписка выполняется в _ready.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		if is_instance_valid(player):
+			SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _build_save_payload())

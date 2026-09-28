@@ -84,10 +84,9 @@ var _name_idx := -1  # последнее сгенерированное имя 
 var _root: VBoxContainer   # корневая колонка-раскладка
 var _start_btn: Button
 var _name_row: HBoxContainer
-## Блок «Продолжить» (B6). Создаётся только если есть сохранения.
-var _continue_box: VBoxContainer = null
+## Кнопка «Продолжить» - в СУЩЕСТВУЮЩУЮ строку старта, а не отдельным блоком.
 var _continue_btn: Button = null
-var _continue_status: Label = null
+var _continue_slot: String = ""
 
 # --- Настройка героя (как в оригинале): атрибуты и склонность навыка ---
 var _edit: Dictionary = {}          # редактируемые статы (копия пресета)
@@ -109,7 +108,6 @@ func _ready():
 	_setup_background()
 	_setup_layout()
 	_setup_title()
-	_setup_continue()
 	_setup_cards()
 	_setup_name_row()
 	_setup_start_button()
@@ -185,123 +183,10 @@ func _setup_title() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
 
-## Блок «Продолжить»: самый свежий слот + список всех слотов.
-##
-## Показывается ТОЛЬКО если есть хоть одно сохранение - пустой блок с тремя
-## серыми «Слот пуст» на первом экране игры только мешает. Раскладка целиком
-## на контейнерах: узлов с заданными координатами здесь нет.
-func _setup_continue() -> void:
-	_continue_box = VBoxContainer.new()
-	_continue_box.name = "ContinueBox"
-	_continue_box.add_theme_constant_override("separation", 4)
-	var newest := SaveSystem.newest_slot()
-	_continue_box.visible = newest != ""
-	_root.add_child(_continue_box)
-	if newest == "":
-		return
-
-	var entries := SaveSystem.list_slots()
-	var res := SaveSystem.load_slot(newest)
-	var err_kind := str(res.get("error", ""))
-	if err_kind != "":
-		# Единственное сохранение оказалось непригодным (битое или из
-		# будущей версии). Прячем блок и не даём войти в игру сломанным.
-		_continue_box.visible = false
-		return
-
-	var meta: Dictionary = res.get("meta", {})
-	var head := HBoxContainer.new()
-	head.alignment = BoxContainer.ALIGNMENT_CENTER
-	head.add_theme_constant_override("separation", 10)
-	_continue_box.add_child(head)
-
-	var label := Label.new()
-	label.theme_type_variation = &"CsSub"
-	label.text = "%s — %s, день %d" % [
-		str(meta.get("hero_name", "Герой")),
-		_class_title(str(meta.get("hero_class", "warrior"))),
-		int(meta.get("day", 0)),
-	]
-	head.add_child(label)
-
-	var cont := Button.new()
-	cont.theme_type_variation = &"CsStart"
-	cont.text = "Продолжить"
-	cont.custom_minimum_size = Vector2(200, 44)
-	cont.pressed.connect(_on_continue.bind(newest))
-	head.add_child(cont)
-	_continue_btn = cont
-
-	var list := HBoxContainer.new()
-	list.alignment = BoxContainer.ALIGNMENT_CENTER
-	list.add_theme_constant_override("separation", 8)
-	_continue_box.add_child(list)
-	var row_buttons: Array[Button] = []
-	for entry in entries:
-		list.add_child(_make_slot_chip(entry, row_buttons))
-	UiKit.wire_grid_focus(row_buttons, 3)
-
-
-func _make_slot_chip(entry: Dictionary, row_buttons: Array[Button]) -> Control:
-	var slot := str(entry.get("slot", ""))
-	var exists := bool(entry.get("exists", false))
-	var meta: Dictionary = entry.get("meta", {})
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
-
-	var name_label := Label.new()
-	name_label.theme_type_variation = &"CsSub"
-	if slot == SaveSystem.AUTOSAVE_SLOT:
-		name_label.text = "Автосохранение"
-	elif exists:
-		name_label.text = "Слот %d" % (SaveSystem.PLAYER_SLOTS.find(slot) + 1)
-	else:
-		name_label.text = "Слот %d — пуст" % (SaveSystem.PLAYER_SLOTS.find(slot) + 1)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(name_label)
-
-	if not exists:
-		return box
-
-	var who := Label.new()
-	who.theme_type_variation = &"CsDesc"
-	who.text = "%s, день %d" % [str(meta.get("hero_name", "—")), int(meta.get("day", 0))]
-	who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(who)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	box.add_child(row)
-
-	var load_btn := Button.new()
-	load_btn.text = "Загрузить"
-	load_btn.custom_minimum_size = Vector2(104, 30)
-	load_btn.pressed.connect(_on_continue.bind(slot))
-	row.add_child(load_btn)
-	row_buttons.append(load_btn)
-
-	var del_btn := Button.new()
-	del_btn.text = "Удалить"
-	del_btn.custom_minimum_size = Vector2(92, 30)
-	del_btn.pressed.connect(_on_delete_slot.bind(slot))
-	row.add_child(del_btn)
-	row_buttons.append(del_btn)
-	return box
-
-
-func _class_title(role: String) -> String:
-	return "Воин" if role == "warrior" else "Маг"
-
-
-## Продолжить из слота: восстановить героя, мир и сид карты, затем сцена.
-##
-## Порядок важен: сид и зона читаются AlmMap в _ready, а состояние мира надо
-## положить и в WorldBus.state, и в WorldBus.sim.state - иначе симулятор
-## продолжит тикать по прежнему миру, а не по загруженному.
 func _on_continue(slot: String) -> void:
 	var err := _load_slot_into_game(slot)
 	if err != "":
-		_set_continue_status(err)
+		push_warning("Сохранение %s не загружено: %s" % [slot, err])
 		return
 	SoundDB.play(2)
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
@@ -339,28 +224,6 @@ func _restore_world(world_data: Variant) -> void:
 	bus.state = restored
 	if "sim" in bus and bus.sim != null and "state" in bus.sim:
 		bus.sim.state = restored
-
-
-func _on_delete_slot(slot: String) -> void:
-	for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
-	SoundDB.play(0)
-	# Пересобираем блок: список слотов устарел, а скрытый блок мог снова
-	# стать невидимым.
-	_continue_box.queue_free()
-	_continue_box = null
-	_continue_btn = null
-	_setup_continue()
-	if is_instance_valid(_continue_btn):
-		_continue_btn.call_deferred("grab_focus")
-	elif is_instance_valid(_start_btn):
-		_start_btn.call_deferred("grab_focus")
-
-
-func _set_continue_status(text: String) -> void:
-	if _continue_status != null and is_instance_valid(_continue_status):
-		_continue_status.text = text
 
 
 func _setup_cards() -> void:
@@ -493,6 +356,46 @@ func _setup_start_button() -> void:
 	_start_btn.add_theme_font_size_override("font_size", 24)
 	_start_btn.pressed.connect(_start_game)
 	row.add_child(_start_btn)
+	_setup_continue_button(row)
+
+
+## Кнопка «Продолжить» - в СУЩЕСТВУЮЩУЮ строку старта, а не отдельным блоком.
+##
+## Отдельный блок стоил 127 px (замерено: 44 шапка + 79 строка списка слотов),
+## а экран при 1280x600 и так впритык: без блока содержимое 534 px при
+## бюджете 560. ScrollContainer не помогает - character_select_ui_smoke
+## требует, чтобы каждый видимый узел лежал ВНУТРИ окна, а у детей
+## скролл-контейнера координаты всё равно уходят за нижний край.
+##
+## Поэтому здесь только «Продолжить» (самый свежий слот). Выбор конкретного
+## слота и удаление живут в меню по Esc - это и правильнее (слоты меняют
+## в игре), и не съедает высоту стартового экрана.
+func _setup_continue_button(row: HBoxContainer) -> void:
+	_continue_slot = SaveSystem.newest_slot()
+	if _continue_slot == "":
+		return
+	var res := SaveSystem.load_slot(_continue_slot)
+	if str(res.get("error", "")) != "":
+		# Единственное сохранение непригодно (битое или из будущей версии).
+		# Кнопку не показываем: игрок не должен видеть «Продолжить», который
+		# гарантированно провалится.
+		_continue_slot = ""
+		return
+	var meta: Dictionary = res.get("meta", {})
+	_continue_btn = Button.new()
+	_continue_btn.theme_type_variation = &"CsStart"
+	_continue_btn.text = "Продолжить"
+	# Ширина 170, а не 320: строка старта с именем героя, кнопкой «Случайное
+	# имя» и «В ПУТЬ!» занимала 1240 px при доступных 1224 (окно 1280 минус
+	# поля 28+28) - и вылезала за экран ровно на 16 px. Длинный текст с именем
+	# и днём уехал в подсказку: разбивка по ширине не должна ломать раскладку.
+	_continue_btn.custom_minimum_size = Vector2(170, 48)
+	_continue_btn.tooltip_text = "%s, день %d · %s" % [
+		str(meta.get("hero_name", "Герой")), int(meta.get("day", 0)),
+		"маг" if str(meta.get("hero_class", "warrior")) == "mage" else "воин",
+	]
+	_continue_btn.pressed.connect(_on_continue.bind(_continue_slot))
+	row.add_child(_continue_btn)
 
 ## Панель настройки внизу: атрибуты (очки) и склонность навыка (+20).
 func _setup_editor() -> void:

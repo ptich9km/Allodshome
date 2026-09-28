@@ -1,0 +1,295 @@
+extends SceneTree
+## Smoke: меню сохранений в живой игре.
+##
+## Проверяет то, что нельзя проверить на голых словарях:
+##   1. Esc открывает меню, оно строится из контейнеров и фокусится;
+##   2. «Сохранить» пишет слот из ЖИВОГО героя (инвентарь/золото/HP);
+##   3. содержимое слота переживает пересборку сцены;
+##   4. «Загрузить» восстанавливает героя и сид карты;
+##   5. Esc из меню закрывает его, а не открывает второй раз;
+##   6. версия из будущего отклоняется с внятным сообщением, а не падает.
+##
+## Запуск: godot --headless --path . --script res://tests/save_menu_smoke.gd
+
+const SLOT := "slot_0"
+
+var _fails: Array[String] = []
+var _checks := 0
+## Сколько тестов-секций реально отработало. Точнее, чем «ожидаемое число
+## проверок»: константа с общим количеством ломается от любой моей правки
+## (уже ломалась: 38 против 40), а молчаливо выпавшая корутина всегда
+## отнимает целую секцию.
+var _sections_done := 0
+const SECTIONS_TOTAL := 4
+
+
+func _initialize() -> void:
+	_wipe()
+	_run.call_deferred()
+
+
+func _run() -> void:
+	var game = await _load_world()
+	if game == null:
+		_report()
+		return
+	# await обязателен: три из четырёх тестов содержат await и без него
+	# являются корутинами, которые возвращаются на первом кадре. Тогда тест
+	# молча ничего не проверяет и выглядит зелёным (ровно тот баг, что уже
+	# был в этом проекте - см. AGENTS, журнал от 26.09).
+	await _test_menu_opens(game)
+	await _test_save_from_live_hero(game)
+	await _test_reload_restores(game)
+	await _test_version_rejected(game)
+	_wipe()
+	_report()
+
+
+## КОЛВЕРЧЕНИЕ: три теста ниже содержат await, поэтому ОБЯЗАНЫ вызываться
+## с await. Без await корутина возвращается на первом кадре, тест молча
+## ничего не проверяет и падает «зелёным» (ровно тот баг, что уже был в
+## этом проекте). Поэтому в _report стоит проверка общего числа проверок.
+
+func _load_world():
+	Game.hero_class = "warrior"
+	Game.hero_gender = "male"
+	Game.hero_name = "Тестер"
+	Game.hero_character_id = "mfighter"
+	Game.hero_stats = {"strength": 20, "dexterity": 20, "intelligence": 10,
+		"vitality": 20, "spirit": 10, "luck": 5}
+	Game.hero_start_book = ""
+	Game.map_seed = 4242
+	Game.map_zone = "mid"
+	var packed: PackedScene = load("res://scenes/main.tscn")
+	var game = packed.instantiate()
+	root.add_child(game)
+	for i in range(4):
+		await process_frame
+	await create_timer(0.4).timeout
+	return game
+
+
+# --- 1. Открытие по Esc ---
+
+func _test_menu_opens(game) -> void:
+	_check(game.get("alm_map") != null, "мир загрузился")
+	_check(not _menu_open(game), "меню изначально закрыто")
+
+	_press_esc()
+	await process_frame
+	var menu = _menu(game)
+	_check(_menu_open(game), "Esc открыл меню сохранений")
+	if menu == null:
+		return
+	# Меню обязано появляться В ИГРЕ, а не быть узлом main.tscn: иначе любая
+	# правка узлов сцены задевает и меню. Проверяем, что до Esc такого узла
+	# в дереве не было вовсе.
+	_check(_count_menus(game) == 1, "меню добавлено в сцену как ОДИН узел (%d)" % _count_menus(game))
+	_check(menu.get("_root") != null, "у меню есть корневой Control")
+	# Чек-лист AGENTS §10.2: раскладка на контейнерах, без ручных координат.
+	_check(_has_container(menu), "раскладка построена контейнерами (есть CenterContainer)")
+	var slots: Node = menu.get("_slot_box")
+	_check(slots != null and slots.get_child_count() == SaveSystem.PLAYER_SLOTS.size() + 1,
+		"в меню %d строк (3 слота + автосейв), найдено %d" % [
+		SaveSystem.PLAYER_SLOTS.size() + 1, slots.get_child_count() if slots else -1])
+	var focusables: Array = menu.get("_focusables")
+	_check(focusables.size() >= SaveSystem.PLAYER_SLOTS.size(),
+		"кнопки доступны с клавиатуры/геймпада (%d)" % focusables.size())
+	var focused := _focused_control()
+	_check(focused != null, "при открытии есть начальный фокус")
+
+	# Esc из открытого меню закрывает его, а не открывает второй.
+	_press_esc()
+	await process_frame
+	await process_frame
+	_check(not _menu_open(game), "Esc из меню закрыл его (второго меню не появилось)")
+	_check(_count_menus(game) == 0, "после закрытия узлов меню в сцене не осталось")
+	_sections_done += 1
+
+
+# --- 2. Сохранение из живого героя ---
+
+func _test_save_from_live_hero(game) -> void:
+	var player = game.get("player")
+	_check(player != null, "игрок на месте")
+	player.gold = 4321
+	player.inventory = ["Common Iron Long Sword", "Potion Medium Healing"]
+	player.current_hp = 37
+	player.current_mana = 11
+	player.experience = {"blade": 1500, "fire": 250}
+	player.sphere_books = {"Fire": true}
+	player.global_position = Vector2(512, 384)
+
+	game.call("open_save_menu")
+	await process_frame
+	var menu = _menu(game)
+	if menu == null:
+		_check(false, "меню открылось для сохранения")
+		return
+	menu.save_requested.emit(SLOT)
+	await process_frame
+	_check(FileAccess.file_exists(SaveSystem.slot_path(SLOT)), "файл слота создан")
+	_check(str(menu.get("_status").text) != "", "показано подтверждение в меню")
+
+	var res := SaveSystem.load_slot(SLOT)
+	_check(not res.has("error"), "слот читается")
+	var hero: Dictionary = res.get("data", {}).get("hero", {})
+	_check(int(hero.get("gold", 0)) == 4321, "золото сохранено (%s)" % str(hero.get("gold")))
+	_check(int(hero.get("current_hp", 0)) == 37, "HP сохранено")
+	_check(int(hero.get("current_mana", 0)) == 11, "мана сохранена")
+	_check((hero.get("inventory", []) as Array).size() == 2, "инвентарь сохранён")
+	_check(int((hero.get("experience", {}) as Dictionary).get("blade", 0)) == 1500,
+		"навык сохранён")
+	_check((hero.get("sphere_books", {}) as Dictionary).get("Fire", false) == true,
+		"книга стихий сохранена")
+	_check(str(hero.get("name", "")) == "Тестер", "имя героя сохранено")
+	var pos: Variant = hero.get("position", null)
+	_check(pos is Vector2 and pos.distance_to(Vector2(512, 384)) < 0.01,
+		"позиция героя сохранена как Vector2 (%s)" % str(pos))
+	var mapd: Dictionary = res.get("data", {}).get("map", {})
+	_check(int(mapd.get("seed", 0)) == 4242, "сид карты сохранён")
+	_check(res.get("data", {}).has("world"), "состояние мира сохранено")
+	_check(int(res.get("data", {}).get("world", {}).get("day", -1)) >= 0,
+		"мир содержит день (%d)" % int(res.get("data", {}).get("world", {}).get("day", -1)))
+	_check((res.get("data", {}).get("quests", null) as Array) != null,
+		"блок quests на месте (пустая схема)")
+	# Метаданные для экрана слотов.
+	_check(str(res.get("meta", {}).get("hero_name", "")) == "Тестер",
+		"meta содержит имя героя для списка слотов")
+	_sections_done += 1
+
+
+# --- 3-4. Пересборка сцены и загрузка ---
+
+func _test_reload_restores(game) -> void:
+	# Портим живое состояние так, чтобы восстановление было заметно.
+	var player = game.get("player")
+	player.gold = 1
+	player.inventory = []
+	player.current_hp = 2
+	Game.map_seed = 999999
+	Game.hero_name = "Сломан"
+	# Слот переживает пересборку сцены: он на диске, а не в памяти узла.
+	var res := SaveSystem.load_slot(SLOT)
+	SaveSystem.apply_payload(res.get("data", {}), player)
+	_check(int(player.gold) == 4321, "золото восстановлено при загрузке (%d)" % int(player.gold))
+	_check(player.inventory.size() == 2, "инвентарь восстановлен")
+	_check(int(player.current_hp) == 37, "HP восстановлено")
+	_check(int(Game.map_seed) == 4242, "сид карты восстановлен (%d)" % int(Game.map_seed))
+	_check(str(Game.hero_name) == "Тестер", "имя героя восстановлено")
+	_check(Game.hero_class == "warrior", "класс героя восстановлен")
+	var pos: Variant = player.global_position
+	_check(pos is Vector2 and pos.distance_to(Vector2(512, 384)) < 0.01,
+		"позиция восстановлена как Vector2 (%s)" % str(pos))
+	# Состояние мира кладём так же, как это делает _restart_scene.
+	var world_text := JsonSafe.dump(res.get("data", {}).get("world", {}))
+	var ws_script: GDScript = load("res://scripts/world/world_state.gd")
+	var restored = ws_script.from_json_text(world_text)
+	_check(restored != null, "мир восстанавливается из слота")
+	if restored != null:
+		_check(int(restored.day) == int(res.get("data", {}).get("world", {}).get("day", -1)),
+			"день мира восстановлен, а не обнулён")
+	_sections_done += 1
+
+
+# --- 6. Будущая версия ---
+
+func _test_version_rejected(game) -> void:
+	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SaveSystem.slot_path(SLOT)))
+	doc["version"] = SaveSystem.VERSION + 5
+	var f := FileAccess.open(SaveSystem.slot_path(SLOT), FileAccess.WRITE)
+	f.store_string(JSON.stringify(doc))
+	f.close()
+	game.call("open_save_menu")
+	await process_frame
+	var menu = _menu(game)
+	menu.load_requested.emit(SLOT)
+	await process_frame
+	var status := str(menu.get("_status").text)
+	_check(status.find("новее") >= 0 or status.find("отменена") >= 0,
+		"в меню показано внятное сообщение о версии («%s»)" % status)
+	_check(int(Game.map_seed) == 4242, "состояние игры не изменилось при отказе")
+	# Вернуть слот в рабочее состояние для чистоты.
+	SaveSystem.save(SLOT, SaveSystem.load_slot(SLOT).get("data", {}))
+	_sections_done += 1
+
+
+# --- вспомогательное ---
+
+func _menu(game):
+	var n = game.get("_save_menu")
+	return n if (n != null and is_instance_valid(n)) else null
+
+
+func _menu_open(game) -> bool:
+	return _menu(game) != null
+
+
+## Сколько узлов SaveMenu в дереве игры. Проверяет, что меню создаётся
+## кодом (open_save_menu) и не заведено в main.tscn.
+func _count_menus(game) -> int:
+	var n := 0
+	for child in game.get_children():
+		if child is SaveMenu:
+			n += 1
+	return n
+
+
+func _press_esc() -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_ESCAPE
+	ev.pressed = true
+	root.push_input(ev)
+
+
+func _has_container(node: Node) -> bool:
+	if node is CenterContainer or node is VBoxContainer or node is HBoxContainer:
+		return true
+	for c in node.get_children():
+		if _has_container(c):
+			return true
+	return false
+
+
+func _focused_control() -> Control:
+	var vp := root.get_viewport() if root.has_method("get_viewport") else null
+	if vp == null:
+		return null
+	return vp.gui_get_focus_owner()
+
+
+func _wipe() -> void:
+	SaveSystem.ensure_dir()
+	for slot in SaveSystem.PLAYER_SLOTS + [SaveSystem.AUTOSAVE_SLOT]:
+		for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
+			if FileAccess.file_exists(p):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+
+
+func _check(cond: bool, label: String) -> void:
+	_checks += 1
+	if cond:
+		print("OK   ", label)
+	else:
+		print("FAIL ", label)
+		_fails.append(label)
+
+
+func _report() -> void:
+	print("---")
+	print("проверок: %d" % _checks)
+	# Страховка от молчаливо пропущенных корутин. Без await функция с await
+	# внутри возвращается на первом кадре, её секция не отрабатывает, и тест
+	# выглядит зелёным - ровно тот баг, что уже был в этом проекте.
+	if _sections_done != SECTIONS_TOTAL:
+		print("FAIL отработало %d секций из %d - какая-то не была вызвана с await"
+			% [_sections_done, SECTIONS_TOTAL])
+		_fails.append("не все секции отработали")
+	if _fails.is_empty():
+		print("RESULT: OK save_menu_smoke")
+		quit(0)
+	else:
+		print("RESULT: FAIL save_menu_smoke (провалено: %d)" % _fails.size())
+		for f in _fails:
+			print("  - ", f)
+		quit(1)

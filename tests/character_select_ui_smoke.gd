@@ -12,6 +12,12 @@ const SIZES := [Vector2i(1280, 800), Vector2i(1280, 600)]
 var _fails: Array[String] = []
 
 func _init() -> void:
+	# Проверка идёт ПРИ НАЛИЧИИ сохранения. Раньше она шла без него, и
+	# кнопки «Продолжить» на экране просто не было - то есть тест физически
+	# не мог поймать вылет этой кнопки за окно (проверено мутацией: при
+	# широкой кнопке этот тест оставался зелёным). Сохранение кладём ДО
+	# создания сцены и убираем в _report, чтобы тест был чистым.
+	_seed_save()
 	var scene: PackedScene = load("res://scenes/character_select.tscn")
 	var cs = scene.instantiate()
 	root.add_child(cs)
@@ -20,7 +26,32 @@ func _init() -> void:
 	await _inspect(cs, Vector2i(1280, 800), "1280x800")
 	await _inspect(cs, Vector2i(1280, 600), "1280x600")
 	_structure(cs)
+	_wipe_save()
 	_report()
+
+## Временное сохранение, чтобы кнопка «Продолжить» была на экране.
+func _seed_save() -> void:
+	SaveSystem.ensure_dir()
+	SaveSystem.save("autosave", {
+		"version": SaveSystem.VERSION,
+		"map": {"seed": 1, "zone": "mid"},
+		"hero": {"name": "Тестовый герой", "class": "mage", "current_hp": 50,
+			"max_hp": 100, "max_mana": 50, "current_mana": 10, "gold": 5,
+			"inventory": [], "equipped": {}, "experience": {},
+			"known_spells": {}, "sphere_books": {}, "position": Vector2(0, 0)},
+		"world": {"day": 7, "cities": {}},
+		"quests": [],
+		"meta": {"hero_name": "Тестовый герой", "hero_class": "mage", "day": 7,
+			"stamp": 99},
+	})
+
+
+func _wipe_save() -> void:
+	for p in [SaveSystem.slot_path(SaveSystem.AUTOSAVE_SLOT),
+			SaveSystem.bak_path(SaveSystem.AUTOSAVE_SLOT),
+			SaveSystem.tmp_path(SaveSystem.AUTOSAVE_SLOT)]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
 
 ## Ничего не должно вылезать за пределы окна.
 func _inspect(cs, size_px: Vector2i, tag: String) -> void:
