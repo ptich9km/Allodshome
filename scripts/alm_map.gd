@@ -552,17 +552,29 @@ func _build_relief_mesh() -> void:
 	var amesh := ArrayMesh.new()
 	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 
-	# Load terrain shader with atlas texture
+	# Inline shader — обходит кэширование Godot (нет файла = нет кэша)
 	var mat := ShaderMaterial.new()
-	var shader: Shader = load("res://shaders/terrain_v3.gdshader")
-	if shader == null:
-		push_error("AlmMap: terrain shader failed to load!")
-	else:
-		mat.shader = shader
-		mat.set_shader_parameter("u_atlas", _atlas)
+	var shader := Shader.new()
+	shader.code = """shader_type canvas_item;
+uniform sampler2D u_atlas;
+void fragment() {
+	vec4 tex = texture(u_atlas, UV);
+	float r = COLOR.r;
+	vec3 tint;
+	if (r < 0.07) tint = vec3(0.30, 0.55, 0.22);
+	else if (r < 0.21) tint = vec3(0.55, 0.50, 0.45);
+	else if (r < 0.36) tint = vec3(0.15, 0.35, 0.70);
+	else if (r < 0.50) tint = vec3(0.55, 0.45, 0.32);
+	else if (r < 0.64) tint = vec3(0.50, 0.35, 0.18);
+	else if (r < 0.79) tint = vec3(0.85, 0.72, 0.25);
+	else tint = vec3(0.30, 0.22, 0.12);
+	COLOR = vec4(tex.rgb * tint * COLOR.g, 1.0);
+}"""
+	mat.shader = shader
+	mat.set_shader_parameter("u_atlas", _atlas)
 	mesh.mesh = amesh
 	mesh.material = mat
-	print("AlmMap: меш собран (%d клеток, atlas+shader)" % (map_width * map_height))
+	print("AlmMap: меш собран (%d клеток, inline shader)" % (map_width * map_height))
 
 func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
 	st.set_uv(Vector2(u, v))
