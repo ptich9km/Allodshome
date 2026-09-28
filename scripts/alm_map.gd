@@ -520,9 +520,11 @@ func _build_relief_mesh() -> void:
 						blend = 1.0
 						break
 
-			# Vertex color: r=type, g=brightness, b=blend, a=1.0 (no premultiply)
+			# CUSTOM0.r = terrain type (NOT multiplied by modulate!)
+			# COLOR: g=brightness, b=blend, a=1.0
 			var br := _brightness(x, y)
-			var c := Color(float(t) / 7.0, br, blend, 1.0)
+			st.set_custom(0, Color(float(t) / 7.0, 0.0, 0.0, 0.0))
+			st.set_color(Color(1.0, br, blend, 1.0))
 
 			# Quad corners with height
 			var h00 := _node_h(x, y)
@@ -540,34 +542,38 @@ func _build_relief_mesh() -> void:
 			var u1 := uv.z
 			var v1 := uv.w
 
-			st.set_color(c); st.set_uv(Vector2(u0, v0)); st.add_vertex(p00)
-			st.set_color(c); st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
-			st.set_color(c); st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
+			st.set_uv(Vector2(u0, v0)); st.add_vertex(p00)
+			st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
+			st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
 
-			st.set_color(c); st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
-			st.set_color(c); st.set_uv(Vector2(u1, v1)); st.add_vertex(p11)
-			st.set_color(c); st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
+			st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
+			st.set_uv(Vector2(u1, v1)); st.add_vertex(p11)
+			st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
 
 	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
 	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 
-	# Inline shader — обходит кэширование Godot (нет файла = нет кэша)
+	# Inline shader — CUSTOM0 for terrain type (not modulated by Godot)
 	var mat := ShaderMaterial.new()
 	var shader := Shader.new()
 	shader.code = """shader_type canvas_item;
 uniform sampler2D u_atlas;
+varying float v_type;
+void vertex() {
+	v_type = CUSTOM0.r;
+}
 void fragment() {
 	vec4 tex = texture(u_atlas, UV);
-	float r = COLOR.r;
+	float r = v_type;
 	vec3 tint;
 	if (r < 0.07) tint = vec3(0.30, 0.55, 0.22);
 	else if (r < 0.21) tint = vec3(0.55, 0.50, 0.45);
 	else if (r < 0.36) tint = vec3(0.15, 0.35, 0.70);
 	else if (r < 0.50) tint = vec3(0.55, 0.45, 0.32);
 	else if (r < 0.64) tint = vec3(0.50, 0.35, 0.18);
-	else if (r < 0.79) tint = vec3(0.85, 0.72, 0.25);
-	else tint = vec3(0.30, 0.22, 0.12);
+	else if (r < 0.79) tint = vec3(0.90, 0.75, 0.20);
+	else tint = vec3(0.22, 0.15, 0.08);
 	COLOR = vec4(tex.rgb * tint * COLOR.g, 1.0);
 }"""
 	mat.shader = shader
