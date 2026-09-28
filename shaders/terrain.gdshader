@@ -136,21 +136,24 @@ vec3 gen_terrain(int t, vec2 wp) {
 // === Fragment ===
 
 void fragment() {
-	int ta = int(round(COLOR.r * 7.0));
-	float blend = COLOR.g;
-	int tb = int(round(COLOR.b * 7.0));
+	// Robust decode: step functions instead of round() (mediump float issues on some GPUs)
+	float r = COLOR.r;
+	int ta = 0;
+	if (r > 0.07) ta = 1;
+	if (r > 0.21) ta = 2;
+	if (r > 0.36) ta = 3;
+	if (r > 0.50) ta = 4;
+	if (r > 0.64) ta = 5;
+	if (r > 0.79) ta = 6;
 
-	vec3 col;
-	if (blend > 0.01 && ta != tb) {
-		vec3 ca = gen_terrain(ta, v_world);
-		vec3 cb = gen_terrain(tb, v_world);
-		float n = fbm(v_world * 0.05 + 42.0, 3);
-		float b = smoothstep(blend - 0.15, blend + 0.15, n);
-		col = mix(ca, cb, b);
-	} else {
-		col = gen_terrain(ta, v_world);
-	}
-
-	col *= COLOR.a;
-	COLOR = vec4(col, 1.0);
+	// Debug: flat color per type
+	vec3 c;
+	if (ta == 0) c = vec3(1.0, 0.0, 0.0);
+	else if (ta == 1) c = vec3(0.0, 1.0, 0.0);
+	else if (ta == 2) c = vec3(0.0, 0.0, 1.0);
+	else if (ta == 3) c = vec3(1.0, 1.0, 0.0);
+	else if (ta == 4) c = vec3(0.0, 1.0, 1.0);
+	else if (ta == 5) c = vec3(1.0, 0.0, 1.0);
+	else c = vec3(1.0, 1.0, 1.0);
+	COLOR = vec4(c * COLOR.a, 1.0);
 }

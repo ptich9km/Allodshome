@@ -543,6 +543,13 @@ func _build_relief_mesh() -> void:
 			st.set_color(c); st.set_uv(uv3); st.add_vertex(p11)
 			st.set_color(c); st.set_uv(uv2); st.add_vertex(p01)
 
+	# Debug: terrain type histogram
+	var hist := {}
+	for i in range(types.size()):
+		var t: int = types[i]
+		hist[t] = hist.get(t, 0) + 1
+	print("DEBUG terrain types: %s" % str(hist))
+
 	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
 	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
