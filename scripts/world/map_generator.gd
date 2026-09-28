@@ -1105,11 +1105,11 @@ func _place_terrain(n: int) -> void:
 	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
 
 func _pick_tile(t: int, x: int, y: int) -> int:
-	# Biome textures for types 4-6: use PNG instead of BMP
-	if t >= 4 and _biome_selector != null and _biome_selector.has_type(t):
-		var biome_id := _pick_biome_tile(t, x, y)
-		if biome_id >= 0:
-			return biome_id
+	# Biome textures disabled — using BMP tiles instead
+	# if t >= 4 and _biome_selector != null and _biome_selector.has_type(t):
+	# 	var biome_id := _pick_biome_tile(t, x, y)
+	# 	if biome_id >= 0:
+	# 		return biome_id
 
 	var s: Dictionary = _sides(x, y)
 	var mask := _mask_from_sides(s, t)
