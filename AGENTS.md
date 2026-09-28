@@ -4,7 +4,7 @@
 Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
 > Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
-> Последнее обновление: 27.09 — переход на Forward+, освещение 2D, наземные зоны по клеткам, скиллы (`godot-2d-rendering` / `2d-vfx-craft` / `2d-ground-effects` / `godot-4-api-traps`). Требуется ручная визуальная проверка.
+> Последнее обновление: 28.09 — ChatGPT текстуры, фикс миникарты, procedural shader откат (CUSTOM0/UV2 не работают в canvas_item), BMP tile1-7 заменены.
 
 ## Содержание
 
@@ -433,6 +433,15 @@ ui/          — UI-сцены и скрипты
 ## 12. Журнал сессий
 
 Хронология изменений. **Новое — сверху.**
+
+### 28.09 — ChatGPT текстуры, фикс миникарты, процедурный шейдер (откат)
+
+- **ChatGPT текстуры:** 42 текстуры (7 биомов × 6 вариаций) из `import/ChatGPTImage.png` → BMP tile1-7 с 16 уникальными вариантами каждая. Скрипт `tests/extract_chatgpt_tiles.py`.
+- **Миникарта:** `AlmLoader.terrain_type()` распознаёт биомный формат `hf=(type<<4)|7`, цвета для типов 4-6.
+- **UV inset:** ±0.5 px в атласе для устранения сетки на стыках текстур.
+- **Процедурный шейдер (откат):**試行 terrain.gdshader с CUSTOM0/UV2 для terrain type — не сработало (canvas_item VERTEX=vec2, CUSTOM0 не работает с commit_to_arrays, UV2 недоступен в canvas_item). Вернулись к простому атласному шейдеру `COLOR = texture(u_atlas, UV) * COLOR.a`.
+- **Корневая причина бага с цветами:** Godot 4.7 Forward+ premultiply COLOR × modulate × self_modulate даже при alpha=1.0. CUSTOM0 — единственное что НЕ модулируется, но не работает с ArrayMesh.
+- **Удалено:** `biome_tile_selector.gd`, `biome_transition_db.json`, `assets/terrain/biomes/`, `assets/terrain/chatgpt_tiles/`, `gen_smart_01_variants.png`, все `terrain*.gdshader`, тесты biome_*, `test_biome_*`.
 
 ### 27.09 — переход на Forward+, освещение 2D, наземные зоны по клеткам, скиллы
 
