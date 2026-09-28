@@ -520,21 +520,19 @@ func _build_relief_mesh() -> void:
 						blend = 1.0
 						break
 
-			# Encode terrain type in vertex Z position (integer, no precision issues)
-			# COLOR: r=blend, g=unused, b=neighbor_type, a=brightness
+			# Vertex color: r=type, g=brightness, b=blend, a=1.0 (no premultiply)
 			var br := _brightness(x, y)
-			var c := Color(blend, 0.0, float(neighbor_type) / 7.0, br)
+			var c := Color(float(t) / 7.0, br, blend, 1.0)
 
-			# Quad corners with height + terrain type in Z
+			# Quad corners with height
 			var h00 := _node_h(x, y)
 			var h10 := _node_h(x + 1, y)
 			var h01 := _node_h(x, y + 1)
 			var h11 := _node_h(x + 1, y + 1)
-			var tz := float(t)  # terrain type as Z coordinate
-			var p00 := Vector3(x * TILE, y * TILE - h00, tz)
-			var p10 := Vector3((x + 1) * TILE, y * TILE - h10, tz)
-			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, tz)
-			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, tz)
+			var p00 := Vector3(x * TILE, y * TILE - h00, 0)
+			var p10 := Vector3((x + 1) * TILE, y * TILE - h10, 0)
+			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
+			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
 
 			# UV from atlas
 			var u0 := uv.x
