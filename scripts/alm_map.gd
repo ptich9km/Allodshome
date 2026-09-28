@@ -554,7 +554,7 @@ func _build_relief_mesh() -> void:
 
 	# Load terrain shader with atlas texture
 	var mat := ShaderMaterial.new()
-	var shader: Shader = load("res://shaders/terrain.gdshader")
+	var shader: Shader = load("res://shaders/terrain_v3.gdshader")
 	if shader == null:
 		push_error("AlmMap: terrain shader failed to load!")
 	else:
