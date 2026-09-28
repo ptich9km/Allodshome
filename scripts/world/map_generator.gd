@@ -81,6 +81,7 @@ const _NOISE_OFFSETS := {0: 1234, 1: 5678, 2: 9012, 3: 3456, 4: 7890, 5: 2345, 6
 var _stat_exact := 0
 var _stat_subset := 0
 var _stat_rules := 0
+var _biome_selector: BiomeTileSelector = null
 
 ## Базовое имя файлов карты по сиду: map_<seed>_<zone>.
 static func map_basename(seed_value: int, zone: String) -> String:
@@ -140,6 +141,12 @@ func _load_db() -> void:
 			_base_int = sjson.get("interior", {})
 	print("SHAPES: %d entries, base textures for %d types" % [_shapes.size(), _base_int.size()])
 	_compute_edge_rows()
+	_biome_selector = BiomeTileSelector.new()
+	var biome_types := 0
+	for t in [4, 5, 6]:
+		if _biome_selector.has_type(t):
+			biome_types += 1
+	print("BIOME: %d types with textures (soil/sand/mud)" % biome_types)
 
 ## «Краевой» row на тип: самый частотный row среди форм с >=1 кардинальным
 ## битом (N/E/S/W) и >= MIN_CELLS клеток. Для травы/гор это «универсальный
@@ -1098,6 +1105,12 @@ func _place_terrain(n: int) -> void:
 	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
 
 func _pick_tile(t: int, x: int, y: int) -> int:
+	# Biome textures for types 4-6: use PNG instead of BMP
+	if t >= 4 and _biome_selector != null and _biome_selector.has_type(t):
+		var biome_id := _pick_biome_tile(t, x, y)
+		if biome_id >= 0:
+			return biome_id
+
 	var s: Dictionary = _sides(x, y)
 	var mask := _mask_from_sides(s, t)
 	if mask == 0:
@@ -1110,6 +1123,34 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 	# 2. Fallback: old directional rules (first matching direction)
 	_stat_rules += 1
 	return _edge_tile(t, s, x, y)
+
+## Try to pick a biome tile (file=8, PNG-based). Returns -1 if not possible.
+## Encoding: bits 0-3=row, 4-7=variant, 8-11=7 (file=8), 12-15=terrain_type (4/5/6)
+func _pick_biome_tile(t: int, x: int, y: int) -> int:
+	var s: Dictionary = _sides(x, y)
+	var h: int = abs(hash(Vector2i(x, y)))
+	var variant: int = h % 6
+
+	# Check edges first: if any neighbor differs, try transition texture
+	for dir_name in ["N", "S", "E", "W"]:
+		var neighbor: int = s[dir_name]
+		if neighbor != -1 and neighbor != t:
+			var tex := _biome_selector.get_transition(t, neighbor, dir_name, variant)
+			if tex != null:
+				var dir_row: int = {"N": 0, "S": 1, "E": 2, "W": 3}.get(dir_name, 0)
+				return _encode_biome_tile(t, variant, dir_row)
+
+	# Interior: no different neighbors
+	var tex := _biome_selector.get_interior(t, variant)
+	if tex != null:
+		return _encode_biome_tile(t, variant, 4)
+
+	return -1
+
+
+func _encode_biome_tile(terrain_type: int, variant: int, row: int) -> int:
+	# file=8 -> file_n-1=7, terrain_type in bits 12-15
+	return (terrain_type << 12) | (7 << 8) | (variant << 4) | row
 
 ## Bit layout must match tests/analyze_shapes.gd: [N, NE, E, SE, S, SW, W, NW]
 const CARDINAL_BITS := 0x55  # биты N(0), E(2), S(4), W(6)

@@ -1006,11 +1006,17 @@ func _minimap_color_at(tx: int, ty: int) -> Color:
 		2:
 			return Color(0.15, 0.35, 0.75, 1.0)  # вода (tile3)
 		1:
-			return Color(0.5, 0.45, 0.38, 1.0)   # горы/холмы (tile2)
+			return Color(0.52, 0.48, 0.42, 1.0)   # горы/холмы — серые скалы
 		3:
 			return Color(0.7, 0.65, 0.55, 1.0)   # дорога (tile4)
+		4:
+			return Color(0.50, 0.35, 0.18, 1.0)  # почва (tile5) — тёмно-коричневая
+		5:
+			return Color(0.85, 0.70, 0.22, 1.0)  # песок — яркий жёлтый
+		6:
+			return Color(0.22, 0.15, 0.08, 1.0)  # грязь — тёмно-коричневая
 		_:
-			return Color(0.25, 0.55, 0.25, 1.0)   # трава (tile1)
+			return Color(0.25, 0.55, 0.25, 1.0)  # трава (tile1)
 
 func _update_stats():
 	if not is_instance_valid(player):

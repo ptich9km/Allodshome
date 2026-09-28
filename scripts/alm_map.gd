@@ -27,6 +27,7 @@ var solar_angle: float = 0.785398  # угол солнца из info (.alm), def
 
 var mesh: MeshInstance2D
 var _atlas: ImageTexture
+var _biome_type_map := {}  # atlas key "f8-v*-r*" -> terrain type (4/5/6)
 var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
 var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
 var obstacles_root: Node2D      # слой препятствий (y-sort)
@@ -335,17 +336,22 @@ func relief_at_world(pos: Vector2) -> float:
 func _used_cells() -> Dictionary:
 	## Ключ "f{file}-v{variant}-r{row}" -> true. file 1..8, variant 0..15, row 0..nrows-1
 	var used := {}
+	_biome_type_map.clear()
 	for i in range(map_width * map_height):
 		var tile_id := _terrain[i] | (_hflags[i] << 8)
-		# Проверяем бит 12 = биомный тайл
-		if tile_id & 0x1000:
-			# Биомный тайл: file=8, variant/row из младших битов
-			var variant := (tile_id >> 4) & 0xF
-			var row := tile_id & 0xF
-			used["f8-v%d-r%d" % [variant, row]] = true
+		var file_n := (_hflags[i] & 0xF) + 1
+		if file_n == 8:
+			# Biome tile: file=8, variant/row from low bits
+			var variant := (_terrain[i] >> 4) & 0xF
+			var row := _terrain[i] & 0xF
+			var key := "f8-v%d-r%d" % [variant, row]
+			used[key] = true
+			# Store which terrain type this biome cell is (from hflags high nibble)
+			var biome_type := (_hflags[i] >> 4) & 0xF
+			if biome_type >= 4 and biome_type <= 6:
+				_biome_type_map[key] = biome_type
 		else:
 			# Обычный тайл
-			var file_n := (_hflags[i] & 0xF) + 1
 			var vmax := 4 if file_n == 4 else 16
 			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
 			var row := _terrain[i] & 0xF
@@ -357,9 +363,9 @@ func _build_atlas() -> void:
 	# Соберём фактические (файл, вариант, ряд) с реальным числом рядов в файле
 	var cells: Array = []  # [key, Image32]
 	var key_to_cell := {}
-	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16, 8: 16}
+	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16}
 	# Порядок: сначала все ряды файла 1, потом файла 2 ... (для обхода файлов)
-	for file_n in [1, 2, 3, 4, 5, 6, 7, 8]:
+	for file_n in [1, 2, 3, 4, 5, 6, 7]:
 		var vmax: int = vmax_by_file[file_n]
 		for variant in range(vmax):
 			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
@@ -377,20 +383,50 @@ func _build_atlas() -> void:
 				cells.append([key, cell_img])
 				key_to_cell[key] = cells.size() - 1
 
+	# Biome tiles (file=8): load PNG from assets/terrain/biomes/
+	var biome_dir_names: Dictionary = {4: "soil", 5: "sand", 6: "mud"}
+	for key in used:
+		if not key.begins_with("f8-v"):
+			continue
+		if key_to_cell.has(key):
+			continue
+		# Parse key: "f8-v{variant}-r{row}"
+		var dash1: int = key.find("-", 2)
+		var dash2: int = key.find("-", dash1 + 1)
+		if dash1 < 0 or dash2 < 0:
+			continue
+		var variant: int = key.substr(dash1 + 2, dash2 - dash1 - 2).to_int()
+		var row: int = key.substr(dash2 + 2).to_int()
+		# Look up terrain type from biome_type_map
+		var biome_type: int = _biome_type_map.get(key, 5) as int
+		var dir_name: String = biome_dir_names.get(biome_type, "sand") as String
+		# Row 0-3 = transition (direction), row 4 = interior
+		var tex_path: String = "res://assets/terrain/biomes/%s/%s_%02d.png" % [dir_name, dir_name, variant + 1]
+		if ResourceLoader.exists(tex_path):
+			var tex: Texture2D = load(tex_path)
+			if tex:
+				var img: Image = tex.get_image()
+				img.convert(Image.FORMAT_RGBA8)
+				cells.append([key, img])
+				key_to_cell[key] = cells.size() - 1
+
 	# Собираем атлас 64x64 ячейки (до 4096)
 	var atlas := Image.create(64 * TILE, 64 * TILE, false, Image.FORMAT_RGBA8)
 	atlas.fill(Color(0, 0, 0, 0))
 	_cell_uv.clear()
+	var atlas_w := 64.0 * TILE
+	var half_px := 0.5 / atlas_w
 	for idx in range(cells.size()):
 		var key: String = cells[idx][0]
 		var cimg: Image = cells[idx][1]
 		var cx := idx % 64
 		var cy := idx / 64
 		atlas.blit_rect(cimg, Rect2i(0, 0, TILE, TILE), Vector2i(cx * TILE, cy * TILE))
-		var u0 := float(cx * TILE) / float(64 * TILE)
-		var v0 := float(cy * TILE) / float(64 * TILE)
-		var u1 := u0 + 1.0 / 64.0
-		var v1 := v0 + 1.0 / 64.0
+		# UV inset ±0.5 px to avoid sampling at cell boundaries (grid seams)
+		var u0 := float(cx * TILE) / atlas_w + half_px
+		var v0 := float(cy * TILE) / atlas_w + half_px
+		var u1 := float((cx + 1) * TILE) / atlas_w - half_px
+		var v1 := float((cy + 1) * TILE) / atlas_w - half_px
 		_cell_uv[key] = Vector4(u0, v0, u1, v1)
 	_atlas = ImageTexture.create_from_image(atlas)
 	print("AlmMap: атлас %d ячеек" % cells.size())
@@ -447,20 +483,44 @@ func _build_relief_mesh() -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-	var sun := _sun_dir()
+	# Cache terrain types for all cells
+	var types := PackedInt32Array()
+	types.resize(map_width * map_height)
+	for i in range(types.size()):
+		types[i] = AlmLoader.terrain_type(_hflags[i])
+
 	for y in range(map_height):
 		for x in range(map_width):
 			var i := y * map_width + x
-			var file_n := (_hflags[i] & 0xF) + 1
-			var vmax := 4 if file_n == 4 else 16
-			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
-			var row := _terrain[i] & 0xF
-			# Вода (file 3) — статичный кадр из общего атласа (ряд row из tile3-XX.bmp)
-			var uv := _uv_for_cell(file_n, variant, row)
-			if uv == Vector4(0, 0, 0, 0):
+			var t: int = types[i]
+			if t < 0:
 				continue
 
-			# Углы квада: (x,y) вверх-влево, (x+1,y) вправо, (x,y+1) вниз, (x+1,y+1)
+			# Determine blend: check cardinal neighbors
+			var blend := 0.0
+			var neighbor_type := t
+			var dirs := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+			for d in dirs:
+				var nx: int = x + d.x
+				var ny: int = y + d.y
+				if nx >= 0 and nx < map_width and ny >= 0 and ny < map_height:
+					var ni: int = ny * map_width + nx
+					var nt: int = types[ni]
+					if nt >= 0 and nt != t:
+						neighbor_type = nt
+						blend = 1.0
+						break
+
+			# Terrain type encoded in vertex color
+			# r = type_a, g = blend_factor, b = type_b, a = brightness
+			var br := _brightness(x, y)
+			var c := Color(
+				float(t) / 7.0,
+				blend,
+				float(neighbor_type) / 7.0,
+				br)
+
+			# Quad corners with height
 			var h00 := _node_h(x, y)
 			var h10 := _node_h(x + 1, y)
 			var h01 := _node_h(x, y + 1)
@@ -470,41 +530,32 @@ func _build_relief_mesh() -> void:
 			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
 			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
 
-			# Яркость: средняя из 4 угловых клеток (гладкий свет), по нормали самой клетки
-			var br := _brightness(x, y)
-			var c := Color(br, br, br, 1.0)
+			# UV placeholder (shader uses world coords, not UV)
+			st.set_color(c)
+			st.add_vertex(p00)
+			st.set_color(c)
+			st.add_vertex(p10)
+			st.set_color(c)
+			st.add_vertex(p01)
 
-			var u0 := uv.x
-			var v0 := uv.y
-			var u1 := uv.z
-			var v1 := uv.w
-			# Треугольник 1: p00 (u0,v0), p10 (u1,v0), p01 (u0,v1)
-			_add_vert(st, p00, u0, v0, c)
-			_add_vert(st, p10, u1, v0, c)
-			_add_vert(st, p01, u0, v1, c)
-			# Треугольник 2: p10 (u1,v0), p11 (u1,v1), p01 (u0,v1)
-			_add_vert(st, p10, u1, v0, c)
-			_add_vert(st, p11, u1, v1, c)
-			_add_vert(st, p01, u0, v1, c)
+			st.set_color(c)
+			st.add_vertex(p10)
+			st.set_color(c)
+			st.add_vertex(p11)
+			st.set_color(c)
+			st.add_vertex(p01)
 
 	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
 	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 
+	# Load procedural terrain shader
 	var mat := ShaderMaterial.new()
-	var shader := Shader.new()
-	shader.code = """
-shader_type canvas_item;
-uniform sampler2D u_atlas;
-void fragment() {
-	COLOR = texture(u_atlas, UV) * COLOR;
-}
-"""
+	var shader: Shader = load("res://shaders/terrain.gdshader")
 	mat.shader = shader
-	mat.set_shader_parameter("u_atlas", _atlas)
 	mesh.mesh = amesh
 	mesh.material = mat
-	print("AlmMap: меш собран (%d клеток)" % (map_width * map_height))
+	print("AlmMap: меш собран (%d клеток, procedural terrain)" % (map_width * map_height))
 
 func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
 	st.set_uv(Vector2(u, v))

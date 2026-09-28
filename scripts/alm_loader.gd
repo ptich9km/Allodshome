@@ -53,8 +53,11 @@ static func _cstr(data: PackedByteArray, off: int, max_len: int) -> String:
 ## 3=ДОРОГИ/мостовая (tile4). Спец-значения 16..40 на картах Nival — вода (-1),
 ## остальное — барьер (-2). (Эвристика по Beach/Kids3.)
 static func terrain_type(hf: int) -> int:
-	if hf >= 0 and hf <= 3:
+	if hf >= 0 and hf <= 6:
 		return hf
+	# Biome tiles: hf = (terrain_type << 4) | 7, file=8
+	if (hf & 0xF) == 7 and (hf >> 4) >= 4 and (hf >> 4) <= 6:
+		return hf >> 4
 	elif hf >= 16 and hf <= 40:
 		return -1
 	return -2
