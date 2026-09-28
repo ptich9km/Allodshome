@@ -482,7 +482,7 @@ func _build_relief_mesh() -> void:
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_custom_format(0, Mesh.ARRAY_CUSTOM_RGBA_FLOAT)
+	st.set_custom_format(0, 7)  # CUSTOM_RGBA_FLOAT
 
 	# Cache terrain types for all cells
 	var types := PackedInt32Array()
