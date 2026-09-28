@@ -48,7 +48,7 @@ script = ExtResource("1_game")
 
 [node name="Map" type="Node2D" parent="." unique_id=2050010818]
 script = ExtResource("9_almmap")
-alm_path = "res://assets/maps/gen/test_biome.alm"
+alm_path = "res://assets/maps/gen/gen_smart_01.alm"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=563323442]
 zoom = Vector2(2, 2)

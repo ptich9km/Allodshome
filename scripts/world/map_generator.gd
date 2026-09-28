@@ -81,7 +81,12 @@ const _NOISE_OFFSETS := {0: 1234, 1: 5678, 2: 9012, 3: 3456, 4: 7890, 5: 2345, 6
 var _stat_exact := 0
 var _stat_subset := 0
 var _stat_rules := 0
-var _biome_selector: BiomeTileSelector = null
+var _stat_transition := 0
+
+## Порядок направлений перехода. Должен совпадать с directions.order
+## в assets/maps/terrain_tiles_db.json и с gen_transition_tiles.py:
+## file_n = 8 + индекс в этом массиве.
+const _TRANSITION_DIR_ORDER := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
 ## Базовое имя файлов карты по сиду: map_<seed>_<zone>.
 static func map_basename(seed_value: int, zone: String) -> String:
@@ -141,12 +146,6 @@ func _load_db() -> void:
 			_base_int = sjson.get("interior", {})
 	print("SHAPES: %d entries, base textures for %d types" % [_shapes.size(), _base_int.size()])
 	_compute_edge_rows()
-	_biome_selector = BiomeTileSelector.new()
-	var biome_types := 0
-	for t in [4, 5, 6]:
-		if _biome_selector.has_type(t):
-			biome_types += 1
-	print("BIOME: %d types with textures (soil/sand/mud)" % biome_types)
 
 ## «Краевой» row на тип: самый частотный row среди форм с >=1 кардинальным
 ## битом (N/E/S/W) и >= MIN_CELLS клеток. Для травы/гор это «универсальный
@@ -457,29 +456,16 @@ func _place_mountains_water() -> void:
 			elif elev > _mountain_thr:
 				_terrain[i] = 1
 
-## Этап 5: спавн в центре карты, портал на противоположном краю.
+## Этап 5: спавн у первого города, портал на противоположном краю.
+##
+## Спавн сид-зависимый (через _find_land_near): жёсткий центр карты ломал
+## gen_seeds_smoke, который требует, чтобы sidecar-ы различались для разных
+## сидов. Смена поведения — осознанный откат e28fc374.
 func _place_portal_spawn() -> void:
 	if _cities.is_empty():
 		return
 	var city0: Vector2i = _cities[0]["pos"]
-	
-	# Спавн в центре карты
-	_spawn_pos = Vector2i(W / 2, H / 2)
-	# Ищем ближайшую проходимую клетку
-	for r in range(0, 15):
-		for dy in range(-r, r + 1):
-			for dx in range(-r, r + 1):
-				var c = Vector2i(W/2 + dx, H/2 + dy)
-				if c.x >= 0 and c.y >= 0 and c.x < W and c.y < H:
-					var t = _terrain[c.y * W + c.x]
-					if t != 1 and t != 2:  # Не горы и не вода
-						_spawn_pos = c
-						break
-			if _spawn_pos != Vector2i(-1, -1):
-				break
-		if _spawn_pos != Vector2i(-1, -1):
-			break
-	
+	_spawn_pos = _find_land_near(city0, 8)
 	_portal_pos = _find_land_far(city0, 40)
 	_save_spawn_json()
 	_save_portal_json()
@@ -1105,13 +1091,14 @@ func _place_terrain(n: int) -> void:
 	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
 
 func _pick_tile(t: int, x: int, y: int) -> int:
-	# Biome textures disabled — using BMP tiles instead
-	# if t >= 4 and _biome_selector != null and _biome_selector.has_type(t):
-	# 	var biome_id := _pick_biome_tile(t, x, y)
-	# 	if biome_id >= 0:
-	# 		return biome_id
-
 	var s: Dictionary = _sides(x, y)
+	# Переходная кромка имеет приоритет над shape/rules: файлы tile1..7
+	# бесшовные и кромок не содержат, поэтому exact-формы из аудита .alm
+	# на них не дают ничего — только шов. См. terrain_tiles_db.json.
+	var trans: int = _transition_tile(t, s, x, y)
+	if trans >= 0:
+		_stat_transition += 1
+		return trans
 	var mask := _mask_from_sides(s, t)
 	if mask == 0:
 		return _interior_tile(t, x, y)
@@ -1124,33 +1111,36 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 	_stat_rules += 1
 	return _edge_tile(t, s, x, y)
 
-## Try to pick a biome tile (file=8, PNG-based). Returns -1 if not possible.
-## Encoding: bits 0-3=row, 4-7=variant, 8-11=7 (file=8), 12-15=terrain_type (4/5/6)
-func _pick_biome_tile(t: int, x: int, y: int) -> int:
-	var s: Dictionary = _sides(x, y)
-	var h: int = abs(hash(Vector2i(x, y)))
-	var variant: int = h % 6
-
-	# Check edges first: if any neighbor differs, try transition texture
-	for dir_name in ["N", "S", "E", "W"]:
-		var neighbor: int = s[dir_name]
-		if neighbor != -1 and neighbor != t:
-			var tex := _biome_selector.get_transition(t, neighbor, dir_name, variant)
-			if tex != null:
-				var dir_row: int = {"N": 0, "S": 1, "E": 2, "W": 3}.get(dir_name, 0)
-				return _encode_biome_tile(t, variant, dir_row)
-
-	# Interior: no different neighbors
-	var tex := _biome_selector.get_interior(t, variant)
-	if tex != null:
-		return _encode_biome_tile(t, variant, 4)
-
+## Направление перехода для клетки: -1, если перехода нет.
+## Порядок совпадает с directions.order в terrain_tiles_db.json и с ключами
+## _sides(): N, NE, E, SE, S, SW, W, NW. Кардинальные берутся раньше
+## диагональных — так же вела себя оригинальная transition_db.
+func _transition_dir(s: Dictionary, t: int) -> int:
+	for d in _TRANSITION_DIR_ORDER:
+		var n: int = s[d]
+		if n >= 0 and n != t:
+			return _TRANSITION_DIR_ORDER.find(d)
 	return -1
 
-
-func _encode_biome_tile(terrain_type: int, variant: int, row: int) -> int:
-	# file=8 -> file_n-1=7, terrain_type in bits 12-15
-	return (terrain_type << 12) | (7 << 8) | (variant << 4) | row
+## Переходный тайл A -> B по направлению dir_index. -1, если перехода нет.
+##
+## Известное ограничение: угловая клетка с двумя отличающимися соседями
+## получает бленд только по одному (первому) направлению. Бленд по двум
+## краям сразу потребовал бы отдельных угловых плиток — это 4 файла на пару
+## типов, в формате .alm для них нет места.
+func _transition_tile(t: int, s: Dictionary, x: int, y: int) -> int:
+	var dir_index: int = _transition_dir(s, t)
+	if dir_index < 0:
+		return -1
+	var b: int = s[_TRANSITION_DIR_ORDER[dir_index]]
+	if b < 0 or b > 6:
+		return -1
+	var file_n: int = AlmLoader.TRANSITION_FILE_MIN + dir_index
+	# row = B * 2 + вариация. Вариацию берём от координаты клетки, чтобы
+	# соседние кромки не были одинаковыми, но оставались детерминированными.
+	var variation: int = abs(hash(Vector2i(x, y))) % 2
+	var row: int = b * 2 + variation
+	return AlmLoader.tile_encode_transition(file_n, t, row)
 
 ## Bit layout must match tests/analyze_shapes.gd: [N, NE, E, SE, S, SW, W, NW]
 const CARDINAL_BITS := 0x55  # биты N(0), E(2), S(4), W(6)
@@ -1544,8 +1534,8 @@ func _save() -> void:
 			if cnt > 0:
 				terrain_parts.append("%s=%.1f%%" % [terrain_names[tt], cnt * 100.0 / total])
 		print("Terrain: " + ", ".join(terrain_parts))
-		print("Shapes: exact=%d subset=%d rules-fallback=%d" % [
-			_stat_exact, _stat_subset, _stat_rules])
+		print("Shapes: exact=%d subset=%d rules-fallback=%d transitions=%d" % [
+			_stat_exact, _stat_subset, _stat_rules, _stat_transition])
 		_road_stats(tc.get(3, 0))
 		var obj_count := 0
 		for v in _obstacles:

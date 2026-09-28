@@ -6,12 +6,16 @@ BMP format: 32x448 (14 rows x 32px) to match existing tile1-7.bmp structure.
 """
 
 import struct
+import io
+import json
 import os
 import random
 from PIL import Image
 
 ATLAS_PATH = "import/ChatGPTImage.png"
 OUT_DIR = "assets/terrain"
+DB_PATH = "assets/maps/terrain_tiles_db.json"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Atlas layout from ChatGPTImage.md
 COL_X = [8, 226, 445, 664, 884, 1104, 1324]
@@ -69,18 +73,49 @@ def save_bmp(img, path):
         f.write(buf)
 
 
-def main():
-    atlas = Image.open(ATLAS_PATH)
-    print(f"Atlas: {atlas.size[0]}x{atlas.size[1]}")
+def load_db():
+    with io.open(DB_PATH, encoding="utf-8") as f:
+        return json.load(f)
 
-    for col_idx, (file_n, name) in BIOMES.items():
+
+def load_base_tiles(db):
+    """42 базовые плитки 32x32: base[biome][0..5] -> PIL Image.
+
+    ЕДИНСТВЕННЫЙ кроп атласа на весь проект. От него зависят и интерьеры
+    (этот скрипт), и переходы (gen_transition_tiles.py импортирует эту же
+    функцию): если резать по-разному, плитки биомов получатся из разных
+    границ, и бленд будет бить ровно по шву.
+
+    Границы содержимого - поле atlas.crop в terrain_tiles_db.json. Замерено
+    по всем 42 ячейкам: слева разделитель атласа 2-3 px, снизу 1-2 px.
+    """
+    atlas = Image.open(os.path.join(ROOT, db["atlas"]["source"]))
+    if list(atlas.size) != db["atlas"]["size"]:
+        raise SystemExit("Размер атласа не совпал с БД: %s != %s"
+                         % (list(atlas.size), db["atlas"]["size"]))
+    cols = db["atlas"]["columns_x"]
+    rows = db["atlas"]["rows_y"]
+    crop = db["atlas"]["crop"]
+    base = {}
+    for biome_s, info in db["biomes"].items():
+        col = info["atlas_col"]
+        x1 = cols[col]
         tiles = []
-        for row_idx in range(6):
-            x1 = COL_X[col_idx]
-            y1 = ROW_Y[row_idx]
-            tile = atlas.crop((x1, y1, x1 + COL_W, y1 + ROW_H))
-            tile = tile.resize((TILE_SIZE, TILE_SIZE), Image.LANCZOS)
-            tiles.append(tile)
+        for row in range(6):
+            y1 = rows[row]
+            box = (x1 + crop["left"], y1 + crop["top"],
+                   x1 + crop["right"] + 1, y1 + crop["bottom"] + 1)
+            tiles.append(atlas.crop(box).resize((TILE_SIZE, TILE_SIZE), Image.LANCZOS))
+        base[int(biome_s)] = tiles
+    return base
+
+
+def main():
+    db = load_db()
+    base = load_base_tiles(db)
+    for col_idx, (file_n, name) in BIOMES.items():
+        biome = _biome_of_file(db, file_n)
+        tiles = base[biome]
 
         for variant in range(16):
             # Each variant gets a unique ordering of the 6 base tiles
@@ -97,17 +132,18 @@ def main():
 
         print(f"tile{file_n} ({name}): 16 BMP strips (16 unique orderings), 32x{ROWS_PER_BMP*32}")
 
-    png_dir = os.path.join(OUT_DIR, "chatgpt_tiles")
-    os.makedirs(png_dir, exist_ok=True)
-    for col_idx, (file_n, name) in BIOMES.items():
-        for row_idx in range(6):
-            x1 = COL_X[col_idx]
-            y1 = ROW_Y[row_idx]
-            tile = atlas.crop((x1, y1, x1 + COL_W, y1 + ROW_H))
-            tile = tile.resize((TILE_SIZE, TILE_SIZE), Image.LANCZOS)
-            tile.save(os.path.join(png_dir, f"{name}_{row_idx+1:02d}.png"))
+    # Раньше здесь ещё писались PNG в assets/terrain/chatgpt_tiles/ - их удалил
+    # 1f67b0ec вместе с биомной системой, и код в проекте их нигде не читает.
+    # Не воскрешаем: BMP tile1..15 - единственный источник текстур.
+    print(f"\nDone! {len(BIOMES) * 16} BMP strips in {OUT_DIR}")
 
-    print(f"\nDone! PNGs saved to {png_dir}/")
+
+def _biome_of_file(db, file_n):
+    """Ключи biomes в JSON - строки, а base индексируется int."""
+    for k, v in db["biomes"].items():
+        if int(v["file"]) == file_n:
+            return int(k)
+    raise SystemExit("Нет биома для файла tile%d" % file_n)
 
 
 if __name__ == "__main__":

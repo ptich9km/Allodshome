@@ -14,6 +14,11 @@ class_name AlmLoader
 const MAGIC := 0x0052374D  # "M7R\0" (little-endian)
 const HEADER_SIZE := 0x14
 
+## Номера файлов тайлов (assets/maps/terrain_tiles_db.json).
+## 1..7 — бесшовные интерьеры биомов, 8..15 — переходы (по направлению).
+const MAX_TILE_FILE := 15
+const TRANSITION_FILE_MIN := 8
+
 # Флаги проходимости
 enum TileFlag { GROUND, HILL, HIGH2, WATER, BARRIER }
 
@@ -52,12 +57,24 @@ static func _cstr(data: PackedByteArray, off: int, max_len: int) -> String:
 ## Тип terrain из byte[1] тайла: 0=трава (tile1), 1=ГОРЫ (tile2), 2=вода (tile3),
 ## 3=ДОРОГИ/мостовая (tile4). Спец-значения 16..40 на картах Nival — вода (-1),
 ## остальное — барьер (-2). (Эвристика по Beach/Kids3.)
+##
+## Файлы 1..7: byte[1] = file_n - 1, и он СОВПАДАЕТ с типом terrain
+## (tile1=трава=0, ..., tile7=грязь=6), поэтому значение отдаётся как есть.
+##
+## Файлы 8..15 — переходы между биомами (tests/gen_transition_tiles.py). Здесь
+## младший ниббл byte[1] занят номером файла, а тип terrain-владельца лежит
+## в старшем ниббле: hf = (A << 4) | (file_n - 1). Схема — в
+## assets/maps/terrain_tiles_db.json, поле encoding.
 static func terrain_type(hf: int) -> int:
 	if hf >= 0 and hf <= 6:
 		return hf
-	# Biome tiles: hf = (terrain_type << 4) | 7, file=8
-	if (hf & 0xF) == 7 and (hf >> 4) >= 4 and (hf >> 4) <= 6:
-		return hf >> 4
+	# Переходный тайл: file_n = 8..15 -> младший ниббл 7..14.
+	var file_idx: int = hf & 0xF
+	if file_idx >= 7 and file_idx <= 14:
+		var owner: int = (hf >> 4) & 0xF
+		if owner >= 0 and owner <= 6:
+			return owner
+		return -2
 	elif hf >= 16 and hf <= 40:
 		return -1
 	return -2
@@ -320,9 +337,37 @@ static func write_tiles(path: String, raw: PackedByteArray, tiles_off: int, tile
 	return true
 
 ## Tile id из спеки текстур редактора {file 1-8, variant 0-15, row кадр}.
+## Файлы 8..15 — переходы, у них variant = биом-владелец A (0..6),
+## row = сосед B * 2 + вариация. Старшие биты 12-15 остаются нулевыми:
+## тип terrain-владельца для них проставляет tile_encode().
 static func tile_from_spec(spec: Dictionary) -> int:
-	var file_n := clampi(int(spec.get("file", 1)), 1, 8)
+	var file_n := clampi(int(spec.get("file", 1)), 1, MAX_TILE_FILE)
 	var variant := clampi(int(spec.get("variant", 0)), 0, 15)
 	var row := clampi(int(spec.get("row", 0)), 0, 15)
 	var n := (file_n - 1) * 16 + variant
 	return (n << 4) | row
+
+## Кодировать переходный тайл: file_n 8..15, variant = A, row = B*2+вариация,
+## биты 12-15 = A. Именно их читает terrain_type() и по ним же AlmMap
+## определяет, в каком биоме стоит клетка (проходимость/мини-карта).
+static func tile_encode_transition(file_n: int, type_a: int, row: int) -> int:
+	var f := clampi(file_n, TRANSITION_FILE_MIN, MAX_TILE_FILE)
+	var n := (f - 1) * 16 + clampi(type_a, 0, 15)
+	return (clampi(type_a, 0, 15) << 12) | (n << 4) | clampi(row, 0, 15)
+
+## Распаковать: file_n из tile id (1..15).
+static func tile_file_n(tile: int) -> int:
+	return ((tile >> 8) & 0xF) + 1
+
+## Распаковать: variant (0..15) из tile id.
+static func tile_variant(tile: int) -> int:
+	return (tile >> 4) & 0xF
+
+## Распаковать: row (0..15) из tile id.
+static func tile_encode_row(tile: int) -> int:
+	return tile & 0xF
+
+## Переходный ли тайл (файл 8..15).
+static func is_transition_tile(tile: int) -> bool:
+	var f := tile_file_n(tile)
+	return f >= TRANSITION_FILE_MIN

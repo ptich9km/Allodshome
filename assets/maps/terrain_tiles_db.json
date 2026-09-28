@@ -1,0 +1,105 @@
+{
+  "_comment": "Описание всех наземных текстур проекта. Источник правды для scripts/alm_loader.gd, scripts/alm_map.gd, scripts/world/map_generator.gd и tests/gen_transition_tiles.py. Генерируется/правится вручную; при изменении числа файлов обновить vmax_by_file в alm_map.gd и tile_from_spec/tile_encode в alm_loader.gd.",
+  "version": 1,
+
+  "tile_size": 32,
+  "bmp": {
+    "width": 32,
+    "rows": 14,
+    "format": "24-bit BMP, bottom-up",
+    "note": "Все файлы tile1..15 имеют одинаковый размер 43062 байта = 32x448 (14 рядов по 32 px). У воды ТОЖЕ 14 рядов - в AGENTS.md §8.5 раньше было написано 8, это было неверно."
+  },
+
+  "encoding": {
+    "_comment": "Тайл uint16 в секции 1 карты .alm. load_map() делит его на terrain = младший байт и hflags = (tile>>8)&0xFF.",
+    "formula": "tile = (type_a << 12) | ((file_n - 1) << 8) | (variant << 4) | row",
+    "bits_0_3": "row - номер ряда внутри BMP (0..13)",
+    "bits_4_7": "variant - вариация тайла (0..15)",
+    "bits_8_11": "file_n - 1 - номер файла тайла (0..14)",
+    "bits_12_15": "type_a - биом-владелец клетки (0..6). Для файлов 1..7 всегда 0. Для файлов 8..15 (переходы) это биом A.",
+    "compat": "Биты 12-15 в оригинальном формате Allods16 объявлены как 0, то есть были незанятыми. Формат .alm не меняется."
+  },
+
+  "atlas": {
+    "source": "import/ChatGPTImage.png",
+    "size": [1536, 1024],
+    "cell_w": 204,
+    "cell_h": 150,
+    "columns_x": [8, 226, 445, 664, 884, 1104, 1324],
+    "rows_y": [52, 213, 370, 526, 683, 839],
+    "crop": {
+      "left": 3, "top": 0, "right": 203, "bottom": 146,
+      "_comment": "Включительные границы СОДЕРЖИМОГО ячейки, в пикселях от её левого верхнего угла. Замерено по всем 42 ячейкам: слева разделитель атласа шириной 2-3 px (у грязи 3, у песка 0), снизу 1-2 px, справа контент идёт до 203, сверху разделителя нет. Без этого inset'а каждая плитка получалась с тёмной рамкой 1-2 px, и по всей карте была видна регулярная сетка. Итоговый кроп 201x147."
+    },
+    "note": "7 биомов x 6 вариаций = 42 базовые бесшовные текстуры 32x32. Раскладка описана в import/ChatGPTImage.md. Кроп по полю crop обязателен и для интерьеров, и для переходов - иначе плитки разных биомов будут вырезаны с разных границ и бленд будет бить по шву."
+  },
+
+  "biomes": {
+    "0": {"name_ru": "трава",  "name_en": "grass",    "file": 1, "atlas_col": 5},
+    "1": {"name_ru": "горы",   "name_en": "mountain", "file": 2, "atlas_col": 1},
+    "2": {"name_ru": "вода",   "name_en": "water",    "file": 3, "atlas_col": 3},
+    "3": {"name_ru": "дорога", "name_en": "road",     "file": 4, "atlas_col": 6},
+    "4": {"name_ru": "почва",  "name_en": "soil",     "file": 5, "atlas_col": 4},
+    "5": {"name_ru": "песок",  "name_en": "sand",     "file": 6, "atlas_col": 0},
+    "6": {"name_ru": "грязь",  "name_en": "mud",      "file": 7, "atlas_col": 2}
+  },
+
+  "interior_files": {
+    "_comment": "Файлы 1..7 - бесшовные интерьерные текстуры биомов. 16 вариантов на файл, каждый вариант = своя перестановка 6 базовых плиток атласа по 14 рядам. Кромок в них НЕТ: extract_chatgpt_tiles.py заполняет все 14 рядов базовыми плитками по циклу. Поэтому 'row 4 = универсальный край' из AGENTS.md §8.6 больше не действует.",
+    "variants_per_file": 16,
+    "files": {
+      "1": {"biome": 0, "pattern": "tile1-%02d.bmp"},
+      "2": {"biome": 1, "pattern": "tile2-%02d.bmp"},
+      "3": {"biome": 2, "pattern": "tile3-%02d.bmp"},
+      "4": {"biome": 3, "pattern": "tile4-%02d.bmp"},
+      "5": {"biome": 4, "pattern": "tile5-%02d.bmp"},
+      "6": {"biome": 5, "pattern": "tile6-%02d.bmp"},
+      "7": {"biome": 6, "pattern": "tile7-%02d.bmp"}
+    }
+  },
+
+  "directions": {
+    "_comment": "Порядок фиксирован и совпадает с ключами _sides() в map_generator.gd и с CARDINAL_BITS. Номер каталога = file_n - 8.",
+    "order": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
+    "cardinal": ["N", "E", "S", "W"],
+    "diagonal": ["NE", "SE", "SW", "NW"],
+    "axis": {
+      "N":  {"band_axis": "y", "band_at": "min"},
+      "NE": {"band_axis": "xy", "band_at": "min_y,min_x"},
+      "E":  {"band_axis": "x", "band_at": "max"},
+      "SE": {"band_axis": "xy", "band_at": "max_y,max_x"},
+      "S":  {"band_axis": "y", "band_at": "max"},
+      "SW": {"band_axis": "xy", "band_at": "max_y,min_x"},
+      "W":  {"band_axis": "x", "band_at": "min"},
+      "NW": {"band_axis": "xy", "band_at": "min_y,max_x"}
+    }
+  },
+
+  "transition_files": {
+    "_comment": "Файлы 8..15 - офлайн-блендинг биома A в биом B вдоль одного края. file_n = 8 + индекс направления в directions.order, variant = биом-сосед B, row = вариация бленда. Биом A лежит в битах 12-15 тайла. Генерируются скриптом tests/gen_transition_tiles.py из этого же атласа.",
+    "file_base": 8,
+    "neighbor_variants": 7,
+    "variations": 14,
+    "pattern": "tile%d-%02d.bmp (file_n, biome_b)",
+    "total_files": 56,
+    "blend": {
+      "method": "alpha-composite текстуры B поверх текстуры A по маске distance-to-edge",
+      "band_px": 13,
+      "noise": "value-noise, 2 октавы, seed = f(A,B,dir,variation), амплитуда 5 px",
+      "edge": "smoothstep + ordered dither (Bayer 4x4, амплитуда 1/16) - стык дизерингом, а не мягким градиентом",
+      "seed_base": 90210
+    },
+    "known_limits": [
+      "Угловая клетка с двумя отличающимися соседями получает бленд только по одному направлению (кардинальные N,E,S,W имеют приоритет над диагональными). Так же работала оригинальная transition_db.",
+      "Переходы не анимированы: вода не переливается через берег, просто смешивается с сушей."
+    ]
+  },
+
+  "consumers": {
+    "scripts/alm_loader.gd": "terrain_type() декодирует файл 8..15 в тип A из битов 12-15; tile_from_spec() кодирует интерьер; tile_encode() кодирует переходы.",
+    "scripts/alm_map.gd": "_used_cells() собирает ключи f{file}-v{variant}-r{row}; _build_atlas() грузит файлы 1..15 в единый атлас 64x64 ячеек; _build_relief_mesh() раздаёт UV квадам.",
+    "scripts/world/map_generator.gd": "_pick_tile() вызывает _transition_tile() первым; если бленд найден - shape/rules не применяются.",
+    "tests/gen_transition_tiles.py": "генератор файлов 8..15.",
+    "tests/transition_blend_smoke.gd": "проверка стороны кромки, декодирования и метрики шва."
+  }
+}

@@ -27,7 +27,6 @@ var solar_angle: float = 0.785398  # угол солнца из info (.alm), def
 
 var mesh: MeshInstance2D
 var _atlas: ImageTexture
-var _biome_type_map := {}  # atlas key "f8-v*-r*" -> terrain type (4/5/6)
 var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
 var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
 var obstacles_root: Node2D      # слой препятствий (y-sort)
@@ -334,28 +333,20 @@ func relief_at_world(pos: Vector2) -> float:
 # --- Текстуры: атлас всех используемых (файл, вариант, ряд) ---
 
 func _used_cells() -> Dictionary:
-	## Ключ "f{file}-v{variant}-r{row}" -> true. file 1..8, variant 0..15, row 0..nrows-1
+	## Ключ "f{file}-v{variant}-r{row}" -> true. file 1..15, variant 0..15, row 0..nrows-1
+	##
+	## Файлы 1..7 — интерьеры, 8..15 — переходы (variant = биом-владелец A,
+	## row = сосед B*2 + вариация). Ключ у них общий с интерьерами, потому что
+	## file_n и variant лежат в разных битах тайла и по отдельности не
+	## различаются — различает их сам file_n.
 	var used := {}
-	_biome_type_map.clear()
 	for i in range(map_width * map_height):
-		var tile_id := _terrain[i] | (_hflags[i] << 8)
+		var tile_id: int = _terrain[i] | (_hflags[i] << 8)
 		var file_n := (_hflags[i] & 0xF) + 1
-		if file_n == 8:
-			# Biome tile: file=8, variant/row from low bits
-			var variant := (_terrain[i] >> 4) & 0xF
-			var row := _terrain[i] & 0xF
-			var key := "f8-v%d-r%d" % [variant, row]
-			used[key] = true
-			# Store which terrain type this biome cell is (from hflags high nibble)
-			var biome_type := (_hflags[i] >> 4) & 0xF
-			if biome_type >= 4 and biome_type <= 6:
-				_biome_type_map[key] = biome_type
-		else:
-			# Обычный тайл
-			var vmax := 4 if file_n == 4 else 16
-			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
-			var row := _terrain[i] & 0xF
-			used["f%d-v%d-r%d" % [file_n, variant, row]] = true
+		var vmax: int = 4 if file_n == 4 else 16
+		var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
+		var row := _terrain[i] & 0xF
+		used["f%d-v%d-r%d" % [file_n, variant, row]] = true
 	return used
 
 func _build_atlas() -> void:
@@ -363,10 +354,13 @@ func _build_atlas() -> void:
 	# Соберём фактические (файл, вариант, ряд) с реальным числом рядов в файле
 	var cells: Array = []  # [key, Image32]
 	var key_to_cell := {}
-	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16}
-	# Порядок: сначала все ряды файла 1, потом файла 2 ... (для обхода файлов)
-	for file_n in [1, 2, 3, 4, 5, 6, 7]:
-		var vmax: int = vmax_by_file[file_n]
+	# Файлы 1..7 — интерьеры (16 вариантов, у дороги tile4 всего 4),
+	# файлы 8..15 — переходы (7 вариантов = 7 биомов-владельцев).
+	# См. assets/maps/terrain_tiles_db.json.
+	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16,
+		8: 7, 9: 7, 10: 7, 11: 7, 12: 7, 13: 7, 14: 7, 15: 7}
+	for file_n in range(1, AlmLoader.MAX_TILE_FILE + 1):
+		var vmax: int = vmax_by_file.get(file_n, 16)
 		for variant in range(vmax):
 			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
 			if not ResourceLoader.exists(path):
@@ -381,33 +375,6 @@ func _build_atlas() -> void:
 					continue
 				var cell_img: Image = img.get_region(Rect2i(0, row * TILE, TILE, TILE))
 				cells.append([key, cell_img])
-				key_to_cell[key] = cells.size() - 1
-
-	# Biome tiles (file=8): load PNG from assets/terrain/biomes/
-	var biome_dir_names: Dictionary = {4: "soil", 5: "sand", 6: "mud"}
-	for key in used:
-		if not key.begins_with("f8-v"):
-			continue
-		if key_to_cell.has(key):
-			continue
-		# Parse key: "f8-v{variant}-r{row}"
-		var dash1: int = key.find("-", 2)
-		var dash2: int = key.find("-", dash1 + 1)
-		if dash1 < 0 or dash2 < 0:
-			continue
-		var variant: int = key.substr(dash1 + 2, dash2 - dash1 - 2).to_int()
-		var row: int = key.substr(dash2 + 2).to_int()
-		# Look up terrain type from biome_type_map
-		var biome_type: int = _biome_type_map.get(key, 5) as int
-		var dir_name: String = biome_dir_names.get(biome_type, "sand") as String
-		# Row 0-3 = transition (direction), row 4 = interior
-		var tex_path: String = "res://assets/terrain/biomes/%s/%s_%02d.png" % [dir_name, dir_name, variant + 1]
-		if ResourceLoader.exists(tex_path):
-			var tex: Texture2D = load(tex_path)
-			if tex:
-				var img: Image = tex.get_image()
-				img.convert(Image.FORMAT_RGBA8)
-				cells.append([key, img])
 				key_to_cell[key] = cells.size() - 1
 
 	# Собираем атлас 64x64 ячейки (до 4096)
@@ -505,24 +472,10 @@ func _build_relief_mesh() -> void:
 			if uv == Vector4(0, 0, 0, 0):
 				continue
 
-			# Determine blend: check cardinal neighbors
-			var blend := 0.0
-			var neighbor_type := t
-			var dirs := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
-			for d in dirs:
-				var nx: int = x + d.x
-				var ny: int = y + d.y
-				if nx >= 0 and nx < map_width and ny >= 0 and ny < map_height:
-					var ni: int = ny * map_width + nx
-					var nt: int = types[ni]
-					if nt >= 0 and nt != t:
-						neighbor_type = nt
-						blend = 1.0
-						break
-
-			# COLOR: r=g,b=1.0 (atlas color), a=brightness
+			# COLOR: r=g=b=1.0 (атлас color), a=brightness
 			var br := _brightness(x, y)
 			st.set_color(Color(1.0, 1.0, 1.0, br))
+
 
 			# Quad corners with height
 			var h00 := _node_h(x, y)

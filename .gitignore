@@ -27,3 +27,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.import
+
+# Python (скрипты-генераторы ассетов в tests/)
+__pycache__/
+*.pyc
