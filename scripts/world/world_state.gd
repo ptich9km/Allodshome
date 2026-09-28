@@ -110,6 +110,18 @@ func get_region(r: String) -> Dictionary:
 	return regions.get(r, {})
 
 # --- Сериализация -------------------------------------------------------------
+##
+## ВНИМАНИЕ: результат to_dict() обязан быть JSON-безопасным, потому что
+## именно он уходит в файл сохранения. В данных мира лежат Vector2
+## (cities[].pos, armies[].pos/target, regions[].area_px, hero.pos) и Color
+## (factions[].color), а JSON.stringify на них не возвращает исходный тип.
+## Раньше encode не делался вовсе, и баг был не виден: сравнение словарей
+## в памяти проходило, а файл на диске оказывался битым.
+##
+## from_dict() тоже был неполным: из 13 полей восстанавливал 8, молча теряя
+## day, global_threat, relations, hero и journal. «Продолжить» обнулило бы
+## день мира и угрозу.
+
 func to_dict() -> Dictionary:
 	return {
 		"counters": { "u": _u, "c": _c, "f": _f, "a": _a, "r": _r },
@@ -118,6 +130,14 @@ func to_dict() -> Dictionary:
 		"day": day, "global_threat": global_threat,
 		"relations": relations, "hero": hero, "journal": journal,
 	}
+
+## Полная сериализация в JSON-безопасную форму. Для записи в файл.
+func to_json_dict() -> Dictionary:
+	return JsonSafe.encode(to_dict()) as Dictionary
+
+## Текст для файла сохранения. Путь, которым реально пишет SaveSystem.
+func to_json_text() -> String:
+	return JSON.stringify(to_json_dict())
 
 static func from_dict(d: Dictionary):
 	# NOTE (headless-canon): без class_name мы НЕ можем вызвать WorldState.new() —
@@ -130,7 +150,32 @@ static func from_dict(d: Dictionary):
 	ws.units = d.get("units", {}); ws.cities = d.get("cities", {})
 	ws.factions = d.get("factions", {}); ws.armies = d.get("armies", {})
 	ws.regions = d.get("regions", {})
+	# --- эти пять полей раньше НЕ восстанавливались ---
+	ws.day = int(d.get("day", 0))
+	ws.global_threat = float(d.get("global_threat", 0.0))
+	ws.relations = d.get("relations", {})
+	ws.hero = d.get("hero", {})
+	# journal объявлен как Array[Dictionary]; после JSON это обычный Array,
+	# поэтому пересобираем типизированный, иначе присвоение падает.
+	var raw_journal: Array = d.get("journal", [])
+	var j: Array[Dictionary] = []
+	for entry in raw_journal:
+		j.append(entry as Dictionary)
+	ws.journal = j
 	return ws
+
+## Восстановление из JSON-текста (с декодированием типов).
+static func from_json_text(s: String):
+	# JSON.new().parse(), а не JSON.parse_string(): тот при битом файле печатает
+	# в консоль красную ошибку движка, а повреждённое сохранение должно
+	# откатываться на .bak тихо.
+	var j := JSON.new()
+	if j.parse(s) != OK:
+		return null
+	return from_json_dict(j.data as Dictionary)
+
+static func from_json_dict(d: Dictionary):
+	return from_dict(JsonSafe.decode(d) as Dictionary)
 
 ## Хелпер для ортодоксального Vector2 в JSON/словарь (сериализуемо без нод).
 static func vec2_to(v: Vector2) -> Dictionary:
