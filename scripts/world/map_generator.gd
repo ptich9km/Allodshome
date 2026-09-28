@@ -81,11 +81,6 @@ const _NOISE_OFFSETS := {0: 1234, 1: 5678, 2: 9012, 3: 3456, 4: 7890, 5: 2345, 6
 var _stat_exact := 0
 var _stat_subset := 0
 var _stat_rules := 0
-var _stat_biome := 0  # Счётчик биомных тайлов
-
-# Режим биомных текстур (отключён — недостаточно текстур)
-var use_biome_textures: bool = false
-var _biome_selector: RefCounted = null  # BiomeTileSelector instance
 
 ## Базовое имя файлов карты по сиду: map_<seed>_<zone>.
 static func map_basename(seed_value: int, zone: String) -> String:
@@ -145,15 +140,6 @@ func _load_db() -> void:
 			_base_int = sjson.get("interior", {})
 	print("SHAPES: %d entries, base textures for %d types" % [_shapes.size(), _base_int.size()])
 	_compute_edge_rows()
-	
-	# Инициализируем BiomeTileSelector
-	if use_biome_textures:
-		var BiomeTileSelectorClass = load("res://scripts/biome_tile_selector.gd")
-		if BiomeTileSelectorClass:
-			_biome_selector = BiomeTileSelectorClass.new()
-			print("BiomeTileSelector initialized")
-		else:
-			push_error("Failed to load BiomeTileSelector!")
 
 ## «Краевой» row на тип: самый частотный row среди форм с >=1 кардинальным
 ## битом (N/E/S/W) и >= MIN_CELLS клеток. Для травы/гор это «универсальный
@@ -1112,15 +1098,6 @@ func _place_terrain(n: int) -> void:
 	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
 
 func _pick_tile(t: int, x: int, y: int) -> int:
-	# Если включён режим биомных текстур
-	if use_biome_textures:
-		if _biome_selector != null:
-			return _pick_biome_tile(t, x, y)
-		else:
-			if x == 0 and y == 0:
-				print("map_generator: use_biome_textures=true but _biome_selector is null!")
-
-	# Старая система
 	var s: Dictionary = _sides(x, y)
 	var mask := _mask_from_sides(s, t)
 	if mask == 0:
@@ -1131,52 +1108,6 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 		_stat_exact += 1
 		return AlmLoader.tile_from_spec(spec)
 	# 2. Fallback: old directional rules (first matching direction)
-	_stat_rules += 1
-	return _edge_tile(t, s, x, y)
-
-## Выбрать биомный тайл (новая система)
-func _pick_biome_tile(t: int, x: int, y: int) -> int:
-	"""Выбирает биомный тайл используя BiomeTileSelector."""
-	if _biome_selector == null:
-		if x == 0 and y == 0:
-			print("map_generator: _biome_selector is null!")
-		return _pick_tile_old(t, x, y)
-	
-	var s: Dictionary = _sides(x, y)
-	
-	# Проверяем есть ли переход
-	for dir_name in ["N", "S", "E", "W"]:
-		var neighbor = s[dir_name]
-		if neighbor != -1 and neighbor != t:
-			# Нужен transition тайл
-			var tex = _biome_selector.get_transition_texture(t, neighbor, dir_name.to_lower(), (x + y) % 6)
-			if tex:
-				# Используем file=8 + бит 12 для обозначения биомного тайла
-				var dir_row = {"right": 0, "left": 1, "top": 2, "bottom": 3}.get(dir_name.to_lower(), 0)
-				var base_id = AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": dir_row})
-				_stat_biome += 1
-				return base_id | 0x1000  # Устанавливаем бит 12 = биомный тайл
-	
-	# Interior тайл
-	var tex = _biome_selector.get_interior_texture(t, (x + y) % 6)
-	if tex:
-		var base_id = AlmLoader.tile_from_spec({"file": 8, "variant": (x + y) % 6, "row": 4})
-		_stat_biome += 1
-		return base_id | 0x1000  # Бит 12 = биомный тайл
-	
-	# Fallback на старую систему
-	return _pick_tile_old(t, x, y)
-
-## Старая система _pick_tile (переименована)
-func _pick_tile_old(t: int, x: int, y: int) -> int:
-	var s: Dictionary = _sides(x, y)
-	var mask := _mask_from_sides(s, t)
-	if mask == 0:
-		return _interior_tile(t, x, y)
-	var spec := _shape_lookup(t, mask, x, y)
-	if not spec.is_empty():
-		_stat_exact += 1
-		return AlmLoader.tile_from_spec(spec)
 	_stat_rules += 1
 	return _edge_tile(t, s, x, y)
 
@@ -1574,8 +1505,6 @@ func _save() -> void:
 		print("Terrain: " + ", ".join(terrain_parts))
 		print("Shapes: exact=%d subset=%d rules-fallback=%d" % [
 			_stat_exact, _stat_subset, _stat_rules])
-		if _stat_biome > 0:
-			print("Biome tiles: %d (%.1f%%)" % [_stat_biome, _stat_biome * 100.0 / total])
 		_road_stats(tc.get(3, 0))
 		var obj_count := 0
 		for v in _obstacles:

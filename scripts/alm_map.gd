@@ -40,9 +40,6 @@ var _spawn_cell: Vector2i = Vector2i(-1, -1)
 var _portal_markers: Array = [] # PortalMarker instances
 var _spawn_marker: Node2D = null
 
-# Новая система биомов
-var _biome_selector: RefCounted  # BiomeTileSelector instance
-
 ## Единый слой с y-сортировкой для препятствий и зданий: южнее — поверх.
 func _ensure_world_sort() -> Node2D:
 	if world_sort == null:
@@ -65,14 +62,6 @@ func _ready() -> void:
 	if alm_path.is_empty():
 		push_warning("AlmMap: alm_path не задан")
 		return
-	
-	# Инициализируем селектор биомов
-	var BiomeTileSelectorClass = load("res://scripts/biome_tile_selector.gd")
-	if BiomeTileSelectorClass:
-		_biome_selector = BiomeTileSelectorClass.new()
-		print("AlmMap: BiomeTileSelector initialized")
-	else:
-		push_error("AlmMap: failed to load BiomeTileSelector!")
 	
 	var data := AlmLoader.load_map(alm_path)
 	if data.is_empty():
@@ -371,12 +360,6 @@ func _build_atlas() -> void:
 	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16, 8: 16}
 	# Порядок: сначала все ряды файла 1, потом файла 2 ... (для обхода файлов)
 	for file_n in [1, 2, 3, 4, 5, 6, 7, 8]:
-		if file_n == 8:
-			# Биомные тайлы (file=8)
-			if _biome_selector != null:
-				_add_biome_cells(cells, key_to_cell, used)
-			continue
-		
 		var vmax: int = vmax_by_file[file_n]
 		for variant in range(vmax):
 			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
@@ -410,83 +393,7 @@ func _build_atlas() -> void:
 		var v1 := v0 + 1.0 / 64.0
 		_cell_uv[key] = Vector4(u0, v0, u1, v1)
 	_atlas = ImageTexture.create_from_image(atlas)
-	print("AlmMap: атлас %d ячеек (включая биомы)" % cells.size())
-
-## Загрузить текстуры биомов в атлас (новая система)
-func _load_biome_textures() -> void:
-	"""Загружает текстуры из BiomeTileSelector в атлас."""
-	if _biome_selector == null:
-		return
-
-	# Получаем список биомов
-	var biome_types = _biome_selector.get_biome_types()
-
-	# Для каждого биома загружаем interior текстуры
-	for biome_type in biome_types:
-		for variant in range(6):  # 6 вариантов на биом
-			var tex = _biome_selector.get_interior_texture(biome_type, variant)
-			if tex:
-				var key = "biome_%d_v%d" % [biome_type, variant]
-				var img = tex.get_image()
-				img.convert(Image.FORMAT_RGBA8)
-
-				# Добавляем в атлас (упрощённо - пока просто кэшируем)
-				_cell_uv[key] = Vector4(0, 0, 1, 1)  # Заглушка - нужно правильно добавить в атлас
-
-	print("AlmMap: загружено биомов %d" % biome_types.size())
-
-## Добавить биомные клетки в массив cells
-func _add_biome_cells(cells: Array, key_to_cell: Dictionary, used: Dictionary) -> void:
-	"""Добавляет текстуры биомов в список клеток для атласа."""
-	if _biome_selector == null:
-		print("AlmMap: _biome_selector is null!")
-		return
-
-	var biome_types = _biome_selector.get_biome_types()
-	print("AlmMap: biome_types = %s" % str(biome_types))
-	
-	var added_count = 0
-
-	for biome_type in biome_types:
-		# Добавляем interior текстуры (file=8, row=4)
-		for variant in range(6):
-			var tex = _biome_selector.get_interior_texture(biome_type, variant)
-			if tex:
-				var key = "f8-v%d-r4" % variant  # file=8, row=4 для interior
-				if not used.has(key) and not key_to_cell.has(key):
-					var img = tex.get_image()
-					img.convert(Image.FORMAT_RGBA8)
-					if img.get_width() >= TILE and img.get_height() >= TILE:
-						var cell_img = img.get_region(Rect2i(0, 0, TILE, TILE))
-						cells.append([key, cell_img])
-						key_to_cell[key] = cells.size() - 1
-						added_count += 1
-					else:
-						print("AlmMap: texture too small %dx%d" % [img.get_width(), img.get_height()])
-			else:
-				print("AlmMap: no interior texture for biome %d variant %d" % [biome_type, variant])
-
-		# Добавляем transition текстуры (file=8, row=0-3 для направлений)
-		for other_biome in biome_types:
-			if other_biome == biome_type:
-				continue
-			var dir_rows = {"right": 0, "left": 1, "top": 2, "bottom": 3}
-			for direction in dir_rows:
-				var row = dir_rows[direction]
-				for variant in range(6):
-					var tex = _biome_selector.get_transition_texture(biome_type, other_biome, direction, variant)
-					if tex:
-						var key = "f8-v%d-r%d" % [variant, row]
-						if not used.has(key) and not key_to_cell.has(key):
-							var img = tex.get_image()
-							img.convert(Image.FORMAT_RGBA8)
-							if img.get_width() >= TILE and img.get_height() >= TILE:
-								var cell_img = img.get_region(Rect2i(0, 0, TILE, TILE))
-								cells.append([key, cell_img])
-								key_to_cell[key] = cells.size() - 1
-								added_count += 1
-
-	print("AlmMap: добавлено %d биомных клеток" % added_count)
+	print("AlmMap: атлас %d ячеек" % cells.size())
 
 ## Для отладки: сама текстура атласа.
 func get_atlas_texture() -> ImageTexture:
