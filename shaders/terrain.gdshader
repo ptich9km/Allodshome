@@ -136,19 +136,14 @@ vec3 gen_terrain(int t, vec2 wp) {
 // === Fragment ===
 
 void fragment() {
-	// COLOR.r = terrain_type_a (0-6 mapped to 0.0..1.0)
-	// COLOR.g = blend_factor (0.0 = no blend, >0 = blend with type_b)
-	// COLOR.b = terrain_type_b
-	// COLOR.a = brightness (solar)
-	int ta = int(COLOR.r * 7.0 + 0.5);
+	int ta = int(round(COLOR.r * 7.0));
 	float blend = COLOR.g;
-	int tb = int(COLOR.b * 7.0 + 0.5);
+	int tb = int(round(COLOR.b * 7.0));
 
 	vec3 col;
 	if (blend > 0.01 && ta != tb) {
 		vec3 ca = gen_terrain(ta, v_world);
 		vec3 cb = gen_terrain(tb, v_world);
-		// Noise-based soft blend
 		float n = fbm(v_world * 0.05 + 42.0, 3);
 		float b = smoothstep(blend - 0.15, blend + 0.15, n);
 		col = mix(ca, cb, b);
@@ -156,6 +151,6 @@ void fragment() {
 		col = gen_terrain(ta, v_world);
 	}
 
-	col *= COLOR.a;  // solar brightness
+	col *= COLOR.a;
 	COLOR = vec4(col, 1.0);
 }

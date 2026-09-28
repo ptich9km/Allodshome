@@ -511,8 +511,7 @@ func _build_relief_mesh() -> void:
 						blend = 1.0
 						break
 
-			# Terrain type encoded in vertex color
-			# r = type_a, g = blend_factor, b = type_b, a = brightness
+			# Encode terrain type in vertex color: r=type_a, g=blend, b=type_b, a=brightness
 			var br := _brightness(x, y)
 			var c := Color(
 				float(t) / 7.0,
@@ -530,20 +529,19 @@ func _build_relief_mesh() -> void:
 			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
 			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
 
-			# UV placeholder (shader uses world coords, not UV)
-			st.set_color(c)
-			st.add_vertex(p00)
-			st.set_color(c)
-			st.add_vertex(p10)
-			st.set_color(c)
-			st.add_vertex(p01)
+			# UV is unused by shader but required by SurfaceTool for correct attribute format
+			var uv0 := Vector2(x, y)
+			var uv1 := Vector2(x + 1, y)
+			var uv2 := Vector2(x, y + 1)
+			var uv3 := Vector2(x + 1, y + 1)
 
-			st.set_color(c)
-			st.add_vertex(p10)
-			st.set_color(c)
-			st.add_vertex(p11)
-			st.set_color(c)
-			st.add_vertex(p01)
+			st.set_color(c); st.set_uv(uv0); st.add_vertex(p00)
+			st.set_color(c); st.set_uv(uv1); st.add_vertex(p10)
+			st.set_color(c); st.set_uv(uv2); st.add_vertex(p01)
+
+			st.set_color(c); st.set_uv(uv1); st.add_vertex(p10)
+			st.set_color(c); st.set_uv(uv3); st.add_vertex(p11)
+			st.set_color(c); st.set_uv(uv2); st.add_vertex(p01)
 
 	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
@@ -552,10 +550,13 @@ func _build_relief_mesh() -> void:
 	# Load procedural terrain shader
 	var mat := ShaderMaterial.new()
 	var shader: Shader = load("res://shaders/terrain.gdshader")
-	mat.shader = shader
+	if shader == null:
+		push_error("AlmMap: terrain shader failed to load!")
+	else:
+		mat.shader = shader
 	mesh.mesh = amesh
 	mesh.material = mat
-	print("AlmMap: меш собран (%d клеток, procedural terrain)" % (map_width * map_height))
+	print("AlmMap: меш собран (%d клеток, shader=%s)" % [map_width * map_height, str(shader != null)])
 
 func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
 	st.set_uv(Vector2(u, v))
