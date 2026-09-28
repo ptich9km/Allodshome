@@ -47,7 +47,7 @@
 
 ## Visual target
 
-- Approved seed/reference paths: **`C:\Work\char_gen\mage_m_target_001.png`** (исходник 768×768) + `mage_m_target_001_128.png` (спрайт). Все следующие генерации персонажей — только через `bl image edit --image <seed>` с этим референсом.
+- Approved seed/reference paths: **`assets/wip/characters/mage_m_target_001.png`** (исходник 768×768, в git с 28.09 — страховка от потерь; рабочая копия `C:\Work\char_gen\`) + `_128.png` (спрайт). Все следующие генерации персонажей — только через `bl image edit --image <seed>` с этим референсом.
 - Required do/don't examples: **DO** — силуэт/палитра/освещение как в seed; **DON'T** — кандидат 002 (отклонён), фотореализм, 3D-look
 - Native-scale gameplay capture: `mage_m_target_001_ingame.png` / `_ingame_x3.png` (на тайлах травы) — одобрено пользователем
-- Approval owner/date: пользователь / 2026-09-25
+- Approval owner/date: пользователь / 2026-09-28 (переодобрен после утери char_gen 25.09-версии; палитра нового seed совпала с зафиксированной выше)
