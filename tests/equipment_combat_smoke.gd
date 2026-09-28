@@ -72,7 +72,7 @@ func _test_starter_equipped() -> void:
 	_check(not _hero.equipped.is_empty(),
 		"стартовое снаряжение надето при создании героя (%s)" % str(_hero.equipped.keys()))
 	_check(_hero.equipped.has("weapon"), "надето оружие")
-	_check(_hero.equipped.has("armor"), "надето броня")
+	_check(_hero.equipped.has("body"), "надето броня (слот body)")
 	for slot in _hero.equipped.keys():
 		_check(_hero.inventory.has(str(_hero.equipped[slot])),
 			"надетое %s (%s) реально есть в инвентаре" % [slot, str(_hero.equipped[slot])])
@@ -91,12 +91,12 @@ func _test_armor_changes_defense() -> void:
 	var def_light := int(light.get("defence", 0))
 	var def_heavy := int(heavy.get("defence", 0))
 
-	_hero.equipped.erase("armor")
+	_hero.equipped.erase("body")
 	_hero.equipped.erase("shield")
 	var naked := _hero.get_defense()
-	_hero.equipped["armor"] = LIGHT_ARMOR
+	_hero.equipped["body"] = LIGHT_ARMOR
 	var in_light := _hero.get_defense()
-	_hero.equipped["armor"] = HEAVY_ARMOR
+	_hero.equipped["body"] = HEAVY_ARMOR
 	var in_heavy := _hero.get_defense()
 
 	_check(in_light > naked,
@@ -111,10 +111,10 @@ func _test_armor_changes_defense() -> void:
 			% [in_heavy - in_light, def_heavy - def_light])
 
 	# Поглощение и сопротивление тоже.
-	_hero.equipped["armor"] = LIGHT_ARMOR
+	_hero.equipped["body"] = LIGHT_ARMOR
 	var abs_light := _hero.get_absorption()
 	var prot_light := _hero.get_protection_fire()
-	_hero.equipped["armor"] = HEAVY_ARMOR
+	_hero.equipped["body"] = HEAVY_ARMOR
 	_check(_hero.get_absorption() >= abs_light,
 		"поглощение не падает от смены брони (%d -> %d)" % [abs_light, _hero.get_absorption()])
 	_check(_hero.get_protection_fire() != prot_light
@@ -159,7 +159,7 @@ func _test_weapon_changes_damage() -> void:
 # --- 4. Снятие возвращает базовые статы ------------------------------------
 
 func _test_unequip_restores() -> void:
-	_hero.equipped["armor"] = HEAVY_ARMOR
+	_hero.equipped["body"] = HEAVY_ARMOR
 	_hero.equipped["weapon"] = "Common Iron Long Sword"
 	var with_gear := _hero.get_defense()
 	_hero.equipped.clear()

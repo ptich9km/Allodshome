@@ -9,15 +9,48 @@ const DB_PATH := "res://assets/items/item_db.json"
 
 const _WEAPON_TYPES := [
 	"Dagger", "Short Sword", "Long Sword", "Bastard Sword", "Two Handed Sword",
-	"Spiked Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer",
+	"Spiked Club", "Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer",
 	"Axe", "Two Handed Axe", "Pike", "Lance", "Halberd",
 	"Staff", "Shaman Staff", "Short Bow", "Long Bow", "Crossbow"]
 const _SHIELD_TYPES := ["Buckler", "Small Shield", "Large Shield", "Tower Shield"]
 const _SWORD_TYPES := ["Dagger", "Short Sword", "Long Sword", "Bastard Sword", "Two Handed Sword"]
-const _CLUB_TYPES := ["Spiked Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer"]
+const _CLUB_TYPES := ["Spiked Club", "Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer"]
 const _TWO_HANDED_TYPES := [
 	"Two Handed Sword", "Two Handed Axe", "Staff", "Shaman Staff",
 	"Short Bow", "Long Bow", "Crossbow"]
+
+## Слоты экипировки (порядок = порядок на панели персонажа). Типы — из item_db.json:
+## шлемы (Helm/Full Helm/Plate Helm/Chain Helm/Cap/Hat/Low Hat), броня тела
+## (Cuirass/Plate Cuirass/Mail/Chain Mail/Scale Mail/Robe/Dress), плащи (Cloak/Cape),
+## руки (Bracers/Plate Bracers/Scale Gauntlets/Gauntlets/Gloves/Chain Gauntlets),
+## ноги (Plate Boots/Boots/Shoes/Chain Boots), амулеты и кольца. Раньше всё это
+## схлопывалось в один слот "armor" — теперь у каждой части тела свой слот.
+const _HEAD_TYPES := ["Helm", "Full Helm", "Plate Helm", "Chain Helm", "Cap", "Hat", "Low Hat"]
+const _CLOAK_TYPES := ["Cloak", "Cape"]
+const _BODY_TYPES := ["Cuirass", "Plate Cuirass", "Mail", "Chain Mail", "Scale Mail", "Robe", "Dress"]
+const _HANDS_TYPES := ["Bracers", "Plate Bracers", "Scale Gauntlets", "Gauntlets", "Gloves", "Chain Gauntlets"]
+const _FEET_TYPES := ["Plate Boots", "Boots", "Shoes", "Chain Boots"]
+const _AMULET_TYPES := ["Amulet"]
+const _RING_TYPES := ["Ring"]
+
+## Все слоты экипировки героя, в порядке отображения на панели персонажа.
+const EQUIP_SLOTS: Array[String] = [
+	"weapon", "shield", "head", "cloak", "body", "hands", "feet", "amulet", "ring1", "ring2",
+]
+
+## Русское название слота для подписи/тултипа панели персонажа.
+static func slot_title(slot: String) -> String:
+	match slot:
+		"weapon": return "Оружие"
+		"shield": return "Щит"
+		"head": return "Шлем"
+		"cloak": return "Плащ"
+		"body": return "Броня"
+		"hands": return "Перчатки"
+		"feet": return "Сапоги"
+		"amulet": return "Амулет"
+		"ring1", "ring2": return "Кольцо"
+	return "—"
 
 static var _items: Array = []
 static var _by_key := {}
@@ -51,14 +84,48 @@ static func find(key: String) -> Dictionary:
 	ensure_loaded()
 	return _by_key.get(key, {})
 
-## Слот экипировки: weapon / shield / armor (всё остальное — одежда/аксессуары).
+## Слот экипировки: weapon / shield / head / cloak / body / hands / feet / amulet / ring.
+## Кольцо возвращает "ring" — конкретный слот ring1/ring2 выбирает player.equip_item().
+## "" — предмет не экипируется или тип неизвестен.
 static func slot_of(item: Dictionary) -> String:
 	var t := str(item.get("type", ""))
 	if t in _WEAPON_TYPES:
 		return "weapon"
 	if t in _SHIELD_TYPES:
 		return "shield"
-	return "armor"
+	if t in _HEAD_TYPES:
+		return "head"
+	if t in _CLOAK_TYPES:
+		return "cloak"
+	if t in _BODY_TYPES:
+		return "body"
+	if t in _HANDS_TYPES:
+		return "hands"
+	if t in _FEET_TYPES:
+		return "feet"
+	if t in _AMULET_TYPES:
+		return "amulet"
+	if t in _RING_TYPES:
+		return "ring"
+	return ""
+
+## Подходит ли предмет в слот (ring принимает и ring1/ring2).
+static func fits_slot(item: Dictionary, slot: String) -> bool:
+	var s := slot_of(item)
+	if s == "":
+		return false
+	if s == "ring":
+		return slot == "ring" or slot == "ring1" or slot == "ring2"
+	return s == slot
+
+## Все предметы базы, подходящие в слот (для подсветки совместимых предметов инвентаря).
+static func items_for_slot(slot: String) -> Array:
+	ensure_loaded()
+	var out: Array = []
+	for it in _items:
+		if fits_slot(it, slot):
+			out.append(it)
+	return out
 
 ## Тип оружия для анимаций героя (unarmed/sword/axe/club/pike/bow/xbow/staff/magic).
 static func weapon_kind(item: Dictionary) -> String:

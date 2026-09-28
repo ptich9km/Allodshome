@@ -36,7 +36,8 @@ var _repath_timer := 0.0
 # --- Экономика (P0): золото и склад владений ---
 var gold: int = 20
 var inventory: Array = []   # ключи предметов item_db ("Common Iron Long Sword", "Potion ...")
-## Экипированные предметы: слот ("weapon"/"shield"/"armor") -> ключ item_db.
+## Экипированные предметы: слот ("weapon"/"shield"/"head"/"cloak"/"body"/"hands"/
+## "feet"/"amulet"/"ring1"/"ring2") -> ключ item_db (см. ItemDB.EQUIP_SLOTS).
 ## Раньше экипировка меняла ТОЛЬКО набор анимации (armor_kind/weapon/has_shield) и
 ## не сохраняла, какой предмет надет, — поэтому get_defense/get_attack/get_absorption
 ## считали чистые формулы по атрибутам, и тяжёлая броня с защитой 14 давала ровно
@@ -345,17 +346,20 @@ func get_attack() -> int:
 
 func get_defense() -> int:
 	var base := agility / 2 + body / 4    # Agility -> уклонение/защита
-	# Броня и щит дают свою defence, и она берётся ПОЛНОСТЬЮ: /10, как было
-	# в черновике, превращал броню с защитой 14 в +1 и делал экипировку
-	# бессмысленной. Атрибуты остаются базой, вещи — поверх.
-	var bonus := int(_equipped_item("armor").get("defence", 0)) \
-		+ int(_equipped_item("shield").get("defence", 0))
+	# Все надетые части (броня, шлем, плащ, перчатки, сапоги, амулеты, кольца,
+	# щит) дают свой defence, и он берётся ПОЛНОСТЬЮ. Атрибуты — база, вещи — поверх.
+	var bonus := 0
+	for it in _equipped_items():
+		bonus += int(it.get("defence", 0))
 	return int(round((base + bonus + StatusEffects.stat_flat(self, "defense")) \
 		* StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	# Поглощение брони (в оригинале — отдельная характеристика брони).
-	return body / 4 + int(_equipped_item("armor").get("absorption", 0))
+	# Поглощение (в оригинале — отдельная характеристика брони): сумма по всем частям.
+	var a := body / 4
+	for it in _equipped_items():
+		a += int(it.get("absorption", 0))
+	return a
 
 ## Предмет в слоте (пустой словарь, если слот пуст или предмета нет в базе).
 func _equipped_item(slot: String) -> Dictionary:
@@ -365,17 +369,31 @@ func _equipped_item(slot: String) -> Dictionary:
 	var it := ItemDB.find(key)
 	return it if not it.is_empty() else {}
 
+## Все надетые предметы (для статов/куклы). Пустые слоты пропускаются.
+func _equipped_items() -> Array:
+	var out: Array = []
+	for slot in ItemDB.EQUIP_SLOTS:
+		var it := _equipped_item(slot)
+		if not it.is_empty():
+			out.append(it)
+	return out
+
 ## Надеть предмет: запоминаем ключ в слоте и обновляем набор анимации.
+## Кольцо надевается в первый свободный слот ring1/ring2.
 ## true, если предмет экипирован.
 func equip_item(item: Dictionary) -> bool:
 	if not ItemDB.is_equippable(item):
 		return false
 	var slot := ItemDB.slot_of(item)
+	if slot == "":
+		return false
+	if slot == "ring":
+		slot = "ring1" if str(equipped.get("ring1", "")) == "" else "ring2"
 	if slot == "shield" and two_handed:
 		return false
 	equipped[slot] = str(item.get("key", ""))
 	match slot:
-		"armor":
+		"body":
 			armor_kind = ItemDB.armor_kind(item)
 		"weapon":
 			weapon = ItemDB.weapon_kind(item)
@@ -385,6 +403,26 @@ func equip_item(item: Dictionary) -> bool:
 				equipped.erase("shield")
 		"shield":
 			has_shield = true
+	refresh_animation()
+	return true
+
+## Снять предмет со слота: ключ возвращается в инвентарь UI-слоем (add_item),
+## здесь — только очистка слота и пересчёт набора анимации. true — был надет.
+func unequip_slot(slot: String) -> bool:
+	if slot not in ItemDB.EQUIP_SLOTS:
+		return false
+	if str(equipped.get(slot, "")) == "":
+		return false
+	equipped.erase(slot)
+	match slot:
+		"weapon":
+			weapon = "unarmed"
+			two_handed = false
+		"shield":
+			has_shield = false
+		"body":
+			# Без брони — базовый набор героя (heroes/), не «лёгкий».
+			armor_kind = "heavy"
 	refresh_animation()
 	return true
 
@@ -399,9 +437,9 @@ func get_magic_power() -> int:
 ## сопротивление) + навык сферы + временные баффы Protection_from_*.
 func _sphere_protection(sphere: String) -> int:
 	var skill := sphere_skill(sphere)
-	# magcap брони/оружия — вклад в сопротивление стихии: у одежды он и есть
+	# magcap брони тела/оружия — вклад в сопротивление стихии: у одежды он и есть
 	# (у Common Leather Mail magcap=3, у тяжёлой брони — 150).
-	var gear := int(_equipped_item("armor").get("magcap", 0)) \
+	var gear := int(_equipped_item("body").get("magcap", 0)) \
 		+ int(_equipped_item("weapon").get("magcap", 0))
 	return spirit + skill / 10 + gear / 10 + StatusEffects.resist_bonus(self, sphere)
 

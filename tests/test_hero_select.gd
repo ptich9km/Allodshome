@@ -30,8 +30,8 @@ func _init():
 	print("weapon=%s armor=%s shield=%s" % [player.weapon, player.armor_kind, player.has_shield])
 	print("max_hp=%d max_mana=%d speed=%.1f" % [player.max_hp, player.max_mana, player.move_speed])
 	print("anim_set:", player.anim_set_name())
-	var port := player.get_node("../UI/PortraitBorder/PortraitTexture") if player.get_node_or_null("../UI/PortraitBorder/PortraitTexture") else null
-	var ui_name := player.get_node("../UI/HeroName")
+	var port := player.get_node("../UI/RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder/MiniPortrait") if player.get_node_or_null("../UI/RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder/MiniPortrait") else null
+	var ui_name := player.get_node("../UI/RightPanel/RightMargin/RightCol/Header/HeaderText/HeroName")
 	if ui_name:
 		print("UI hero name:", (ui_name as Label).text)
 	var ok: bool = player.body == 7 and player.mind == 12 and player.fire_skill == 25 \

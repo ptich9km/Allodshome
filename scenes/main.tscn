@@ -5,15 +5,8 @@
 [ext_resource type="Script" uid="uid://crei7tovawvm8" path="res://scripts/enemy.gd" id="3_enemy"]
 [ext_resource type="Script" uid="uid://b6ptpfd5x8bw0" path="res://scripts/ui.gd" id="4_ui"]
 [ext_resource type="Script" uid="uid://jgol45tm5cng" path="res://scripts/alm_map.gd" id="9_almmap"]
-[ext_resource type="Texture2D" uid="uid://ghitirqbptrj" path="res://assets/interface/commandbarl.bmp" id="commandbarl_tex"]
-[ext_resource type="Texture2D" uid="uid://dfc7ke2iiex4n" path="res://assets/interface/commandbarr.bmp" id="commandbar_tex"]
-[ext_resource type="Texture2D" uid="uid://44n7qkmgo7yr" path="res://assets/portraits/goodorc.png" id="hero_portrait"]
 [ext_resource type="Texture2D" uid="uid://drti85ievy17i" path="res://assets/units/heroes/swordsman/sprites-001.png" id="hero_tex"]
-[ext_resource type="Texture2D" uid="uid://dd06pamexywmv" path="res://assets/interface/humanbackl.bmp" id="humanbackl_tex"]
-[ext_resource type="Texture2D" uid="uid://hbvfwecl2f7l" path="res://assets/interface/humanbackr.bmp" id="humanbackr_tex"]
 [ext_resource type="Texture2D" uid="uid://cueegdgdv2ehl" path="res://assets/units/monsters/orc/sprites-001.png" id="orc_tex"]
-[ext_resource type="Texture2D" uid="uid://cprv6pxqsqfa6" path="res://assets/interface/textbackl.bmp" id="textbackl_tex"]
-[ext_resource type="Texture2D" uid="uid://dclnpia6elh1x" path="res://assets/interface/textbackr.bmp" id="textbackr_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 15.0
@@ -39,9 +32,6 @@ border_color = Color(0.3, 0.24, 0.17, 1)
 
 [sub_resource type="SystemFont" id="SystemFont_mono"]
 font_names = PackedStringArray("Consolas", "Courier New", "DejaVu Sans Mono", "Liberation Mono", "monospace")
-
-[sub_resource type="FontVariation" id="FontVariation_mono95"]
-base_font = SubResource("SystemFont_mono")
 
 [node name="Main" type="Node2D" unique_id=884203904]
 script = ExtResource("1_game")
@@ -115,109 +105,87 @@ horizontal_scroll_mode = 3
 layout_mode = 2
 columns = 9
 
-[node name="MinimapBorder" type="Panel" parent="UI" unique_id=238492738]
-offset_left = 1104.0
+[node name="RightPanel" type="PanelContainer" parent="UI"]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 1.0
+offset_left = -360.0
 offset_top = 5.0
-offset_right = 1280.0
-offset_bottom = 175.0
+offset_right = -5.0
+offset_bottom = -5.0
+grow_horizontal = 0
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="MinimapRect" type="ColorRect" parent="UI/MinimapBorder" unique_id=735898923]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 168.0
-offset_bottom = 168.0
-color = Color(0.05, 0.05, 0.05, 1)
+[node name="RightMargin" type="MarginContainer" parent="UI/RightPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
 
-[node name="HeroName" type="Label" parent="UI" unique_id=1246731641]
-offset_left = 1104.0
-offset_top = 270.0
-offset_right = 1280.0
-offset_bottom = 300.0
-theme_override_font_sizes/font_size = 15
-text = "ГЕРОЙ"
-horizontal_alignment = 1
+[node name="RightCol" type="VBoxContainer" parent="UI/RightPanel/RightMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
 
-[node name="PortraitBorder" type="Panel" parent="UI" unique_id=147354190]
-offset_left = 1104.0
-offset_top = 265.0
-offset_right = 1280.0
-offset_bottom = 507.0
+[node name="Header" type="HBoxContainer" parent="UI/RightPanel/RightMargin/RightCol"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MiniPortraitBorder" type="PanelContainer" parent="UI/RightPanel/RightMargin/RightCol/Header"]
+custom_minimum_size = Vector2(64, 64)
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
-[node name="PortraitL" type="TextureRect" parent="UI/PortraitBorder" unique_id=1804427305]
-layout_mode = 0
-offset_right = 16.0
-offset_bottom = 242.0
-texture = ExtResource("humanbackl_tex")
-stretch_mode = 3
-
-[node name="PortraitBg" type="TextureRect" parent="UI/PortraitBorder" unique_id=891814596]
-layout_mode = 0
-offset_left = 16.0
-offset_right = 176.0
-offset_bottom = 242.0
-texture = ExtResource("humanbackr_tex")
-stretch_mode = 3
-
-[node name="PortraitTexture" type="TextureRect" parent="UI/PortraitBorder" unique_id=431818813]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 1.0
-offset_right = 168.0
-offset_bottom = 241.0
-texture = ExtResource("hero_portrait")
+[node name="MiniPortrait" type="TextureRect" parent="UI/RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder"]
+layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="StatsBorder" type="Panel" parent="UI" unique_id=674715026]
-offset_left = 1104.0
-offset_top = 512.0
-offset_right = 1280.0
-offset_bottom = 800.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+[node name="HeaderText" type="VBoxContainer" parent="UI/RightPanel/RightMargin/RightCol/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
 
-[node name="StatsL" type="TextureRect" parent="UI/StatsBorder" unique_id=433083262]
-layout_mode = 0
-offset_right = 16.0
-offset_bottom = 242.0
-texture = ExtResource("textbackl_tex")
-stretch_mode = 3
+[node name="HeroName" type="Label" parent="UI/RightPanel/RightMargin/RightCol/Header/HeaderText"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "ГЕРОЙ"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="StatsBg" type="TextureRect" parent="UI/StatsBorder" unique_id=538924285]
-layout_mode = 0
-offset_left = 16.0
-offset_right = 176.0
-offset_bottom = 242.0
-texture = ExtResource("textbackr_tex")
-stretch_mode = 3
+[node name="HeroClass" type="Label" parent="UI/RightPanel/RightMargin/RightCol/Header/HeaderText"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.75, 0.7, 0.6, 1)
+text = ""
+horizontal_alignment = 1
 
-[node name="StatsLabel" type="Label" parent="UI/StatsBorder" unique_id=549465376]
-layout_mode = 0
-offset_left = 13.0
-offset_top = 9.0
-offset_right = 176.0
-offset_bottom = 299.0
-theme_override_fonts/font = SubResource("FontVariation_mono95")
-theme_override_font_sizes/font_size = 10
-autowrap_mode = 3
+[node name="EquipArea" type="Control" parent="UI/RightPanel/RightMargin/RightCol"]
+custom_minimum_size = Vector2(0, 330)
+layout_mode = 2
 
-[node name="CommandL" type="TextureRect" parent="UI" unique_id=1690106824]
-offset_left = 1104.0
-offset_top = 180.0
-offset_right = 1120.0
-offset_bottom = 260.0
-texture = ExtResource("commandbarl_tex")
-stretch_mode = 3
+[node name="StatsArea" type="VBoxContainer" parent="UI/RightPanel/RightMargin/RightCol"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 3
 
-[node name="CommandBar" type="TextureRect" parent="UI" unique_id=994196377]
-offset_left = 1120.0
-offset_top = 180.0
-offset_right = 1280.0
-offset_bottom = 260.0
-texture = ExtResource("commandbar_tex")
-stretch_mode = 3
+[node name="MinimapBorder" type="Panel" parent="UI/RightPanel/RightMargin/RightCol"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 165)
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="MinimapMargin" type="MarginContainer" parent="UI/RightPanel/RightMargin/RightCol/MinimapBorder"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="MinimapRect" type="ColorRect" parent="UI/RightPanel/RightMargin/RightCol/MinimapBorder/MinimapMargin"]
+layout_mode = 2
+color = Color(0.05, 0.05, 0.05, 1)
 
 [node name="PauseLabel" type="Label" parent="UI" unique_id=1790732370]
 offset_left = 440.0
