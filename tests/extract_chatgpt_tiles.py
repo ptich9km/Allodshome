@@ -7,6 +7,7 @@ BMP format: 32x448 (14 rows x 32px) to match existing tile1-7.bmp structure.
 
 import struct
 import os
+import random
 from PIL import Image
 
 ATLAS_PATH = "import/ChatGPTImage.png"
@@ -81,15 +82,20 @@ def main():
             tile = tile.resize((TILE_SIZE, TILE_SIZE), Image.LANCZOS)
             tiles.append(tile)
 
-        strip = Image.new('RGB', (TILE_SIZE, TILE_SIZE * ROWS_PER_BMP))
-        for row in range(ROWS_PER_BMP):
-            strip.paste(tiles[row % len(tiles)], (0, row * TILE_SIZE))
-
         for variant in range(16):
+            # Each variant gets a unique ordering of the 6 base tiles
+            rng = random.Random(file_n * 1000 + variant)
+            order = list(range(6))
+            rng.shuffle(order)
+
+            strip = Image.new('RGB', (TILE_SIZE, TILE_SIZE * ROWS_PER_BMP))
+            for row in range(ROWS_PER_BMP):
+                strip.paste(tiles[order[row % 6]], (0, row * TILE_SIZE))
+
             bmp_path = os.path.join(OUT_DIR, f"tile{file_n}-{variant:02d}.bmp")
             save_bmp(strip, bmp_path)
 
-        print(f"tile{file_n} ({name}): 16 BMP strips, 32x{ROWS_PER_BMP*32}")
+        print(f"tile{file_n} ({name}): 16 BMP strips (16 unique orderings), 32x{ROWS_PER_BMP*32}")
 
     png_dir = os.path.join(OUT_DIR, "chatgpt_tiles")
     os.makedirs(png_dir, exist_ok=True)
