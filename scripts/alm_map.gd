@@ -520,11 +520,9 @@ func _build_relief_mesh() -> void:
 						blend = 1.0
 						break
 
-			# UV2.r = terrain type (NOT modulated by Godot)
-			# COLOR: g=brightness, b=blend, a=1.0
+			# COLOR: r=g,b=1.0 (atlas color), a=brightness
 			var br := _brightness(x, y)
-			st.set_uv2(Vector2(float(t) / 7.0, 0.0))
-			st.set_color(Color(1.0, br, blend, 1.0))
+			st.set_color(Color(1.0, 1.0, 1.0, br))
 
 			# Quad corners with height
 			var h00 := _node_h(x, y)
@@ -559,22 +557,9 @@ func _build_relief_mesh() -> void:
 	var shader := Shader.new()
 	shader.code = """shader_type canvas_item;
 uniform sampler2D u_atlas;
-varying float v_type;
-void vertex() {
-	v_type = UV2.x;
-}
 void fragment() {
 	vec4 tex = texture(u_atlas, UV);
-	float r = v_type;
-	vec3 tint;
-	if (r < 0.07) tint = vec3(0.30, 0.55, 0.22);
-	else if (r < 0.21) tint = vec3(0.55, 0.50, 0.45);
-	else if (r < 0.36) tint = vec3(0.15, 0.35, 0.70);
-	else if (r < 0.50) tint = vec3(0.55, 0.45, 0.32);
-	else if (r < 0.64) tint = vec3(0.50, 0.35, 0.18);
-	else if (r < 0.79) tint = vec3(0.90, 0.75, 0.20);
-	else tint = vec3(0.22, 0.15, 0.08);
-	COLOR = vec4(tex.rgb * tint * COLOR.g, 1.0);
+	COLOR = vec4(tex.rgb * COLOR.a, 1.0);
 }"""
 	mat.shader = shader
 	mat.set_shader_parameter("u_atlas", _atlas)
