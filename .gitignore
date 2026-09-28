@@ -31,3 +31,9 @@ Thumbs.db
 # Python (скрипты-генераторы ассетов в tests/)
 __pycache__/
 *.pyc
+
+# Генерируемый рендер карты для визуального контроля (tests/render_alm_png.gd).
+# В коммите лежал устаревший кусок 4 КБ, а текущий рендер 128x128 = 14 МБ.
+# Это выход dev-инструмента, а не ассет: пересоздаётся одной командой.
+assets/maps/gen/gen_smart_01.png
+assets/maps/gen/gen_smart_01.png.import

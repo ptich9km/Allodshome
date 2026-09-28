@@ -336,6 +336,26 @@ static func write_tiles(path: String, raw: PackedByteArray, tiles_off: int, tile
 	f.close()
 	return true
 
+## Файл БИОМА клетки по байту hflags из карты (1..7).
+##
+## Для файлов 1..7 это сам файл (там hflags = file_n - 1). Для переходов
+## 8..15 — файл биома-владельца A, потому что младший ниббл занят номером
+## файла-перехода, а не номером файла биома.
+##
+## Зачем: WalkTable keyed по "файл-вариант", и файлов 8..15 в нём нет.
+## Без этого клетка ВОДЫ с переходным тайлом получала файл 8..15, цена
+## падала на DEFAULT (8, то есть проходимо), и берег становился проходимым.
+## Замерено на gen_smart_01: 750 из 1638 клеток воды (46%).
+static func terrain_file_of(hf: int) -> int:
+	if hf >= 0 and hf <= 6:
+		return hf + 1
+	var file_idx: int = hf & 0xF
+	if file_idx >= 7 and file_idx <= 14:
+		var owner: int = (hf >> 4) & 0xF
+		if owner >= 0 and owner <= 6:
+			return owner + 1
+	return -1
+
 ## Tile id из спеки текстур редактора {file 1-8, variant 0-15, row кадр}.
 ## Файлы 8..15 — переходы, у них variant = биом-владелец A (0..6),
 ## row = сосед B * 2 + вариация. Старшие биты 12-15 остаются нулевыми:

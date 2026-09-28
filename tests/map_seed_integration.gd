@@ -66,6 +66,32 @@ func _run() -> void:
 	_check(str(e.get("path", "")) == FALLBACK_PATH, "[editor] явный путь имеет приоритет над сидом")
 	_check(Game.map_seed == 0, "[editor] явный путь сбрасывает сид")
 
+	# --- 5. Атлас покрывает все используемые клетки ---
+	# _build_relief_mesh молча пропускает клетку с нулевым UV (`continue`),
+	# то есть упавшая в атлас ячейка даёт дыру в земле, а ошибки не даёт.
+	# На реальном баге в атлас попало 12 ячеек вместо 482, и ВСЕ тесты,
+	# включая этот, были зелёные.
+	var am = get_first_node_in_group("alm_map")
+	if am != null:
+		var used: Dictionary = am._used_cells()
+		var covered := 0
+		for key in used:
+			var parts := String(key).split("-r")
+			if parts.size() < 2:
+				continue
+			var fv := parts[0].split("-v")
+			if fv.size() < 2:
+				continue
+			var f: int = fv[0].substr(1).to_int()
+			var v: int = fv[1].to_int()
+			var row: int = parts[1].to_int()
+			if am._uv_for_cell(f, v, row) != Vector4(0, 0, 0, 0):
+				covered += 1
+		_check(covered == used.size(),
+			"атлас покрывает все клетки (%d/%d)" % [covered, used.size()])
+	else:
+		_check(false, "карта доступна для проверки атласа")
+
 	_report()
 
 ## Загрузить main.tscn и снять состояние карты.

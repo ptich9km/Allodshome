@@ -351,6 +351,26 @@ func _used_cells() -> Dictionary:
 
 func _build_atlas() -> void:
 	var used := _used_cells()
+	# Сгруппировать нужные ключи по паре (файл, вариант). BMP - это полоса
+	# из 14 рядов, и грузить её целиком ради одного ряда расточительно:
+	# раньше здесь загружались ВСЕ варианты всех 15 файлов (до ~190 картинок
+	# 32x448) и только ПОСЛЕ загрузки отбрасывались неиспользуемые.
+	var want := {}  # file_n * 16 + variant -> true
+	for key in used:
+		var s: String = key
+		# Искать с индекса 1, а не 2: у файлов 1..7 номер однозначный и
+		# разделитель стоит ровно на позиции 2. С find("-", 2) он находился
+		# сам, substr отдавал пустую строку, интерьеры молча выпадали из
+		# атласа (12 ячеек вместо 482) и клетки просто не рисовались.
+		var d1: int = s.find("-", 2)
+		var d2: int = s.find("-", d1 + 1)
+		if d1 < 0 or d2 < 0:
+			push_error("AlmMap: не разобрать ключ ячейки: " + s)
+			continue
+		var f: int = s.substr(1, d1 - 1).to_int()
+		var v: int = s.substr(d1 + 2, d2 - d1 - 2).to_int()
+		want[f * 16 + v] = true
+
 	# Соберём фактические (файл, вариант, ряд) с реальным числом рядов в файле
 	var cells: Array = []  # [key, Image32]
 	var key_to_cell := {}
@@ -359,23 +379,37 @@ func _build_atlas() -> void:
 	# См. assets/maps/terrain_tiles_db.json.
 	var vmax_by_file := {1: 16, 2: 16, 3: 16, 4: 4, 5: 16, 6: 16, 7: 16,
 		8: 7, 9: 7, 10: 7, 11: 7, 12: 7, 13: 7, 14: 7, 15: 7}
-	for file_n in range(1, AlmLoader.MAX_TILE_FILE + 1):
-		var vmax: int = vmax_by_file.get(file_n, 16)
-		for variant in range(vmax):
-			var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
-			if not ResourceLoader.exists(path):
+	var loaded := 0
+	for want_key in want:
+		var file_n: int = int(want_key) / 16
+		var variant: int = int(want_key) % 16
+		if variant >= int(vmax_by_file.get(file_n, 16)):
+			continue
+		var path := "res://assets/terrain/tile%d-%02d.bmp" % [file_n, variant]
+		if not ResourceLoader.exists(path):
+			continue
+		loaded += 1
+		var tex: Texture2D = load(path)
+		var img: Image = tex.get_image()
+		img.convert(Image.FORMAT_RGBA8)
+		var nrows: int = img.get_height() / TILE
+		for row in range(nrows):
+			var key := "f%d-v%d-r%d" % [file_n, variant, row]
+			# Дублей быть не может: want уникален по (файл, вариант),
+			# а ключ ряда дополнительно кодирует номер ряда.
+			if not used.has(key):
 				continue
-			var tex: Texture2D = load(path)
-			var img: Image = tex.get_image()
-			img.convert(Image.FORMAT_RGBA8)
-			var nrows: int = img.get_height() / TILE
-			for row in range(nrows):
-				var key := "f%d-v%d-r%d" % [file_n, variant, row]
-				if not used.has(key) and not key_to_cell.has(key):
-					continue
-				var cell_img: Image = img.get_region(Rect2i(0, row * TILE, TILE, TILE))
-				cells.append([key, cell_img])
-				key_to_cell[key] = cells.size() - 1
+			var cell_img: Image = img.get_region(Rect2i(0, row * TILE, TILE, TILE))
+			cells.append([key, cell_img])
+			key_to_cell[key] = cells.size() - 1
+	print("AlmMap: загружено %d файлов тайлов из %d используемых пар" % [loaded, want.size()])
+	# Инвариант: каждая используемая клетка обязана попасть в атлас. Если
+	# клетка выпала (нет файла, неверный ряд, битый ключ), _build_relief_mesh
+	# молча пропустит её `continue` по нулевому UV, и в земле будет дыра.
+	# Проверялось на реальном баге: 12 ячеек вместо 482, и все тесты были
+	# зелёные - ловится только здесь.
+	if cells.size() != used.size():
+		push_error("AlmMap: в атлас попало %d ячеек из %d используемых" % [cells.size(), used.size()])
 
 	# Собираем атлас 64x64 ячейки (до 4096)
 	var atlas := Image.create(64 * TILE, 64 * TILE, false, Image.FORMAT_RGBA8)
@@ -704,11 +738,20 @@ func is_walkable_world(pos: Vector2) -> bool:
 		return false
 	var i := ty * map_width + tx
 	var hf := _hflags[i]
-	# Спец-значения Nival (16..40 — вода/барьер в byte[1]) — всегда непроходимы
-	if hf >= 16 and hf <= 40:
+	# Спец-значения Nival (16..40 - вода/барьер в byte[1]) — непроходимы.
+	# Проверка живёт в WalkTable.is_special, потому что байты 23..30 -
+	# это наши переходные тайлы, а не Nival (см. комментарий там).
+	if WalkTable.is_special(hf):
 		return false
-	var file_n := (hf & 0xF) + 1
-	var variant := clampi((_terrain[i] >> 4) & 0xF, 0, 15)
+	var file_n := AlmLoader.terrain_file_of(hf)
+	if file_n < 0:
+		return false
+	# У переходного тайла поле variant хранит биом-владельца, а не номер
+	# текстуры, поэтому в WalkTable отдаём 0: иначе оверрайд вида "2-12"
+	# мог бы примениться к переходу с несуществующей текстурой 12.
+	var variant := 0
+	if file_n == (hf & 0xF) + 1:
+		variant = clampi((_terrain[i] >> 4) & 0xF, 0, 15)
 	# Таблица «цены прохода по текстуре» (WalkTable): вода (tile3) и
 	# переопределённые варианты с ценой 0 — непроходимы; горы/песок — проходимы
 	if not WalkTable.walkable(file_n, variant):
@@ -749,10 +792,14 @@ func blocked_reason(cell: Vector2i) -> String:
 		return "запрет разметки"
 	var i := cell.y * map_width + cell.x
 	var hf := _hflags[i]
-	if hf >= 16 and hf <= 40:
+	if WalkTable.is_special(hf):
 		return "барьер (спец-тайл)"
-	var file_n := (hf & 0xF) + 1
-	var variant := clampi((_terrain[i] >> 4) & 0xF, 0, 15)
+	var file_n := AlmLoader.terrain_file_of(hf)
+	if file_n < 0:
+		return "барьер (неизвестный тип тайла)"
+	var variant := 0
+	if file_n == (hf & 0xF) + 1:
+		variant = clampi((_terrain[i] >> 4) & 0xF, 0, 15)
 	if not WalkTable.walkable(file_n, variant):
 		if file_n == 3:
 			return "вода (tile3)"

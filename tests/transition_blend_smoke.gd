@@ -218,6 +218,22 @@ func _test_codec() -> void:
 		"файлы 1..7: terrain_type без изменений")
 	_check(not AlmLoader.is_transition_tile(AlmLoader.tile_from_spec({"file": 1, "variant": 3, "row": 4})),
 		"файлы 1..7 не считаются переходами")
+	# Roundtrip интерьеров - перенесено из удалённого test_transitions.gd,
+	# который кроме этого тестировал уже не влияющий на картинку слой
+	# transition_db в старом формате (224 правила, тип 7).
+	var rt_bad := 0
+	for f in range(1, 16):
+		var max_v: int = 4 if f == 4 else (7 if f >= 8 else 16)
+		for v in range(max_v):
+			for r in [0, 4, 9, 13]:
+				var tile: int = AlmLoader.tile_from_spec({"file": f, "variant": v, "row": r})
+				if AlmLoader.tile_file_n(tile) != f:
+					rt_bad += 1
+				elif AlmLoader.tile_variant(tile) != v:
+					rt_bad += 1
+				elif AlmLoader.tile_encode_row(tile) != r:
+					rt_bad += 1
+	_check(rt_bad == 0, "tile_from_spec roundtrip для файлов 1..15 (ошибок: %d)" % rt_bad)
 
 # --- 5-6. Карта ---
 
@@ -271,6 +287,37 @@ func _test_map() -> void:
 	_check(boundary_without_transition == 0,
 		"все кромки получили переход (пропущено: %d)" % boundary_without_transition)
 	_test_seam_metric(m, w, h)
+	_test_transition_keeps_walkability(m, w, h)
+
+## Переходный тайл не должен менять проходимость своего биома.
+##
+## Настоящий баг: у файлов 8..15 младший ниббл хранит номер файла-перехода,
+## а не номер файла биома. WalkTable ищет "файл-вариант", файлов 8..15 в
+## DEFAULT нет, цена падала на 8 - и клетки ВОДЫ на берегу становились
+## проходимыми (замерено: 750 из 1638, то есть 46% воды). При этом
+## is_walkable_world возвращал true, поэтому fuzz_water рапортовал 0 hits.
+func _test_transition_keeps_walkability(m: Dictionary, w: int, h: int) -> void:
+	var terrain: PackedByteArray = m["terrain"]
+	var hflags: PackedByteArray = m["hflags"]
+	var checked := 0
+	var wrong := 0
+	for i in range(w * h):
+		var hf: int = hflags[i]
+		if not WalkTable.terrain_file_is_transition(hf):
+			continue
+		checked += 1
+		var owner: int = AlmLoader.terrain_type(hf)
+		if owner < 0 or owner > 6:
+			wrong += 1
+			continue
+		# Проходимость клетки должна совпадать с проходимостью биома-владельца.
+		var actual: bool = WalkTable.walkable_at(hf, terrain[i])
+		var expect: bool = WalkTable.walkable(owner + 1, 0)
+		if actual != expect:
+			wrong += 1
+	_check(checked > 0, "карта содержит переходные клетки для проверки проходимости (%d)" % checked)
+	_check(wrong == 0,
+		"переходный тайл не меняет проходимость биома (расхождений: %d)" % wrong)
 
 func _has_differing_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
 		w: int, h: int, x: int, y: int, owner: int) -> bool:

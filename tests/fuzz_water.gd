@@ -34,9 +34,31 @@ func _init() -> void:
 			await process_frame
 			if f % 60 == 0:
 				var cell := Vector2i(int(player.global_position.x) / 32, int(player.global_position.y) / 32)
-				if not map_node.call("is_walkable_world", player.global_position):
+				var walkable: bool = map_node.call("is_walkable_world", player.global_position)
+				var in_water := _is_water(map_node, cell)
+				# Проверяем ОБА условия, а не только проходимость. Настоящий
+				# баг: переходные тайлы (файлы 8..15) попадали в WalkTable
+				# как файл 8..15, которого в таблице нет, цена падала на
+				# DEFAULT=8, и берег становился ПРОХОДИМЫМ. Тогда
+				# is_walkable_world возвращал true, и проверка только на
+				# проходимость рапортовала 0 hits при сломанной игре.
+				#
+				# ОГРАНИЧЕНИЕ: эти клики заканчиваются на суше, поэтому
+				# утверждение про тип клетки срабатывает редко и само по
+				# себе регрессию не доказывает. Надёжный страж - проверка
+				# "переходный тайл не меняет проходимость биома" в
+				# transition_blend_smoke, она обходит ВСЕ клетки карты.
+				if not walkable or in_water:
 					_hits += 1
-					print("HIT idx=%d f=%d cell=%s" % [idx, f, cell])
+					print("HIT idx=%d f=%d cell=%s walkable=%s water=%s" % [idx, f, cell, walkable, in_water])
 		print("seg%d end=%s state=%s hits=%d" % [idx, Vector2i(int(player.global_position.x) / 32, int(player.global_position.y) / 32), player.get("state"), _hits])
 	print("TOTAL water-hits = ", _hits)
 	quit(0)
+
+## Тип клетки по данным карты: 2 = вода. Берём из hflags, а не из
+## is_walkable_world, чтобы ловить именно «герой в клетке воды».
+func _is_water(map_node, cell: Vector2i) -> bool:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map_node.map_width or cell.y >= map_node.map_height:
+		return false
+	var i: int = cell.y * map_node.map_width + cell.x
+	return AlmLoader.terrain_type(map_node._hflags[i]) == 2
