@@ -37,3 +37,11 @@ __pycache__/
 # Это выход dev-инструмента, а не ассет: пересоздаётся одной командой.
 assets/maps/gen/gen_smart_01.png
 assets/maps/gen/gen_smart_01.png.import
+
+# Контактные листы ассетов - выход dev-инструмента для визуального контроля
+# (tests/extract_chatgpt_armor.py --sheet, tests/gen_faction_armor_tint.py --sheet).
+# Это не ассет игры: пересоздаётся одной командой, в Godot импортировать не нужно.
+assets/items/base/_contact_sheet.png
+assets/items/base/_contact_sheet.png.import
+assets/items/faction/*/_contact_sheet.png
+assets/items/faction/*/_contact_sheet.png.import
