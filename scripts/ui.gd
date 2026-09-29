@@ -751,10 +751,21 @@ func _setup_action_buttons():
 		"Следовать", "Атаковать", "Охранять", "Стоп",
 		"Координаты", "Патруль", "Разговор", "Отдых",
 	]
+	var right_col := equip_area.get_parent() as VBoxContainer
+
+	# Кнопка «Инвентарь» — под миникартой, перед командными кнопками
+	var inv_btn := Button.new()
+	inv_btn.text = "Инвентарь (I)"
+	inv_btn.custom_minimum_size = Vector2(0, 32)
+	inv_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	inv_btn.pressed.connect(open_inventory_panel)
+	if right_col != null:
+		right_col.add_child(inv_btn)
+
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 4)
-	var right_col := equip_area.get_parent() as VBoxContainer
 	if right_col != null:
 		right_col.add_child(row)
 	for i in range(labels.size()):
