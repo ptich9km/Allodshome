@@ -45,8 +45,17 @@ BASE_DIR = os.path.join("assets", "items", "base")
 OUT_ROOT = os.path.join("assets", "items", "faction")
 
 # Форма рампы, в которую подставляется цвет металла.
-SHADOW_MUL = 0.22       # тень = цвет * 0.22, но не темнее MIN_MID_LIFT
-MID_LIFT = 0.34         # минимальная светлота середины рампы (см. calibrate)
+#
+# SHADOW_MUL: нижняя точка рампы = цвет * SHADOW_MUL. Держим её почти у чёрного.
+#   Было 0.22 - и это ломало: настоящий чёрный (0.0) поднимался до 0.25, и
+#   детализированный визор шлема превращался в плоское тёмно-серое пятно,
+#   которое глаз читал как дырку. Замер области визора heavy_head_common:
+#   размах светлоты падал с 1.000 (base) до 0.749 (после дуотона) при почти
+#   неизменной средней 0.361 - то есть тени просто поднялись и размазались.
+#   При 0.04 железная тень = (4,4,5), и глубина возвращается.
+#   За это НЕ отвечает calibrate() ниже: он поднимает СЕРЕДИНУ рампы ради
+#   читаемости тёмных металлов на тёмном UI - это независимая ось.
+SHADOW_MUL = 0.04
 HILIGHT_MIX = 0.72      # блик = mix(цвет, белый, 0.72)
 
 # Порог, ниже которого металл считается тёмным и середина рампы поднимается,
@@ -202,17 +211,81 @@ def main() -> int:
     if args.report:
         return 0
 
+    # страховка: снимок цветовых метрик ДО перекраски, чтобы потом доказать,
+    # что порча (если будет) пришла от дуотона, а не от входа
+    for j in jobs:
+        j["stats_in"] = color_stats(Image.open(j["src"]).convert("RGBA"))
+
     for j in jobs:
         img = duotone(Image.open(j["src"]), j["color"])
         os.makedirs(os.path.dirname(j["dst"]), exist_ok=True)
         img.save(j["dst"])
     print("ЗАПИСАНО: %d файлов в %s/" % (len(jobs), OUT_ROOT.replace("\\", "/")))
 
+    # Сканер «схлопывания». Важно: портит структуру НЕ хрома, а размах
+    # светлоты. Хрома падает у любого нейтрального металла by design: у железа
+    # (120,120,125) собственная хрома = 5, поэтому и выход почти серый, и это
+    # правильно. Первая версия сканера брала хрому и завалила бы 34 файла из
+    # 342, выглядя очень правдоподобно и показывая ровно то, что починить не надо.
+    # Правильный признак - размах светлоты упал, то есть объём стал плоским.
+    for j in jobs:
+        j["stats_out"] = color_stats(Image.open(j["dst"]).convert("RGBA"))
+    worst = []
+    for j in jobs:
+        si, so = j["stats_in"], j["stats_out"]
+        ratio = (so["luma_range"] / si["luma_range"]) if si["luma_range"] > 0.01 else 1.0
+        j["luma_ratio"] = ratio
+        worst.append((ratio, j))
+    worst.sort(key=lambda p: p[0])
+    print("ОБЪЁМ (размах светлоты выход/вход, меньше = хуже), худшие 8:")
+    for ratio, j in worst[:8]:
+        print("   %.3f  %-44s размах %.3f -> %.3f, хрома %.1f -> %.1f" % (
+            ratio, os.path.basename(j["dst"]),
+            j["stats_in"]["luma_range"], j["stats_out"]["luma_range"],
+            j["stats_in"]["chroma"], j["stats_out"]["chroma"]))
+    flat = [j for r, j in worst if r < 0.75]
+    print("ОБЪЁМ ПОТЕРЯН (размах светлоты упал ниже 0.75): %d из %d"
+          % (len(flat), len(jobs)))
+    for j in flat[:8]:
+        print("   ! %s" % os.path.basename(j["dst"]))
+
+    # альфа обязана совпасть с входом байт в байт: дуотон красит только RGB
+    bad_alpha = [j for j in jobs
+                 if Image.open(j["src"]).convert("RGBA").getchannel("A").tobytes()
+                 != Image.open(j["dst"]).getchannel("A").tobytes()]
+    print("АЛЬФА РАСХОДИТСЯ: %d (должно быть 0)" % len(bad_alpha))
+    if bad_alpha:
+        return 1
+
     if args.sheet:
         for group in sorted(set(j["group"] for j in jobs)):
             make_sheet(pal, group)
         print("КОНТАКТНЫЕ ЛИСТЫ: %s/*/_contact_sheet.png" % OUT_ROOT.replace("\\", "/"))
     return 0
+
+
+def color_stats(img: Image.Image) -> dict:
+    """Средняя хрома и размах светлоты по непрозрачным пикселям."""
+    px = img.load()
+    w, h = img.size
+    chroma = 0
+    vals = []
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a <= 128:
+                continue
+            chroma += max(r, g, b) - min(r, g, b)
+            vals.append(max(r, g, b) / 255.0)
+            n += 1
+    if not n:
+        return {"chroma": 0.0, "luma_mean": 0.0, "luma_range": 0.0}
+    return {
+        "chroma": chroma / float(n),
+        "luma_mean": sum(vals) / float(n),
+        "luma_range": (max(vals) - min(vals)) if n else 0.0,
+    }
 
 
 def sha256_of_img(img: Image.Image) -> str:

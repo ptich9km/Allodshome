@@ -1,7 +1,7 @@
 {
   "version": 1,
   "description": "Фракционные материалы одежды. Источник правды для tests/gen_faction_armor_tint.py.",
-  "note": "Цвета 19 металлов совпадают с таблицей в assets/loot_icons/README.md; золото добавлено как 4-й тир группы common. is_base=true означает, что тир не перекрашивается и берётся из assets/items/base/ как есть.",
+  "note": "Цвета 19 металлов совпадают с таблицей в assets/loot_icons/README.md; золото добавлено как 4-й тир группы common. is_base=true означает, что тир не перекрашивается и берётся из assets/items/base/ как есть. Слот содержит 9 колонок атласа, а в игре их 7 (bracers+gloves -> hands, chest+shirt -> body), см. assets/items/README.md.",
   "sets": ["light", "heavy"],
   "sets_skipped": ["magic"],
   "slots": ["head", "chest", "bracers", "gloves", "legs", "ring", "amulet", "shirt", "cloak"],
