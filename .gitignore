@@ -43,5 +43,7 @@ assets/maps/gen/gen_smart_01.png.import
 # Это не ассет игры: пересоздаётся одной командой, в Godot импортировать не нужно.
 assets/items/base/_contact_sheet.png
 assets/items/base/_contact_sheet.png.import
+assets/items/base_w/_contact_sheet.png
+assets/items/base_w/_contact_sheet.png.import
 assets/items/faction/*/_contact_sheet.png
 assets/items/faction/*/_contact_sheet.png.import
