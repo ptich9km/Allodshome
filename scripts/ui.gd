@@ -883,11 +883,13 @@ func _item_card_lines(item: Dictionary) -> Array:
 func _attach_item_card(cell: Control, item: Dictionary) -> void:
 	if not is_instance_valid(cell) or item.is_empty():
 		return
+	var icon_path := str(item.get("icon", ""))
+	var qcolor := UiKit.quality_color(str(item.get("quality", "")))
 	cell.mouse_entered.connect(func():
 		if _item_card == null:
 			_item_card = _ensure_card("item")
 		UiKit.show_hover_card(_item_card, _item_card_lines(item),
-			cell.global_position, DESIGN_SIZE))
+			cell.global_position, DESIGN_SIZE, icon_path, qcolor))
 	cell.mouse_exited.connect(func():
 		if _item_card != null:
 			UiKit.hide_hover_card(_item_card))
@@ -895,7 +897,7 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		if _item_card == null:
 			_item_card = _ensure_card("item")
 		UiKit.show_hover_card(_item_card, _item_card_lines(item),
-			cell.global_position, DESIGN_SIZE))
+			cell.global_position, DESIGN_SIZE, icon_path, qcolor))
 	cell.focus_exited.connect(func():
 		if _item_card != null:
 			UiKit.hide_hover_card(_item_card))
@@ -924,7 +926,9 @@ func _show_slot_card(cell: Control, slot: String) -> void:
 		_slot_card = _ensure_card("slot")
 	var lines: Array = _item_card_lines(it)
 	lines.append("Слот: %s (клик — снять)" % ItemDB.slot_title(slot))
-	UiKit.show_hover_card(_slot_card, lines, cell.global_position, DESIGN_SIZE)
+	var icon_path := str(it.get("icon", ""))
+	var qcolor := UiKit.quality_color(str(it.get("quality", "")))
+	UiKit.show_hover_card(_slot_card, lines, cell.global_position, DESIGN_SIZE, icon_path, qcolor)
 
 func _hide_slot_card() -> void:
 	if _slot_card != null:

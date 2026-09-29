@@ -34,6 +34,16 @@ const SPHERE_COLORS := {
 	"Astral": Color(0.7, 0.3, 0.9),
 }
 
+## Цвет качества предмета для hover card border.
+static func quality_color(quality: String) -> Color:
+	match quality.to_lower():
+		"legendary": return Color(1.0, 0.65, 0.1)    # золотой
+		"epic": return Color(0.7, 0.3, 0.9)           # фиолетовый
+		"rare": return Color(0.2, 0.5, 1.0)           # синий
+		"magic": return Color(0.3, 0.8, 0.9)          # голубой
+		"common": return Color(0.6, 0.6, 0.6)         # серый
+		_: return Color(0.78, 0.60, 0.26)             # золотой (по умолчанию)
+
 
 # === Фабрики стилей ===
 
@@ -338,37 +348,87 @@ static func make_hover_card(width: float = 300.0) -> PanelContainer:
 
 
 ## Заполнить карточку строками и показать у точки экрана (координаты панели).
+## icon_path — необязательный путь к иконке предмета (32×32 слева).
+## quality_color — необязательный цвет рамки по качеству предмета.
 static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
-		bounds: Vector2) -> void:
+		bounds: Vector2, icon_path: String = "", quality_color: Color = Color.ZERO) -> void:
 	if card == null or not is_instance_valid(card):
 		return
-	# find_child, а не get_node_or_null: "Box" лежит внутри MarginContainer,
-	# а get_node_or_null ищет только ПРЯМОГО потомка и возвращал null.
 	var box: Node = card.find_child("Box", true, false)
 	if box == null or not (box is VBoxContainer):
 		return
 	clear(box)
-	var first := true
-	for raw in lines:
-		var line := str(raw)
-		if line.is_empty():
-			continue
-		var label := Label.new()
-		label.text = line
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.custom_minimum_size = Vector2(card.custom_minimum_size.x - 20.0, 0)
-		if first:
-			label.theme_type_variation = &"HoverCardTitle"
-			first = false
-		else:
-			label.theme_type_variation = &"HoverCardLine"
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		(box as VBoxContainer).add_child(label)
-	if first:
+
+	# Обновить цвет рамки по качеству
+	if quality_color != Color.ZERO:
+		var style: StyleBoxFlat = card.get_theme_stylebox("panel").duplicate()
+		style.border_color = quality_color
+		card.add_theme_stylebox_override("panel", style)
+
+	# Иконка + текст (если есть иконка)
+	if icon_path != "":
+		var icon_tex: Texture2D = load(icon_path) if ResourceLoader.exists(icon_path) else null
+		if icon_tex != null:
+			var icon_row := HBoxContainer.new()
+			icon_row.add_theme_constant_override("separation", 8)
+			box.add_child(icon_row)
+			var icon_rect := TextureRect.new()
+			icon_rect.texture = icon_tex
+			icon_rect.custom_minimum_size = Vector2(32, 32)
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			icon_row.add_child(icon_rect)
+			# Первые строки текста справа от иконки
+			var text_box := VBoxContainer.new()
+			text_box.add_theme_constant_override("separation", 2)
+			icon_row.add_child(text_box)
+			var first := true
+			for raw in lines:
+				var line := str(raw)
+				if line.is_empty():
+					continue
+				var label := Label.new()
+				label.text = line
+				label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				label.custom_minimum_size = Vector2(card.custom_minimum_size.x - 52.0, 0)
+				if first:
+					label.theme_type_variation = &"HoverCardTitle"
+					first = false
+				else:
+					label.theme_type_variation = &"HoverCardLine"
+				label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				text_box.add_child(label)
+	else:
+		# Без иконки — просто строки
+		var first := true
+		for raw in lines:
+			var line := str(raw)
+			if line.is_empty():
+				continue
+			var label := Label.new()
+			label.text = line
+			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			label.custom_minimum_size = Vector2(card.custom_minimum_size.x - 20.0, 0)
+			if first:
+				label.theme_type_variation = &"HoverCardTitle"
+				first = false
+			else:
+				label.theme_type_variation = &"HoverCardLine"
+			label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			(box as VBoxContainer).add_child(label)
+
+	# Проверка что есть содержимое
+	var has_content := false
+	for child in box.get_children():
+		if child.get_child_count() > 0 or (child is Label and child.text != ""):
+			has_content = true
+			break
+	if not has_content:
 		hide_hover_card(card)
 		return
 	card.visible = true
-	# Прижать к краю окна, чтобы карточка не уезжала за пределы панели.
+	# Прижать к краю окна
 	var size := card.size
 	var pos := at + Vector2(18, 10)
 	if pos.x + size.x > bounds.x - 8.0:
