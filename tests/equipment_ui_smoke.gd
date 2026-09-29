@@ -70,8 +70,8 @@ func _test_panel(ui) -> void:
 		# а то, что панель имеет нормальный размер (в игре якоря держат её справа).
 		_check(panel.size.x > 300.0 and panel.size.y > 400.0,
 			"правая панель имеет полноразмерную геометрию (%.0f×%.0f)" % [panel.size.x, panel.size.y])
-	_check(ui.get("_hp_bar") is ProgressBar, "бар ЖИЗНЬ создан")
-	_check(ui.get("_mp_bar") is ProgressBar, "бар МАНА создан")
+	_check(ui.get("_hp_label") is Label, "метка ЖИЗНЬ создана")
+	_check(ui.get("_mp_label") is Label, "метка МАНА создана")
 
 # --- 2. Маппинг типов на слоты ----------------------------------------------
 
@@ -175,17 +175,17 @@ func _test_highlight(ui, player: Player) -> void:
 	_check(ui.call("_item_matches_slot", ItemDB.find("Common Iron Long Sword")),
 		"без подсветки подходит любой предмет")
 
-# --- 7. Бары статов заполнены ------------------------------------------------
+# --- 7. Статы обновлены ------------------------------------------------
 
 func _test_stats_bars(ui, player: Player) -> void:
 	ui.call("_update_stats")
-	var hp: ProgressBar = ui.get("_hp_bar")
-	_check(hp != null and int(hp.value) == player.current_hp,
-		"бар ЖИЗНЬ показывает текущее HP (%s)" % str(hp.value if hp else -1))
+	var hp: Label = ui.get("_hp_label")
+	_check(hp != null and hp.text.contains(str(player.current_hp)),
+		"метка ЖИЗНЬ показывает текущее HP (%s)" % str(hp.text if hp else ""))
 	var labels: Dictionary = ui.get("_stat_labels")
 	if labels.has("attrs"):
 		var t := str((labels["attrs"] as Label).text)
-		_check(t.contains("ТЕЛО"), "строка атрибутов заполнена (%s)" % t)
+		_check(t.contains("Тело"), "строка атрибутов заполнена (%s)" % t)
 
 func _report() -> void:
 	if _fails.is_empty():

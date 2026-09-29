@@ -1415,53 +1415,82 @@ func _item_matches_slot(item: Dictionary) -> bool:
 		return true
 	return ItemDB.fits_slot(item, _highlight_slot)
 
-# --- Блок статов: HP/MP бары и строки характеристик -------------------------
+# --- Блок статов: текстовые строки с HSeparator между секциями --------
 
-var _hp_bar: ProgressBar = null
-var _mp_bar: ProgressBar = null
-var _hp_text: Label = null
-var _mp_text: Label = null
+var _hp_label: Label = null
+var _mp_label: Label = null
 var _stat_labels := {}   # key -> Label ("attrs"/"derived"/"skills"/"resists"/"extra")
 
 func _setup_stats_area() -> void:
 	if not is_instance_valid(stats_area):
 		return
-	var arr := _add_stat_bar_row("ЖИЗНЬ")
-	_hp_bar = arr[0]
-	_hp_text = arr[1]
-	arr = _add_stat_bar_row("МАНА")
-	_mp_bar = arr[0]
-	_mp_text = arr[1]
-	for key in ["attrs", "derived", "skills", "resists", "extra"]:
-		var lab := Label.new()
-		lab.name = "Stat_%s" % key.capitalize()
-		lab.add_theme_font_size_override("font_size", 13)
-		lab.add_theme_color_override("font_color", Color(0.92, 0.88, 0.80))
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		stats_area.add_child(lab)
-		_stat_labels[key] = lab
+	stats_area.add_theme_constant_override("separation", 2)
 
-func _add_stat_bar_row(title: String) -> Array:
+	# HP/MP — текстом (бары дублируют то, что над головой героя)
+	_hp_label = _add_stat_text("ЖИЗНЬ", Color(0.55, 0.85, 0.55))
+	_mp_label = _add_stat_text("МАНА", Color(0.55, 0.7, 1.0))
+
+	# Секция: Атрибуты
+	_add_separator("АТРИБУТЫ")
+	_stat_labels["attrs"] = _add_stat_line()
+
+	# Секция: Бой
+	_add_separator("БОЙ")
+	_stat_labels["derived"] = _add_stat_line()
+
+	# Секция: Навыки / Сферы
+	if Game.hero_class == "mage":
+		_add_separator("СФЕРЫ")
+	else:
+		_add_separator("НАВЫКИ")
+	_stat_labels["skills"] = _add_stat_line()
+
+	# Секция: Сопротивление
+	_add_separator("СОПРОТИВЛЕНИЕ")
+	_stat_labels["resists"] = _add_stat_line()
+
+	# Секция: Параметры
+	_add_separator("ПАРАМЕТРЫ")
+	_stat_labels["extra"] = _add_stat_line()
+
+
+func _add_stat_text(title: String, color: Color) -> Label:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
+	var lab_title := Label.new()
+	lab_title.text = title
+	lab_title.custom_minimum_size = Vector2(55, 0)
+	lab_title.add_theme_font_size_override("font_size", 12)
+	lab_title.add_theme_color_override("font_color", Color(0.75, 0.70, 0.60))
+	row.add_child(lab_title)
+	var lab_val := Label.new()
+	lab_val.add_theme_font_size_override("font_size", 13)
+	lab_val.add_theme_color_override("font_color", color)
+	row.add_child(lab_val)
+	stats_area.add_child(row)
+	return lab_val
+
+
+func _add_separator(title: String) -> void:
+	var sep := HSeparator.new()
+	sep.add_theme_constant_override("separation", 4)
+	stats_area.add_child(sep)
 	var lab := Label.new()
 	lab.text = title
-	lab.custom_minimum_size = Vector2(44, 0)
-	lab.add_theme_font_size_override("font_size", 12)
-	lab.add_theme_color_override("font_color", Color(0.75, 0.70, 0.60))
-	row.add_child(lab)
-	var bar := ProgressBar.new()
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 16)
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(bar)
-	var val := Label.new()
-	val.custom_minimum_size = Vector2(62, 0)
-	val.add_theme_font_size_override("font_size", 12)
-	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(val)
-	stats_area.add_child(row)
-	return [bar, val]
+	lab.add_theme_font_size_override("font_size", 11)
+	lab.add_theme_color_override("font_color", Color(0.6, 0.55, 0.48))
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_area.add_child(lab)
+
+
+func _add_stat_line() -> Label:
+	var lab := Label.new()
+	lab.add_theme_font_size_override("font_size", 13)
+	lab.add_theme_color_override("font_color", Color(0.92, 0.88, 0.80))
+	lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stats_area.add_child(lab)
+	return lab
+
 
 func _update_stats():
 	if not is_instance_valid(player):
@@ -1469,33 +1498,28 @@ func _update_stats():
 	var p = player
 	refresh_equipment()
 
-	if _hp_bar != null:
-		_hp_bar.max_value = maxi(1, p.max_hp)
-		_hp_bar.value = clampi(p.current_hp, 0, p.max_hp)
-		_hp_text.text = "%d/%d" % [p.current_hp, p.max_hp]
-	if _mp_bar != null:
-		_mp_bar.max_value = maxi(1, p.max_mana)
-		_mp_bar.value = clampi(p.current_mana, 0, p.max_mana)
-		_mp_text.text = "%d/%d" % [p.current_mana, p.max_mana]
+	if _hp_label != null:
+		_hp_label.text = "%d / %d" % [p.current_hp, p.max_hp]
+	if _mp_label != null:
+		_mp_label.text = "%d / %d" % [p.current_mana, p.max_mana]
 	if _stat_labels.is_empty():
 		return
 
-	_stat_labels["attrs"].text = "ТЕЛО %d · ЛОВК %d · РАЗУМ %d · ДУХ %d" % [
+	_stat_labels["attrs"].text = "Тело %d  Ловк %d  Разум %d  Дух %d" % [
 		p.body, p.agility, p.mind, p.spirit]
-	_stat_labels["derived"].text = "УРОН %d–%d · АТАКА %d\nЗАЩИТА %d · ПОГЛОЩЕНИЕ %d" % [
+	_stat_labels["derived"].text = "Урон %d–%d  Атака %d\nЗащита %d  Поглощ. %d" % [
 		p.get_damage_min(), p.get_damage_max(), p.get_attack(),
 		p.get_defense(), p.get_absorption()]
 	if Game.hero_class == "mage":
-		# Маг: вместо навыков оружия — сферы магии.
-		_stat_labels["skills"].text = "СФЕРЫ: огонь %d · вода %d · воздух %d · земля %d · астрал %d" % [
+		_stat_labels["skills"].text = "Огонь %d  Вода %d  Воздух %d\nЗемля %d  Астрал %d" % [
 			p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
 	else:
-		_stat_labels["skills"].text = "НАВЫКИ: меч %d · топор %d · дубина %d · копьё %d · стрельба %d" % [
+		_stat_labels["skills"].text = "Меч %d  Топор %d  Дубина %d\nКопьё %d  Стрельба %d" % [
 			p.blade_skill, p.axe_skill, p.bludgeon_skill, p.pike_skill, p.shooting_skill]
-	_stat_labels["resists"].text = "СОПРОТИВЛЕНИЕ: огонь %d%% · вода %d%% · воздух %d%% · земля %d%% · астрал %d%%" % [
+	_stat_labels["resists"].text = "Огн. %d%%  Вод. %d%%  Возд. %d%%\nЗем. %d%%  Аст. %d%%" % [
 		p.get_protection_fire(), p.get_protection_water(), p.get_protection_air(),
 		p.get_protection_earth(), p.get_protection_astral()]
-	_stat_labels["extra"].text = "ОБЗОР %d · СКОРОСТЬ %d · НАГРУЗКА %.1f/%.0f · ОПЫТ %d" % [
+	_stat_labels["extra"].text = "Обзор %d  Скор. %d  Нагр. %.1f/%.0f  Опыт %d" % [
 		p.get_sight(), int(p.move_speed), p.get_load(), p.load_capacity(),
 		p.total_experience()]
 
