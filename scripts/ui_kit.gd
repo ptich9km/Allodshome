@@ -279,6 +279,36 @@ static func bind_resize(source: Node, handler: Callable) -> void:
 	if handler.is_valid():
 		handler.call()
 
+
+# === Анимации панелей ===
+
+## Плавное появление: fade-in + scale 0.95→1.0, TRANS_BACK, 0.2s.
+static func animate_in(node: Control) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	node.modulate.a = 0.0
+	node.scale = Vector2(0.95, 0.95)
+	var tw := node.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(node, "modulate:a", 1.0, 0.2) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", Vector2.ONE, 0.2) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Плавное закрытие: fade-out + scale → 0.95, потом callback (queue_free).
+static func animate_out(node: Control, callback: Callable) -> void:
+	if node == null or not is_instance_valid(node):
+		callback.call()
+		return
+	var tw := node.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(node, "modulate:a", 0.0, 0.15) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(node, "scale", Vector2(0.95, 0.95), 0.15) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(callback)
+
 # --- Карточка предмета у курсора (наведение) ---
 
 ## Панель-карточка, которая показывается рядом с курсором при наведении на ячейку.

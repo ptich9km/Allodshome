@@ -56,9 +56,10 @@ func _input(event: InputEvent) -> void:
 
 
 func close() -> void:
-	UiKit.restore_focus(_previous_focus)
-	closed.emit()
-	queue_free()
+	UiKit.animate_out(_panel_root, func():
+		UiKit.restore_focus(_previous_focus)
+		closed.emit()
+		queue_free())
 
 
 func _update_layout() -> void:
@@ -92,7 +93,9 @@ func _build_ui() -> void:
 	_panel_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel_root.size = _DESIGN_SIZE
 	_panel_root.theme = _make_theme()
+	# Анимация появления: fade-in + scale
 	add_child(_panel_root)
+	UiKit.animate_in(_panel_root)
 
 	# Заголовок
 	var title := Label.new()
