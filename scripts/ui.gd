@@ -4,16 +4,11 @@ class_name GameUI
 @onready var spell_grid: GridContainer = $BottomPanel/SpellPanel/SpellGrid
 @onready var bottom_panel: Control = $BottomPanel
 @onready var spell_panel: Control = $BottomPanel/SpellPanel
-@onready var inventory_panel: Control = $BottomPanel/InventoryPanel
-@onready var inventory_scroll: ScrollContainer = $BottomPanel/InventoryPanel/InventoryMargin/InventoryScroll
-@onready var inventory_margin: MarginContainer = $BottomPanel/InventoryPanel/InventoryMargin
-@onready var inventory_grid: GridContainer = $BottomPanel/InventoryPanel/InventoryMargin/InventoryScroll/InventoryGrid
 @onready var pause_label: Label = $PauseLabel
 @onready var mini_portrait: TextureRect = $RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder/MiniPortrait
 @onready var hero_name_label: Label = $RightPanel/RightMargin/RightCol/Header/HeaderText/HeroName
 @onready var hero_class_label: Label = $RightPanel/RightMargin/RightCol/Header/HeaderText/HeroClass
 @onready var preview_info: Label = $RightPanel/RightMargin/RightCol/PreviewInfo
-@onready var equip_area: Control = $RightPanel/RightMargin/RightCol/EquipArea
 @onready var stats_area: VBoxContainer = $RightPanel/RightMargin/RightCol/StatsArea
 @onready var minimap_rect: ColorRect = $RightPanel/RightMargin/RightCol/MinimapBorder/MinimapMargin/MinimapRect
 @onready var coords_label: Label = $CoordsLabel
@@ -55,9 +50,7 @@ func setup_ui(p: Player):
 			mini_portrait.texture = tex
 			hero_portrait = tex
 
-	_setup_inventory()
 	refresh_spell_book()
-	_setup_equipment_area()
 	_setup_stats_area()
 	_update_preview_hero()
 
@@ -88,7 +81,6 @@ var _spell_buttons_filled: Array = []  # только ячейки с закли
 ## чтобы не трогать узлы каждый кадр: пока целое число не изменилось,
 ## картинка та же.
 var _cd_shown: Dictionary = {}
-var inventory_visible: bool = true
 var spells_visible: bool = true
 
 func _setup_spells():
@@ -510,263 +502,14 @@ func _update_targeting_hint(spell: String, on: bool) -> void:
 	_scroll_hint.text = ("Примените «%s» на %s (ПКМ/ESC — отмена; Ctrl+1..9 — быстрая клавиша)"
 		% [str(SpellDB.get_spell(spell).get("ru", spell)), dir_text])
 
-# Инвентарь
-var inventory_slots: Array = []
-var inventory_items: Array = []
-var inventory_items_meta: Array = []  # исходные Dictionary предметов (для key/quality)
-
-# Двойной клик по магическому предмету (книга/свиток) — учим/читаем.
-var _magic_click_key := ""
-var _magic_click_time := 0.0
-
-## true, если это повторный клик по тому же предмету в течение 0.45 с.
-func _magic_double_click(item_key: String) -> bool:
-	var now := Time.get_ticks_msec()
-	var hit := _magic_click_key == item_key and now - _magic_click_time < 450
-	_magic_click_key = item_key
-	_magic_click_time = now
-	return hit
-
-## Размер ячейки склада и число колонок считаются от ширины панели, поэтому инвентарь
-## не «едет» при изменении размера окна.
-const INV_SLOT := 62
-const INV_GAP := 4
-const INV_MARGIN := 6
-
-func _setup_inventory():
-	_apply_inventory_theme()
-	build_inventory_grid()
-
-## Оформление склада: единая тема UiKit вместо фоновых картинок (myitem.png/invframe.bmp).
-func _apply_inventory_theme() -> void:
-	var theme := UiKit.base_theme()
-	inventory_panel.theme_type_variation = &"InvPanel"
-	UiKit.add_panel(theme, &"InvPanel", UiKit.SLOT_BG, UiKit.SLOT_BORDER, 4)
-	UiKit.add_slot(theme, &"SlotCell")
-	UiKit.apply_scrollbar(theme)
-	inventory_panel.theme = theme
-	UiKit.set_margins(inventory_margin, INV_MARGIN, INV_MARGIN, INV_MARGIN, INV_MARGIN)
-	inventory_grid.add_theme_constant_override("h_separation", INV_GAP)
-	inventory_grid.add_theme_constant_override("v_separation", INV_GAP)
-
-## Сколько ячеек влезает в панель по ширине.
-func _inventory_columns() -> int:
-	var w: float = inventory_panel.size.x
-	if w <= 0.0:
-		w = 720.0
-	var usable: float = w - INV_MARGIN * 2.0
-	return maxi(1, int((usable + INV_GAP) / float(INV_SLOT + INV_GAP)))
-
-## Пересобрать сетку инвентаря после покупки/продажи/лута/зелья.
-func refresh_inventory() -> void:
-	for s in inventory_slots:
-		if is_instance_valid(s):
-			s.queue_free()
-	inventory_slots.clear()
-	inventory_items.clear()
-	inventory_items_meta.clear()
-	build_inventory_grid()
-
-func build_inventory_grid() -> void:
-	if not is_instance_valid(player):
-		return
-	inventory_grid.columns = _inventory_columns()
-	# Склад: подсчёт одинаковых предметов (стак) для счётчика в углу
-	var counts := {}
-	for key in player.inventory:
-		var k := str(key)
-		counts[k] = int(counts.get(k, 0)) + 1
-	# Книги и свитки лежат в складе как обычные предметы (купить в лавке) и
-	# учатся/читаются двойным кликом по ячейке; книга одного заклинания
-	# синтезируется (в item_db её нет — там только 5 книг стихий).
-	for key in player.inventory:
-		var item := ItemDB.find(str(key))
-		if item.is_empty():
-			item = SpellDB.book_item(str(key))
-			if item.is_empty():
-				continue
-		_add_inventory_slot(item, int(counts[str(key)]))
-	if inventory_slots.is_empty():
-		var lab := Label.new()
-		lab.text = "Склад пуст"
-		lab.add_theme_font_size_override("font_size", 16)
-		lab.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
-		inventory_grid.add_child(lab)
-
-## Создать ячейку склада (PanelContainer + иконка), count>1 — счётчик стека.
-func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
-	var slot := PanelContainer.new()
-	slot.theme_type_variation = &"SlotCell"
-	slot.custom_minimum_size = Vector2(INV_SLOT, INV_SLOT)
-	slot.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Карточка предмета у курсора (стилизованная, вместо стандартного tooltip_text).
-	_attach_item_card(slot, item)
-	# Выбран слот экипировки — затемняем неподходящие предметы (см. _set_slot_highlight).
-	if _highlight_slot != "" and not _item_matches_slot(item):
-		slot.modulate = Color(1, 1, 1, 0.30)
-	inventory_grid.add_child(slot)
-	inventory_slots.append(slot)
-	inventory_items.append(item)
-	inventory_items_meta.append(item)
-
-	var gear := {
-		"slot": ItemDB.slot_of(item),
-		"weapon": ItemDB.weapon_kind(item),
-		"two_handed": ItemDB.is_two_handed(item),
-		"armor": ItemDB.armor_kind(item),
-	}
-	_add_item(inventory_slots.size() - 1, str(item.get("icon", "")), str(item.get("name_ru", "")), gear)
-
-	# Счётчик количества (стак/деньги) в правом верхнем углу ячейки
-	if count > 1:
-		var cnt := Label.new()
-		cnt.text = str(count)
-		cnt.add_theme_font_size_override("font_size", 12)
-		cnt.add_theme_color_override("font_color", Color(1, 0.9, 0.45))
-		cnt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
-		cnt.add_theme_constant_override("outline_size", 4)
-		cnt.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		cnt.offset_left = -24.0
-		cnt.offset_top = 0.0
-		cnt.offset_right = -2.0
-		cnt.offset_bottom = 18.0
-		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slot.add_child(cnt)
-
-## Обработчик клика по предмету — экипировать героя / изучить магию.
-func _on_item_clicked(item: Dictionary):
-	if not is_instance_valid(player):
-		return
-	var quality := str(item.get("quality", ""))
-	var item_key := str(item.get("key", ""))
-	if quality == "Herb":
-		print("Трава: %s — ингредиент для будущих рецептов." % str(item.get("name_ru", item_key)))
-		return
-
-	# Магические предметы: книга (маг) или свиток (любой). Учатся/читаются
-	# ДВОЙНЫМ кликом по ячейке склада; предмет при этом расходуется.
-	# Имена: ключ "Book Fire Arrow"/"Scroll Fire Ball" — SpellDB их распознаёт.
-	if quality == "Book":
-		if not _magic_double_click(item_key):
-			return
-		if player.learn_book(item_key):
-			SoundDB.play(7)  # ibook
-			refresh_inventory()
-			refresh_spell_book()
-			_update_bottom_panel_visibility()
-			_update_stats()
-		else:
-			print("Книги магии читает только маг (и заклинание должно быть новым).")
-		return
-	if quality in ["Scroll", "SuperScroll"]:
-		if not _magic_double_click(item_key):
-			return
-		# Маг читает свиток ПРИЦЕЛЬНО (курсор-прицел, применяет 1 раз по цели);
-		# не-маг копит заряд в панели магии.
-		if player.has_mana:
-			_begin_scroll_targeting(item_key)
-			return
-		if player.read_scroll(item_key):
-			SoundDB.play(7)  # ibook
-			refresh_inventory()
-			refresh_spell_book()
-			_update_bottom_panel_visibility()
-			_update_stats()
-		return
-
-	# Зелья: лечение/мана из склада
-	if quality == "Potion":
-		_use_potion(item_key, item)
-		return
-
-	# Экипировка идёт через player.equip_item(): он запоминает КЛЮЧ предмета
-	# в слоте. Раньше здесь выставлялись только armor_kind/weapon/has_shield —
-	# то есть менялся набор анимации, а сам предмет нигде не сохранялся и в бой
-	# не попадал (статы считались по атрибутам).
-	var slot := str(item.get("slot", ""))
-	if slot == "shield" and player.two_handed:
-		print("Щит нельзя с двуручным оружием!")
-		return
-	if player.equip_item(item):
-		_update_stats()
-		print("Экипировано: " + str(item.get("name_ru", item_key)))
-		if _highlight_slot != "":
-			_set_slot_highlight("")   # сброс подсветки + перестройка инвентаря
-		else:
-			refresh_inventory()
-	else:
-		refresh_inventory()
-
-## Зелья из склада: лечение/мана (объём по названию), предмет расходуется.
-func _use_potion(item_key: String, item: Dictionary) -> void:
-	if not is_instance_valid(player):
-		return
-	var key := item_key.to_lower()
-	var heal := 0
-	var mana := 0
-	if "healing" in key:
-		heal = 60 if "big" in key else (30 if "medium" in key else 20)
-	elif "mana" in key:
-		mana = 50 if "big" in key else (25 if "medium" in key else 15)
-	elif "regen" in key:
-		heal = 15
-		mana = 10
-	if heal <= 0 and mana <= 0:
-		return
-	if not player.remove_item(item_key):
-		return
-	player.current_hp = mini(player.max_hp, player.current_hp + heal)
-	if player.max_mana > 0:
-		player.current_mana = mini(player.max_mana, player.current_mana + mana)
-	SoundDB.play(11)
-	refresh_inventory()
-	_update_stats()
-	print("Использовано: " + str(item.get("name_ru", item_key)))
-
-func _add_item(slot_idx: int, icon_path: String, item_name: String, gear: Dictionary = {}):
-	if slot_idx >= 0 and slot_idx < inventory_slots.size():
-		var tex = load(icon_path)
-		var slot: Control = inventory_slots[slot_idx]
-		if tex:
-			# Иконка предмета внутри ячейки (PanelContainer), не перехватывает клики
-			var icon_rect = TextureRect.new()
-			icon_rect.texture = tex
-			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			icon_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-			icon_rect.offset_left = 4.0
-			icon_rect.offset_top = 4.0
-			icon_rect.offset_right = -4.0
-			icon_rect.offset_bottom = -4.0
-			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			slot.add_child(icon_rect)
-		slot.mouse_filter = Control.MOUSE_FILTER_STOP
-
-		var item_data: Dictionary = gear.duplicate(true)
-		item_data["name"] = item_name
-		item_data["icon"] = icon_path
-		# Магический предмет (книга/свиток): ключ и качество для обработки
-		var src: Dictionary = inventory_items_meta[slot_idx] if slot_idx < inventory_items_meta.size() else {}
-		if not src.is_empty():
-			item_data["key"] = str(src.get("key", ""))
-			item_data["quality"] = str(src.get("quality", ""))
-		inventory_items[slot_idx] = item_data
-
-		# Кликабельный слот: наводим и нажимаем для экипировки
-		slot.gui_input.connect(func(event: InputEvent, data := item_data):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				_on_item_clicked(data))
-
 func _setup_action_buttons():
 	# Командные кнопки (следовать/атаковать/охранять/стоп + переключатели) —
-	# одним рядом под миникартой в правой панели. Фоновая картинка Allods 2
-	# (commandbarr.bmp) убрана вместе с декорацией; кнопки плоские с тултипами.
+	# одним рядом под миникартой в правой панели.
 	var labels := [
 		"Следовать", "Атаковать", "Охранять", "Стоп",
 		"Координаты", "Патруль", "Разговор", "Отдых",
 	]
-	var right_col := equip_area.get_parent() as VBoxContainer
+	var right_col := stats_area.get_parent() as VBoxContainer
 
 	# Кнопка «Инвентарь» — под миникартой, перед командными кнопками
 	var inv_btn := Button.new()
@@ -826,13 +569,6 @@ func _toggle_coords():
 	show_coords = not show_coords
 	coords_btn.button_pressed = show_coords
 	coords_label.visible = show_coords
-
-## Esc снимает подсветку подходящих предметов у выбранного пустого слота.
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo \
-			and event.keycode == KEY_ESCAPE and _highlight_slot != "":
-		_set_slot_highlight("")
-		get_viewport().set_input_as_handled()
 
 # --- Карточки наведения (стилизованные, через UiKit.make_hover_card) ---------
 
@@ -1351,141 +1087,6 @@ func _minimap_color_at(tx: int, ty: int) -> Color:
 		_:
 			return Color(0.25, 0.55, 0.25, 1.0)  # трава (tile1)
 
-# --- Панель экипировки: кукла + 10 слотов (см. ItemDB.EQUIP_SLOTS) ----------
-
-const EQUIP_SLOT_SIZE := Vector2(54, 54)
-var _equip_slots := {}          # слот -> {panel: Control, icon: TextureRect}
-var _doll: TextureRect = null
-var _highlight_slot := ""       # пустой слот, для которого подсвечиваем инвентарь
-
-func _setup_equipment_area() -> void:
-	if not is_instance_valid(equip_area):
-		return
-	var theme := UiKit.base_theme()
-	UiKit.add_panel(theme, &"EquipSlot", UiKit.SLOT_BG, UiKit.SLOT_BORDER, 4)
-	# Подсветка выбранного слота — золотая рамка поверх базового стиля.
-	theme.set_stylebox("panel", &"EquipSlotActive", UiKit.panel_style(
-		Color(0.18, 0.14, 0.10, 0.95), UiKit.DIALOG_BORDER, 4, 3))
-	equip_area.theme = theme
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	equip_area.add_child(center)
-
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	center.add_child(row)
-
-	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 8)
-	row.add_child(left)
-	var mid := VBoxContainer.new()
-	mid.add_theme_constant_override("separation", 8)
-	row.add_child(mid)
-	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 8)
-	row.add_child(right)
-
-	# Кукла: полноростовый спрайт героя по центру (шлем над головой, броня под ним).
-	_doll = TextureRect.new()
-	_doll.texture = hero_portrait
-	_doll.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_doll.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_doll.custom_minimum_size = Vector2(130, 200)
-	_doll.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	for slot in ["weapon", "shield", "hands", "cloak"]:
-		left.add_child(_make_equip_slot(slot))
-	mid.add_child(_make_equip_slot("head"))
-	mid.add_child(_doll)
-	mid.add_child(_make_equip_slot("body"))
-	for slot in ["amulet", "ring1", "ring2", "feet"]:
-		right.add_child(_make_equip_slot(slot))
-
-func _make_equip_slot(slot: String) -> Control:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"EquipSlot"
-	panel.custom_minimum_size = EQUIP_SLOT_SIZE
-	panel.focus_mode = Control.FOCUS_ALL
-	panel.tooltip_text = ItemDB.slot_title(slot)
-	var icon := TextureRect.new()
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(icon)
-	panel.gui_input.connect(_on_slot_input.bind(slot))
-	panel.focus_entered.connect(func(): _on_slot_focus(slot, true))
-	panel.focus_exited.connect(func(): _on_slot_focus(slot, false))
-	_attach_slot_card(panel, slot)
-	_equip_slots[slot] = {"panel": panel, "icon": icon}
-	return panel
-
-## Обновить иконки слотов по текущей экипировке героя.
-func refresh_equipment() -> void:
-	if not is_instance_valid(player) or _equip_slots.is_empty():
-		return
-	for slot in ItemDB.EQUIP_SLOTS:
-		var cell: Dictionary = _equip_slots[slot]
-		var icon_rect: TextureRect = cell.icon
-		var key := str(player.equipped.get(slot, ""))
-		if key == "":
-			icon_rect.texture = null
-		else:
-			var it := ItemDB.find(key)
-			icon_rect.texture = load(str(it.get("icon", ""))) if not it.is_empty() else null
-
-func _on_slot_input(event: InputEvent, slot: String) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_on_slot_clicked(slot)
-
-## Фокус слота (клавиатура/геймпад): ведём себя как клик по пустому слоту —
-## подсвечиваем подходящие предметы, повторный фокус/выход — сброс.
-func _on_slot_focus(slot: String, entered: bool) -> void:
-	if not entered and _highlight_slot == slot:
-		_set_slot_highlight("")
-	elif entered and str(player.equipped.get(slot, "")) == "":
-		_set_slot_highlight(slot)
-
-func _on_slot_clicked(slot: String) -> void:
-	if not is_instance_valid(player):
-		return
-	var key := str(player.equipped.get(slot, ""))
-	if key != "":
-		# Заполненный слот: снять предмет в инвентарь (если его там ещё нет).
-		if player.unequip_slot(slot):
-			if not player.has_item(key):
-				player.add_item(key)
-			SoundDB.play(6)  # idrop
-			_set_slot_highlight("")
-			refresh_inventory()
-			_update_stats()
-		return
-	# Пустой слот: включить/выключить подсветку подходящих предметов.
-	if _highlight_slot == slot:
-		_set_slot_highlight("")
-	else:
-		_set_slot_highlight(slot)
-
-func _set_slot_highlight(slot: String) -> void:
-	_highlight_slot = slot
-	for s in ItemDB.EQUIP_SLOTS:
-		var cell: Dictionary = _equip_slots.get(s, {})
-		if cell.is_empty():
-			continue
-		var panel: PanelContainer = cell.panel
-		if s == slot:
-			panel.theme_type_variation = &"EquipSlotActive"
-		else:
-			panel.theme_type_variation = &"EquipSlot"
-	refresh_inventory()
-
-## Предмет совпадает со слотом подсветки (или подсветки нет — любой).
-func _item_matches_slot(item: Dictionary) -> bool:
-	if _highlight_slot == "":
-		return true
-	return ItemDB.fits_slot(item, _highlight_slot)
-
 # --- Блок статов: текстовые строки с HSeparator между секциями --------
 
 var _hp_label: Label = null
@@ -1567,7 +1168,6 @@ func _update_stats():
 	if not is_instance_valid(player):
 		return
 	var p = player
-	refresh_equipment()
 
 	if _hp_label != null:
 		_hp_label.text = "%d / %d" % [p.current_hp, p.max_hp]
@@ -1699,23 +1299,15 @@ func _update_cooldowns() -> void:
 		_cd_shown[name] = shown
 		_set_cooldown_visual(b, left, SpellDB.cooldown_of(name))
 
-func toggle_inventory():
-	inventory_visible = !inventory_visible
-	_update_bottom_panel_visibility()
-
 func toggle_spells():
 	spells_visible = !spells_visible
 	_update_bottom_panel_visibility()
 
-# Магия (B) и инвентарь (I) — независимые панели.
-# Обе видны: магия сверху, инвентарь снизу. Контейнер подгоняется под контент.
+## Магия (B) — нижняя панель. Инвентарь теперь в модальном окне.
 func _update_bottom_panel_visibility():
 	spell_panel.visible = spells_visible
-	inventory_panel.visible = inventory_visible
-
-	var any_visible = spells_visible or inventory_visible
-	bottom_panel.visible = any_visible
-	if not any_visible:
+	bottom_panel.visible = spells_visible
+	if not spells_visible:
 		return
 
 	# BottomPanel центрирован якорями (anchor_left=0.5, anchor_right=0.5),
@@ -1723,34 +1315,18 @@ func _update_bottom_panel_visibility():
 	# Здесь только вертикальная позиция (bottom-up от нижнего края).
 	var vh := get_viewport().get_visible_rect().size.y
 
-	# Высота книги заклинаний: по числу строк сетки ячеек 36px (минимум 12),
-	# но не ниже фона 90px. Маг после выучивания многих книг — книга растёт вверх.
 	var n := spell_buttons.size()
 	if n <= 0:
 		n = 12
 	var rows := maxi(1, ceili(float(n) / float(SPELL_COLS)))
 	var spell_h := clampf(10.0 + rows * (SPELL_CELL + 2.0), 90.0, 230.0)
-	var inv_h = 95.0
-	var gap = 5.0
 
 	var book_w := 480.0
 	spell_panel.offset_left = (720.0 - book_w) / 2.0
 	spell_panel.offset_right = spell_panel.offset_left + book_w
-
-	if spells_visible and inventory_visible:
-		spell_panel.offset_top = 0.0
-		spell_panel.offset_bottom = spell_h
-		inventory_panel.offset_top = spell_h + gap
-		inventory_panel.offset_bottom = spell_h + gap + inv_h
-		bottom_panel.offset_top = vh - (spell_h + gap + inv_h)
-	elif spells_visible:
-		spell_panel.offset_top = 0.0
-		spell_panel.offset_bottom = spell_h
-		bottom_panel.offset_top = vh - spell_h
-	else:
-		inventory_panel.offset_top = 0.0
-		inventory_panel.offset_bottom = inv_h
-		bottom_panel.offset_top = vh - inv_h
+	spell_panel.offset_top = 0.0
+	spell_panel.offset_bottom = spell_h
+	bottom_panel.offset_top = vh - spell_h
 	bottom_panel.offset_bottom = vh
 
 # --- Экономика (P0): панели магазина / школы / таверны ---
@@ -1919,6 +1495,4 @@ func open_inventory_panel() -> void:
 	add_child(_inventory_panel)
 
 func _on_inventory_changed() -> void:
-	refresh_inventory()
-	refresh_equipment()
 	_update_stats()
