@@ -1302,11 +1302,10 @@ func _draw_minimap():
 
 	# Здания (серые квадраты 2×2)
 	if alm_map.has_method("structure_at") and alm_map.map_width > 0:
-		var ts: int = alm_map.tile_size
 		for ty in range(0, mh, 4):
 			for tx in range(0, mw, 4):
-				var h: Dictionary = alm_map.structure_at(Vector2i(tx, ty))
-				if not h.is_empty():
+				var struct: Dictionary = alm_map.structure_at(Vector2i(tx, ty))
+				if not struct.is_empty():
 					var sx := int(tx * scale_x)
 					var sy := int(ty * scale_y)
 					for dy in range(0, 2):

@@ -351,7 +351,7 @@ static func make_hover_card(width: float = 300.0) -> PanelContainer:
 ## icon_path — необязательный путь к иконке предмета (32×32 слева).
 ## quality_color — необязательный цвет рамки по качеству предмета.
 static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
-		bounds: Vector2, icon_path: String = "", quality_color: Color = Color.ZERO) -> void:
+		bounds: Vector2, icon_path: String = "", quality_color: Color = Color(-1, -1, -1, -1)) -> void:
 	if card == null or not is_instance_valid(card):
 		return
 	var box: Node = card.find_child("Box", true, false)
@@ -359,8 +359,8 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 		return
 	clear(box)
 
-	# Обновить цвет рамки по качеству
-	if quality_color != Color.ZERO:
+	# Обновить цвет рамки по качеству (Color(-1) = не задан, не трогаем)
+	if quality_color.r >= 0.0:
 		var style: StyleBoxFlat = card.get_theme_stylebox("panel").duplicate()
 		style.border_color = quality_color
 		card.add_theme_stylebox_override("panel", style)

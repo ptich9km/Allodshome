@@ -52,7 +52,7 @@ func _exit_tree() -> void:
 func _input(event: InputEvent) -> void:
 	if UiKit.esc_pressed(event):
 		close()
-		set_input_as_handled()
+		get_viewport().set_input_as_handled()
 
 
 func close() -> void:
@@ -146,7 +146,10 @@ func _build_ui() -> void:
 
 func _build_equipment_area() -> void:
 	var container := CenterContainer.new()
-	container.set_anchors_preset(Control.PRESET_CUSTOM)
+	container.anchor_left = 0.0
+	container.anchor_top = 0.0
+	container.anchor_right = 0.0
+	container.anchor_bottom = 0.0
 	container.offset_left = 20.0
 	container.offset_top = 60.0
 	container.offset_right = 500.0
@@ -297,7 +300,10 @@ var _inventory_scroll: ScrollContainer
 
 func _build_inventory_area() -> void:
 	var container := VBoxContainer.new()
-	container.set_anchors_preset(Control.PRESET_CUSTOM)
+	container.anchor_left = 0.0
+	container.anchor_top = 0.0
+	container.anchor_right = 0.0
+	container.anchor_bottom = 0.0
 	container.offset_left = 520.0
 	container.offset_top = 60.0
 	container.offset_right = 1010.0
