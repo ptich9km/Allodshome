@@ -1612,6 +1612,7 @@ var _alchemy: AlchemyPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
 var _blacksmith: BlacksmithPanel = null
+var _inventory_panel: InventoryPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
 var _in_interior := false
 ## Узлы HUD, которые прячем на время интерьера. Раньше они оставались видимыми:
@@ -1673,11 +1674,12 @@ func _on_panel_closed() -> void:
 	_school = null
 	_inn = null
 	_blacksmith = null
+	_inventory_panel = null
 	_exit_interior()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith)
+	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith) or is_instance_valid(_inventory_panel)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1756,3 +1758,19 @@ func open_blacksmith() -> void:
 	_blacksmith.closed.connect(_on_panel_closed)
 	_blacksmith.inventory_changed.connect(refresh_inventory)
 	add_child(_blacksmith)
+
+## Инвентарь и экипировка: модальное окно с куклой, слотами и складом.
+func open_inventory_panel() -> void:
+	if _inventory_panel != null and is_instance_valid(_inventory_panel):
+		return
+	_enter_interior()
+	_inventory_panel = InventoryPanel.new()
+	_inventory_panel.setup(player)
+	_inventory_panel.closed.connect(_on_panel_closed)
+	_inventory_panel.inventory_changed.connect(_on_inventory_changed)
+	add_child(_inventory_panel)
+
+func _on_inventory_changed() -> void:
+	refresh_inventory()
+	refresh_equipment()
+	_update_stats()
