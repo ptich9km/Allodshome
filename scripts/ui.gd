@@ -173,7 +173,7 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	style.bg_color = Color(0.10, 0.09, 0.08, 0.92)
 	style.border_color = Color(0.2, 0.18, 0.15)
 	style.set_border_width_all(1)
-	style.set_border_width_bottom(2)
+	style.set_border_width(SIDE_BOTTOM, 2)
 	style.border_color = sphere_color.lerp(Color(0.2, 0.18, 0.15), 0.4)
 	style.set_corner_radius_all(3)
 	style.set_content_margin_all(2)
