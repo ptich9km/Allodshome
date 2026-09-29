@@ -290,14 +290,18 @@ func _refresh_equipment() -> void:
 	if not is_instance_valid(player) or _equip_slots.is_empty():
 		return
 	for slot in ItemDB.EQUIP_SLOTS:
+		if not _equip_slots.has(slot):
+			continue
 		var cell: Dictionary = _equip_slots[slot]
 		var icon_rect: TextureRect = cell.icon
 		var key := str(player.equipped.get(slot, ""))
 		if key == "":
 			icon_rect.texture = null
+			icon_rect.queue_redraw()
 		else:
 			var it := ItemDB.find(key)
 			icon_rect.texture = load(str(it.get("icon", ""))) if not it.is_empty() else null
+			icon_rect.queue_redraw()
 
 
 # ─────────────────────── Инвентарь ───────────────────────

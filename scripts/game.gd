@@ -1272,9 +1272,10 @@ func _build_save_payload() -> Dictionary:
 	var world_dict: Dictionary = {}
 	# WorldBus - это AUTOLOAD, а не GDExtension-синглтон, поэтому
 	# Engine.has_singleton() его не видит: берём узел из дерева сцены.
-	var bus = get_node_or_null("/root/WorldBus")
-	if bus != null and "state" in bus and bus.state != null:
-		world_dict = bus.state.to_dict()
+	if is_inside_tree():
+		var bus = get_node_or_null("/root/WorldBus")
+		if bus != null and "state" in bus and bus.state != null:
+			world_dict = bus.state.to_dict()
 	return SaveSystem.build_payload(player, world_dict)
 
 
