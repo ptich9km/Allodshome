@@ -1214,6 +1214,35 @@ func _draw_minimap():
 			if exx >= 0 and exx < w and eyy >= 0 and eyy < h:
 				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))
 
+	# NPC (жёлтые = нейтральные, зелёные = союзники/стражи)
+	for npc in Game.npcs:
+		if is_instance_valid(npc):
+			var ntx: int = int(npc.global_position.x) / alm_map.tile_size
+			var nty: int = int(npc.global_position.y) / alm_map.tile_size
+			var nxx := int(ntx * scale_x); var nyy := int(nty * scale_y)
+			if nxx >= 0 and nxx < w and nyy >= 0 and nyy < h:
+				var nc: Color
+				if "guard" in str(npc.get("role", "")):
+					nc = Color(0.2, 0.8, 0.2, 1.0)  # страж = зелёный
+				else:
+					nc = Color(1.0, 0.85, 0.2, 1.0)  # житель = жёлтый
+				minimap_image.set_pixel(nxx, nyy, nc)
+
+	# Здания (серые квадраты 2×2)
+	if alm_map.has_method("structure_at") and alm_map.map_width > 0:
+		var ts: int = alm_map.tile_size
+		for ty in range(0, mh, 4):
+			for tx in range(0, mw, 4):
+				var h: Dictionary = alm_map.structure_at(Vector2i(tx, ty))
+				if not h.is_empty():
+					var sx := int(tx * scale_x)
+					var sy := int(ty * scale_y)
+					for dy in range(0, 2):
+						for dx in range(0, 2):
+							var xx := sx + dx; var yy := sy + dy
+							if xx >= 0 and xx < w and yy >= 0 and yy < h:
+								minimap_image.set_pixel(xx, yy, Color(0.5, 0.45, 0.4, 1.0))
+
 	minimap_texture.update(minimap_image)
 	var tex_rect2 := minimap_rect.get_node_or_null("MinimapTex")
 	if tex_rect2:
