@@ -23,6 +23,16 @@ var _inventory_slots: Array = []  # PanelContainer'ы ячеек инвента�
 var _inventory_items: Array = []  # Dictionary предметов по индексу
 var _hover_card: PanelContainer = null
 var _gold_label: Label
+var _magic_click_key := ""
+var _magic_click_time := 0.0
+
+## true, если это повторный клик по тому же предмету в течение 0.45 с.
+func _magic_double_click(item_key: String) -> bool:
+	var now := Time.get_ticks_msec()
+	var hit := _magic_click_key == item_key and now - _magic_click_time < 450
+	_magic_click_key = item_key
+	_magic_click_time = now
+	return hit
 
 
 func setup(p: Player) -> void:
@@ -438,6 +448,8 @@ func _on_item_clicked(item: Dictionary) -> void:
 	if quality == "Herb":
 		return
 	if quality == "Book":
+		if not _magic_double_click(item_key):
+			return
 		if player.learn_book(item_key):
 			SoundDB.play(7)
 			_refresh_inventory_grid()
@@ -445,6 +457,8 @@ func _on_item_clicked(item: Dictionary) -> void:
 			inventory_changed.emit()
 		return
 	if quality in ["Scroll", "SuperScroll"]:
+		if not _magic_double_click(item_key):
+			return
 		if player.read_scroll(item_key):
 			SoundDB.play(7)
 			_refresh_inventory_grid()

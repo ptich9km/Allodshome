@@ -409,10 +409,9 @@ func _begin_scroll_targeting(item_key: String) -> void:
 	_update_targeting_hint(spell, true)
 	SoundDB.play(7)  # ibook
 
-## Свиток применён по цели (вызывает Game). Сброс режима + обновление склад/книги.
+## Свиток применён по цели (вызывает Game). Сброс режима + обновление книги.
 func _finish_scroll_targeting() -> void:
 	_cancel_targeting()
-	refresh_inventory()
 	refresh_spell_book()
 	_update_bottom_panel_visibility()
 	_update_stats()
@@ -1437,9 +1436,7 @@ func open_shop() -> void:
 	_shop = ShopPanel.new()
 	_shop.setup(player)
 	_shop.closed.connect(_on_panel_closed)
-	_shop.inventory_changed.connect(refresh_inventory)
 	add_child(_shop)
-	refresh_inventory()
 
 func open_alchemy() -> void:
 	if _alchemy != null and is_instance_valid(_alchemy):
@@ -1448,9 +1445,7 @@ func open_alchemy() -> void:
 	_alchemy = AlchemyPanel.new()
 	_alchemy.setup(player)
 	_alchemy.closed.connect(_on_panel_closed)
-	_alchemy.inventory_changed.connect(refresh_inventory)
 	add_child(_alchemy)
-	refresh_inventory()
 
 ## Школа тренировок: навыки за золото (клик по Training School).
 func open_school() -> void:
@@ -1480,7 +1475,6 @@ func open_blacksmith() -> void:
 	_blacksmith = BlacksmithPanel.new()
 	_blacksmith.setup(player)
 	_blacksmith.closed.connect(_on_panel_closed)
-	_blacksmith.inventory_changed.connect(refresh_inventory)
 	add_child(_blacksmith)
 
 ## Инвентарь и экипировка: модальное окно с куклой, слотами и складом.
