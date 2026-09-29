@@ -1570,13 +1570,10 @@ func _update_bottom_panel_visibility():
 	if not any_visible:
 		return
 
-	# Магия и инвентарь — полоса 720px ПО ЦЕНТРУ игрового окна (на любом
-	# разрешении), чтобы панель магии была над игроком, а не в углу.
-	var vw := get_viewport().get_visible_rect().size.x
+	# BottomPanel центрирован якорями (anchor_left=0.5, anchor_right=0.5),
+	# ширина 720px задаётся offset_left=-360, offset_right=360 в tscn.
+	# Здесь только вертикальная позиция (bottom-up от нижнего края).
 	var vh := get_viewport().get_visible_rect().size.y
-	var bw := 720.0
-	bottom_panel.offset_left = (vw - bw) / 2.0
-	bottom_panel.offset_right = bottom_panel.offset_left + bw
 
 	# Высота книги заклинаний: по числу строк сетки ячеек 36px (минимум 12),
 	# но не ниже фона 90px. Маг после выучивания многих книг — книга растёт вверх.
@@ -1589,11 +1586,10 @@ func _update_bottom_panel_visibility():
 	var gap = 5.0
 
 	var book_w := 480.0
-	spell_panel.offset_left = (bw - book_w) / 2.0
+	spell_panel.offset_left = (720.0 - book_w) / 2.0
 	spell_panel.offset_right = spell_panel.offset_left + book_w
 
 	if spells_visible and inventory_visible:
-		# Магия сверху, инвентарь снизу
 		spell_panel.offset_top = 0.0
 		spell_panel.offset_bottom = spell_h
 		inventory_panel.offset_top = spell_h + gap
