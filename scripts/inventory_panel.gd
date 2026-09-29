@@ -257,6 +257,7 @@ func _on_slot_clicked(slot: String) -> void:
 			SoundDB.play(6)
 			_set_slot_highlight("")
 			_refresh_inventory_grid()
+			_refresh_equipment()
 			inventory_changed.emit()
 		return
 	if _highlight_slot == slot:

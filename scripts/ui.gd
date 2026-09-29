@@ -1097,31 +1097,15 @@ func _setup_stats_area() -> void:
 		return
 	stats_area.add_theme_constant_override("separation", 2)
 
-	# HP/MP — текстом (бары дублируют то, что над головой героя)
-	_hp_label = _add_stat_text("ЖИЗНЬ", Color(0.55, 0.85, 0.55))
-	_mp_label = _add_stat_text("МАНА", Color(0.55, 0.7, 1.0))
+	# HP/MP — текстом
+	_hp_label = _add_stat_text("Жизнь", Color(0.55, 0.85, 0.55))
+	_mp_label = _add_stat_text("Мана", Color(0.55, 0.7, 1.0))
 
-	# Секция: Атрибуты
-	_add_separator("АТРИБУТЫ")
+	# Статы — компактные строки без заголовков
 	_stat_labels["attrs"] = _add_stat_line()
-
-	# Секция: Бой
-	_add_separator("БОЙ")
 	_stat_labels["derived"] = _add_stat_line()
-
-	# Секция: Навыки / Сферы
-	if Game.hero_class == "mage":
-		_add_separator("СФЕРЫ")
-	else:
-		_add_separator("НАВЫКИ")
 	_stat_labels["skills"] = _add_stat_line()
-
-	# Секция: Сопротивление
-	_add_separator("СОПРОТИВЛЕНИЕ")
 	_stat_labels["resists"] = _add_stat_line()
-
-	# Секция: Параметры
-	_add_separator("ПАРАМЕТРЫ")
 	_stat_labels["extra"] = _add_stat_line()
 
 
@@ -1130,7 +1114,7 @@ func _add_stat_text(title: String, color: Color) -> Label:
 	row.add_theme_constant_override("separation", 6)
 	var lab_title := Label.new()
 	lab_title.text = title
-	lab_title.custom_minimum_size = Vector2(55, 0)
+	lab_title.custom_minimum_size = Vector2(44, 0)
 	lab_title.add_theme_font_size_override("font_size", 12)
 	lab_title.add_theme_color_override("font_color", Color(0.75, 0.70, 0.60))
 	row.add_child(lab_title)
@@ -1140,18 +1124,6 @@ func _add_stat_text(title: String, color: Color) -> Label:
 	row.add_child(lab_val)
 	stats_area.add_child(row)
 	return lab_val
-
-
-func _add_separator(title: String) -> void:
-	var sep := HSeparator.new()
-	sep.add_theme_constant_override("separation", 4)
-	stats_area.add_child(sep)
-	var lab := Label.new()
-	lab.text = title
-	lab.add_theme_font_size_override("font_size", 11)
-	lab.add_theme_color_override("font_color", Color(0.6, 0.55, 0.48))
-	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stats_area.add_child(lab)
 
 
 func _add_stat_line() -> Label:
@@ -1399,6 +1371,7 @@ func _on_panel_closed() -> void:
 	_blacksmith = null
 	_inventory_panel = null
 	_exit_interior()
+	_update_preview_hero()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
@@ -1490,3 +1463,4 @@ func open_inventory_panel() -> void:
 
 func _on_inventory_changed() -> void:
 	_update_stats()
+	_update_preview_hero()

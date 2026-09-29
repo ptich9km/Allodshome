@@ -150,6 +150,7 @@ horizontal_alignment = 1
 
 [node name="MinimapBorder" type="Panel" parent="UI/RightPanel/RightMargin/RightCol"]
 layout_mode = 2
+size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 165)
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
