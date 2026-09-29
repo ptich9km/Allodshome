@@ -136,9 +136,8 @@ func refresh_spell_book() -> void:
 		var known: bool = (player.has_mana and ch == -1) or (not player.has_mana and ch > 0)
 		_make_spell_cell(name, str(s["icon"]), known)
 
-## Ячейка книги: фон spellback.bmp; выучено — иконка из каталога assets/spells
-## (+ число зарядов свитка) и подсказка; не выучено — пустой квадрат, но тоже с
-## подсказкой — какая магия сюда учится.
+## Ячейка книги: StyleBoxFlat с цветной полосой стихии снизу; выучено — иконка;
+## не выучено — приглушённый border. Вместо spellback.bmp — кастомный стиль.
 func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	var spell := SpellDB.get_spell(name)
 	var title := str(spell.get("ru", name))
@@ -146,16 +145,18 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	var sphere := str(SPHERE_RU.get(sphere_name, sphere_name))
 	var charges := player.spell_charges(name)
 	var mana := SpellDB.mana_cost(name)
+	var sphere_color: Color = UiKit.SPHERE_COLORS.get(sphere_name, Color(0.5, 0.5, 0.5))
 
 	if not known:
-		# Пустой слот книги: подсказка показывает, какая магия здесь будет
-		var cell := TextureRect.new()
+		# Пустой слот книги: приглушённый border цвета стихии
+		var cell := PanelContainer.new()
 		cell.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
-		var bgc := _spellback_tex()
-		if bgc != null:
-			cell.texture = bgc
-			cell.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			cell.stretch_mode = TextureRect.STRETCH_SCALE
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.08, 0.07, 0.06, 0.7)
+		style.border_color = sphere_color.darkened(0.5)
+		style.set_border_width_all(1)
+		style.set_corner_radius_all(3)
+		cell.add_theme_stylebox_override("panel", style)
 		cell.tooltip_text = "%s\nСфера: %s\n(не выучено — выучите Книгой Магии)" % [title, sphere]
 		spell_grid.add_child(cell)
 		spell_buttons.append(cell)
@@ -165,22 +166,37 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	b.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
 	b.flat = true
 
-	var bg := TextureRect.new()
-	bg.texture = _spellback_tex()
-	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(bg)
+	# Стиль ячейки: тёмный фон + цветной border стихии снизу (2px)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.10, 0.09, 0.08, 0.92)
+	style.border_color = Color(0.2, 0.18, 0.15)
+	style.set_border_width_all(1)
+	style.set_border_width_bottom(2)
+	style.border_color = sphere_color.lerp(Color(0.2, 0.18, 0.15), 0.4)
+	style.set_corner_radius_all(3)
+	style.set_content_margin_all(2)
+	b.add_theme_stylebox_override("normal", style)
 
-	# Иконка нужной магии из каталога assets/spells ПОВЕРХ квадрата
+	var hover_style := style.duplicate()
+	hover_style.border_color = sphere_color
+	hover_style.bg_color = Color(0.15, 0.13, 0.11, 0.95)
+	b.add_theme_stylebox_override("hover", hover_style)
+
+	var pressed_style := style.duplicate()
+	pressed_style.bg_color = Color(0.06, 0.05, 0.04, 1.0)
+	b.add_theme_stylebox_override("pressed", pressed_style)
+
+	# Иконка нужной магии из каталога assets/spells
 	if icon != "":
 		var ic := TextureRect.new()
 		ic.texture = load(icon)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.position = Vector2(2, 2)
-		ic.size = Vector2(SPELL_CELL - 4, SPELL_CELL - 4)
+		ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ic.offset_left = 3.0
+		ic.offset_top = 3.0
+		ic.offset_right = -3.0
+		ic.offset_bottom = -3.0
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(ic)
 
@@ -209,9 +225,7 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	spell_buttons.append(b)
 	_spell_buttons_filled.append(b)
 	_spell_button_names.append(name)
-	# Метка обратного отсчёта кулдауна. Прямоугольная заливка поверх иконки
-	# выглядит грязно на 36 px, поэтому вместо неё — число оставшихся секунд
-	# по центру ячейки, тем же шрифтом, что счётчик зарядов свитка.
+	# Метка обратного отсчёта кулдауна.
 	var cd := Label.new()
 	cd.name = "Cooldown"
 	cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -224,10 +238,9 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	cd.add_theme_constant_override("outline_size", 4)
 	cd.visible = false
 	b.add_child(cd)
-	# Иконку запоминаем, чтобы гасить только её, а не кнопку целиком: текст
-	# зарядов свитка и сам счётчик кулдауна остаются читаемыми.
+	# Иконку запоминаем, чтобы гасить только её, а не кнопку целиком
 	if icon != "":
-		b.set_meta("icon", get_child(2))
+		b.set_meta("icon", b.get_child(0))
 	_set_cooldown_visual(b, 0.0, SpellDB.cooldown_of(name))
 
 
