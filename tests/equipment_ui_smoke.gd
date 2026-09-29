@@ -64,7 +64,7 @@ func _test_panel(ui) -> void:
 			_check(icon.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
 				"иконка слота %s не обрезается (KEEP_ASPECT_CENTERED)" % slot)
 	_check(ui.get("_doll") is TextureRect, "кукла (полноростовый спрайт) на месте")
-	var panel: Control = ui.get_node_or_null("RightPanel")
+	var panel: Control = ui.get_node_or_null("StatsPanel")
 	if panel != null:
 		# Headless-вьюпорт маленький, поэтому проверяем не абсолютные координаты,
 		# а то, что панель имеет нормальный размер (в игре якоря держат её справа).

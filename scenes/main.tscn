@@ -91,94 +91,100 @@ offset_right = 475.0
 offset_bottom = 83.0
 columns = 12
 
-[node name="RightPanel" type="PanelContainer" parent="UI"]
+[node name="MinimapPanel" type="PanelContainer" parent="UI"]
 anchors_preset = 0
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_top = 0.0
-anchor_bottom = 1.0
-offset_left = -300.0
+anchor_bottom = 0.0
+offset_left = -180.0
 offset_top = 5.0
 offset_right = -5.0
-offset_bottom = -5.0
+offset_bottom = 188.0
 grow_horizontal = 0
-grow_vertical = 2
+grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="RightMargin" type="MarginContainer" parent="UI/RightPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
-
-[node name="RightCol" type="VBoxContainer" parent="UI/RightPanel/RightMargin"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Header" type="HBoxContainer" parent="UI/RightPanel/RightMargin/RightCol"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="MiniPortraitBorder" type="PanelContainer" parent="UI/RightPanel/RightMargin/RightCol/Header"]
-custom_minimum_size = Vector2(64, 64)
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
-
-[node name="MiniPortrait" type="TextureRect" parent="UI/RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder"]
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
-
-[node name="HeaderText" type="VBoxContainer" parent="UI/RightPanel/RightMargin/RightCol/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="HeroName" type="Label" parent="UI/RightPanel/RightMargin/RightCol/Header/HeaderText"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "ГЕРОЙ"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="HeroClass" type="Label" parent="UI/RightPanel/RightMargin/RightCol/Header/HeaderText"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.75, 0.7, 0.6, 1)
-text = ""
-horizontal_alignment = 1
-
-[node name="MinimapBorder" type="Panel" parent="UI/RightPanel/RightMargin/RightCol"]
-layout_mode = 2
-size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 165)
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-
-[node name="MinimapMargin" type="MarginContainer" parent="UI/RightPanel/RightMargin/RightCol/MinimapBorder"]
+[node name="MinimapMargin" type="MarginContainer" parent="UI/MinimapPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="MinimapRect" type="ColorRect" parent="UI/RightPanel/RightMargin/RightCol/MinimapBorder/MinimapMargin"]
+[node name="MinimapRect" type="ColorRect" parent="UI/MinimapPanel/MinimapMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 color = Color(0.05, 0.05, 0.05, 1)
 
-[node name="PreviewInfo" type="Label" parent="UI/RightPanel/RightMargin/RightCol"]
+[node name="StatsPanel" type="PanelContainer" parent="UI"]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -180.0
+offset_top = -370.0
+offset_right = -5.0
+offset_bottom = -5.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="StatsMargin" type="MarginContainer" parent="UI/StatsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="StatsCol" type="VBoxContainer" parent="UI/StatsPanel/StatsMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PreviewInfo" type="HBoxContainer" parent="UI/StatsPanel/StatsMargin/StatsCol"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MiniPortraitBorder" type="PanelContainer" parent="UI/StatsPanel/StatsMargin/StatsCol/PreviewInfo"]
+custom_minimum_size = Vector2(64, 64)
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="MiniPortrait" type="TextureRect" parent="UI/StatsPanel/StatsMargin/StatsCol/PreviewInfo/MiniPortraitBorder"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PreviewText" type="VBoxContainer" parent="UI/StatsPanel/StatsMargin/StatsCol/PreviewInfo"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PreviewName" type="Label" parent="UI/StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="PreviewSub" type="Label" parent="UI/StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.75, 0.7, 0.6, 1)
+text = ""
+
+[node name="PreviewDetail" type="Label" parent="UI/StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.8, 0.75, 0.65, 1)
 autowrap_mode = 2
 text = ""
-horizontal_alignment = 1
 
-[node name="StatsArea" type="VBoxContainer" parent="UI/RightPanel/RightMargin/RightCol"]
+[node name="StatsArea" type="GridContainer" parent="UI/StatsPanel/StatsMargin/StatsCol"]
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 3
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 2
+visible = false
 
 [node name="PauseLabel" type="Label" parent="UI" unique_id=1790732370]
 offset_left = 440.0

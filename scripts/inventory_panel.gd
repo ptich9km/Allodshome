@@ -556,8 +556,11 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
 			cell.global_position, _DESIGN_SIZE, icon_path, qcolor))
 	cell.mouse_exited.connect(func():
-		if _hover_card != null:
-			UiKit.hide_hover_card(_hover_card))
+		if _hover_card != null and _hover_card.visible:
+			var mouse_pos := get_viewport().get_mouse_position()
+			var cell_rect := Rect2(cell.global_position, cell.size)
+			if not cell_rect.has_point(mouse_pos):
+				UiKit.hide_hover_card(_hover_card))
 	cell.focus_entered.connect(func():
 		if _hover_card == null:
 			_hover_card = _ensure_card()
@@ -572,7 +575,12 @@ func _attach_slot_card(cell: Control, slot: String) -> void:
 	if not is_instance_valid(cell):
 		return
 	cell.mouse_entered.connect(func(): _show_slot_card(cell, slot))
-	cell.mouse_exited.connect(func(): _hide_slot_card())
+	cell.mouse_exited.connect(func():
+		if _hover_card != null and _hover_card.visible:
+			var mouse_pos := get_viewport().get_mouse_position()
+			var cell_rect := Rect2(cell.global_position, cell.size)
+			if not cell_rect.has_point(mouse_pos):
+				_hide_slot_card())
 	cell.focus_entered.connect(func(): _show_slot_card(cell, slot))
 	cell.focus_exited.connect(func(): _hide_slot_card())
 

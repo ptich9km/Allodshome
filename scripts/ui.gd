@@ -5,19 +5,19 @@ class_name GameUI
 @onready var bottom_panel: Control = $BottomPanel
 @onready var spell_panel: Control = $BottomPanel/SpellPanel
 @onready var pause_label: Label = $PauseLabel
-@onready var mini_portrait: TextureRect = $RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder/MiniPortrait
-@onready var hero_name_label: Label = $RightPanel/RightMargin/RightCol/Header/HeaderText/HeroName
-@onready var hero_class_label: Label = $RightPanel/RightMargin/RightCol/Header/HeaderText/HeroClass
-@onready var preview_info: Label = $RightPanel/RightMargin/RightCol/PreviewInfo
-@onready var stats_area: VBoxContainer = $RightPanel/RightMargin/RightCol/StatsArea
-@onready var minimap_rect: ColorRect = $RightPanel/RightMargin/RightCol/MinimapBorder/MinimapMargin/MinimapRect
+@onready var mini_portrait: TextureRect = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/MiniPortraitBorder/MiniPortrait
+@onready var preview_name: Label = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText/PreviewName
+@onready var preview_sub: Label = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText/PreviewSub
+@onready var preview_detail: Label = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText/PreviewDetail
+@onready var stats_area: GridContainer = $StatsPanel/StatsMargin/StatsCol/StatsArea
+@onready var minimap_rect: ColorRect = $MinimapPanel/MinimapMargin/MinimapRect
 @onready var coords_label: Label = $CoordsLabel
 
 var show_coords := false
 var hero_portrait: Texture2D = null   # дефолтный портрет героя (сброс ховера)
 var _hover_name := ""
-var cmd_buttons: Array = []          # кнопки команд поверх commandbarr.bmp (0-3 команды, 4 координаты)
-var coords_btn: Button = null
+var cmd_buttons: Array = []
+var _stats_toggle_btn: Button = null
 
 var minimap_camera: Camera2D
 var alm_map = null   # CustomMap или AlmMap (группа "alm_map")
@@ -35,11 +35,7 @@ func setup_ui(p: Player):
 
 	_setup_spells()
 
-	# Шапка панели персонажа: имя, класс и компактный портрет (из экрана старта)
-	hero_name_label.text = Game.hero_name
-	var cls := "Маг" if Game.hero_class == "mage" else "Воин"
-	var gnd := "Женщина" if Game.hero_gender == "female" else "Мужчина"
-	hero_class_label.text = "%s · %s" % [cls, gnd]
+	# Портрет героя
 	var hero_tex = load("res://assets/equipment/%s/1.png" % Game.hero_character_id)
 	if hero_tex:
 		mini_portrait.texture = hero_tex
@@ -54,13 +50,12 @@ func setup_ui(p: Player):
 	_setup_stats_area()
 	_update_preview_hero()
 
-	# Карта для миникарты: CustomMap или AlmMap (группа "alm_map", без каста — они не родственники)
+	# Карта для миникарты
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 
 	_setup_minimap()
 	_setup_action_buttons()
 	_layout_panels()
-	# При изменении размера окна — перераскладка панелей
 	get_tree().root.size_changed.connect(_layout_panels)
 	_update_stats()
 	_update_bottom_panel_visibility()
@@ -502,48 +497,49 @@ func _update_targeting_hint(spell: String, on: bool) -> void:
 		% [str(SpellDB.get_spell(spell).get("ru", spell)), dir_text])
 
 func _setup_action_buttons():
-	# Командные кнопки (следовать/атаковать/охранять/стоп + переключатели) —
-	# одним рядом под миникартой в правой панели.
-	var labels := [
-		"Следовать", "Атаковать", "Охранять", "Стоп",
-		"Координаты", "Патруль", "Разговор", "Отдых",
-	]
-	var right_col := stats_area.get_parent() as VBoxContainer
+	var right_col := $StatsPanel/StatsMargin/StatsCol as VBoxContainer
 
-	# Кнопка «Инвентарь» — под миникартой, перед командными кнопками
-	var inv_btn := Button.new()
-	inv_btn.text = "Инвентарь (I)"
-	inv_btn.custom_minimum_size = Vector2(0, 32)
-	inv_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inv_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	inv_btn.pressed.connect(open_inventory_panel)
-	if right_col != null:
-		right_col.add_child(inv_btn)
-
+	# Один ряд кнопок: Инвентарь + Характеристики + командные
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 4)
 	if right_col != null:
 		right_col.add_child(row)
-	for i in range(labels.size()):
+
+	# Кнопка «Инвентарь»
+	var inv_btn := Button.new()
+	inv_btn.text = "Инв."
+	inv_btn.custom_minimum_size = Vector2(38, 32)
+	inv_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	inv_btn.tooltip_text = "Инвентарь (I)"
+	inv_btn.pressed.connect(open_inventory_panel)
+	row.add_child(inv_btn)
+
+	# Кнопка «Характеристики» (toggle)
+	_stats_toggle_btn = Button.new()
+	_stats_toggle_btn.text = "Статы"
+	_stats_toggle_btn.custom_minimum_size = Vector2(38, 32)
+	_stats_toggle_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_stats_toggle_btn.toggle_mode = true
+	_stats_toggle_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_stats_toggle_btn.tooltip_text = "Показать/скрыть характеристики"
+	_stats_toggle_btn.pressed.connect(_toggle_stats_view)
+	row.add_child(_stats_toggle_btn)
+
+	# Командные кнопки
+	var cmd_labels := ["След.", "Атак.", "Охр.", "Стоп"]
+	var cmd_modes := ["follow", "attack", "guard", "stop"]
+	for i in range(cmd_labels.size()):
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(38, 38)
+		b.custom_minimum_size = Vector2(38, 32)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.flat = true
-		b.tooltip_text = labels[i]
+		b.tooltip_text = cmd_labels[i]
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		row.add_child(b)
 		cmd_buttons.append(b)
-		match i:
-			0: b.pressed.connect(func(): _set_action_mode("follow"))
-			1: b.pressed.connect(func(): _set_action_mode("attack"))
-			2: b.pressed.connect(func(): _set_action_mode("guard"))
-			3: b.pressed.connect(func(): _set_action_mode("stop"))
-			4:
-				b.toggle_mode = true
-				coords_btn = b
-				b.pressed.connect(func(): _toggle_coords())
-			_:
-				b.disabled = true  # остальные — заглушки (в разработке)
+		b.pressed.connect(func(): _set_action_mode(cmd_modes[i]))
 	coords_label.visible = false
 
 func _set_action_mode(mode: String):
@@ -564,9 +560,10 @@ func _set_action_mode(mode: String):
 		"stop":
 			Game.action_mode = "none"
 
-func _toggle_coords():
-	show_coords = not show_coords
-	coords_btn.button_pressed = show_coords
+func _toggle_stats_view():
+	stats_area.visible = not stats_area.visible
+	if _stats_toggle_btn != null:
+		_stats_toggle_btn.button_pressed = stats_area.visible
 	coords_label.visible = show_coords
 
 # --- Карточки наведения (стилизованные, через UiKit.make_hover_card) ---------
@@ -833,6 +830,7 @@ func _hover_portrait() -> void:
 		if _hover_name != "":
 			_hover_name = ""
 			mini_portrait.texture = hero_portrait
+			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			_update_preview_hero()
 		return
 
@@ -854,6 +852,7 @@ func _hover_portrait() -> void:
 			if tex == null:
 				_hover_name = ""
 				mini_portrait.texture = hero_portrait
+				mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 				_update_preview_hero()
 				return
 			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
@@ -875,29 +874,27 @@ func _hover_portrait() -> void:
 
 
 func _update_preview_unit(e: Node2D) -> void:
-	if preview_info == null:
+	if preview_name == null:
 		return
 	var set_name := str(e.anim_set) if "anim_set" in e else ""
 	var set_data := UnitDB.get_set(set_name)
 	var name := str(set_data.get("desc", ""))
 	if name == "":
 		name = set_name.get_slice("/", 1) if "/" in set_name else set_name
-	var lines: Array = [name if name != "" else "Существо"]
+	preview_name.text = name if name != "" else "Существо"
+	preview_sub.text = _faction_of_set(set_name)
 	var hp := 0
 	if "max_hp" in e:
 		hp = int(e.max_hp)
 	elif "hp_max" in e:
 		hp = int(e.hp_max)
 	var cur := int(e.current_hp) if "current_hp" in e else hp
-	lines.append("HP: %d/%d" % [cur, hp])
-	lines.append("Фракция: %s" % _faction_of_set(set_name))
-	preview_info.text = "\n".join(lines)
+	preview_detail.text = "HP: %d/%d" % [cur, hp]
 
 
 func _update_preview_building(pic_name: String) -> void:
-	if preview_info == null:
+	if preview_name == null:
 		return
-	# Ищем здание под курсором для получения имени
 	var world := player.get_global_mouse_position()
 	if alm_map and alm_map.map_width > 0:
 		var ts: int = alm_map.tile_size
@@ -907,28 +904,36 @@ func _update_preview_building(pic_name: String) -> void:
 			if not h.is_empty():
 				var sid := int(h.get("type_id", -1))
 				var display := StructureDB.display_name_by_id(sid) if sid >= 0 else ""
-				preview_info.text = display if display != "" else "Здание"
+				preview_name.text = display if display != "" else "Здание"
+				preview_sub.text = ""
+				preview_detail.text = ""
 				return
-	preview_info.text = "Здание"
+	preview_name.text = "Здание"
+	preview_sub.text = ""
+	preview_detail.text = ""
 
 
 func _update_preview_hero() -> void:
-	if preview_info == null or not is_instance_valid(player):
+	if preview_name == null or not is_instance_valid(player):
 		return
+	var cls := "Маг" if Game.hero_class == "mage" else "Воин"
+	var gnd := "Жен." if Game.hero_gender == "female" else "Муж."
+	preview_name.text = Game.hero_name
+	preview_sub.text = "%s · %s" % [cls, gnd]
 	var weapon := str(player.equipped.get("weapon", ""))
 	var shield := str(player.equipped.get("shield", ""))
 	var body := str(player.equipped.get("body", ""))
 	var lines: Array = []
 	if weapon != "":
-		lines.append("Оружие: %s" % str(ItemDB.find(weapon).get("name_ru", weapon)) if not ItemDB.find(weapon).is_empty() else weapon)
+		var it := ItemDB.find(weapon)
+		lines.append(str(it.get("name_ru", weapon)) if not it.is_empty() else weapon)
 	if shield != "":
-		lines.append("Щит: %s" % str(ItemDB.find(shield).get("name_ru", shield)) if not ItemDB.find(shield).is_empty() else shield)
+		var it := ItemDB.find(shield)
+		lines.append(str(it.get("name_ru", shield)) if not it.is_empty() else shield)
 	if body != "":
-		lines.append("Броня: %s" % str(ItemDB.find(body).get("name_ru", body)) if not ItemDB.find(body).is_empty() else body)
-	if lines.is_empty():
-		preview_info.text = "Нет экипировки"
-	else:
-		preview_info.text = "\n".join(lines)
+		var it := ItemDB.find(body)
+		lines.append(str(it.get("name_ru", body)) if not it.is_empty() else body)
+	preview_detail.text = "\n".join(lines) if not lines.is_empty() else ""
 
 func _setup_minimap():
 	# Защита от повторного вызова: раньше setup_ui вызывал это дважды
@@ -964,22 +969,24 @@ func _draw_minimap():
 	if mw == 0:
 		return
 
-	# Размер рисунка = рамка MinimapRect (160x160 в tscn), а не жёсткие 190,
-	# из-за которых карта вылезала на панель команд и за экран.
+	# Размер рисунка = высота MinimapRect (165px), квадрат чтобы не растягивать
 	var msize: Vector2 = minimap_rect.size
-	var w := int(msize.x)
 	var h := int(msize.y)
-	if w <= 0 or h <= 0:
+	var w := h  # квадрат
+	if h <= 0:
 		return
 
 	# Первый кадр или смена размера рамки — пересоздаём изображение/текстуру.
-	if minimap_image == null or minimap_texture == null or _minimap_size != msize:
-		_minimap_size = msize
+	var square_size := Vector2(w, h)
+	if minimap_image == null or minimap_texture == null or _minimap_size != square_size:
+		_minimap_size = square_size
 		minimap_image = Image.create(w, h, false, Image.FORMAT_RGBA8)
 		minimap_texture = ImageTexture.create_from_image(minimap_image)
 		var tex_rect := minimap_rect.get_node_or_null("MinimapTex")
 		if tex_rect:
-			tex_rect.offset_right = float(w)
+			tex_rect.offset_left = (msize.x - w) / 2.0
+			tex_rect.offset_top = 0.0
+			tex_rect.offset_right = tex_rect.offset_left + w
 			tex_rect.offset_bottom = float(h)
 
 	var ptx: int = int(player.global_position.x) / alm_map.tile_size
@@ -1029,7 +1036,7 @@ func _draw_minimap():
 			var nxx := int(ntx * scale_x); var nyy := int(nty * scale_y)
 			if nxx >= 0 and nxx < w and nyy >= 0 and nyy < h:
 				var nc: Color
-				if "guard" in str(npc.get("role", "")):
+				if "role" in npc and str(npc.role) == "guard":
 					nc = Color(0.2, 0.8, 0.2, 1.0)  # страж = зелёный
 				else:
 					nc = Color(1.0, 0.85, 0.2, 1.0)  # житель = жёлтый
@@ -1090,49 +1097,123 @@ func _minimap_color_at(tx: int, ty: int) -> Color:
 
 var _hp_label: Label = null
 var _mp_label: Label = null
-var _stat_labels := {}   # key -> Label ("attrs"/"derived"/"skills"/"resists"/"extra")
+var _stat_labels := {}   # key -> Label
+
+# Цвета секций
+const _LABEL_COLOR := Color(0.75, 0.70, 0.60)
+const _VALUE_COLOR := Color(0.92, 0.88, 0.80)
+const _HP_COLOR := Color(0.55, 0.85, 0.55)
+const _MP_COLOR := Color(0.55, 0.7, 1.0)
+const _SECTION_COLOR := Color(0.60, 0.55, 0.50)
+const _SKILL_COLOR := Color(0.82, 0.75, 0.55)
+const _RESIST_FIRE := Color(1.0, 0.5, 0.35)
+const _RESIST_WATER := Color(0.4, 0.6, 1.0)
+const _RESIST_AIR := Color(0.7, 0.85, 1.0)
+const _RESIST_EARTH := Color(0.7, 0.55, 0.3)
+const _RESIST_ASTRAL := Color(0.8, 0.5, 0.9)
 
 func _setup_stats_area() -> void:
 	if not is_instance_valid(stats_area):
 		return
-	stats_area.add_theme_constant_override("separation", 2)
+	for ch in stats_area.get_children():
+		ch.queue_free()
 
-	# HP/MP — текстом
-	_hp_label = _add_stat_text("Жизнь", Color(0.55, 0.85, 0.55))
-	_mp_label = _add_stat_text("Мана", Color(0.55, 0.7, 1.0))
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 0)
+	stats_area.add_child(vbox)
 
-	# Статы — компактные строки без заголовков
-	_stat_labels["attrs"] = _add_stat_line()
-	_stat_labels["derived"] = _add_stat_line()
-	_stat_labels["skills"] = _add_stat_line()
-	_stat_labels["resists"] = _add_stat_line()
-	_stat_labels["extra"] = _add_stat_line()
+	# Row 1: Имя (мерж — одна строка на всю ширину)
+	_stat_labels["name_label"] = _center_row(vbox, Game.hero_name, 13)
+
+	# Row 2: Сила + Жизнь:
+	_two_col_row_grid(vbox, "Сила:", "body", "Жизнь:", "")
+	# Row 3: Ловкость + hp значение
+	_hp_label = _two_col_row_grid(vbox, "Ловкость:", "agility", "", "")
+	# Row 4: Разум + Мана:
+	_two_col_row_grid(vbox, "Разум:", "mind", "Мана:", "")
+	# Row 5: Дух + mp значение
+	_mp_label = _two_col_row_grid(vbox, "Дух:", "spirit", "", "")
+
+	# Row 6-7: Урон / Атака + Броня / Защита
+	_two_col_row_grid(vbox, "Урон:", "damage", "Броня:", "absorption")
+	_two_col_row_grid(vbox, "Атака:", "attack", "Защита:", "defense")
+
+	# Row 8: Заголовок (мерж)
+	_center_row(vbox, "НАВЫКИ  |  СОПРОТИВЛЕНИЕ", 10)
+
+	# Rows 9-13: Навыки + Сопротивления
+	if Game.hero_class == "mage":
+		_two_col_row_grid(vbox, "Огонь:", "mage_fire", "Огонь:", "fire", _RESIST_FIRE)
+		_two_col_row_grid(vbox, "Вода:", "mage_water", "Вода:", "water", _RESIST_WATER)
+		_two_col_row_grid(vbox, "Воздух:", "mage_air", "Воздух:", "air", _RESIST_AIR)
+		_two_col_row_grid(vbox, "Земля:", "mage_earth", "Земля:", "earth", _RESIST_EARTH)
+		_two_col_row_grid(vbox, "Астрал:", "mage_astral", "Астрал:", "astral", _RESIST_ASTRAL)
+	else:
+		_two_col_row_grid(vbox, "Меч:", "blade", "Огонь:", "fire", _RESIST_FIRE)
+		_two_col_row_grid(vbox, "Топор:", "axe", "Вода:", "water", _RESIST_WATER)
+		_two_col_row_grid(vbox, "Дубина:", "bludgeon", "Воздух:", "air", _RESIST_AIR)
+		_two_col_row_grid(vbox, "Копьё:", "pike", "Земля:", "earth", _RESIST_EARTH)
+		_two_col_row_grid(vbox, "Стрельба:", "shooting", "Астрал:", "astral", _RESIST_ASTRAL)
+
+	# Rows 14-17: Одиночные (мерж)
+	_stat_labels["load"] = _center_row(vbox, "", 12)
+	_stat_labels["exp"] = _center_row(vbox, "", 12)
+	_stat_labels["sight"] = _center_row(vbox, "", 12)
+	_stat_labels["speed"] = _center_row(vbox, "", 12)
 
 
-func _add_stat_text(title: String, color: Color) -> Label:
+## Строка по центру (мерж — одна метка на всю ширину).
+func _center_row(parent: VBoxContainer, text: String, font_size: int) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", font_size)
+	lbl.add_theme_color_override("font_color", _SECTION_COLOR)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(lbl)
+	return lbl
+
+
+## Две колонки: левая (метка+значение), правая (метка+значение).
+func _two_col_row_grid(parent: VBoxContainer,
+		l_label: String, l_key: String,
+		r_label: String, r_key: String,
+		r_color: Color = _VALUE_COLOR) -> Label:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var lab_title := Label.new()
-	lab_title.text = title
-	lab_title.custom_minimum_size = Vector2(44, 0)
-	lab_title.add_theme_font_size_override("font_size", 12)
-	lab_title.add_theme_color_override("font_color", Color(0.75, 0.70, 0.60))
-	row.add_child(lab_title)
-	var lab_val := Label.new()
-	lab_val.add_theme_font_size_override("font_size", 13)
-	lab_val.add_theme_color_override("font_color", color)
-	row.add_child(lab_val)
-	stats_area.add_child(row)
-	return lab_val
+	row.add_theme_constant_override("separation", 8)
+	parent.add_child(row)
 
+	# Левая колонка
+	var ll := Label.new()
+	ll.text = l_label
+	ll.add_theme_font_size_override("font_size", 11)
+	ll.add_theme_color_override("font_color", _LABEL_COLOR)
+	ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(ll)
 
-func _add_stat_line() -> Label:
-	var lab := Label.new()
-	lab.add_theme_font_size_override("font_size", 13)
-	lab.add_theme_color_override("font_color", Color(0.92, 0.88, 0.80))
-	lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stats_area.add_child(lab)
-	return lab
+	var lv := Label.new()
+	lv.add_theme_font_size_override("font_size", 12)
+	lv.add_theme_color_override("font_color", _VALUE_COLOR)
+	row.add_child(lv)
+	if l_key != "":
+		_stat_labels[l_key] = lv
+
+	# Правая колонка
+	var rl := Label.new()
+	rl.text = r_label
+	rl.add_theme_font_size_override("font_size", 11)
+	rl.add_theme_color_override("font_color", _LABEL_COLOR)
+	rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(rl)
+
+	var rv := Label.new()
+	rv.add_theme_font_size_override("font_size", 12)
+	rv.add_theme_color_override("font_color", r_color)
+	row.add_child(rv)
+	if r_key != "":
+		_stat_labels[r_key] = rv
+
+	return rv
 
 
 func _update_stats():
@@ -1140,30 +1221,57 @@ func _update_stats():
 		return
 	var p = player
 
+	# Имя
+	if _stat_labels.has("name_label"):
+		_stat_labels["name_label"].text = Game.hero_name
+
+	# Атрибуты + HP/Mana
+	_set_stat("body", str(p.body))
+	_set_stat("agility", str(p.agility))
+	_set_stat("mind", str(p.mind))
+	_set_stat("spirit", str(p.spirit))
 	if _hp_label != null:
 		_hp_label.text = "%d / %d" % [p.current_hp, p.max_hp]
 	if _mp_label != null:
 		_mp_label.text = "%d / %d" % [p.current_mana, p.max_mana]
-	if _stat_labels.is_empty():
-		return
 
-	_stat_labels["attrs"].text = "Тело %d  Ловк %d  Разум %d  Дух %d" % [
-		p.body, p.agility, p.mind, p.spirit]
-	_stat_labels["derived"].text = "Урон %d–%d  Атака %d\nЗащита %d  Поглощ. %d" % [
-		p.get_damage_min(), p.get_damage_max(), p.get_attack(),
-		p.get_defense(), p.get_absorption()]
+	# Боевые статы
+	_set_stat("damage", "%d-%d" % [p.get_damage_min(), p.get_damage_max()])
+	_set_stat("absorption", str(p.get_absorption()))
+	_set_stat("attack", str(p.get_attack()))
+	_set_stat("defense", str(p.get_defense()))
+
+	# Навыки (левая колонка)
 	if Game.hero_class == "mage":
-		_stat_labels["skills"].text = "Огонь %d  Вода %d  Воздух %d\nЗемля %d  Астрал %d" % [
-			p.fire_skill, p.water_skill, p.air_skill, p.earth_skill, p.astral_skill]
+		_set_stat("mage_fire", str(p.fire_skill))
+		_set_stat("mage_water", str(p.water_skill))
+		_set_stat("mage_air", str(p.air_skill))
+		_set_stat("mage_earth", str(p.earth_skill))
+		_set_stat("mage_astral", str(p.astral_skill))
 	else:
-		_stat_labels["skills"].text = "Меч %d  Топор %d  Дубина %d\nКопьё %d  Стрельба %d" % [
-			p.blade_skill, p.axe_skill, p.bludgeon_skill, p.pike_skill, p.shooting_skill]
-	_stat_labels["resists"].text = "Огн. %d%%  Вод. %d%%  Возд. %d%%\nЗем. %d%%  Аст. %d%%" % [
-		p.get_protection_fire(), p.get_protection_water(), p.get_protection_air(),
-		p.get_protection_earth(), p.get_protection_astral()]
-	_stat_labels["extra"].text = "Обзор %d  Скор. %d  Нагр. %.1f/%.0f  Опыт %d" % [
-		p.get_sight(), int(p.move_speed), p.get_load(), p.load_capacity(),
-		p.total_experience()]
+		_set_stat("blade", str(p.blade_skill))
+		_set_stat("axe", str(p.axe_skill))
+		_set_stat("bludgeon", str(p.bludgeon_skill))
+		_set_stat("pike", str(p.pike_skill))
+		_set_stat("shooting", str(p.shooting_skill))
+
+	# Сопротивления (правая колонка)
+	_set_stat("fire", str(p.get_protection_fire()))
+	_set_stat("water", str(p.get_protection_water()))
+	_set_stat("air", str(p.get_protection_air()))
+	_set_stat("earth", str(p.get_protection_earth()))
+	_set_stat("astral", str(p.get_protection_astral()))
+
+	# Одиночные
+	_set_stat("load", "%.1f/%.0f" % [p.get_load(), p.load_capacity()])
+	_set_stat("exp", str(p.total_experience()))
+	_set_stat("sight", str(p.get_sight()))
+	_set_stat("speed", str(int(p.move_speed)))
+
+
+func _set_stat(key: String, value: String) -> void:
+	if _stat_labels.has(key):
+		_stat_labels[key].text = value
 
 func update_ui(p: Player, delta: float = 0.0):
 	if not is_instance_valid(p):
@@ -1313,7 +1421,7 @@ var _in_interior := false
 ## Узлы HUD, которые прячем на время интерьера. Раньше они оставались видимыми:
 ## вокруг модального окна было видно «воду» и объекты мира, а кнопка «Закрыть»
 ## интерьера попадала в полосу склада.
-const _HUD_NODES := ["BottomPanel", "RightPanel", "CoordsLabel", "PauseLabel"]
+const _HUD_NODES := ["BottomPanel", "MinimapPanel", "StatsPanel", "CoordsLabel", "PauseLabel"]
 
 ## Вход в здание: герой «уходит внутрь» (скрыт на карте), выходит при закрытии.
 func _enter_interior() -> void:
@@ -1450,9 +1558,10 @@ func open_blacksmith() -> void:
 	_blacksmith.closed.connect(_on_panel_closed)
 	add_child(_blacksmith)
 
-## Инвентарь и экипировка: модальное окно с куклой, слотами и складом.
+## Инвентарь и экипировка: модальное окно. Повторное нажатие I — закрыть.
 func open_inventory_panel() -> void:
 	if _inventory_panel != null and is_instance_valid(_inventory_panel):
+		_inventory_panel.close()
 		return
 	_enter_interior()
 	_inventory_panel = InventoryPanel.new()
@@ -1464,3 +1573,7 @@ func open_inventory_panel() -> void:
 func _on_inventory_changed() -> void:
 	_update_stats()
 	_update_preview_hero()
+
+func refresh_inventory() -> void:
+	if is_instance_valid(_inventory_panel):
+		_inventory_panel._refresh_inventory_grid()
