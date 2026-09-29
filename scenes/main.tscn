@@ -166,6 +166,14 @@ theme_override_colors/font_color = Color(0.75, 0.7, 0.6, 1)
 text = ""
 horizontal_alignment = 1
 
+[node name="PreviewInfo" type="Label" parent="UI/RightPanel/RightMargin/RightCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.8, 0.75, 0.65, 1)
+autowrap_mode = 2
+text = ""
+horizontal_alignment = 1
+
 [node name="EquipArea" type="Control" parent="UI/RightPanel/RightMargin/RightCol"]
 custom_minimum_size = Vector2(0, 330)
 layout_mode = 2

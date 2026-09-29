@@ -12,6 +12,7 @@ class_name GameUI
 @onready var mini_portrait: TextureRect = $RightPanel/RightMargin/RightCol/Header/MiniPortraitBorder/MiniPortrait
 @onready var hero_name_label: Label = $RightPanel/RightMargin/RightCol/Header/HeaderText/HeroName
 @onready var hero_class_label: Label = $RightPanel/RightMargin/RightCol/Header/HeaderText/HeroClass
+@onready var preview_info: Label = $RightPanel/RightMargin/RightCol/PreviewInfo
 @onready var equip_area: Control = $RightPanel/RightMargin/RightCol/EquipArea
 @onready var stats_area: VBoxContainer = $RightPanel/RightMargin/RightCol/StatsArea
 @onready var minimap_rect: ColorRect = $RightPanel/RightMargin/RightCol/MinimapBorder/MinimapMargin/MinimapRect
@@ -58,6 +59,7 @@ func setup_ui(p: Player):
 	refresh_spell_book()
 	_setup_equipment_area()
 	_setup_stats_area()
+	_update_preview_hero()
 
 	# Карта для миникарты: CustomMap или AlmMap (группа "alm_map", без каста — они не родственники)
 	alm_map = get_tree().get_first_node_in_group("alm_map")
@@ -1058,25 +1060,28 @@ func _faction_of_set(set_name: String) -> String:
 	return "Серые"
 
 ## Портрет под курсором: враг-юнит (UnitDB picture) или здание (structures Picture).
-## Если нет — портрет героя. Файлы assets/portraits/<имя>.png (lowercase).
+## Если нет — портрет героя. Под портретем — текстовая информация о цели.
 var _portrait_cache := {}
+var _hovered_unit: Node2D = null  # юнит под курсором (для обновления HP)
 func _hover_portrait() -> void:
 	if not is_instance_valid(player):
 		return
 	var world := player.get_global_mouse_position()
 	var pic := ""
-	var hover_set := ""   # набор анимаций юнита под курсором (фолбэк-портрет)
+	var hover_set := ""
+	_hovered_unit = null
 
-	# 1) Юнит под курсором (монстр или житель): хит-бокс спрайта (видимая область)
+	# 1) Юнит под курсором (монстр или житель): хит-бокс спрайта
 	for e in Game.enemies + Game.npcs:
 		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(6.0).has_point(world):
 			if e is Enemy or e is Npc:
 				hover_set = str(e.anim_set)
 			if hover_set != "":
 				pic = str(UnitDB.get_set(hover_set).get("picture", ""))
+			_hovered_unit = e
 			break
 
-	# 2) Иначе здание под курсором (хитбокс структуры)
+	# 2) Иначе здание под курсором
 	if pic == "" and alm_map and alm_map.map_width > 0:
 		var ts: int = alm_map.tile_size
 		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
@@ -1086,22 +1091,23 @@ func _hover_portrait() -> void:
 				pic = str(h.get("picture", ""))
 
 	if pic == "":
-		# Сброс на портрет героя
 		if _hover_name != "":
 			_hover_name = ""
 			mini_portrait.texture = hero_portrait
+			_update_preview_hero()
 		return
 
 	var lower := pic.to_lower()
 	if lower == _hover_name:
+		# Обновляем HP если юнит жив (HP меняется)
+		if _hovered_unit != null and is_instance_valid(_hovered_unit):
+			_update_preview_unit(_hovered_unit)
 		return
 	_hover_name = lower
 	var tex: Texture2D = _portrait_cache.get(lower)
 	if tex == null:
 		var path := "res://assets/portraits/%s.png" % lower
 		if not ResourceLoader.exists(path):
-			# Портрета-файла нет: для юнитов показываем кадр его спрайта
-			# (у людей файлов portraits/*.png нет — рисуем самого НПЦ).
 			if hover_set != "":
 				tex = UnitDB.preview_frame(hover_set)
 				if tex != null:
@@ -1109,19 +1115,81 @@ func _hover_portrait() -> void:
 			if tex == null:
 				_hover_name = ""
 				mini_portrait.texture = hero_portrait
+				_update_preview_hero()
 				return
-			# Кадр спрайта — в центр в оригинальном размере (без растягивания)
 			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		else:
 			tex = load(path)
 			if tex != null:
 				_portrait_cache[lower] = tex
-			# Настоящий портрет (герой/здания) — вписываем с сохранением пропорций
 			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	if tex != null:
 		mini_portrait.texture = tex
 	else:
 		mini_portrait.texture = hero_portrait
+
+	# Обновить текстовую информацию
+	if _hovered_unit != null and is_instance_valid(_hovered_unit):
+		_update_preview_unit(_hovered_unit)
+	else:
+		_update_preview_building(lower)
+
+
+func _update_preview_unit(e: Node2D) -> void:
+	if preview_info == null:
+		return
+	var set_name := str(e.anim_set) if "anim_set" in e else ""
+	var set_data := UnitDB.get_set(set_name)
+	var name := str(set_data.get("desc", ""))
+	if name == "":
+		name = set_name.get_slice("/", 1) if "/" in set_name else set_name
+	var lines: Array = [name if name != "" else "Существо"]
+	var hp := 0
+	if "max_hp" in e:
+		hp = int(e.max_hp)
+	elif "hp_max" in e:
+		hp = int(e.hp_max)
+	var cur := int(e.current_hp) if "current_hp" in e else hp
+	lines.append("HP: %d/%d" % [cur, hp])
+	lines.append("Фракция: %s" % _faction_of_set(set_name))
+	preview_info.text = "\n".join(lines)
+
+
+func _update_preview_building(pic_name: String) -> void:
+	if preview_info == null:
+		return
+	# Ищем здание под курсором для получения имени
+	var world := player.get_global_mouse_position()
+	if alm_map and alm_map.map_width > 0:
+		var ts: int = alm_map.tile_size
+		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
+		if alm_map.has_method("structure_at"):
+			var h: Dictionary = alm_map.structure_at(cell)
+			if not h.is_empty():
+				var sid := int(h.get("type_id", -1))
+				var display := StructureDB.display_name_by_id(sid) if sid >= 0 else ""
+				preview_info.text = display if display != "" else "Здание"
+				return
+	preview_info.text = "Здание"
+
+
+func _update_preview_hero() -> void:
+	if preview_info == null or not is_instance_valid(player):
+		return
+	var weapon := str(player.equipped.get("weapon", ""))
+	var shield := str(player.equipped.get("shield", ""))
+	var body := str(player.equipped.get("body", ""))
+	var lines: Array = []
+	if weapon != "":
+		lines.append("Оружие: %s" % str(ItemDB.find(weapon).get("name_ru", weapon)) if not ItemDB.find(weapon).is_empty() else weapon)
+	if shield != "":
+		lines.append("Щит: %s" % str(ItemDB.find(shield).get("name_ru", shield)) if not ItemDB.find(shield).is_empty() else shield)
+	if body != "":
+		lines.append("Броня: %s" % str(ItemDB.find(body).get("name_ru", body)) if not ItemDB.find(body).is_empty() else body)
+	if lines.is_empty():
+		preview_info.text = "Нет экипировки"
+	else:
+		preview_info.text = "\n".join(lines)
 
 func _setup_minimap():
 	# Защита от повторного вызова: раньше setup_ui вызывал это дважды
