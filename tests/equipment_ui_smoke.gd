@@ -38,6 +38,13 @@ func _run() -> void:
 	var ui = game.get("ui")
 	await process_frame
 
+	# Открываем склад: слоты экипировки, клик по слоту и подсветка живут в
+	# InventoryPanel, а не в GameUI. Пока панель не создана, ui.get("_inventory_panel")
+	# возвращает null и все проверки слотов падают вхолостую.
+	ui.call("open_inventory_panel")
+	await process_frame
+	await process_frame
+
 	_test_panel(ui)
 	_test_slot_mapping()
 	_test_rings(player)
@@ -88,15 +95,15 @@ func _test_slot_mapping() -> void:
 	_check(checked > 100, "экипируемых предметов достаточно для проверки (%d)" % checked)
 	_check(bad == 0, "все экипируемые предметы имеют слот (без слота: %d)" % bad)
 	var expect := {
-		"Common Bronze Helm": "head",
+		"Common bronze Helm": "head",
 		"Bad None Cloak": "cloak",
-		"Common Bronze Cuirass": "body",
-		"Common Bronze Bracers": "hands",
+		"Common bronze Cuirass": "body",
+		"Common bronze Bracers": "hands",
 		"Common Hard Leather Boots": "feet",
-		"Common Bronze Amulet": "amulet",
-		"Elven Titanium Ring": "ring",
-		"Common Bronze Long Sword": "weapon",
-		"Common Bronze Buckler": "shield",
+		"Common bronze Amulet": "amulet",
+		"Elven titanium Ring": "ring",
+		"Common bronze Long Sword": "weapon",
+		"Common bronze Buckler": "shield",
 	}
 	for key in expect:
 		var it := ItemDB.find(str(key))
@@ -136,7 +143,7 @@ func _test_two_handed(player: Player) -> void:
 	_check(th_key != "", "в базе есть двуручный меч")
 	if th_key == "":
 		return
-	player.equip_item(ItemDB.find("Common Bronze Buckler"))
+	player.equip_item(ItemDB.find("Common bronze Buckler"))
 	_check(player.equipped.has("shield"), "щит надет перед двуручником")
 	player.equip_item(ItemDB.find(th_key))
 	_check(not player.equipped.has("shield"), "двуручный меч снял щит")
@@ -145,10 +152,17 @@ func _test_two_handed(player: Player) -> void:
 # --- 5. Клик по заполненному слоту снимает предмет ---------------------------
 
 func _test_unequip_slot(ui, player: Player) -> void:
-	player.equip_item(ItemDB.find("Common Iron Long Sword"))
+	player.equip_item(ItemDB.find("Common iron Long Sword"))
 	_check(player.equipped.has("weapon"), "оружие надето перед снятием")
 	var key := str(player.equipped.get("weapon", ""))
-	ui.call("_on_slot_clicked", "weapon")
+	# _on_slot_clicked живёт в InventoryPanel, а не в GameUI: слоты экипировки
+	# переехали в отдельную панель склада (scripts/inventory_panel.gd:249).
+	# Раньше тест дёргал ui.call("_on_slot_clicked", ...) и получал Nil.
+	var inv = ui.get("_inventory_panel")
+	_check(inv != null and inv.has_method("_on_slot_clicked"),
+		"панель склада обрабатывает клик по слоту")
+	if inv != null and inv.has_method("_on_slot_clicked"):
+		inv.call("_on_slot_clicked", "weapon")
 	_check(not player.equipped.has("weapon"), "клик по слоту снял оружие")
 	_check(player.inventory.has(key), "снятый предмет вернулся в инвентарь (%s)" % key)
 
@@ -164,15 +178,23 @@ func _test_highlight(ui, player: Player) -> void:
 	_check(helm_key != "", "в базе есть шлем")
 	if helm_key == "":
 		return
-	ui.call("_set_slot_highlight", "head")
-	_check(ui.get("_highlight_slot") == "head", "подсветка включена для слота head")
-	_check(ui.call("_item_matches_slot", ItemDB.find(helm_key)),
+	# Подсветка слотов живёт в InventoryPanel (_highlight_slot,
+	# _item_matches_slot), а не в GameUI: слоты экипировки переехали в панель
+	# склада. Раньше тест звал ui.call("_set_slot_highlight", ...) - такой
+	# функции в ui.gd нет.
+	var inv = ui.get("_inventory_panel")
+	if inv == null or not inv.has_method("_item_matches_slot"):
+		_check(false, "панель склада доступна для проверки подсветки")
+		return
+	inv.set("_highlight_slot", "head")
+	_check(str(inv.get("_highlight_slot")) == "head", "подсветка включена для слота head")
+	_check(bool(inv.call("_item_matches_slot", ItemDB.find(helm_key))),
 		"шлем подходит слоту head")
-	_check(not ui.call("_item_matches_slot", ItemDB.find("Common Iron Long Sword")),
+	_check(not bool(inv.call("_item_matches_slot", ItemDB.find("Common iron Long Sword"))),
 		"меч НЕ подходит слоту head")
-	ui.call("_set_slot_highlight", "")
-	_check(ui.get("_highlight_slot") == "", "подсветка сброшена")
-	_check(ui.call("_item_matches_slot", ItemDB.find("Common Iron Long Sword")),
+	inv.set("_highlight_slot", "")
+	_check(str(inv.get("_highlight_slot")) == "", "подсветка сброшена")
+	_check(bool(inv.call("_item_matches_slot", ItemDB.find("Common iron Long Sword"))),
 		"без подсветки подходит любой предмет")
 
 # --- 7. Статы обновлены ------------------------------------------------

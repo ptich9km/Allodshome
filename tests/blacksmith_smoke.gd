@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 ## Smoke-проверка кузни (scripts/blacksmith_panel.gd + ItemDB).
 ##
 ## Главный баг: переплавка УНИЧТОЖАЛА предмет — player.add_item() не вызывался
@@ -58,7 +58,7 @@ func _run() -> void:
 		_check(not ItemDB.is_smeltable(sample), "кузнец не берёт '%s' (пример: %s)" % [nm, str(sample.get("key", ""))])
 
 	# --- Поведение переплавки на живом игроке ---
-	var sword := _first_item_with_material("Iron")
+	var sword := _first_item_with_material("iron")
 	var sword_key := str(sword.get("key", ""))
 	_check(sword_key != "", "найден железный предмет для переплавки: %s" % sword_key)
 	if sword_key == "":
@@ -71,18 +71,18 @@ func _run() -> void:
 	_check(smelted, "переплавка выполнена")
 	_check(after == before - 1, "исходный предмет забран из инвентаря (%d -> %d)" % [before, after])
 
-	var iron_ingot := ItemDB.ingot_key("Iron")
+	var iron_ingot := ItemDB.ingot_key("iron")
 	_check(_count(player, iron_ingot) == 1,
 		"в инвентаре появился ровно 1 слиток железа (%d)" % _count(player, iron_ingot))
 
 	# Материал слитка соответствует материалу вещи.
-	var steel := _first_item_with_material("Steel")
+	var steel := _first_item_with_material("steel")
 	var steel_key := str(steel.get("key", ""))
 	if steel_key != "":
 		player.inventory.append(steel_key)
 		var _ignored_smelt: bool = await _smelt(player, steel_key)
 		_check(_count(player, steel_key) == 0, "стальной предмет забран")
-		_check(_count(player, ItemDB.ingot_key("Steel")) == 1,
+		_check(_count(player, ItemDB.ingot_key("steel")) == 1,
 			"получен слиток стали, а не железа")
 		_check(_count(player, iron_ingot) == 1, "счётчик железного слитка не сбился")
 

@@ -320,7 +320,11 @@ func _ingot_path(material: String) -> String:
 	return ""
 
 func _ingot_material(material: String) -> String:
-	return material if ItemDB.is_smeltable(ItemDB.find("%s Ingot" % material)) else _DEFAULT_INGOT
+	# Ключ слитка строится в нижнем регистре (см. ItemDB.ingot_key), поэтому и
+	# здесь материал нормализуется: раньше панель искала "Bronze Ingot" и молча
+	# отдавала дефолтный iron для любого металла с другим регистром.
+	var ingot := ItemDB.find(ItemDB.ingot_key(material))
+	return material if ItemDB.is_smeltable(ingot) else _DEFAULT_INGOT
 
 func _input(event: InputEvent) -> void:
 	if UiKit.esc_pressed(event):

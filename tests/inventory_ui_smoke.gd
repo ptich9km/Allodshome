@@ -45,18 +45,37 @@ func _run() -> void:
 			break
 		player.inventory.append(key)
 		added += 1
-	ui.call("refresh_inventory")
+	# Панель склада надо ОТКРЫТЬ: раньше тест брал поля прямо у ui
+	# (inventory_panel/inventory_grid/inventory_slots), но эти узлы живут
+	# внутри InventoryPanel, который ui создаёт только по open_inventory_panel().
+	# ui.get("inventory_grid") возвращал Nil, и скрипт падал на присваивании
+	# Nil в типизированную Array - после чего висел до конца прогона.
+	ui.call("open_inventory_panel")
+	await process_frame
 	await process_frame
 
-	var panel: Control = ui.get("inventory_panel")
-	var grid: GridContainer = ui.get("inventory_grid")
-	var scroll: ScrollContainer = ui.get("inventory_scroll")
-	var slots: Array = ui.get("inventory_slots")
+	var inv: Node = ui.get("_inventory_panel")
+	_check(inv != null, "склад открыт и панель создана")
+	if inv == null:
+		_report()
+		return
+
+	# Узлы берём из полей самой панели (_inventory_grid/_inventory_scroll), а НЕ
+	# обходом дерева: внутри панели есть чужие ScrollContainer/GridContainer, и
+	# первый найденный - не складской.
+	var panel = _first_of_type(inv, "PanelContainer")
+	var grid = inv.get("_inventory_grid")
+	var scroll = inv.get("_inventory_scroll")
+	var slots: Array = inv.get("_inventory_slots")
+	var design_root: Control = inv.get("_panel_root")
 
 	# 1. Панель — не картинка.
 	_check(not (panel is TextureRect), "панель склада не TextureRect (была картинка invframe.bmp)")
 	_check(panel is PanelContainer, "панель склада — PanelContainer")
-	_check(panel.theme != null, "на панели висит единая тема UiKit")
+	# Тема висит на DesignRoot (панель строит _panel_root.theme = _make_theme()),
+	# а не на самой PanelContainer - тема наследуется вниз по дереву.
+	_check(design_root != null and design_root.theme != null,
+		"на панели висит единая тема UiKit")
 	var sb: StyleBox = panel.get_theme_stylebox(&"panel")
 	_check(sb != null, "у панели есть StyleBox из темы")
 
@@ -64,7 +83,11 @@ func _run() -> void:
 	_check(grid.columns > 1, "сетка многоколоночная (columns=%d, был 1 ряд на 100)" % grid.columns)
 	_check(grid.columns > 1 and grid.columns < 30, "число колонок разумное (%d)" % grid.columns)
 	_check(scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO, "вертикальная прокрутка включена")
-	_check(scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER, "горизонтальная прокрутка отключена")
+	# Godot 4: горизонтальная прокрутка отключена через SCROLL_MODE_DISABLED.
+	# Старое SCROLL_MODE_SHOW_NEVER в 4.7 объявлено устаревшим в пользу DISABLED,
+	# и панель использует именно его.
+	_check(scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED,
+		"горизонтальная прокрутка отключена (mode=%d)" % scroll.horizontal_scroll_mode)
 	_check(scroll.follow_focus, "прокрутка следует за фокусом")
 
 	# 3. Ячейки — PanelContainer, без фоновой картинки слота.
@@ -107,6 +130,18 @@ func _run() -> void:
 	_report()
 
 ## Несколько реальных ключей из item_db.
+## Первый узел дерева node, совпадающий с именем класса. Нужно, потому что
+## InventoryPanel строит сетку и скролл анонимно (без name), и поля у самой
+## панели нет - всё держится на переменных с подчёркиванием.
+func _first_of_type(node: Node, type_name: String) -> Node:
+	if node.get_class() == type_name:
+		return node
+	for child in node.get_children():
+		var got := _first_of_type(child, type_name)
+		if got != null:
+			return got
+	return null
+
 func _known_item_keys() -> Array[String]:
 	var out: Array[String] = []
 	for entry in ItemDB.all():

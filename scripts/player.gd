@@ -35,7 +35,7 @@ var _repath_timer := 0.0
 
 # --- Экономика (P0): золото и склад владений ---
 var gold: int = 20
-var inventory: Array = []   # ключи предметов item_db ("Common Iron Long Sword", "Potion ...")
+var inventory: Array = []   # ключи предметов item_db ("Common iron Long Sword", "Potion ...")
 ## Экипированные предметы: слот ("weapon"/"shield"/"head"/"cloak"/"body"/"hands"/
 ## "feet"/"amulet"/"ring1"/"ring2") -> ключ item_db (см. ItemDB.EQUIP_SLOTS).
 ## Раньше экипировка меняла ТОЛЬКО набор анимации (armor_kind/weapon/has_shield) и
@@ -243,17 +243,21 @@ func _apply_hero_choice() -> void:
 
 ## Стартовое снаряжение по классу героя (в склад — можно одеть/продать сразу).
 func _grant_starter_set() -> void:
-	var weapon_key := "Common Iron Long Sword" if Game.hero_class != "mage" else "Common Wood Staff"
+	# Ключи в нижнем регистре материала: "Common iron Long Sword", а не
+	# "Common Iron Long Sword". Расхождение не падало с ошибкой - ItemDB.find()
+	# возвращал пустой словарь, и герой выходил в бой голым, пока вещи лежали
+	# в инвентаре. Регистр приведён к item_db.json при переводе металлов вниз.
+	var weapon_key := "Common iron Long Sword" if Game.hero_class != "mage" else "Common Wood Staff"
 	inventory.append(weapon_key)
 	if Game.hero_stats.get("shield", false):
-		inventory.append("Common Iron Buckler")
+		inventory.append("Common iron Buckler")
 	inventory.append("Common Leather Mail")
 	# Стартовое снаряжение надевается сразу: иначе новый герой выходил бы в бой
 	# голым (все статы — базовые, атрибуты), хотя вещи лежат в инвентаре.
 	equip_item(ItemDB.find(weapon_key))
 	equip_item(ItemDB.find("Common Leather Mail"))
 	if Game.hero_stats.get("shield", false):
-		equip_item(ItemDB.find("Common Iron Buckler"))
+		equip_item(ItemDB.find("Common iron Buckler"))
 	# Маг на старте получает книгу простейшего заклинания выбранной школы
 	# (учится двойным кликом по ячейке склада; книга расходуется).
 	if Game.hero_class == "mage" and Game.hero_start_book != "":

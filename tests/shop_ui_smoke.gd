@@ -43,7 +43,7 @@ func _run() -> void:
 		_finish()
 		return
 	# Даём предметы, чтобы полки игрока не были пустыми.
-	hero.call("add_item", "Common Iron Long Sword")
+	hero.call("add_item", "Common iron Long Sword")
 	hero.call("add_item", "Common Leather Mail")
 	hero.call("add_item", "Potion Medium Healing")
 	hero.gold = 100000

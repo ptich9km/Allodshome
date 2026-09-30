@@ -15,33 +15,75 @@ const PANEL_H := 700.0
 var save_path: String = DEFAULT_SAVE_PATH
 
 ## Материалы с рангом качества (чем больше — тем лучше).
-## Названия и порядок — по assets/loot_icons/README.md (материалы проекта,
-## не оригинальной игры). Фэнтезийные мифрил/адамант/метеорит/кристалл ушли
-## в пользу придуманных terbium/titanium/plutonium/radium.
+## Ключи в нижнем регистре - так же, как в item_db.json (material) и в именах
+## файлов faction_*/ *_ingot.png. Список взят из faction_palette.json: 20
+## металлов по 4 тира, плюс неметаллы внизу.
+## Неметаллы с заглавной НЕ переводились (см. gen_metal_case_migration.py):
+## кузнец их не берёт, а здесь они только подписи категорий.
 const MATERIALS := {
+	# неметаллы
 	"wood":      {"name": "дерево",          "quality": 1},
 	"leather":   {"name": "кожа",            "quality": 2},
-	"toughskin": {"name": "плотная кожа",     "quality": 3},
-	"bronze":    {"name": "бронза",          "quality": 4},
-	"gold":      {"name": "золото",          "quality": 5},
+	"toughskin": {"name": "плотная кожа",    "quality": 3},
+	"dragonskin":{"name": "драконья кожа",  "quality": 4},
+	# common
+	"bronze":    {"name": "бронза",          "quality": 5},
 	"iron":      {"name": "железо",          "quality": 6},
 	"steel":     {"name": "сталь",           "quality": 7},
-	"terbium":   {"name": "тербий",          "quality": 8},
-	"titanium":  {"name": "титаний",         "quality": 9},
-	"plutonium": {"name": "плутоний",        "quality": 10},
-	"radium":    {"name": "радий",           "quality": 11},
-	"dragonskin":{"name": "драконья кожа",   "quality": 12},
+	"gold":      {"name": "золото",          "quality": 8},
+	# Альянс Света
+	"argentum":  {"name": "аргентум",        "quality": 9},
+	"lutetium":  {"name": "лютеций",         "quality": 10},
+	"lanthanum": {"name": "лантан",          "quality": 11},
+	"terbium":   {"name": "тербий",          "quality": 12},
+	# Орды Огня
+	"wolfram":   {"name": "вольфрам",        "quality": 13},
+	"chromium":  {"name": "хром",            "quality": 14},
+	"cobalt":    {"name": "кобальт",         "quality": 15},
+	"titanium":  {"name": "титаний",         "quality": 16},
+	# Пожинатели
+	"thorium":   {"name": "торий",           "quality": 17},
+	"uranium":   {"name": "уран",            "quality": 18},
+	"plutonium": {"name": "плутоний",        "quality": 19},
+	"radium":    {"name": "радий",           "quality": 20},
+	# Круг Друидов
+	"gallium":   {"name": "галлий",          "quality": 21},
+	"yttrium":   {"name": "иттрий",          "quality": 22},
+	"promethium":{"name": "прометий",        "quality": 23},
+	"neodymium": {"name": "неодим",          "quality": 24},
 }
 
 ## Категории: {key, name, group} — собираются из типов и материалов.
 ## group: weapon / armor / shield / accessory / ranged / mage / consumable.
-const TYPE_WEAPONS := ["bronze", "gold", "iron", "steel", "terbium", "titanium", "plutonium", "radium"]
-const TYPE_ARMOR := ["leather", "toughskin", "bronze", "gold", "iron", "steel", "terbium", "titanium", "plutonium", "radium", "dragonskin"]
-const TYPE_SHIELDS := ["wood", "bronze", "iron", "steel", "terbium", "titanium", "plutonium", "radium", "dragonskin"]
-const TYPE_AMULETS := ["iron", "steel", "terbium", "titanium", "plutonium", "radium"]
-const TYPE_RINGS := ["iron", "steel", "terbium", "titanium", "plutonium", "radium"]
-const TYPE_BOWS := ["wood", "bronze", "iron", "steel", "terbium", "titanium", "plutonium", "radium"]
-const TYPE_XBOWS := ["wood", "bronze", "iron", "steel", "terbium", "titanium", "plutonium", "radium"]
+## Списки держат все 20 металлов: у каждого теперь есть предметы во всех слотах
+## (tests/gen_empty_metals_items.py), поэтому категория без металла - дыра.
+const _METALS_ALL := [
+	"bronze", "iron", "steel", "gold",
+	"argentum", "lutetium", "lanthanum", "terbium",
+	"wolfram", "chromium", "cobalt", "titanium",
+	"thorium", "uranium", "plutonium", "radium",
+	"gallium", "yttrium", "promethium", "neodymium",
+]
+const _METALS_LIGHT := ["leather", "toughskin", "dragonskin"]
+const _METALS_SHIELD := ["wood", "leather", "toughskin", "dragonskin"]
+const _METALS_ACC := [
+	"bronze", "iron", "steel", "gold",
+	"argentum", "lutetium", "lanthanum", "terbium",
+	"wolfram", "chromium", "cobalt", "titanium",
+	"thorium", "uranium", "plutonium", "radium",
+	"gallium", "yttrium", "promethium", "neodymium",
+]
+const TYPE_WEAPONS := _METALS_ALL + _METALS_LIGHT
+const TYPE_ARMOR := _METALS_ALL + _METALS_LIGHT
+const TYPE_SHIELDS := _METALS_SHIELD + ["bronze", "iron", "steel", "gold",
+	"argentum", "lutetium", "lanthanum", "terbium",
+	"wolfram", "chromium", "cobalt", "titanium",
+	"thorium", "uranium", "plutonium", "radium",
+	"gallium", "yttrium", "promethium", "neodymium"]
+const TYPE_AMULETS := _METALS_ACC
+const TYPE_RINGS := _METALS_ACC
+const TYPE_BOWS := _METALS_SHIELD + _METALS_ALL
+const TYPE_XBOWS := _METALS_SHIELD + _METALS_ALL
 
 var catalog := {}          # "файл.png" -> {"cat": key, "quality": N}
 var active_category := "weapon_bronze"

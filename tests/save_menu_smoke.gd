@@ -113,7 +113,7 @@ func _test_save_from_live_hero(game) -> void:
 	var player = game.get("player")
 	_check(player != null, "игрок на месте")
 	player.gold = 4321
-	player.inventory = ["Common Iron Long Sword", "Potion Medium Healing"]
+	player.inventory = ["Common iron Long Sword", "Potion Medium Healing"]
 	player.current_hp = 37
 	player.current_mana = 11
 	player.experience = {"blade": 1500, "fire": 250}

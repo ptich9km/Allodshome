@@ -62,8 +62,8 @@ func _test_factions(ui) -> void:
 			"фракция %s = %s (получено %s)" % [set_name, cases[set_name], got])
 
 func _test_item_card(ui) -> void:
-	var it := ItemDB.find("Common Iron Long Sword")
-	_check(not it.is_empty(), "в базе есть Common Iron Long Sword")
+	var it := ItemDB.find("Common iron Long Sword")
+	_check(not it.is_empty(), "в базе есть Common iron Long Sword")
 	if it.is_empty():
 		return
 	var lines: Array = ui.call("_item_card_lines", it)
@@ -73,7 +73,7 @@ func _test_item_card(ui) -> void:
 
 func _test_loot_card(ui) -> void:
 	var lb := LootBag.new()
-	lb.items = [{"gold": 5}, {"key": "Common Iron Long Sword"}]
+	lb.items = [{"gold": 5}, {"key": "Common iron Long Sword"}]
 	root.add_child(lb)
 	await process_frame
 	var lines: Array = ui.call("_loot_tooltip_lines", lb)

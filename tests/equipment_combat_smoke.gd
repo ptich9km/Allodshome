@@ -20,8 +20,8 @@ extends SceneTree
 ## Реальные ключи из item_db.json. ItemDB.all() отдаёт МАССИВ СЛОВАРЕЙ,
 ## а не ключи, поэтому ключи достаём полями Dictionary.
 const LIGHT_ARMOR := "Common Leather Mail"
-const HEAVY_ARMOR := "Very Rare Radium Cuirass"   # defence 53 — верхняя граница
-const BUCKLER := "Common Bronze Buckler"
+const HEAVY_ARMOR := "Very Rare radium Cuirass"   # defence 53 — верхняя граница
+const BUCKLER := "Common bronze Buckler"
 
 var _fails: Array = []
 var _hero: Player = null
@@ -160,14 +160,14 @@ func _test_weapon_changes_damage() -> void:
 
 func _test_unequip_restores() -> void:
 	_hero.equipped["body"] = HEAVY_ARMOR
-	_hero.equipped["weapon"] = "Common Iron Long Sword"
+	_hero.equipped["weapon"] = "Common iron Long Sword"
 	var with_gear := _hero.get_defense()
 	_hero.equipped.clear()
 	var without := _hero.get_defense()
 	_check(without < with_gear,
 		"без экипировки защита ниже: %d (было %d)" % [without, with_gear])
 	# Вернуть стартовое, чтобы следующие проверки были на нормальном герое.
-	_hero.equip_item(ItemDB.find("Common Iron Long Sword"))
+	_hero.equip_item(ItemDB.find("Common iron Long Sword"))
 	_hero.equip_item(ItemDB.find(LIGHT_ARMOR))
 
 
@@ -200,8 +200,8 @@ func _test_not_equippable() -> void:
 			"трава %s не надевается" % herb_key)
 
 	# Щит нельзя в двухручник.
-	_hero.equip_item(ItemDB.find("Common Iron Long Sword"))
-	var two_handed := ItemDB.is_two_handed(ItemDB.find("Common Iron Long Sword"))
+	_hero.equip_item(ItemDB.find("Common iron Long Sword"))
+	var two_handed := ItemDB.is_two_handed(ItemDB.find("Common iron Long Sword"))
 	if two_handed:
 		_check(not _hero.equip_item(ItemDB.find(BUCKLER)),
 			"щит не надевается на двуручное оружие")

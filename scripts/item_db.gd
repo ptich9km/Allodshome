@@ -175,25 +175,39 @@ static func is_equippable(item: Dictionary) -> bool:
 		return false
 	return true
 
-## Слиток какого металла даёт переплавка этого предмета ("" — не переплавляется).
-## Металлы описаны в assets/loot_icons/README.md; кожа/дерево/ткань кузнец не берут.
+## Металлы, которые переплавляет кузница. Регистр важен: материал в item_db
+## хранится в нижнем регистре (bronze, terbium...) - так же, как названы файлы
+## иконок в faction/, faction_w/ и blacksmith/. 20 металлов из faction_palette.json.
+## Кожа/дерево/ткань сюда НЕ входят: кузнец их не берёт (см. is_smeltable).
 const _SMELTABLE := [
-	"Bronze", "Iron", "Steel", "Silver", "Gold",
-	"Titanium", "Terbium", "Plutonium", "Radium",
+	# common
+	"bronze", "iron", "steel", "gold",
+	# Альянс Света
+	"argentum", "lutetium", "lanthanum", "terbium",
+	# Орды Огня
+	"wolfram", "chromium", "cobalt", "titanium",
+	# Пожинатели
+	"thorium", "uranium", "plutonium", "radium",
+	# Круг Друидов
+	"gallium", "yttrium", "promethium", "neodymium",
 ]
 
 static func is_smeltable(item: Dictionary) -> bool:
 	# Слиток — это уже результат переплавки. Материал у него металлический, но
-	# переплавлять его в себя нельзя (иначе «Iron Ingot → Iron Ingot»).
+	# переплавлять его в себя нельзя (иначе «iron Ingot → iron Ingot»).
 	if str(item.get("type", "")) == _INGOT_TYPE:
 		return false
 	return str(item.get("material", "")) in _SMELTABLE
 
 ## Ключ предмета-слитка для материала ("", если такого металла нет).
+## Материал приходит в нижнем регистре, и ключ слитка такой же: "terbium Ingot".
+## Раньше ключ строился как "%s Ingot" % material, что работало только при
+## заглавном регистре в базе; после перевода металлов вниз переплавка находила
+## слиток лишь у части металлов, молча ничего не выдавая.
 static func ingot_key(material: String) -> String:
 	if material == "":
 		return ""
-	var ingot: Dictionary = find("%s Ingot" % material)
+	var ingot: Dictionary = find("%s Ingot" % material.to_lower())
 	return str(ingot.get("key", ""))
 
 ## Предметы для инвентаря: все экипируемые в порядке базы.

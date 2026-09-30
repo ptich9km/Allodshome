@@ -1,31 +1,65 @@
 extends SceneTree
-## Проверка миграции материалов: фэнтезийные мифрил/метеорит/адамант/кристалл
-## заменены на придуманные тербий/плутоний/титаний/радий
-## (tests/gen_material_migration.py, assets/loot_icons/README.md).
+## Проверка материалов item_db: 20 металлов палитры в нижнем регистре, серебро
+## удалено, неметаллы на месте, кузница знает все металлы.
 ##
-## Материал вшит в четыре поля (material, key, name_en, name_ru) — проверяем все.
+## ОБНОВЛЁН после gen_metal_case_migration.py и gen_empty_metals_items.py.
+## Прежняя версия проверяла переезд мифрил->тербий и ждала ЗАГЛАВНЫЕ металлы
+## ("Bronze", "Terbium") плюс "Silver" в списке переплавляемых - после перевода
+## металлов в нижний регистр и удаления серебра она проверяла бы несуществующее.
 ##
 ## Запуск: godot --headless --path . --script res://tests/material_migration_smoke.gd
 
 const DB_PATH := "res://assets/items/item_db.json"
 const INGOT_DIR := "res://assets/professions/blacksmith/"
 
-## старое имя -> (новое имя, старая ru-форма, новая ru-форма, ожидаемое число)
-const RENAMES := {
-	"Adamantium": {"to": "Titanium", "ru_old": "адамантий", "ru_new": "титаний", "count": 61},
-	"Mithrill":   {"to": "Terbium",   "ru_old": "мифрил",   "ru_new": "тербий",   "count": 43},
-	"Meteoric":   {"to": "Plutonium", "ru_old": "метеорит", "ru_new": "плутоний", "count": 32},
-	"Crystal":    {"to": "Radium",    "ru_old": "кристалл", "ru_new": "радий",     "count": 16},
-}
-## Металлы, которые переплавляются в слиток (id иконки = id в loot_icons).
-const SMELTABLE := {
-	"Bronze": "bronze", "Iron": "iron", "Steel": "steel",
-	"Silver": "argentum", "Gold": "lutetium",
-	"Titanium": "titanium", "Terbium": "terbium",
-	"Plutonium": "plutonium", "Radium": "radium",
-}
-## Неметаллы: кузнец их не берёт (решение игрока).
+## 20 металлов faction_palette.json - ровно те, что переплавляет кузница.
+const METALS := [
+	"bronze", "iron", "steel", "gold",
+	"argentum", "lutetium", "lanthanum", "terbium",
+	"wolfram", "chromium", "cobalt", "titanium",
+	"thorium", "uranium", "plutonium", "radium",
+	"gallium", "yttrium", "promethium", "neodymium",
+]
+
+## Пережиток Аллодов, заменён argentum.
+const DROPPED := ["Silver", "silver"]
+
+## Неметаллы: кузнец их не берёт (решение игрока), но предметы живы.
+## Регистр СОХРАНЁН с заглавной - см. gen_metal_case_migration.py.
 const NON_METALS := ["Leather", "Hard Leather", "Dragon Leather", "Wood", "Magic Wood", "None"]
+
+## Фэнтезийные имена оригинала: не должны встретиться нигде в файле.
+const FANTASY := ["Mithrill", "Adamantium", "Meteoric", "Crystal",
+	"мифрил", "адамантий", "метеорит", "кристалл"]
+
+## Русские словоформы металлов, которые должны быть в name_ru.
+const RU_WORD := {
+	"bronze": "бронз", "iron": "желез", "steel": "стал", "gold": "золот",
+	"argentum": "аргентум", "lutetium": "лютец", "lanthanum": "лантан",
+	"terbium": "тербий", "wolfram": "вольфрам", "chromium": "хром",
+	"cobalt": "кобальт", "titanium": "титан", "thorium": "торий",
+	"uranium": "уран", "plutonium": "плутони", "radium": "ради",
+	"gallium": "галли", "yttrium": "иттри", "promethium": "промети",
+	"neodymium": "неодим",
+}
+
+## Покрытие слотов проверяем ТОЛЬКО у 12 металлов, созданных gen_empty_metals_items.py.
+## У 8 старых металлов набор исторически разный и неполный (у gold 6 типов, у
+## radium 16), и требовать от них полноты нельзя - это не дыра, а данность.
+const GENERATED_METALS := ["argentum", "lutetium", "lanthanum", "wolfram",
+	"chromium", "cobalt", "thorium", "uranium", "gallium", "yttrium",
+	"promethium", "neodymium"]
+
+## Обязательный набор слотов для сгенерированных металлов.
+const REQUIRED_TYPES := ["Amulet", "Ring", "Helm", "Full Helm", "Cuirass",
+	"Plate Cuirass", "Chain Mail", "Small Shield", "Large Shield",
+	"Tower Shield", "Dagger", "Short Sword", "Long Sword",
+	"Two Handed Sword", "Two Handed Axe", "Pike", "Crossbow"]
+
+## Предметы, у которых поля material нет ВООБЩЕ (книги, зелья, свитки).
+## Это не «неизвестный материал» - это отсутствие поля, и такие предметы
+## не должны попадать под проверку списка известных материалов.
+const NO_MATERIAL_TYPES := ["Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb"]
 
 var _fails: Array[String] = []
 
@@ -44,94 +78,142 @@ func _init() -> void:
 		return
 	var items: Array = parsed
 
-	# 1. Старых имён не осталось НИГДЕ в файле.
-	for old in RENAMES:
-		var info: Dictionary = RENAMES[old]
-		var hits: int = text.count(old) + text.count(str(info["ru_old"]))
-		_check(hits == 0, "нет остатков '%s'/'%s' в файле (%d)" % [old, str(info["ru_old"]), hits])
+	# 1. Фэнтезийных имён не осталось НИГДЕ в файле.
+	for old in FANTASY:
+		var hits := text.count(old)
+		_check(hits == 0, "нет остатков '%s' (%d)" % [old, hits])
 
-	# 2. Новые материалы на месте, с ожидаемым числом предметов.
-	# Считаем ТОЛЬКО перенесённые предметы оригинала: слитки из
-	# gen_ingot_items.py — отдельная сущность со своим названием в родительном
-	# падеже («Слиток титания»), их проверяет blacksmith_smoke.
+	# 2. Серебра нет ни в одном поле.
+	for drop in DROPPED:
+		var d_hits := text.count(drop)
+		_check(d_hits == 0, "серебро '%s' отсутствует (%d)" % [drop, d_hits])
+
+	# 3. Все 20 металлов присутствуют, в нижнем регистре. Покрытие слотов
+	#    проверяем только у 12 сгенерированных.
+	ItemDB.ensure_loaded()
 	var by_material := {}
+	var types_by_material := {}
 	for it in items:
 		var d: Dictionary = it
 		var m := str(d.get("material", ""))
-		if m == "" or str(d.get("type", "")) == "Ingot":
+		# JSON null приходит в Godot как строка "<null>", и без этой проверки
+		# 96 книг/зелий/свитков попадали в список "неизвестных материалов".
+		if m == "" or m == "<null>":
 			continue
 		by_material[m] = int(by_material.get(m, 0)) + 1
-	for old in RENAMES:
-		var info2: Dictionary = RENAMES[old]
-		var new_name := str(info2["to"])
-		var got: int = int(by_material.get(new_name, 0))
-		_check(got == int(info2["count"]),
-			"%s: %d предметов (ожидалось %d)" % [new_name, got, int(info2["count"])])
+		var t := str(d.get("type", ""))
+		if t == "Ingot":
+			continue
+		if not types_by_material.has(m):
+			types_by_material[m] = {}
+		types_by_material[m][t] = true
 
-	# 3. Все четыре поля переписаны согласованно.
-	var key_mismatch := 0
-	var ru_mismatch := 0
-	var en_mismatch := 0
-	for it in items:
-		var d: Dictionary = it
-		if str(d.get("type", "")) == "Ingot":
-			continue  # слитки не участвовали в миграции
-		var m := str(d.get("material", ""))
-		var key := str(d.get("key", ""))
-		var en := str(d.get("name_en", ""))
-		var ru := str(d.get("name_ru", ""))
-		for old2 in RENAMES:
-			var info3: Dictionary = RENAMES[old2]
-			var new_name := str(info3["to"])
-			if m != new_name:
-				continue
-			# key/en содержат новое имя и НЕ содержат старое
-			if not key.contains(new_name) or key.contains(old2):
-				key_mismatch += 1
-			if not en.contains(new_name) or en.contains(old2):
-				en_mismatch += 1
-			# ru содержит новое слово и не содержит старое
-			if not ru.contains(str(info3["ru_new"])) or ru.contains(str(info3["ru_old"])):
-				ru_mismatch += 1
-	_check(key_mismatch == 0, "key переписан у всех (расхождений: %d)" % key_mismatch)
-	_check(en_mismatch == 0, "name_en переписан у всех (расхождений: %d)" % en_mismatch)
-	_check(ru_mismatch == 0, "name_ru переписан у всех (расхождений: %d)" % ru_mismatch)
-
-	# 4. Каждый переплавляемый металл есть в данных, и для него есть иконка слитка.
-	for metal in SMELTABLE:
+	for metal in METALS:
 		var count: int = int(by_material.get(metal, 0))
 		_check(count > 0, "металл '%s' есть в item_db (%d предметов)" % [metal, count])
-		var icon_id := str(SMELTABLE[metal])
-		_check(ResourceLoader.exists("%s%s_ingot.png" % [INGOT_DIR, icon_id]),
-			"иконка слитка %s_ingot.png есть" % icon_id)
+		_check(metal == metal.to_lower(), "металл '%s' в нижнем регистре" % metal)
 
-	# 5. Неметаллы остались на месте (их кузнец не берёт, но предметы живы).
+	for metal2 in GENERATED_METALS:
+		var types: Dictionary = types_by_material.get(metal2, {})
+		var miss: Array[String] = []
+		for req in REQUIRED_TYPES:
+			if not types.has(req):
+				miss.append(req)
+		_check(not miss.is_empty() == false,
+			"сгенерированный металл '%s' покрывает слоты (%d типов, не хватает: %s)"
+			% [metal2, types.size(), ", ".join(miss) if not miss.is_empty() else "-"])
+
+	# 4. Нет никаких металлов кроме 20 известных + неметаллов. Предметы без
+	#    поля material (книги, зелья, свитки) пропускаем: у них материала нет
+	#    по построению, и раньше такой тест ловил "<null> в списке известных".
+	var unknown := 0
+	var unknown_list: Array[String] = []
+	for m2 in by_material:
+		var known: bool = m2 in METALS or m2 in NON_METALS
+		if not known:
+			unknown += 1
+			unknown_list.append(m2)
+	_check(unknown == 0, "все известные материалы в списке (%s)"
+		% ", ".join(unknown_list))
+
+	# 5. Неметаллы остались на месте.
 	for nm in NON_METALS:
 		_check(int(by_material.get(nm, 0)) > 0,
 			"неметалл '%s' на месте (%d)" % [nm, int(by_material.get(nm, 0))])
 
-	# 6. Лёгкая/тяжёлая броня не сломалась: кожа и ткань — light, металл — heavy.
-	ItemDB.ensure_loaded()
-	var light_ok := true
-	var heavy_ok := true
+	# 6. У каждого металла есть слиток, ключ в нижнем регистре, иконка на диске.
+	var ingot_by_material := {}
 	for it2 in items:
 		var d2: Dictionary = it2
-		var kind := ItemDB.armor_kind(d2)
-		if str(d2.get("material", "")) in ["Leather", "Hard Leather", "Dragon Leather", "None"]:
+		if str(d2.get("type", "")) == "Ingot":
+			ingot_by_material[str(d2.get("material", ""))] = d2
+	for metal2 in METALS:
+		var has: bool = ingot_by_material.has(metal2)
+		_check(has, "слиток для '%s' есть" % metal2)
+		if not has:
+			continue
+		var ing: Dictionary = ingot_by_material[metal2]
+		var want_key := "%s Ingot" % metal2
+		_check(str(ing.get("key", "")) == want_key,
+			"ключ слитка '%s' = '%s' (получено '%s')"
+			% [metal2, want_key, str(ing.get("key", ""))])
+		_check(ResourceLoader.exists("%s%s_ingot.png" % [INGOT_DIR, metal2]),
+			"иконка слитка %s_ingot.png есть" % metal2)
+
+	# 7. Код кузницы: ingot_key() находит слиток для каждого металла.
+	# Проверяем именно через API, а не через поле key в базе: раньше панель
+	# строила ключ с заглавной и молча отдавала дефолтный iron.
+	for metal3 in METALS:
+		var ik := ItemDB.ingot_key(metal3)
+		_check(ik != "", "ItemDB.ingot_key('%s') находит слиток" % metal3)
+
+	# 8. is_smeltable: все металлы переплавляются, неметаллы и слитки - нет.
+	var smelt_ok := true
+	var nonsmelt_ok := true
+	for it3 in items:
+		var d3: Dictionary = it3
+		var m3 := str(d3.get("material", ""))
+		var t3 := str(d3.get("type", ""))
+		if t3 == "Ingot":
+			if ItemDB.is_smeltable(d3):
+				nonsmelt_ok = false
+		elif m3 in METALS:
+			if not ItemDB.is_smeltable(d3):
+				smelt_ok = false
+		elif m3 in NON_METALS:
+			if ItemDB.is_smeltable(d3):
+				nonsmelt_ok = false
+	_check(smelt_ok, "все металлы переплавляются")
+	_check(nonsmelt_ok, "неметаллы и слитки не переплавляются")
+
+	# 9. Кожа и ткань — лёгкая броня, металл — тяжёлая.
+	var light_ok := true
+	var heavy_ok := true
+	for it4 in items:
+		var d4: Dictionary = it4
+		var kind := ItemDB.armor_kind(d4)
+		var m4 := str(d4.get("material", ""))
+		if m4 in ["Leather", "Hard Leather", "Dragon Leather", "None"]:
 			if kind != "light":
 				light_ok = false
-		elif str(d2.get("material", "")) in SMELTABLE:
+		elif m4 in METALS:
 			if kind != "heavy":
 				heavy_ok = false
 	_check(light_ok, "кожа/ткань по-прежнему лёгкая броня")
 	_check(heavy_ok, "металлы по-прежнему тяжёлая броня")
 
-	# 7. Фэнтезийных материалов больше нет в наборе вообще.
-	var fantasy := 0
-	for m2 in by_material:
-		if str(m2) in RENAMES:
-			fantasy += 1
-	_check(fantasy == 0, "фэнтезийных материалов в наборе не осталось")
+	# 10. name_ru каждого металлического предмета содержит русское слово металла.
+	var ru_missing := 0
+	for it5 in items:
+		var d5: Dictionary = it5
+		var m5 := str(d5.get("material", ""))
+		if not m5 in METALS:
+			continue
+		var word: String = str(RU_WORD.get(m5, ""))
+		var ru := str(d5.get("name_ru", ""))
+		if word != "" and not ru.to_lower().contains(word):
+			ru_missing += 1
+	_check(ru_missing == 0, "name_ru содержит русское имя металла (пропущено: %d)" % ru_missing)
 
 	_report(items.size())
 
