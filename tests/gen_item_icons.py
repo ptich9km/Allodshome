@@ -90,9 +90,23 @@ ARMOR_SLOT = {
     # аксессуары
     "Ring":          ("heavy", "ring"),
     "Amulet":        ("heavy", "amulet"),
-    # плащ
+    # Плащ и накидка - ТРЯПКИ (материал Linen), не металл. Арт лежит в base/:
+    # faction/*_cloak_* - перекраска тех же текстур в цвета металлов, и для
+    # льна она не используется. Разные наборы, иначе оба типа выглядели бы
+    # одинаково на складе и на кукле.
     "Cloak":         ("light", "cloak"),
-    "Cape":          ("light", "cloak"),
+    "Cape":          ("heavy", "cloak"),
+}
+
+# Тряпки: арт лежит в base/, а не в faction/, потому что перекраска в цвет
+# металла для них бессмысленна (см. gen_cloak_items.py).
+CLOTH_MATERIALS = {"Linen", "Linen "}
+
+# quality в базе -> тир в имени файла. У металлов качество = тир напрямую,
+# но у тряпок качество ("Cheap"/"Common") приходит как слово, а файл называется
+# по тиру ("cheap"/"common").
+QUALITY_TO_TIER = {
+    "Cheap": "cheap", "Common": "common", "Good": "good", "Elite": "elite",
 }
 
 # Тип оружия -> файл в faction_w. Ключи совпадают с именами в base_w/.
@@ -190,7 +204,7 @@ def main() -> int:
         pal = json.load(fh)
     metals = load_metal_index(pal)
 
-    stats = {"faction": 0, "faction_w": 0, "ingot": 0, "placeholder": 0}
+    stats = {"faction": 0, "faction_w": 0, "base": 0, "ingot": 0, "placeholder": 0}
     problems = []
     assigned = {}
     new_ph = set()
@@ -228,6 +242,14 @@ def main() -> int:
                 stats["faction"] += 1
             else:
                 problems.append("металл, но тип без иконки: %s / %s" % (typ, mat))
+        elif typ in ARMOR_SLOT and mat in CLOTH_MATERIALS:
+            # Тряпка (лён): арт есть в base/ - те же текстуры, из которых
+            # faction/*_cloak_* делалась перекраска в металл. Лён не металл,
+            # поэтому берём неокрашенный base, а не заглушку.
+            a_set, a_slot = ARMOR_SLOT[typ]
+            tier = QUALITY_TO_TIER.get(str(it.get("quality", "")), "common")
+            icon = "res://assets/items/base/%s_%s_%s.png" % (a_set, a_slot, tier)
+            stats["base"] += 1
         else:
             label = PH_TYPE_LABEL.get(typ) or PH_MAT_LABEL.get(mat) or "?"
             slug = slugify(typ or mat or "item")

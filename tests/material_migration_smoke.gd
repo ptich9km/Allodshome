@@ -26,7 +26,10 @@ const DROPPED := ["Silver", "silver"]
 
 ## Неметаллы: кузнец их не берёт (решение игрока), но предметы живы.
 ## Регистр СОХРАНЁН с заглавной - см. gen_metal_case_migration.py.
-const NON_METALS := ["Leather", "Hard Leather", "Dragon Leather", "Wood", "Magic Wood", "None"]
+## "Linen" - лён, ткань для плащей (gen_cloak_items.py): игрок уточнил, что
+## плащ и рубашка - тряпки, поэтому им не нужны вариации по металлам.
+const NON_METALS := ["Leather", "Hard Leather", "Dragon Leather", "Wood",
+	"Magic Wood", "Linen", "None"]
 
 ## Фэнтезийные имена оригинала: не должны встретиться нигде в файле.
 const FANTASY := ["Mithrill", "Adamantium", "Meteoric", "Crystal",
@@ -197,9 +200,16 @@ func _init() -> void:
 			if kind != "light":
 				light_ok = false
 		elif m4 in METALS:
-			if kind != "heavy":
+			# Металл = тяжёлая броня, КРОМЕ ткани: Cloak/Cape остаются лёгкими
+			# независимо от материала (item_db.gd:158 - is_cloth). Иначе плащ из
+			# стали натягивался бы на тяжёлый набор анимации.
+			var is_cloth := str(d4.get("type", "")) in ["Cloak", "Cape"]
+			if is_cloth:
+				if kind != "light":
+					light_ok = false
+			elif kind != "heavy":
 				heavy_ok = false
-	_check(light_ok, "кожа/ткань по-прежнему лёгкая броня")
+	_check(light_ok, "кожа/ткань и плащи по-прежнему лёгкая броня")
 	_check(heavy_ok, "металлы по-прежнему тяжёлая броня")
 
 	# 10. name_ru каждого металлического предмета содержит русское слово металла.

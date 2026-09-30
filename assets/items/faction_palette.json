@@ -1,56 +1,239 @@
 {
-  "version": 1,
-  "description": "Фракционные материалы одежды. Источник правды для tests/gen_faction_armor_tint.py.",
-  "note": "Цвета 19 металлов совпадают с таблицей в assets/loot_icons/README.md; золото добавлено как 4-й тир группы common. is_base=true означает, что тир не перекрашивается и берётся из assets/items/base/ как есть. Слот содержит 9 колонок атласа, а в игре их 7 (bracers+gloves -> hands, chest+shirt -> body), см. assets/items/README.md.",
-  "sets": ["light", "heavy"],
-  "sets_skipped": ["magic"],
-  "slots": ["head", "chest", "bracers", "gloves", "legs", "ring", "amulet", "shirt", "cloak"],
-  "tiers": ["cheap", "common", "good", "elite"],
-  "groups": {
-    "common": {
-      "faction": "Общая (вне фракций)",
-      "metals": [
-        { "metal": "bronze", "tier": "cheap",  "color": [184, 115, 51] },
-        { "metal": "iron",   "tier": "common", "color": [120, 120, 125] },
-        { "metal": "steel",  "tier": "good",   "color": [192, 192, 200], "is_base": true },
-        { "metal": "gold",   "tier": "elite",  "color": [212, 175, 55] }
-      ]
+ "version": 1,
+ "description": "Фракционные материалы одежды. Источник правды для tests/gen_faction_armor_tint.py.",
+ "note": "Цвета 19 металлов совпадают с таблицей в assets/loot_icons/README.md; золото добавлено как 4-й тир группы common. is_base=true означает, что тир не перекрашивается и берётся из assets/items/base/ как есть. Слот содержит 9 колонок атласа, а в игре их 7 (bracers+gloves -> hands, chest+shirt -> body), см. assets/items/README.md. Обновлено 30.09: слоты shirt и cloak убраны - плащи, рубахи и магическая одежда это тряпки, вариации по металлам им не нужны (решение игрока). Их арт лежит в assets/items/base/, предметы из льна заведены tests/gen_cloak_items.py.",
+ "sets": [
+  "light",
+  "heavy"
+ ],
+ "sets_skipped": [
+  "magic"
+ ],
+ "slots": [
+  "head",
+  "chest",
+  "bracers",
+  "gloves",
+  "legs",
+  "ring",
+  "amulet"
+ ],
+ "tiers": [
+  "cheap",
+  "common",
+  "good",
+  "elite"
+ ],
+ "groups": {
+  "common": {
+   "faction": "Общая (вне фракций)",
+   "metals": [
+    {
+     "metal": "bronze",
+     "tier": "cheap",
+     "color": [
+      184,
+      115,
+      51
+     ]
     },
-    "light_alliance": {
-      "faction": "Альянс Света",
-      "metals": [
-        { "metal": "argentum",  "tier": "cheap",  "color": [200, 200, 210] },
-        { "metal": "lutetium",  "tier": "common", "color": [230, 220, 180] },
-        { "metal": "lanthanum", "tier": "good",   "color": [210, 220, 240] },
-        { "metal": "terbium",   "tier": "elite",  "color": [220, 240, 220] }
-      ]
+    {
+     "metal": "iron",
+     "tier": "common",
+     "color": [
+      120,
+      120,
+      125
+     ]
     },
-    "fire_hordes": {
-      "faction": "Орды Огня",
-      "metals": [
-        { "metal": "wolfram",  "tier": "cheap",  "color": [100, 90, 80] },
-        { "metal": "chromium", "tier": "common", "color": [160, 170, 190] },
-        { "metal": "cobalt",   "tier": "good",   "color": [60, 80, 140] },
-        { "metal": "titanium", "tier": "elite",  "color": [140, 120, 160] }
-      ]
+    {
+     "metal": "steel",
+     "tier": "good",
+     "color": [
+      192,
+      192,
+      200
+     ],
+     "is_base": true
     },
-    "reapers": {
-      "faction": "Пожинатели",
-      "metals": [
-        { "metal": "thorium",    "tier": "cheap",  "color": [80, 90, 70] },
-        { "metal": "uranium",    "tier": "common", "color": [100, 160, 100] },
-        { "metal": "plutonium",  "tier": "good",   "color": [60, 40, 80] },
-        { "metal": "radium",     "tier": "elite",  "color": [100, 180, 220] }
-      ]
-    },
-    "druid_circle": {
-      "faction": "Круг Друидов",
-      "metals": [
-        { "metal": "gallium",    "tier": "cheap",  "color": [140, 180, 150] },
-        { "metal": "yttrium",    "tier": "common", "color": [60, 160, 100] },
-        { "metal": "promethium", "tier": "good",   "color": [80, 180, 200] },
-        { "metal": "neodymium",  "tier": "elite",  "color": [200, 190, 220] }
-      ]
+    {
+     "metal": "gold",
+     "tier": "elite",
+     "color": [
+      212,
+      175,
+      55
+     ]
     }
+   ]
+  },
+  "light_alliance": {
+   "faction": "Альянс Света",
+   "metals": [
+    {
+     "metal": "argentum",
+     "tier": "cheap",
+     "color": [
+      200,
+      200,
+      210
+     ]
+    },
+    {
+     "metal": "lutetium",
+     "tier": "common",
+     "color": [
+      230,
+      220,
+      180
+     ]
+    },
+    {
+     "metal": "lanthanum",
+     "tier": "good",
+     "color": [
+      210,
+      220,
+      240
+     ]
+    },
+    {
+     "metal": "terbium",
+     "tier": "elite",
+     "color": [
+      220,
+      240,
+      220
+     ]
+    }
+   ]
+  },
+  "fire_hordes": {
+   "faction": "Орды Огня",
+   "metals": [
+    {
+     "metal": "wolfram",
+     "tier": "cheap",
+     "color": [
+      100,
+      90,
+      80
+     ]
+    },
+    {
+     "metal": "chromium",
+     "tier": "common",
+     "color": [
+      160,
+      170,
+      190
+     ]
+    },
+    {
+     "metal": "cobalt",
+     "tier": "good",
+     "color": [
+      60,
+      80,
+      140
+     ]
+    },
+    {
+     "metal": "titanium",
+     "tier": "elite",
+     "color": [
+      140,
+      120,
+      160
+     ]
+    }
+   ]
+  },
+  "reapers": {
+   "faction": "Пожинатели",
+   "metals": [
+    {
+     "metal": "thorium",
+     "tier": "cheap",
+     "color": [
+      80,
+      90,
+      70
+     ]
+    },
+    {
+     "metal": "uranium",
+     "tier": "common",
+     "color": [
+      100,
+      160,
+      100
+     ]
+    },
+    {
+     "metal": "plutonium",
+     "tier": "good",
+     "color": [
+      60,
+      40,
+      80
+     ]
+    },
+    {
+     "metal": "radium",
+     "tier": "elite",
+     "color": [
+      100,
+      180,
+      220
+     ]
+    }
+   ]
+  },
+  "druid_circle": {
+   "faction": "Круг Друидов",
+   "metals": [
+    {
+     "metal": "gallium",
+     "tier": "cheap",
+     "color": [
+      140,
+      180,
+      150
+     ]
+    },
+    {
+     "metal": "yttrium",
+     "tier": "common",
+     "color": [
+      60,
+      160,
+      100
+     ]
+    },
+    {
+     "metal": "promethium",
+     "tier": "good",
+     "color": [
+      80,
+      180,
+      200
+     ]
+    },
+    {
+     "metal": "neodymium",
+     "tier": "elite",
+     "color": [
+      200,
+      190,
+      220
+     ]
+    }
+   ]
   }
+ },
+ "slots_skipped": [
+  "shirt",
+  "cloak"
+ ]
 }

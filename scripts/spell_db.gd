@@ -287,12 +287,14 @@ static func book_item(item_key: String) -> Dictionary:
 	return make_book_item(spell)
 
 ## Иконка книги стихии (для книг одного заклинания этой сферы).
+## Пути вынесены из assets/inventory/ (папка с иконками Аллодов удаляется):
+## сами картинки переехали в assets/items/sphere_books/ под осмысленными именами.
 const BOOK_ICONS := {
-	"Fire": "res://assets/inventory/0014003-000.png",
-	"Water": "res://assets/inventory/0014002-000.png",
-	"Air": "res://assets/inventory/0014001-000.png",
-	"Earth": "res://assets/inventory/0014004-000.png",
-	"Astral": "res://assets/inventory/0014005-000.png",
+	"Fire": "res://assets/items/sphere_books/fire_book.png",
+	"Water": "res://assets/items/sphere_books/water_book.png",
+	"Air": "res://assets/items/sphere_books/air_book.png",
+	"Earth": "res://assets/items/sphere_books/earth_book.png",
+	"Astral": "res://assets/items/sphere_books/astral_book.png",
 }
 
 ## Синтез предмета «книга одного заклинания» (для склада и прилавка магазина).

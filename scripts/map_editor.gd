@@ -20,7 +20,6 @@ var tex_strip_buttons: Array = []
 var brush_size_buttons: Array = []
 var status_label: Label
 var settings_panel: TextureSettingsPanel = null
-var catalog_panel: InventoryCatalogPanel = null
 var _fill_mode := false
 var fill_btn: Button
 var _undo_stack: Array = []
@@ -83,7 +82,6 @@ func _build_ui() -> void:
 	x = _add_top_button(top, x, "Открыть .alm…", _on_open_alm)
 	x = _add_top_button(top, x, "Сохранить .alm", _on_save_alm)
 	x = _add_top_button(top, x, "Настройки…", _on_settings)
-	x = _add_top_button(top, x, "Предметы…", _on_catalog)
 	x = _add_top_button(top, x, "Transitions", _on_transition_tool)
 	x = _add_top_button(top, x, "Назад в игру (F9)", _on_back)
 
@@ -873,22 +871,11 @@ func _on_settings_applied() -> void:
 func _on_settings_closed() -> void:
 	settings_panel = null
 
-## --- Каталог предметов инвентаря ---
-
-func _on_catalog() -> void:
-	if is_instance_valid(catalog_panel):
-		return
-	catalog_panel = InventoryCatalogPanel.new()
-	catalog_panel.setup()
-	add_child(catalog_panel)
-	catalog_panel.applied.connect(_on_catalog_applied)
-	catalog_panel.closed.connect(_on_catalog_closed)
-
-func _on_catalog_applied() -> void:
-	status_label.text = "Каталог предметов сохранён"
-
-func _on_catalog_closed() -> void:
-	catalog_panel = null
+## Каталог предметов инвентаря (InventoryCatalogPanel) удалён вместе с
+## assets/inventory/: он раскладывал иконки Аллодов по категориям вручную и
+## писал assets/maps/inventory_catalog.json. Теперь иконка предмета задаётся
+## полем icon прямо в item_db.json (tests/gen_item_icons.py), и отдельный
+## редактор каталога не нужен.
 
 ## Глобальные наборы текстур (палитра редактора) — переживают перезапуск.
 func _load_global_sets() -> void:

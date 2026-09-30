@@ -154,7 +154,10 @@ static func is_two_handed(item: Dictionary) -> bool:
 static func armor_kind(item: Dictionary) -> String:
 	var m := str(item.get("material", ""))
 	var t := str(item.get("type", ""))
-	var is_light_mat := m in ["Leather", "Hard Leather", "Dragon Leather", "None"]
+	# "Linen" - лён (ткань плащей, tests/gen_cloak_items.py). Плащи и рубашки
+	# относятся к тряпкам по ТИПУ (is_cloth ниже), но материал перечислен и
+	# здесь, чтобы одежда из льна была лёгкой и если тип когда-то изменится.
+	var is_light_mat := m in ["Leather", "Hard Leather", "Dragon Leather", "Linen", "None"]
 	var is_cloth := t in ["Cloak", "Cape", "Robe", "Dress", "Hat", "Low Hat", "Cap"]
 	if is_light_mat or is_cloth:
 		return "light"

@@ -96,7 +96,7 @@ func _test_slot_mapping() -> void:
 	_check(bad == 0, "все экипируемые предметы имеют слот (без слота: %d)" % bad)
 	var expect := {
 		"Common bronze Helm": "head",
-		"Bad None Cloak": "cloak",
+		"Common Linen Cloak": "cloak",
 		"Common bronze Cuirass": "body",
 		"Common bronze Bracers": "hands",
 		"Common Hard Leather Boots": "feet",
