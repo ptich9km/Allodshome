@@ -1,7 +1,7 @@
 # Одежда, броня и оружие — Allodshome
 
 Текстуры одежды, нарезанные из атласа `import/ChatGPTArmor1.png` и перекрашенные
-в цвета металлов фракций, плюс оружие из `import/ChatGPTWeapons1.png`.
+в цвета металлов фракций, плюс оружие из `import/ChatGPTWeapons2.png`.
 
 ---
 
@@ -10,14 +10,19 @@
 | Каталог | Что внутри | Кол-во |
 |---|---|---|
 | `base/` | неокрашенные текстуры одежды, 3 сета × 9 слотов × 4 качества | 108 |
-| `base_w/` | оружие, 15 типов × 4 качества | 60 |
+| `base_w/` | оружие, 13 типов × 4 качества | 52 |
 | `faction/common/` | бронза, железо, золото | 54 |
 | `faction/light_alliance/` | argentum, lutetium, lanthanum, terbium | 72 |
 | `faction/fire_hordes/` | wolfram, chromium, cobalt, titanium | 72 |
 | `faction/reapers/` | thorium, uranium, plutonium, radium | 72 |
 | `faction/druid_circle/` | gallium, yttrium, promethium, neodymium | 72 |
+| `faction_w/common/` | оружие: бронза, железо, золото | 39 |
+| `faction_w/light_alliance/` | оружие: argentum, lutetium, lanthanum, terbium | 52 |
+| `faction_w/fire_hordes/` | оружие: wolfram, chromium, cobalt, titanium | 52 |
+| `faction_w/reapers/` | оружие: thorium, uranium, plutonium, radium | 52 |
+| `faction_w/druid_circle/` | оружие: gallium, yttrium, promethium, neodymium | 52 |
 
-**Итого 510 PNG.** Контактные листы (`_contact_sheet.png`) — выход dev-инструмента,
+**Итого 749 PNG.** Контактные листы (`_contact_sheet.png`) — выход dev-инструмента,
 в `.gitignore`.
 
 ---
@@ -27,15 +32,23 @@
 ```text
 base/{set}_{slot}_{quality}.png                 неокрашенная
 faction/{group}/{metal}_{set}_{slot}_{quality}.png   перекрашенная
+base_w/{type}_{quality}.png                     оружие, неокрашенное
+faction_w/{group}/{metal}_{type}_{tier}.png    оружие, перекрашенное
 ```
 
 `set` = `light` | `heavy` | `magic`
 `slot` = `head`, `chest`, `bracers`, `gloves`, `legs`, `ring`, `amulet`, `shirt`, `cloak`
+`type` (оружие) = `dagger`, `saber`, `one_handed_sword`, `one_handed_axe`,
+`one_handed_mace`, `one_handed_spear`, `two_handed_axe`, `two_handed_mace`,
+`two_handed_spear`, `greatsword`, `bow`, `crossbow`, `shield`
 `quality` = `cheap` | `common` | `good` | `elite`
 
 **Качество = тир металла.** У каждой группы 4 металла и 4 качества, они
 сопоставлены один к одному: `cheap` = 1-й металл группы, `elite` = 4-й.
-Поэтому у металла ровно 18 файлов (2 сета × 9 слотов), а не 72.
+Поэтому у металла ровно **18** файлов брони (2 сета × 9 слотов) и ровно
+**13** файлов оружия, а не 72 и не 52. Взять все четыре качества — значит
+сделать четыре копии одного тира с разной детализацией; ровно это один раз
+случилось с бронёй (1368 файлов вместо 342).
 
 | группа | cheap | common | good | elite |
 |---|---|---|---|---|
@@ -123,19 +136,88 @@ python tests/extract_chatgpt_armor.py
 python tests/gen_faction_armor_tint.py --report   # только отчёт
 python tests/gen_faction_armor_tint.py            # перекрасить всё
 python tests/gen_faction_armor_tint.py --sheet    # + контактные листы
-python tests/gen_faction_armor_tint.py --check    # сверить SHA256 с диском
+python tests/gen_faction_armor_tint.py --check    # сверить с перегенерацией
 ```
 
-Оба скрипта детерминированы: `random.*` не используется, `--check` сверяет
+Все скрипты детерминированы: `random.*` не используется, `--check` сверяет
 SHA256 перегенерации с файлами на диске.
+
+Формула дуотона лежит **в `tests/faction_tint.py`** и общая для брони и оружия
+(`duotone`, `calibrate`, `color_stats`). Копировать её в генератор оружия нельзя:
+два источника одной формулы разъезжаются, и через месяц неизвестно, какой из них
+правильный.
 
 ---
 
-# Оружие — `base_w/`
+# Оружие — `base_w/` и `faction_w/`
 
-Нарезано из `import/ChatGPTWeapons1.png` скриптом
-`tests/extract_chatgpt_weapons.py`. 15 типов × 4 качества = **60 текстур**,
+## Источник: `ChatGPTWeapons2.png`, не `Weapons1.png`
+
+Текущая нарезка сделана из атласа `import/ChatGPTWeapons2.png` скриптом
+`tests/extract_chatgpt_weapons2.py`: 13 типов × 4 качества = **52 текстуры**,
 имя `{type}_{quality}.png`, длинная сторона 80 px, фон прозрачный.
+
+Атлас **Weapons2 чище Weapons1**: фон уже прозрачный, панелей и разделителей нет,
+1536×1024. Раскладка (58 компонентов, разобрана вручную по оригиналу):
+
+| ряд | состав |
+|---|---|
+| 0 | 4 кинжала, 4 одн. меча, 4 сабли, 3 двуручных меча |
+| 1 | 4 одн. топора, 5 двуручных, 2 лишних одн. |
+| 2 | 4 одн. булавы, 4 двуручных, 3 лишних |
+| 3 | 4 одн. копья, 5 двуручных |
+| 4 | 4 лука, 4 арбалета, 4 щита |
+
+**Кроп строго по маске своей компоненты, не по bbox.** Первый вариант по bbox
+тащил соседей и «пыль» сглаживания (заметно на топорах).
+
+**`saber` в `_WEAPON_TYPES` нет** — файлы `saber_*.png` оставлены как запас.
+**`greatsword_common` в атласе нет** — восстановлен из git `6c28b157`
+(29×80, отцентрирован в 80×80).
+
+## Генераторы
+
+```powershell
+# 1. Нарезка атласа в base_w/ (нужно один раз)
+python tests/extract_chatgpt_weapons2.py --report   # только отчёт
+python tests/extract_chatgpt_weapons2.py            # нарезать в base_w
+python tests/extract_chatgpt_weapons2.py --sheet    # + контактный лист
+
+# 2. Перекраска base_w/ в faction_w/
+python tests/gen_faction_weapon_tint.py --report    # только отчёт
+python tests/gen_faction_weapon_tint.py             # перекрасить всё (247 файлов)
+python tests/gen_faction_weapon_tint.py --sheet     # + контактные листы
+python tests/gen_faction_weapon_tint.py --check     # сверить с перегенерацией
+```
+
+`tests/extract_chatgpt_weapons.py` (Weapons1, 15 типов / 60 файлов) **оставлен
+как история и резерв**: его выводы по пайплайну ниже всё ещё верны, но в игре
+лежат файлы Weapons2. Перегенерировать `base_w/` надо именно
+`extract_chatgpt_weapons2.py` — со старым скриптом он перезапишется 60 файлами
+Weapons1 с другими именами.
+
+## Инварианты `gen_faction_weapon_tint.py`
+
+- качество в имени файла `base_w` должно быть тиром из палитры, иначе ни одно
+  задание не совпадёт и скрипт выдаст 0 файлов **без ошибки**;
+- у каждого типа должны быть все 4 тира, иначе металл молча теряет тип;
+- на каждый металл — ровно 13 файлов (по одному на тип), а не 52.
+
+## Замер: дуотон на оружии работает лучше, чем на броне
+
+Броня — это кожа, ткань и металл в одном кадре, оружие почти целиком металл,
+поэтому подмена тона меняет цвет и не выедает фактуру. Сканер «схлопывания»
+(размах светлоты выход/вход, порог 0.75): **0 потерянных из 247**, худший
+результат **0.830** — сабли `saber_common` и щиты `shield_common`, у которых
+самый узкий размах во входе (0.808 и 0.973). Альфа совпала байт в байт на всех
+247, как и у брони.
+
+---
+
+# История: Weapons1 (15 типов / 60 файлов)
+
+Содержимое ниже описывает пайплайн атласа `ChatGPTWeapons1.png`, по которому
+сделана текущая нарезка Weapons2, и остаётся верным для обоих.
 
 ## Пайплайн другой, и это не деталь
 
@@ -184,43 +266,46 @@ alpha 24…199, и ложе с луком распадались на две ч�
 
 ## Соответствие типам из `item_db.json`
 
-`_WEAPON_TYPES` в `scripts/item_db.gd` содержит 21 тип, в атласе 15 панелей
-(щит — не оружие, а `_SHIELD_TYPES`):
+`_WEAPON_TYPES` в `scripts/item_db.gd` — 21 тип, `_SHIELD_TYPES` — 4. В атласе
+Weapons2 13 типов, щит отдельным файлом:
 
-| атлас | в игре |
+| атлас (Weapons2) | в игре |
 |---|---|
-| dagger | Dagger |
-| sword | Long Sword / Short Sword |
-| greatsword | Two Handed Sword |
-| axe | Axe |
-| axe_twohand | Two Handed Axe |
-| mace | Mace |
-| mace_twohand | Morning Star / Spiked Club |
-| sledge | Pick Hammer |
-| hammer | War Hammer |
-| spear | Pike |
-| spear_twohand | Lance |
-| bow | Short Bow / Long Bow |
-| crossbow | Crossbow |
+| `dagger` | Dagger |
+| `one_handed_sword` | Short Sword / Long Sword |
+| `greatsword` | Two Handed Sword (+ `Bastard Sword` по запасному правилу) |
+| `one_handed_axe` | Axe |
+| `two_handed_axe` | Two Handed Axe |
+| `one_handed_mace` | Mace / Morning Star (+ `Spiked Club`, `Club` по запасному правилу) |
+| `two_handed_mace` | Pick Hammer / War Hammer |
+| `one_handed_spear` | Pike (+ `Staff`, `Shaman Staff` по запасному правилу) |
+| `two_handed_spear` | Lance (+ `Halberd` по запасному правилу) |
+| `bow` | Short Bow / Long Bow |
+| `crossbow` | Crossbow |
+| `shield` | Buckler / Small Shield / Large Shield / Tower Shield |
 | **saber** | **соответствия нет** (сабля в `_WEAPON_TYPES` отсутствует) |
 
-**Без атласного арта остаются 6 типов:** `Bastard Sword`, `Spiked Club`, `Club`,
-`Halberd`, `Staff`, `Shaman Staff`.
+**Без собственного атласного арта остаются 6 типов** и берут ближайший:
+`Bastard Sword` → `greatsword`, `Spiked Club`/`Club` → `one_handed_mace`,
+`Halberd` → `two_handed_spear`, `Staff`/`Shaman Staff` → `one_handed_spear`.
 
-**Дефект в самом атласе:** `greatsword_cheap` нарисован с лезвиями **с обеих
-сторон** — рукоять заменена вторым клинком, выглядит как двусторонний клинок.
-Проверено на исходнике: дефект в атласе, нарезка воспроизводит его точно,
-ничего не срезано. Остальные три качества (`common`/`good`/`elite`) нарисованы
-нормально. Если это не устраивает — заменить можно только перекраской одного из
-остальных трёх, но это уже будет не исходный арт.
+**Дефект в самом атласе Weapons1** (в Weapons2 не воспроизводится):
+`greatsword_cheap` был нарисован с лезвиями **с обеих сторон** — рукоять
+заменена вторым клинком. Проверено на исходнике: дефект в атласе, нарезка
+воспроизводила его точно. В Weapons2 тот же тип дорисован нормально, а
+`greatsword_common` в атласе отсутствует и восстановлен из git `6c28b157`.
 
-## Генерация
+## Генерация Weapons1
 
 ```powershell
 python tests/extract_chatgpt_weapons.py --report   # только отчёт
 python tests/extract_chatgpt_weapons.py            # нарезать в base_w
 python tests/extract_chatgpt_weapons.py --sheet    # + контактный лист
 ```
+
+**Не запускать на текущем `base_w/`** без явного решения: скрипт перезапишет
+52 файла Weapons2 на 60 файлов Weapons1 с другими именами (`sword`, `axe`,
+`mace`, `spear`, `sledge`, `hammer` вместо `one_handed_*`/`two_handed_*`).
 
 ---
 
@@ -240,11 +325,15 @@ python tests/extract_chatgpt_weapons.py --sheet    # + контактный ли
 - **`magic_*` (36 файлов) не перекрашивается** — по решению игрока магическая
   одежда своя, с оттенком фракции она не вяжется. Лежит только в `base/`.
 - **`steel` (тир `good` группы `common`) не перекрашивается:** в палитре
-  помечен `is_base: true`, это сами файлы `base/`. Сталь = вид «как есть», файл
-  не дублируется.
+  помечен `is_base: true`, это сами файлы `base/` и `base_w/`. Сталь = вид
+  «как есть», файл не дублируется. Поэтому в `faction/common/` 54 файла брони
+  и 39 файлов оружия, а не 72 и 52.
 - **12 металлов из 20 не имеют ни одного предмета** в `assets/items/item_db.json`:
   argentum, lutetium, lanthanum, wolfram, chromium, cobalt, thorium, uranium,
-  gallium, yttrium, promethium, neodymium. Текстуры для них созданы, но
-  показать их пока нечем — нужны предметы.
+  gallium, yttrium, promethium, neodymium. Текстуры для них созданы (18 брони и
+  13 оружия на металл — **372 файла**), но показать их пока нечем: нужны
+  предметы. У каждой фракции наполнен только последний тир, у Пожинателей —
+  два последних; это наследие переезда с Аллодов (мифрил→тербий,
+  адамант→титаний, метеорит→плутоний, кристалл→радий).
 - **Эти ассеты пока не подключены к игре.** `item_db.json` у 508 предметов
   ссылается на 508 уникальных иконок в `assets/inventory/`.

@@ -32,101 +32,29 @@ heavy_ring_elite - 61%, то есть «самоцвет» и «ткань» в�
 from __future__ import annotations
 
 import argparse
-import colorsys
-import hashlib
 import json
 import os
 import sys
 
-from PIL import Image, ImageDraw
+# Общая формула дуотона живёт в faction_tint.py - её же использует
+# gen_faction_weapon_tint.py. Копия здесь означала бы два источника правды.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from faction_tint import (  # noqa: E402
+    PALETTE,
+    VOLUME_RATIO_MIN,
+    alpha_of,
+    calibrate,  # noqa: F401  - реэкспорт для тестов, которые импортируют отсюда
+    color_stats,
+    duotone,
+    load_palette,
+    sha256_of_img,
+    volume_ratio,
+)
 
-PALETTE = os.path.join("assets", "items", "faction_palette.json")
+from PIL import Image, ImageDraw  # noqa: E402
+
 BASE_DIR = os.path.join("assets", "items", "base")
 OUT_ROOT = os.path.join("assets", "items", "faction")
-
-# Форма рампы, в которую подставляется цвет металла.
-#
-# SHADOW_MUL: нижняя точка рампы = цвет * SHADOW_MUL. Держим её почти у чёрного.
-#   Было 0.22 - и это ломало: настоящий чёрный (0.0) поднимался до 0.25, и
-#   детализированный визор шлема превращался в плоское тёмно-серое пятно,
-#   которое глаз читал как дырку. Замер области визора heavy_head_common:
-#   размах светлоты падал с 1.000 (base) до 0.749 (после дуотона) при почти
-#   неизменной средней 0.361 - то есть тени просто поднялись и размазались.
-#   При 0.04 железная тень = (4,4,5), и глубина возвращается.
-#   За это НЕ отвечает calibrate() ниже: он поднимает СЕРЕДИНУ рампы ради
-#   читаемости тёмных металлов на тёмном UI - это независимая ось.
-SHADOW_MUL = 0.04
-HILIGHT_MIX = 0.72      # блик = mix(цвет, белый, 0.72)
-
-# Порог, ниже которого металл считается тёмным и середина рампы поднимается,
-# иначе предмет сливается с тёмным UI склада. Замер по палитре:
-#   тёмные  (V <= 0.45): cobalt 0.55, plutonium 0.31, thorium 0.35,
-#                        wolfram 0.39, yttrium 0.63 -> поднимаем все V < 0.62
-#   светлые (V >= 0.65): lutetium 0.90, terbium 0.94, neodymium 0.78 -> не трогаем
-DARK_V = 0.62
-DARK_MID_V = 0.46       # до какого значения опускать середину тёмного металла
-
-TIERS = ["cheap", "common", "good", "elite"]
-
-
-def load_palette() -> dict:
-    with open(PALETTE, encoding="utf-8") as fh:
-        return json.load(fh)
-
-
-def calibrate(rgb):
-    """Поднимает середину рампы у слишком тёмных металлов.
-
-    Возвращает (shadow, mid, hilight) - уже готовые цвета.
-    Замер: у cobalt (60,80,140) V=0.55 и у plutonium (60,40,80) V=0.31 середина
-    рампа даёт почти чёрные пиксели, предмет не читается на тёмном фоне."""
-    r, g, b = rgb
-    v = max(r, g, b) / 255.0
-    if v < DARK_V:
-        # поднимаем середину до DARK_MID_V, сохраняя соотношение каналов
-        cur = max(r, g, b)
-        if cur > 0:
-            k = (DARK_MID_V * 255.0) / cur
-            mid = (min(255, int(r * k)), min(255, int(g * k)), min(255, int(b * k)))
-    else:
-        mid = (r, g, b)
-    shadow = (int(mid[0] * SHADOW_MUL), int(mid[1] * SHADOW_MUL), int(mid[2] * SHADOW_MUL))
-    hilight = tuple(int(c + (255 - c) * HILIGHT_MIX) for c in mid)
-    return shadow, mid, hilight
-
-
-def duotone(img: Image.Image, rgb) -> Image.Image:
-    """Дуотон: hue берётся у металла, value - у исходного пикселя."""
-    shadow, mid, hilight = calibrate(rgb)
-    h, s, _ = colorsys.rgb_to_hsv(rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0)
-
-    out = img.convert("RGBA")
-    src = img.convert("RGB").load()
-    dst = out.load()
-    w, hgt = out.size
-    inv = 1.0 / 255.0
-    for y in range(hgt):
-        for x in range(w):
-            r, g, b = src[x, y]
-            _, _, v = colorsys.rgb_to_hsv(r * inv, g * inv, b * inv)
-            if v < 0.5:
-                t = v / 0.5
-                c0, c1 = shadow, mid
-            else:
-                t = (v - 0.5) / 0.5
-                c0, c1 = mid, hilight
-            dst[x, y] = (
-                int(c0[0] + (c1[0] - c0[0]) * t),
-                int(c0[1] + (c1[1] - c0[1]) * t),
-                int(c0[2] + (c1[2] - c0[2]) * t),
-                out.getpixel((x, y))[3],
-            )
-    return out
-
-
-def sha256(path: str) -> str:
-    with open(path, "rb") as fh:
-        return hashlib.sha256(fh.read()).hexdigest()
 
 
 def build() -> list[dict]:
@@ -233,7 +161,7 @@ def main() -> int:
     worst = []
     for j in jobs:
         si, so = j["stats_in"], j["stats_out"]
-        ratio = (so["luma_range"] / si["luma_range"]) if si["luma_range"] > 0.01 else 1.0
+        ratio = volume_ratio(si, so)
         j["luma_ratio"] = ratio
         worst.append((ratio, j))
     worst.sort(key=lambda p: p[0])
@@ -243,16 +171,15 @@ def main() -> int:
             ratio, os.path.basename(j["dst"]),
             j["stats_in"]["luma_range"], j["stats_out"]["luma_range"],
             j["stats_in"]["chroma"], j["stats_out"]["chroma"]))
-    flat = [j for r, j in worst if r < 0.75]
-    print("ОБЪЁМ ПОТЕРЯН (размах светлоты упал ниже 0.75): %d из %d"
-          % (len(flat), len(jobs)))
+    flat = [j for r, j in worst if r < VOLUME_RATIO_MIN]
+    print("ОБЪЁМ ПОТЕРЯН (размах светлоты упал ниже %.2f): %d из %d"
+          % (VOLUME_RATIO_MIN, len(flat), len(jobs)))
     for j in flat[:8]:
         print("   ! %s" % os.path.basename(j["dst"]))
 
     # альфа обязана совпасть с входом байт в байт: дуотон красит только RGB
     bad_alpha = [j for j in jobs
-                 if Image.open(j["src"]).convert("RGBA").getchannel("A").tobytes()
-                 != Image.open(j["dst"]).getchannel("A").tobytes()]
+                 if alpha_of(Image.open(j["src"])) != alpha_of(Image.open(j["dst"]))]
     print("АЛЬФА РАСХОДИТСЯ: %d (должно быть 0)" % len(bad_alpha))
     if bad_alpha:
         return 1
@@ -262,37 +189,6 @@ def main() -> int:
             make_sheet(pal, group)
         print("КОНТАКТНЫЕ ЛИСТЫ: %s/*/_contact_sheet.png" % OUT_ROOT.replace("\\", "/"))
     return 0
-
-
-def color_stats(img: Image.Image) -> dict:
-    """Средняя хрома и размах светлоты по непрозрачным пикселям."""
-    px = img.load()
-    w, h = img.size
-    chroma = 0
-    vals = []
-    n = 0
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            if a <= 128:
-                continue
-            chroma += max(r, g, b) - min(r, g, b)
-            vals.append(max(r, g, b) / 255.0)
-            n += 1
-    if not n:
-        return {"chroma": 0.0, "luma_mean": 0.0, "luma_range": 0.0}
-    return {
-        "chroma": chroma / float(n),
-        "luma_mean": sum(vals) / float(n),
-        "luma_range": (max(vals) - min(vals)) if n else 0.0,
-    }
-
-
-def sha256_of_img(img: Image.Image) -> str:
-    import io
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return hashlib.sha256(buf.getvalue()).hexdigest()
 
 
 def make_sheet(pal: dict, group: str) -> None:
