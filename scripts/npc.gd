@@ -259,10 +259,80 @@ func take_damage(dmg: int, _attacker: Node2D) -> int:
 		return dmg
 	current_hp = 0
 	SoundDB.play(240)  # units\dead1
+	_drop_loot()
 	state = "dying"
 	velocity = Vector2.ZERO
 	Game.npcs.erase(self)
 	return dmg
+
+
+## Лут с NPC. Раньше NPC не роняли ничего: лут был только у врагов, поэтому
+## убийство горожанина или стража не давало ничего. Содержимое зависит от роли:
+## страж - в латах (steel), горожанин - попроще (bronze).
+##
+## Размер баночки зелья зависит от силы врага: max_hp у жителей 30, у стражей
+## больше, поэтому сильный страж роняет большую баночку. Правило общее с
+## enemy.gd:_make_loot, чтобы лут читался одинаково.
+func _drop_loot() -> void:
+	var bag_prefab := load("res://scripts/loot_bag.gd")
+	if bag_prefab == null:
+		return
+	var mat := "steel" if role == "guard" else "bronze"
+	var pool: Array = []
+	var gold_base := 3 + maxi(1, max_hp / 8)
+	pool.append({"gold": gold_base + randi() % maxi(1, gold_base)})
+	# жители щедры на зелья, стражей - реже: они вооружены
+	var potion_chance := 50 if role == "citizen" else 25
+	if randi() % 100 < potion_chance:
+		var potion := "Potion Medium Healing" if randi() % 2 == 0 \
+			else "Potion Medium Mana"
+		if not ItemDB.find(potion).is_empty():
+			pool.append({"key": potion})
+	# снаряжение: только сражу, и не каждый раз
+	if role == "guard" and randi() % 100 < 30:
+		var gear := _random_gear(mat)
+		if not gear.is_empty():
+			pool.append(gear)
+	var bag: LootBag = bag_prefab.new()
+	bag.items = pool
+	bag.potion_size = _potion_size()
+	bag.global_position = global_position
+	# Родитель, а не get_tree().current_scene: current_scene равен null в
+	# headless-скриптах и при добавлении узла из теста, мешок просто не появлялся.
+	# Родитель всегда есть и в том, и в другом случае.
+	var host := get_parent()
+	if host == null:
+		host = get_tree().current_scene
+	if host != null:
+		host.add_child(bag)
+
+
+func _potion_size() -> String:
+	## small/medium/large по силе юнита. Пороги взяты по реальным max_hp:
+	## горожане 30, стражь ~60-120, элитные твари выше.
+	if max_hp >= 100:
+		return "large"
+	if max_hp >= 55:
+		return "medium"
+	return "small"
+
+
+## Случайное снаряжение из металла mat, но не дороже 1/8 золота с NPC.
+func _random_gear(mat: String) -> Dictionary:
+	var budget := maxi(15, max_hp * 6)
+	var pool: Array = []
+	for it in ItemDB.all():
+		var d: Dictionary = it
+		if not ItemDB.is_equippable(d):
+			continue
+		if str(d.get("material", "")) != mat:
+			continue
+		var p := int(d.get("price", 0))
+		if p > 0 and p <= budget:
+			pool.append(d)
+	if pool.is_empty():
+		return {}
+	return {"key": str((pool[randi() % pool.size()] as Dictionary).get("key", ""))}
 
 ## Восстановить HP (лечение, вампиризм). Возвращает реально восстановленное.
 func heal_amount(amount: int) -> int:

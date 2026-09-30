@@ -347,13 +347,20 @@ func _drop_loot():
 		return
 	var bag: LootBag = bag_prefab.new()
 	bag.items = _make_loot()
+	# Размер баночки зелья по силе врага: труп муравья и труп босса не должны
+	# выглядеть одинаково. Пороги те же, что в npc.gd:_potion_size.
+	bag.potion_size = "large" if max_hp >= 100 else ("medium" if max_hp >= 55 else "small")
 	# Мешок на высоте рельефа (юнит поднят на высоту холма; без этого мешок
 	# «тонет» ниже уровня земли на высоту рельефа)
 	var h := _relief_here()
 	bag.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16) - h)
-	var scene := get_tree().current_scene
-	if scene != null:
-		scene.add_child(bag)
+	# Родитель, а не get_tree().current_scene: последний равен null в
+	# headless-скриптах и при спавне юнита из теста.
+	var host := get_parent()
+	if host == null:
+		host = get_tree().current_scene
+	if host != null:
+		host.add_child(bag)
 
 ## Высота рельефа под юнитом (0, если карты нет).
 func _relief_here() -> float:

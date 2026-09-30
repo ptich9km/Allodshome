@@ -2,15 +2,72 @@ class_name LootBag
 extends Node2D
 ## Мешок с добычей (лут) на месте смерти врага. Подбирается, когда герой
 ## подходит вплотную: золото в казну, предметы — в склад героя.
+##
+## Иконки предметов рисуются узлами Sprite2D поверх нарисованного мешочка
+## (см. LootIcons): кодовая отрисовка рисует только форму мешка, а что внутри —
+## показывают настоящие спрайты из assets/loot_icons/. Показывается не больше
+## трёх иконок сеткой сверху, остальное видно в тултипе.
 
 var items: Array = []   # [{"gold": N}] / [{"key": "item_db key"}, ...]
 var _player: Node2D = null
 var _pick_radius := 26.0
 
+## Размер баночки зелья: задаёт создатель мешка (см. enemy.gd/_make_loot).
+## Логика: сильный врач роняет большую баночку, слабый - маленькую.
+var potion_size := "small"
+
+const ICON_PX := 16.0        # сторона иконки на земле
+const ICON_GAP := 4.0
+const ICON_TOP := -14.0      # над мешком
+
 func _ready() -> void:
 	z_index = 10
 	_player = get_tree().get_first_node_in_group("player")
 	add_to_group("loot")
+	_build_icons()
+
+
+## Создаёт спрайты-иконки содержимого. Три слота сеткой над мешком: первая
+## строка - оружие, вторая - броня/зелья, третья - золото. Порядок не важен,
+## но слева направо читается естественно.
+func _build_icons() -> void:
+	for c in get_children():
+		if c is Sprite2D:
+			c.queue_free()
+	var show: int = LootIcons.stack_preview(items)
+	var slots: Array[Dictionary] = []
+	for it in items:
+		if not (it is Dictionary):
+			continue
+		if slots.size() >= show:
+			break
+		var path := ""
+		if it.has("gold"):
+			path = LootIcons.gold_icon()
+		elif it.has("key"):
+			var d := ItemDB.find(str(it.get("key", "")))
+			if str(d.get("quality", "")) == "Potion":
+				path = LootIcons.icon_for_potion(d, potion_size)
+			if path == "":
+				path = LootIcons.icon_for(d)
+		if path != "":
+			slots.append({"path": path, "scale": 1.0})
+	if slots.is_empty():
+		return
+	# сетка 3 в ряд; если больше трёх, LootIcons уже обрезал
+	var cols: int = slots.size()
+	var start_x := -float(cols - 1) * (ICON_PX + ICON_GAP) * 0.5
+	for i in slots.size():
+		var s := Sprite2D.new()
+		s.texture = load(str(slots[i]["path"]))
+		var tex: Texture2D = s.texture
+		# ��онки �� loot_icons ��� 32 px, а баночки меньше - масштабируем от
+		# размера текстуры, иначе баночка была бы вдвое крупнее меча
+		var k := ICON_PX / float(maxi(1, maxi(tex.get_width(), tex.get_height())))
+		s.scale = Vector2(k, k)
+		s.position = Vector2(start_x + float(i) * (ICON_PX + ICON_GAP), ICON_TOP)
+		s.z_index = 1
+		add_child(s)
 
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_player):
@@ -21,22 +78,58 @@ func _process(_delta: float) -> void:
 		_collect()
 
 func _collect() -> void:
+	## Подбор: золото в казну, предметы в склад. После - обязательно
+	## refresh_inventory(), иначе склад на экране остаётся старым, пока игрок
+	## не откроет его заново (раньше здесь не вызывалось ничего).
+	var got_gold := 0
+	var got_items: Array[String] = []
 	for it in items:
 		if it is Dictionary:
 			if it.has("gold"):
-				var gold := int(it.get("gold", 0))
-				if _player.has_method("add_gold"):
-					_player.call("add_gold", gold)
-				else:
-					_player.gold += gold
-				print("+%d золота" % gold)
+				var g := int(it.get("gold", 0))
+				if g > 0:
+					if _player.has_method("add_gold"):
+						_player.call("add_gold", g)
+					got_gold += g
 			elif it.has("key"):
 				var key := str(it.get("key", ""))
-				if _player.has_method("add_item"):
+				if key != "" and _player.has_method("add_item"):
 					_player.call("add_item", key)
-				print("+%s" % key)
-	SoundDB.play(1)  # click00
+					got_items.append(key)
+	if got_gold > 0:
+		print("+%d золота" % got_gold)
+	for k in got_items:
+		print("+%s" % k)
+	if got_gold > 0 or not got_items.is_empty():
+		SoundDB.play(1)  # click00
+		_notify_ui()
 	queue_free()
+
+
+## Попросить HUD обновить склад. Узел UI НЕ состоит в группе "ui" (в main.tscn
+## нет строки groups), поэтому сначала пробуем группу, потом ищем CanvasLayer с
+## методом refresh_inventory - тот же приём, что в game.gd:425.
+func _notify_ui() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var target: Node = tree.get_first_node_in_group("ui")
+	if target == null or not target.has_method("refresh_inventory"):
+		target = _find_ui(tree.root)
+	if target != null and target.has_method("refresh_inventory"):
+		target.call("refresh_inventory")
+
+
+func _find_ui(from: Node) -> Node:
+	if from == null:
+		return null
+	if from is CanvasLayer and from.has_method("refresh_inventory"):
+		return from
+	for c in from.get_children():
+		var got := _find_ui(c)
+		if got != null:
+			return got
+	return null
 
 func _draw() -> void:
 	# Мешочек с добычей (как в оригинале): тёмный корпус со стянутым верхом и узелком

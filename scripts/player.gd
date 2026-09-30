@@ -284,6 +284,14 @@ func add_item(key: String) -> void:
 		inventory.append(key)
 		_recall_speed()
 
+## Положить золото в казну. Метод был нужен мешку лута (loot_bag.gd звал
+## add_gold по has_method), но не существовал: золото из лута падало в
+## запасную ветку `_player.gold += gold`, а склад об этом не знал.
+func add_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	gold += amount
+
 ## Убрать предмет из склада; true — если он там был.
 func remove_item(key: String) -> bool:
 	var i := inventory.find(key)
