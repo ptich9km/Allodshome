@@ -314,7 +314,11 @@ const TRAIN_FOLDERS := ["train1", "train2", "train3"]
 const BLACKSMITH_FOLDERS := ["blacksmith1", "blacksmith2"]
 const HOUSE_FOLDERS := ["shed1", "shed2", "shed3", "khut1", "khut2", "hut1", "hut4", "hut5", "bighouse1", "bighouse2"]
 const DECOR_FOLDERS := ["well1", "well2", "well3", "campfire", "mill1", "mill2"]
-const ZONE_HOUSES := {"start": 4, "mid": 5, "hard": 7, "faction": 6}
+
+## Зоны, в которых генератор ставит портал. Сейчас это только зона новичка:
+## её портал - выход в "mid". Игра линейная, обратного пути нет, поэтому в
+## остальных зонах маркера нет вовсе (решение игрока).
+const ZONES_WITH_PORTAL := ["start"]
 
 # НПЦ городов.
 const GUARD_SETS := ["humans/swordsman", "humans/archer", "humans/pikeman_"]
@@ -466,15 +470,27 @@ func _place_portal_spawn() -> void:
 		return
 	var city0: Vector2i = _cities[0]["pos"]
 	_spawn_pos = _find_land_near(city0, 8)
-	_portal_pos = _find_land_far(city0, 40)
 	_save_spawn_json()
-	_save_portal_json()
+	_reserved[_spawn_pos] = true
+	# Портал есть только в зоне новичка: это выход из неё в "mid". В остальных
+	# зонах маркера нет вовсе, а не заглушка - иначе игрок видит портал, который
+	# никуда не ведёт (решение игрока: игра линейная, Z2 без портала).
+	if _zone in ZONES_WITH_PORTAL:
+		_portal_pos = _find_land_far(city0, 40)
+		_save_portal_json()
+		_reserved[_portal_pos] = true
+	else:
+		# Удаляем возможный старый sidecar: карта могла быть сгенерирована до
+		# того, как портал стал зональным, а alm_map.gd читает .portal.json, если
+		# файл есть. Без этого удаления зона без портала всё равно показывала
+		# бы маркер от старой генерации.
+		_drop_portal_json()
 	if _spawn_pos.x >= 0:
 		print("SPAWN: (%d, %d)" % [_spawn_pos.x, _spawn_pos.y])
 	if _portal_pos.x >= 0:
 		print("PORTAL: (%d, %d)" % [_portal_pos.x, _portal_pos.y])
-	_reserved[_spawn_pos] = true
-	_reserved[_portal_pos] = true
+	else:
+		print("PORTAL: нет (zone=%s)" % _zone)
 
 # === Спавн: здания + НПЦ городов, деревья, Серые ===
 
@@ -540,7 +556,6 @@ func _structure_spec(folder: String) -> Dictionary:
 
 ## Этап 6: здания + НПЦ для каждого города. Запись в sidecar-ы structures/npcs.
 func _place_city_content(rng: RandomNumberGenerator) -> void:
-	var houses_n: int = int(ZONE_HOUSES.get(_zone, 5))
 	for city_index in range(_cities.size()):
 		var c: Dictionary = _cities[city_index]
 		var center: Vector2i = c["pos"]
@@ -553,8 +568,12 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 			_pick(rng, SHOP_FOLDERS),
 			_pick(rng, INN_FOLDERS),
 		]
-		for i in range(mini(houses_n, 1)):
-			plan.append(_pick(rng, HOUSE_FOLDERS))
+		# Один жилой дом на город - по решению игрока (мы не симулятор городов).
+		# Раньше здесь стоял цикл `for i in range(mini(houses_n, 1))` с таблицей
+		# ZONE_HOUSES на 4-7 домов: цикл выполнялся ровно один раз, то есть
+		# таблица была мёртвой, а читалась как опечатка. Один прямой вызов
+		# _pick даёт ту же последовательность RNG, поэтому карты не изменились.
+		plan.append(_pick(rng, HOUSE_FOLDERS))
 		plan.append(_pick(rng, DECOR_FOLDERS))
 		for folder in plan:
 			var spec := _structure_spec(folder)
@@ -936,6 +955,13 @@ func _save_portal_json() -> void:
 		return
 	f.store_string(JSON.stringify({"x": _portal_pos.x, "y": _portal_pos.y}))
 	f.close()
+
+## Удалить sidecar портала, если карта перегенерируется в зоне без портала.
+func _drop_portal_json() -> void:
+	var path: String = _out_dir + _basename + ".portal.json"
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		print("PORTAL: старый sidecar удалён (%s)" % path)
 
 func _a_star(start: Vector2i, goal: Vector2i, rng: RandomNumberGenerator) -> Array:
 	var came: Dictionary = {}

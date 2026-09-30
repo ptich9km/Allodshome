@@ -16,7 +16,10 @@ const SEED_B := 2002
 const W := 128
 const H := 128
 const ALM_MAGIC := 0x0052374D
-const SIDECARS := [".spawn.json", ".portal.json", ".structures.json", ".npcs.json", ".herbs.json"]
+## Sidecar-ы карты. Портал - исключение: он есть ТОЛЬКО в зоне новичка
+## ("start"), это её выход в "mid". В остальных зонах маркера нет вовсе
+## (решение игрока, игра линейная), поэтому его проверяем отдельно.
+const SIDECARS_NO_PORTAL := [".spawn.json", ".structures.json", ".npcs.json", ".herbs.json"]
 
 var _fails: Array[String] = []
 
@@ -41,7 +44,7 @@ func _initialize() -> void:
 
 	# Sidecar-ы тоже должны отличаться — доказательство, что варьируется весь рандом,
 	# а не только рельеф (структуры/НПЦ/травы идут по своим потокам).
-	for ext in SIDECARS:
+	for ext in SIDECARS_NO_PORTAL:
 		var sa: String = _sha(_basename(path_a) + ext)
 		var sb: String = _sha(_basename(path_b) + ext)
 		_check(sa != sb and sa != "" and sb != "", "sidecar %s различается" % ext)
@@ -60,9 +63,12 @@ func _initialize() -> void:
 	_check(_hash(path_a_start) != "", "zone=start сгенерировалась")
 
 	# --- 4. Спавн/портал в границах карты ---
+	# Портал - только в зоне новичка, поэтому проверяем его на карте start,
+	# а не mid. В mid его быть не должно (см. проверки sidecar выше).
 	_check_marker(_basename(path_a) + ".spawn.json", "spawn")
-	_check_marker(_basename(path_a) + ".portal.json", "portal")
 	_check_marker(_basename(path_b) + ".spawn.json", "spawn B")
+	_check_marker(_basename(path_a_start) + ".portal.json", "portal (start)")
+	_check_marker(_basename(path_a_start) + ".spawn.json", "spawn (start)")
 
 	_report()
 
@@ -79,6 +85,8 @@ func _hash(path: String) -> String:
 
 ## .alm + все sidecar-ы существуют и непустые; заголовок .alm валиден.
 func _check_files(alm_path: String, tag: String) -> void:
+	## zone_has_portal - ожидание для этой карты: портал есть только в "start".
+	var zone_has_portal: bool = alm_path.ends_with("_start")
 	_check(FileAccess.file_exists(alm_path), "[%s] .alm существует" % tag)
 	if FileAccess.file_exists(alm_path):
 		var f := FileAccess.open(alm_path, FileAccess.READ)
@@ -89,11 +97,18 @@ func _check_files(alm_path: String, tag: String) -> void:
 		f.close()
 		var magic := len_buf[0] | (len_buf[1] << 8) | (len_buf[2] << 16) | (len_buf[3] << 24)
 		_check(magic == ALM_MAGIC, "[%s] заголовок .alm валиден (magic M7R)" % tag)
-	for ext in SIDECARS:
+	for ext in SIDECARS_NO_PORTAL:
 		var p: String = _basename(alm_path) + ext
 		_check(FileAccess.file_exists(p), "[%s] sidecar %s существует" % [tag, ext])
 		if FileAccess.file_exists(p):
 			_check(FileAccess.get_file_as_bytes(p).size() > 2, "[%s] sidecar %s непустой" % [tag, ext])
+	# Портал в зоне mid отсутствует - это и проверяем отдельно
+	var pp: String = _basename(alm_path) + ".portal.json"
+	if zone_has_portal:
+		_check(FileAccess.file_exists(pp), "[%s] sidecar .portal.json существует" % tag)
+	else:
+		_check(not FileAccess.file_exists(pp),
+			"[%s] в зоне без портала .portal.json ОТСУТСТВУЕТ" % tag)
 
 ## Спавн/портал внутри поля 128x128.
 func _check_marker(path: String, tag: String) -> void:

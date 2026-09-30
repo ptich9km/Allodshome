@@ -592,7 +592,10 @@ func _start_game() -> void:
 	Game.hero_character_id = str(c["id"])
 	# Новая игра — новая карта: случайный сид, карта генерируется в user://maps/.
 	# Продолжение сохранения (пакет B) переставит сид ДО этого вызова.
-	Game.new_random_map()
+	# Стартовая зона — "start" (зона новичка): один безопасный город, слабые
+	# Серые, портал на выход в "mid". Раньше зона не передавалась и подставлялся
+	# дефолт "mid" — профиль новичка был написан, но недостижим из игры.
+	Game.new_random_map("start")
 	SoundDB.play(2)  # click_ok
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
