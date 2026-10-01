@@ -86,9 +86,9 @@ func _init() -> void:
 	# Отдельно: стартовое снаряжение обязано надеваться (реальный баг).
 	_check(_starter_keys_exist(keys), "стартовое снаряжение существует в базе")
 
-	# Отдельно: если материал - металл или неметалл, он обязан встречаться в
-	# ключе С ТОЧНЫМ регистром: металлы внизу ("Common iron Helm"), неметаллы
-	# с заглавной ("Common Leather Mail").
+	# Отдельно: если материал - металл, он обязан встречаться в ключе С ТОЧНЫМ
+	# регистром: металлы внизу ("Common iron Helm"). Неметаллов, кроме льна,
+	# в базе больше нет (кожа и дерево удалены 01.10).
 	# Материал "None"/"<null>" в ключ не входит вовсе (травы "Herb Green Leaf"),
 	# поэтому для него проверка не выполняется.
 	var bad_case: Array[String] = []
@@ -120,7 +120,7 @@ func _starter_keys_exist(keys: Dictionary) -> bool:
 	## Ключи из player.gd:_grant_starter_set. Дублируются здесь намеренно:
 	## если в коде поменяют стартовый набор, тест об этом скажет.
 	var want := ["Common iron Long Sword", "Common Wood Staff",
-		"Common iron Buckler", "Common Leather Mail"]
+		"Common iron Buckler"]
 	var ok := true
 	for w in want:
 		if not keys.has(w):

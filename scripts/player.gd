@@ -251,11 +251,14 @@ func _grant_starter_set() -> void:
 	inventory.append(weapon_key)
 	if Game.hero_stats.get("shield", false):
 		inventory.append("Common iron Buckler")
-	inventory.append("Common Leather Mail")
+	# Стартовой брони НЕТ по решению игрока (01.10): герой выходит в бой в
+	# оружии и щите, у мага — посох и книга. Раньше здесь выдавался
+	# "Common Leather Mail" — кожаная броня, удалённая из базы как пережиток
+	# Аллодов; ItemDB.find() вернул бы пустой словарь без ошибки.
+	#
 	# Стартовое снаряжение надевается сразу: иначе новый герой выходил бы в бой
 	# голым (все статы — базовые, атрибуты), хотя вещи лежат в инвентаре.
 	equip_item(ItemDB.find(weapon_key))
-	equip_item(ItemDB.find("Common Leather Mail"))
 	if Game.hero_stats.get("shield", false):
 		equip_item(ItemDB.find("Common iron Buckler"))
 	# Маг на старте получает книгу простейшего заклинания выбранной школы

@@ -99,7 +99,7 @@ func _test_slot_mapping() -> void:
 		"Common Linen Cloak": "cloak",
 		"Common bronze Cuirass": "body",
 		"Common bronze Bracers": "hands",
-		"Common Hard Leather Boots": "feet",
+		"Common iron Plate Boots": "feet",   # кожа удалена 01.10
 		"Common bronze Amulet": "amulet",
 		"Elven titanium Ring": "ring",
 		"Common bronze Long Sword": "weapon",

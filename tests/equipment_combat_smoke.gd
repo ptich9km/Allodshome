@@ -19,7 +19,7 @@ extends SceneTree
 
 ## Реальные ключи из item_db.json. ItemDB.all() отдаёт МАССИВ СЛОВАРЕЙ,
 ## а не ключи, поэтому ключи достаём полями Dictionary.
-const LIGHT_ARMOR := "Common Leather Mail"
+const LIGHT_ARMOR := "Common Linen Cloak"   # лёгкая ткань, слот cloak (кожа удалена 01.10)
 const HEAVY_ARMOR := "Very Rare radium Cuirass"   # defence 53 — верхняя граница
 const BUCKLER := "Common bronze Buckler"
 
@@ -72,7 +72,8 @@ func _test_starter_equipped() -> void:
 	_check(not _hero.equipped.is_empty(),
 		"стартовое снаряжение надето при создании героя (%s)" % str(_hero.equipped.keys()))
 	_check(_hero.equipped.has("weapon"), "надето оружие")
-	_check(_hero.equipped.has("body"), "надето броня (слот body)")
+	_check(_hero.equipped.has("shield"), "надет щит (слот shield)")
+	_check(not _hero.equipped.has("body"), "стартовой брони нет (слот body пуст)")
 	for slot in _hero.equipped.keys():
 		_check(_hero.inventory.has(str(_hero.equipped[slot])),
 			"надетое %s (%s) реально есть в инвентаре" % [slot, str(_hero.equipped[slot])])
@@ -94,8 +95,12 @@ func _test_armor_changes_defense() -> void:
 	_hero.equipped.erase("body")
 	_hero.equipped.erase("shield")
 	var naked := _hero.get_defense()
-	_hero.equipped["body"] = LIGHT_ARMOR
+	_hero.equipped["cloak"] = LIGHT_ARMOR
 	var in_light := _hero.get_defense()
+	# Плащ и кирас сели бы в РАЗНЫЕ слоты и сложились бы вместе. Раньше оба
+	# были в "body" и замещали друг друга; с лёгкой тканью в слоте cloak надо
+	# снимать cloak перед замером тяжёлой брони, иначе сравнение бессмысленно.
+	_hero.equipped.erase("cloak")
 	_hero.equipped["body"] = HEAVY_ARMOR
 	var in_heavy := _hero.get_defense()
 
@@ -111,9 +116,11 @@ func _test_armor_changes_defense() -> void:
 			% [in_heavy - in_light, def_heavy - def_light])
 
 	# Поглощение и сопротивление тоже.
-	_hero.equipped["body"] = LIGHT_ARMOR
+	_hero.equipped.erase("body")
+	_hero.equipped["cloak"] = LIGHT_ARMOR
 	var abs_light := _hero.get_absorption()
 	var prot_light := _hero.get_protection_fire()
+	_hero.equipped.erase("cloak")
 	_hero.equipped["body"] = HEAVY_ARMOR
 	_check(_hero.get_absorption() >= abs_light,
 		"поглощение не падает от смены брони (%d -> %d)" % [abs_light, _hero.get_absorption()])

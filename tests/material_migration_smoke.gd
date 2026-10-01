@@ -28,8 +28,15 @@ const DROPPED := ["Silver", "silver"]
 ## Регистр СОХРАНЁН с заглавной - см. gen_metal_case_migration.py.
 ## "Linen" - лён, ткань для плащей (gen_cloak_items.py): игрок уточнил, что
 ## плащ и рубашка - тряпки, поэтому им не нужны вариации по металлам.
-const NON_METALS := ["Leather", "Hard Leather", "Dragon Leather", "Wood",
-	"Magic Wood", "Linen", "None"]
+const NON_METALS := ["Linen", "None"]
+
+## Материалы, удалённые из базы 01.10 по решению игрока: кожа и дерево не
+## нужны в игре, в Аллодах II их не было. Проверяем, что они не вернулись.
+## Исключение - посохи: их арт под металлы будет нарезан отдельно, до тех
+## пор деревянный посох мага должен существовать.
+const REMOVED_MATERIALS := ["Leather", "Hard Leather", "Dragon Leather",
+	"Wood", "Magic Wood"]
+const REMOVED_EXCEPT_TYPES := ["Staff", "Shaman Staff"]
 
 ## Фэнтезийные имена оригинала: не должны встретиться нигде в файле.
 const FANTASY := ["Mithrill", "Adamantium", "Meteoric", "Crystal",
@@ -132,7 +139,8 @@ func _init() -> void:
 	var unknown := 0
 	var unknown_list: Array[String] = []
 	for m2 in by_material:
-		var known: bool = m2 in METALS or m2 in NON_METALS
+		var known: bool = m2 in METALS or m2 in NON_METALS \
+			or m2 in REMOVED_MATERIALS
 		if not known:
 			unknown += 1
 			unknown_list.append(m2)
@@ -143,6 +151,18 @@ func _init() -> void:
 	for nm in NON_METALS:
 		_check(int(by_material.get(nm, 0)) > 0,
 			"неметалл '%s' на месте (%d)" % [nm, int(by_material.get(nm, 0))])
+
+	# 5b. Кожа и дерево удалены и не вернулись (кроме посохов).
+	var leaked: Array[String] = []
+	for it_rm in items:
+		var d_rm: Dictionary = it_rm
+		var m_rm := str(d_rm.get("material", ""))
+		var t_rm := str(d_rm.get("type", ""))
+		if m_rm in REMOVED_MATERIALS and not (t_rm in REMOVED_EXCEPT_TYPES):
+			leaked.append(str(d_rm.get("key", "")))
+	_check(leaked.is_empty(),
+		"кожа/дерево удалены, кроме посохов (найдено: %d%s)" % [
+			leaked.size(), (": " + ", ".join(leaked)) if not leaked.is_empty() else ""])
 
 	# 6. У каждого металла есть слиток, ключ в нижнем регистре, иконка на диске.
 	var ingot_by_material := {}
@@ -196,7 +216,7 @@ func _init() -> void:
 		var d4: Dictionary = it4
 		var kind := ItemDB.armor_kind(d4)
 		var m4 := str(d4.get("material", ""))
-		if m4 in ["Leather", "Hard Leather", "Dragon Leather", "None"]:
+		if m4 in ["Linen", "None"]:
 			if kind != "light":
 				light_ok = false
 		elif m4 in METALS:
