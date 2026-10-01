@@ -26,6 +26,10 @@ var _gold_label: Label
 var _magic_click_key := ""
 var _magic_click_time := 0.0
 
+## Ключ предмета, на который сейчас наведён курсор ("" = ничего не наведено).
+## Игра читает его, чтобы назначить зелье/свиток на хоткей по Ctrl+цифра.
+var hovered_item_key: String = ""
+
 ## true, если это повторный клик по тому же предмету в течение 0.45 с.
 func _magic_double_click(item_key: String) -> bool:
 	var now := Time.get_ticks_msec()
@@ -372,7 +376,10 @@ func _refresh_inventory_grid() -> void:
 		var k := str(key)
 		counts[k] = int(counts.get(k, 0)) + 1
 
-	for key in player.inventory:
+	# Один слот на УНИКАЛЬНЫЙ предмет, количество — в счётчике стака.
+	# Раньше цикл шёл по всему player.inventory, и три одинаковые бутылки
+	# давали три ячейки, в каждой с подписью «3» — выглядело как девять зелий.
+	for key in counts:
 		var item := ItemDB.find(str(key))
 		if item.is_empty():
 			continue
@@ -470,23 +477,10 @@ func _on_item_clicked(item: Dictionary) -> void:
 			inventory_changed.emit()
 		return
 	if quality == "Potion":
-		var key_l := item_key.to_lower()
-		var heal := 0
-		var mana := 0
-		if "healing" in key_l:
-			heal = 60 if "big" in key_l else (30 if "medium" in key_l else 20)
-		elif "mana" in key_l:
-			mana = 50 if "big" in key_l else (25 if "medium" in key_l else 15)
-		elif "regen" in key_l:
-			heal = 15; mana = 10
-		if heal > 0 or mana > 0:
-			if player.remove_item(item_key):
-				player.current_hp = mini(player.max_hp, player.current_hp + heal)
-				if player.max_mana > 0:
-					player.current_mana = mini(player.max_mana, player.current_mana + mana)
-				SoundDB.play(11)
-				_refresh_inventory_grid()
-				inventory_changed.emit()
+		# Единый путь и для клика, и для хоткея (player.use_potion).
+		if player.use_potion(item_key):
+			_refresh_inventory_grid()
+			inventory_changed.emit()
 		return
 
 	# Экипировка
@@ -550,23 +544,32 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		return
 	var icon_path := str(item.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(item.get("quality", "")))
+	# Ключ наведённого предмета: по нему игра назначает расходник на хоткей
+	# (Ctrl+цифра при наведении на ячейку).
+	var hover_key := str(item.get("key", ""))
 	cell.mouse_entered.connect(func():
+		hovered_item_key = hover_key
 		if _hover_card == null:
 			_hover_card = _ensure_card()
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
 			cell.global_position, _DESIGN_SIZE, icon_path, qcolor))
 	cell.mouse_exited.connect(func():
+		if hovered_item_key == hover_key:
+			hovered_item_key = ""
 		if _hover_card != null and _hover_card.visible:
 			var mouse_pos := get_viewport().get_mouse_position()
 			var cell_rect := Rect2(cell.global_position, cell.size)
 			if not cell_rect.has_point(mouse_pos):
 				UiKit.hide_hover_card(_hover_card))
 	cell.focus_entered.connect(func():
+		hovered_item_key = hover_key
 		if _hover_card == null:
 			_hover_card = _ensure_card()
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
 			cell.global_position, _DESIGN_SIZE, icon_path, qcolor))
 	cell.focus_exited.connect(func():
+		if hovered_item_key == hover_key:
+			hovered_item_key = ""
 		if _hover_card != null:
 			UiKit.hide_hover_card(_hover_card))
 

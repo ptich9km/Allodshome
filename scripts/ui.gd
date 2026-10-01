@@ -377,6 +377,17 @@ func _notify_hotbar_assigned(slot: int, spell: String) -> void:
 
 ## Ошибка выбора цели (заклинание остаётся активным): показываем на
 ## подсказке, затем возвращаем обычный текст подсказки.
+## Ctrl+N: предмет под курсором назначен на цифровую клавишу (зелье/свиток).
+func _notify_item_assigned(slot: int, item_key: String) -> void:
+	if _scroll_hint == null or not is_instance_valid(_scroll_hint):
+		return
+	var item := ItemDB.find(item_key)
+	var title := str(item.get("name_ru", item_key))
+	_scroll_hint.text = "<%s> быстрая клавиша %d (нажмите %d для применения)" % [
+		title, slot + 1, slot + 1]
+	_scroll_hint.visible = true
+
+
 func _flash_targeting_error(msg: String) -> void:
 	if _scroll_hint != null and is_instance_valid(_scroll_hint):
 		_scroll_hint.text = msg

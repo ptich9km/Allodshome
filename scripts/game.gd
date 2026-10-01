@@ -654,26 +654,40 @@ func _input(event):
 		open_save_menu()
 		return
 
-	# Быстрые клавиши заклинаний (как у разработчиков): во время выбора магии
-	# Ctrl+1..9 назначает её на цифровую клавишу; 1..9 (без Ctrl) входит в
-	# прицеливание назначенной магии.
+	# Быстрые клавиши (как у разработчиков): Ctrl+1..9 назначает на цифровую
+	# клавишу либо выбранную магию, либо расходник под курсором; 1..9 (без Ctrl)
+	# применяет назначенное: заклинание — с прицеливанием, зелье — сразу,
+	# свиток — с выбором цели кликом.
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			var slot: int = event.keycode - KEY_1
-			if event.ctrl_pressed and not Game.pending_spell.is_empty():
+			if event.ctrl_pressed:
 				var sn := str(Game.pending_spell.get("name", ""))
 				if sn != "":
-					Game.hotbar[slot] = sn
+					Game.hotbar[slot] = {"kind": "spell", "name": sn}
 					print("Быстрая клавиша %d -> %s" % [slot + 1, sn])
 					if ui != null and ui.has_method("_notify_hotbar_assigned"):
 						ui._notify_hotbar_assigned(slot, sn)
+					return
+				var iu := hovered_item_key()
+				if iu != "":
+					var item := ItemDB.find(iu)
+					if not item.is_empty():
+						Game.hotbar[slot] = {"kind": "item", "key": iu}
+						print("Быстрая клавиша %d -> %s" % [slot + 1, iu])
+						if ui != null and ui.has_method("_notify_item_assigned"):
+							ui._notify_item_assigned(slot, iu)
+						return
 				return
 			if not event.ctrl_pressed:
-				var fast := str(Game.hotbar.get(slot, ""))
-				if fast != "":
-					if ui != null and ui.has_method("_quick_cast"):
-						ui._quick_cast(fast)
-					return
+				var entry: Dictionary = Game.hotbar.get(slot, {})
+				match str(entry.get("kind", "")):
+					"spell":
+						if ui != null and ui.has_method("_quick_cast"):
+							ui._quick_cast(str(entry.get("name", "")))
+					"item":
+						_use_hotbar_item(str(entry.get("key", "")))
+				return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Клики по интерфейсу (книга заклинаний, инвентарь, панели, магазин/таверна)
@@ -953,6 +967,52 @@ func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 
 ## Свиток мага: клик выбрал цель. Враг — для урона/области/стены,
 ## герой или союзник (НПЦ/наёмник) — для лечения/защиты/баффа.
+## Ключ предмета под курсором в открытом инвентаре ("" = панель закрыта или
+## курсор не над ячейкой). Нужен для назначения расходника на хоткей.
+func hovered_item_key() -> String:
+	if ui == null or not is_instance_valid(ui):
+		return ""
+	var panel = ui.get("_inventory_panel")
+	if panel == null or not is_instance_valid(panel):
+		return ""
+	return str(panel.get("hovered_item_key"))
+
+
+## Применение расходника с хоткея. Зелье выпивается сразу, свиток входит в
+## прицеливание — ровно как клик по нему в инвентаре.
+func _use_hotbar_item(item_key: String) -> void:
+	if item_key == "":
+		return
+	var item := ItemDB.find(item_key)
+	if item.is_empty():
+		Game.hotbar.erase(_hotbar_slot_of(item_key))
+		return
+	if not is_instance_valid(player) or not player.has_item(item_key):
+		_flash_cast_error("Нет такого расходника в инвентаре.")
+		return
+	match str(item.get("quality", "")):
+		"Potion":
+			if player.use_potion(item_key):
+				if ui != null and ui.has_method("refresh_inventory"):
+					ui.refresh_inventory()
+				if ui != null and ui.has_method("_update_stats"):
+					ui._update_stats()
+		"Scroll", "SuperScroll":
+			var spell_name := str(item.get("type", ""))
+			Game.pending_scroll = {"spell": spell_name, "item_key": item_key}
+			_flash_cast_error("Выберите цель для свитка.")
+		_:
+			_flash_cast_error("Этот предмет нельзя применить с хоткея.")
+
+
+func _hotbar_slot_of(item_key: String) -> int:
+	for slot in Game.hotbar:
+		var entry: Dictionary = Game.hotbar.get(slot, {})
+		if str(entry.get("kind", "")) == "item" and str(entry.get("key", "")) == item_key:
+			return int(slot)
+	return -1
+
+
 func _resolve_scroll_click(world_position: Vector2) -> void:
 	if not is_instance_valid(player):
 		return

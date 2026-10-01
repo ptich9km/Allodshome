@@ -3179,7 +3179,7 @@
   "effects": [
    "absorbtion=+50: duration 30"
   ],
-  "icon": "res://assets/items/placeholder/antipoison.png"
+  "icon": "res://assets/potions/nature_leaf.png"
  },
  {
   "id": 210,
@@ -3201,7 +3201,7 @@
   "effects": [
    "health=+100"
   ],
-  "icon": "res://assets/items/placeholder/big_healing.png"
+  "icon": "res://assets/potions/health_large.png"
  },
  {
   "id": 211,
@@ -3223,7 +3223,7 @@
   "effects": [
    "mana=+100"
   ],
-  "icon": "res://assets/items/placeholder/big_mana.png"
+  "icon": "res://assets/potions/mana_large.png"
  },
  {
   "id": 212,
@@ -3289,7 +3289,7 @@
   "effects": [
    "healthRegeneration=100: duration 60"
   ],
-  "icon": "res://assets/items/placeholder/health_regeneration.png"
+  "icon": "res://assets/potions/light_star.png"
  },
  {
   "id": 215,
@@ -3333,7 +3333,7 @@
   "effects": [
    "manaRegeneration=100: duration 60"
   ],
-  "icon": "res://assets/items/placeholder/mana_regeneration.png"
+  "icon": "res://assets/potions/astral_feather.png"
  },
  {
   "id": 217,
@@ -3355,7 +3355,7 @@
   "effects": [
    "health=+30"
   ],
-  "icon": "res://assets/items/placeholder/medium_healing.png"
+  "icon": "res://assets/potions/health_medium.png"
  },
  {
   "id": 218,
@@ -3377,7 +3377,7 @@
   "effects": [
    "mana=+30"
   ],
-  "icon": "res://assets/items/placeholder/medium_mana.png"
+  "icon": "res://assets/potions/mana_medium.png"
  },
  {
   "id": 219,

@@ -305,6 +305,93 @@ func remove_item(key: String) -> bool:
 func _recall_speed() -> void:
 	move_speed = _calc_speed()
 
+## Постоянные характеристики, которые может поднять зелье.
+## Ключ в БД -> поле на Player. Reaction в Аллодах производная от Ловкости
+## (`reaction := 2 * agility`), поэтому в базе «reaction», а в коде — agility.
+const PERMANENT_STATS := {
+	"body": "body",
+	"mind": "mind",
+	"reaction": "agility",
+	"spirit": "spirit",
+}
+
+## Разбирает effects предмета и поднимает характеристики НАВСЕГДА.
+## Работает для строк вида "body=+1" (без "duration" — то есть не бафф).
+## Возвращает список применённых полей (пустой, если постоянных эффектов нет).
+func apply_permanent_effects(effects: Array) -> Array:
+	var applied: Array = []
+	for raw in effects:
+		var line := str(raw)
+		if "duration" in line:
+			continue                      # временный эффект — не постоянный
+		var eq := line.find("=")
+		if eq < 0:
+			continue
+		var stat := line.substr(0, eq).strip_edges().to_lower()
+		if not PERMANENT_STATS.has(stat):
+			continue
+		var amount := int(line.substr(eq + 1).replace("+", "").strip_edges())
+		if amount == 0:
+			continue
+		var field: String = str(PERMANENT_STATS[stat])
+		set(field, int(get(field)) + amount)
+		# Дублируем в Game.hero_stats — он сохраняется в сейве как "stats",
+		# поэтому бонус переживает перезапуск без смены версии схемы.
+		# Ключ здесь именно `field`, а не имя из БД: в базе "reaction", но
+		# _apply_hero_choice() читает "agility" — запись по "reaction" молча
+		# потеряла бы бонус ловкости при перезагрузке.
+		if Game.hero_stats is Dictionary:
+			Game.hero_stats[field] = int(Game.hero_stats.get(field, 0)) + amount
+		applied.append(stat)
+	if not applied.is_empty():
+		_recall_derived()
+	return applied
+
+## Пересчёт производных характеристик после смены первичных.
+func _recall_derived() -> void:
+	var old_hp := max_hp
+	var old_mana := max_mana
+	max_hp = _calc_max_hp()
+	max_mana = _calc_max_mana()
+	# Добавленная ёмкость сразу достаётся игроку: зелье не должно лечить «впустую».
+	current_hp = mini(max_hp, current_hp + maxi(0, max_hp - old_hp))
+	current_mana = mini(max_mana, current_mana + maxi(0, max_mana - old_mana))
+	_recall_speed()
+
+## Использование зелья. Общий путь и для клика в инвентаре, и для хоткея —
+## раньше логика жила внутри _on_item_clicked, и второго вызова просто не было бы.
+## Расходуется, если сработало ЛИБО постоянный эффект, ЛИБО разовый хил/мана.
+func use_potion(item_key: String) -> bool:
+	var item := ItemDB.find(item_key)
+	if item.is_empty():
+		return false
+	if str(item.get("quality", "")) != "Potion":
+		return false
+	var effects: Array = item.get("effects", [])
+	var permanent := apply_permanent_effects(effects)
+	# Разовая часть сохраняет прежние значения из inventory_panel:
+	# они подобраны по балансу и не обязаны совпадать с effects из БД.
+	var key_l := item_key.to_lower()
+	var heal := 0
+	var mana := 0
+	if "healing" in key_l:
+		heal = 60 if "big" in key_l else (30 if "medium" in key_l else 20)
+	elif "mana" in key_l:
+		mana = 50 if "big" in key_l else (25 if "medium" in key_l else 15)
+	elif "regen" in key_l:
+		heal = 15
+		mana = 10
+	# Ни постоянного, ни разового эффекта — пить нечего, предмет не тратим.
+	if permanent.is_empty() and heal <= 0 and mana <= 0:
+		return false
+	if not remove_item(item_key):
+		return false
+	current_hp = mini(max_hp, current_hp + heal)
+	if max_mana > 0:
+		current_mana = mini(max_mana, current_mana + mana)
+	SoundDB.play(11)
+	return true
+
 # --- Производные характеристики (связи из оригинального main.txt) ---
 func _calc_max_hp() -> int:
 	return 20 + body * 8          # Body -> здоровье; body=10 -> 100
