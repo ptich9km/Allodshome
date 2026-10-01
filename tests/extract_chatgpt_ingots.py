@@ -4,8 +4,12 @@
 
 Вход:  import/ChatGPTIngots1.png (1536x1024, RGB, тёмный фон ~ (23,24,27))
 Сетка: 5 столбцов x 4 строки = 20 слитков.
-Выход: 80x80 RGBA. Кроп: color-key фона + дилатация маски (мягкий край).
-Без «заливки дырок» — игрок подтвердил эту версию как красивую.
+Выход: 80x80 RGBA. Кроп: заливка фона ОТ ГРАНИЦ (flood fill) + дилатация.
+
+Почему flood fill, а не color-key: тёмные металлы (cobalt, terbium) имеют
+теневую грань почти того же цвета, что и фон (dist 20-80 против фона max 6.4).
+Глобальный порог вырезал грань насквозь — 738/1305 внутренних дыр на слитке.
+Заливка от границ фон снаружи связен, а грань внутри — нет, поэтому 0 дыр.
 
 Запуск:
     python tests/extract_chatgpt_ingots.py
@@ -20,6 +24,8 @@ import os
 import sys
 
 import numpy as np
+from collections import deque
+
 from PIL import Image, ImageDraw
 
 SOURCE = os.path.join("import", "ChatGPTIngots1.png")
@@ -30,7 +36,7 @@ GAME_SIZE = 80
 COLS = 5
 ROWS = 4
 BG = (23, 24, 27)
-BG_TOL = 32.0
+BG_TOL = 12.0
 MASK_DILATE = 3
 
 GRID: dict[tuple[int, int], str] = {
@@ -90,8 +96,37 @@ def dilate_mask(mask: np.ndarray, radius: int) -> np.ndarray:
     return out
 
 
+def flood_background(is_bg: np.ndarray) -> np.ndarray:
+    """True только для фона, связного с границей ячейки (4-связность).
+
+    Отличие от color-key: внутренние тёмные области слитка не соединяются с
+    внешним фоном, поэтому переживают, даже если совпадают с ним по цвету.
+    """
+    h, w = is_bg.shape
+    seen = np.zeros_like(is_bg)
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if is_bg[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                queue.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if is_bg[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                queue.append((y, x))
+    while queue:
+        y, x = queue.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and is_bg[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                queue.append((ny, nx))
+    return seen
+
+
 def cut_cell(arr: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> Image.Image:
-    """Color-key фона + дилатация. Без заливки внутренних тёмных зон."""
+    """Заливка фона от границ + дилатация маски (мягкий край)."""
     from PIL import ImageFilter
 
     cell = arr[y0:y1, x0:x1]
@@ -102,7 +137,7 @@ def cut_cell(arr: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> Image.Image
     )
     rgb = rgba[:, :, :3].astype(np.float32)
     dist = np.linalg.norm(rgb - np.array(BG, dtype=np.float32), axis=2)
-    mask = dist > BG_TOL
+    mask = ~flood_background(dist <= BG_TOL)
     if not mask.any():
         return Image.new("RGBA", (1, 1), (0, 0, 0, 0))
     mask = dilate_mask(mask, MASK_DILATE)
