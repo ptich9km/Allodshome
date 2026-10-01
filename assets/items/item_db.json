@@ -4097,7 +4097,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/inventory/0014001-000.png"
+  "icon": "res://assets/spells/lightning.png"
  },
  {
   "id": 205,
@@ -4117,7 +4117,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/inventory/0014005-000.png"
+  "icon": "res://assets/spells/bless.png"
  },
  {
   "id": 206,
@@ -4137,7 +4137,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/inventory/0014004-000.png"
+  "icon": "res://assets/spells/stone_missile.png"
  },
  {
   "id": 207,
@@ -4157,7 +4157,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/inventory/0014003-000.png"
+  "icon": "res://assets/spells/fire_ball.png"
  },
  {
   "id": 208,
@@ -4177,7 +4177,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/inventory/0014002-000.png"
+  "icon": "res://assets/spells/ice_missile.png"
  },
  {
   "id": 209,
@@ -4885,7 +4885,7 @@
   "effects": [
    "castSpell=Acid_Stream:50"
   ],
-  "icon": "res://assets/inventory/0014014-000.png"
+  "icon": "res://assets/spells/acid_stream.png"
  },
  {
   "id": 243,
@@ -4907,7 +4907,7 @@
   "effects": [
    "castSpell=Bless:50"
   ],
-  "icon": "res://assets/inventory/0014025-000.png"
+  "icon": "res://assets/spells/bless.png"
  },
  {
   "id": 244,
@@ -4929,7 +4929,7 @@
   "effects": [
    "castSpell=Blizzard:50"
   ],
-  "icon": "res://assets/inventory/0014012-000.png"
+  "icon": "res://assets/spells/blizzard.png"
  },
  {
   "id": 245,
@@ -4951,7 +4951,7 @@
   "effects": [
    "castSpell=Control_Spirit:50"
   ],
-  "icon": "res://assets/inventory/0014027-000.png"
+  "icon": "res://assets/spells/control_spirit.png"
  },
  {
   "id": 246,
@@ -4973,7 +4973,7 @@
   "effects": [
    "castSpell=Curse:50"
   ],
-  "icon": "res://assets/inventory/0014033-000.png"
+  "icon": "res://assets/spells/curse.png"
  },
  {
   "id": 247,
@@ -4995,7 +4995,7 @@
   "effects": [
    "castSpell=Darkness:50"
   ],
-  "icon": "res://assets/inventory/0014019-000.png"
+  "icon": "res://assets/spells/darkness.png"
  },
  {
   "id": 248,
@@ -5039,7 +5039,7 @@
   "effects": [
    "castSpell=Drain_Life:50"
   ],
-  "icon": "res://assets/inventory/0014031-000.png"
+  "icon": "res://assets/spells/drain_life.png"
  },
  {
   "id": 250,
@@ -5061,7 +5061,7 @@
   "effects": [
    "castSpell=Fire_Arrow:50"
   ],
-  "icon": "res://assets/inventory/0014006-000.png"
+  "icon": "res://assets/spells/fire_arrow.png"
  },
  {
   "id": 251,
@@ -5083,7 +5083,7 @@
   "effects": [
    "castSpell=Fire_Ball:50"
   ],
-  "icon": "res://assets/inventory/0014007-000.png"
+  "icon": "res://assets/spells/fire_ball.png"
  },
  {
   "id": 252,
@@ -5105,7 +5105,7 @@
   "effects": [
    "castSpell=Wall_of_Fire:50"
   ],
-  "icon": "res://assets/inventory/0014008-000.png"
+  "icon": "res://assets/spells/wall_of_fire.png"
  },
  {
   "id": 253,
@@ -5127,7 +5127,7 @@
   "effects": [
    "castSpell=Haste:50"
   ],
-  "icon": "res://assets/inventory/0014026-000.png"
+  "icon": "res://assets/spells/haste.png"
  },
  {
   "id": 254,
@@ -5149,7 +5149,7 @@
   "effects": [
    "castSpell=Heal:50"
   ],
-  "icon": "res://assets/inventory/0014029-000.png"
+  "icon": "res://assets/spells/heal.png"
  },
  {
   "id": 255,
@@ -5171,7 +5171,7 @@
   "effects": [
    "castSpell=Ice_Missile:50"
   ],
-  "icon": "res://assets/inventory/0014010-000.png"
+  "icon": "res://assets/spells/ice_missile.png"
  },
  {
   "id": 256,
@@ -5193,7 +5193,7 @@
   "effects": [
    "castSpell=Invisibility:50"
   ],
-  "icon": "res://assets/inventory/0014017-000.png"
+  "icon": "res://assets/spells/invisibility.png"
  },
  {
   "id": 257,
@@ -5215,7 +5215,7 @@
   "effects": [
    "castSpell=Light:50"
   ],
-  "icon": "res://assets/inventory/0014020-000.png"
+  "icon": "res://assets/spells/light.png"
  },
  {
   "id": 258,
@@ -5237,7 +5237,7 @@
   "effects": [
    "castSpell=Lightning:50"
   ],
-  "icon": "res://assets/inventory/0014015-000.png"
+  "icon": "res://assets/spells/lightning.png"
  },
  {
   "id": 259,
@@ -5259,7 +5259,7 @@
   "effects": [
    "castSpell=Poison_Cloud:50"
   ],
-  "icon": "res://assets/inventory/0014011-000.png"
+  "icon": "res://assets/spells/poison_cloud.png"
  },
  {
   "id": 260,
@@ -5281,7 +5281,7 @@
   "effects": [
    "castSpell=Prismatic_Spray:50"
   ],
-  "icon": "res://assets/inventory/0014016-000.png"
+  "icon": "res://assets/spells/prismatic_spray.png"
  },
  {
   "id": 261,
@@ -5303,7 +5303,7 @@
   "effects": [
    "castSpell=Protection_from_Air:50"
   ],
-  "icon": "res://assets/inventory/0014018-000.png"
+  "icon": "res://assets/spells/protection_from_air.png"
  },
  {
   "id": 262,
@@ -5325,7 +5325,7 @@
   "effects": [
    "castSpell=Protection_from_Earth:50"
   ],
-  "icon": "res://assets/inventory/0014024-000.png"
+  "icon": "res://assets/spells/protection_from_earth.png"
  },
  {
   "id": 263,
@@ -5347,7 +5347,7 @@
   "effects": [
    "castSpell=Protection_from_Fire:50"
   ],
-  "icon": "res://assets/inventory/0014009-000.png"
+  "icon": "res://assets/spells/protection_from_fire.png"
  },
  {
   "id": 264,
@@ -5369,7 +5369,7 @@
   "effects": [
    "castSpell=Protection_from_Water:50"
   ],
-  "icon": "res://assets/inventory/0014013-000.png"
+  "icon": "res://assets/spells/protection_from_water.png"
  },
  {
   "id": 265,
@@ -5391,7 +5391,7 @@
   "effects": [
    "castSpell=Shield:50"
   ],
-  "icon": "res://assets/inventory/0014032-000.png"
+  "icon": "res://assets/spells/shield.png"
  },
  {
   "id": 266,
@@ -5413,7 +5413,7 @@
   "effects": [
    "castSpell=Slow:50"
   ],
-  "icon": "res://assets/inventory/0014034-000.png"
+  "icon": "res://assets/spells/slow.png"
  },
  {
   "id": 267,
@@ -5435,7 +5435,7 @@
   "effects": [
    "castSpell=Stone_Curse:50"
   ],
-  "icon": "res://assets/inventory/0014023-000.png"
+  "icon": "res://assets/spells/stone_curse.png"
  },
  {
   "id": 268,
@@ -5457,7 +5457,7 @@
   "effects": [
    "castSpell=Summon:50"
   ],
-  "icon": "res://assets/inventory/0014030-000.png"
+  "icon": "res://assets/spells/summon.png"
  },
  {
   "id": 269,
@@ -5479,7 +5479,7 @@
   "effects": [
    "castSpell=Teleport:50"
   ],
-  "icon": "res://assets/inventory/0014028-000.png"
+  "icon": "res://assets/spells/teleport.png"
  },
  {
   "id": 270,
@@ -5501,7 +5501,7 @@
   "effects": [
    "castSpell=Wall_of_Earth:50"
   ],
-  "icon": "res://assets/inventory/0014022-000.png"
+  "icon": "res://assets/spells/wall_of_earth.png"
  },
  {
   "id": 271,
@@ -5523,7 +5523,7 @@
   "effects": [
    "castSpell=Acid_Stream:100"
   ],
-  "icon": "res://assets/inventory/0014043-000.png"
+  "icon": "res://assets/spells/acid_stream.png"
  },
  {
   "id": 272,
@@ -5545,7 +5545,7 @@
   "effects": [
    "castSpell=Bless:100"
   ],
-  "icon": "res://assets/inventory/0014054-000.png"
+  "icon": "res://assets/spells/bless.png"
  },
  {
   "id": 273,
@@ -5567,7 +5567,7 @@
   "effects": [
    "castSpell=Blizzard:100"
   ],
-  "icon": "res://assets/inventory/0014041-000.png"
+  "icon": "res://assets/spells/blizzard.png"
  },
  {
   "id": 274,
@@ -5589,7 +5589,7 @@
   "effects": [
    "castSpell=Control_Spirit:100"
   ],
-  "icon": "res://assets/inventory/0014056-000.png"
+  "icon": "res://assets/spells/control_spirit.png"
  },
  {
   "id": 275,
@@ -5611,7 +5611,7 @@
   "effects": [
    "castSpell=Curse:100"
   ],
-  "icon": "res://assets/inventory/0014062-000.png"
+  "icon": "res://assets/spells/curse.png"
  },
  {
   "id": 276,
@@ -5633,7 +5633,7 @@
   "effects": [
    "castSpell=Darkness:100"
   ],
-  "icon": "res://assets/inventory/0014048-000.png"
+  "icon": "res://assets/spells/darkness.png"
  },
  {
   "id": 277,
@@ -5677,7 +5677,7 @@
   "effects": [
    "castSpell=Drain_Life:100"
   ],
-  "icon": "res://assets/inventory/0014060-000.png"
+  "icon": "res://assets/spells/drain_life.png"
  },
  {
   "id": 279,
@@ -5699,7 +5699,7 @@
   "effects": [
    "castSpell=Fire_Arrow:100"
   ],
-  "icon": "res://assets/inventory/0014035-000.png"
+  "icon": "res://assets/spells/fire_arrow.png"
  },
  {
   "id": 280,
@@ -5721,7 +5721,7 @@
   "effects": [
    "castSpell=Fire_Ball:100"
   ],
-  "icon": "res://assets/inventory/0014036-000.png"
+  "icon": "res://assets/spells/fire_ball.png"
  },
  {
   "id": 281,
@@ -5743,7 +5743,7 @@
   "effects": [
    "castSpell=Wall_of_Fire:100"
   ],
-  "icon": "res://assets/inventory/0014037-000.png"
+  "icon": "res://assets/spells/wall_of_fire.png"
  },
  {
   "id": 282,
@@ -5765,7 +5765,7 @@
   "effects": [
    "castSpell=Haste:100"
   ],
-  "icon": "res://assets/inventory/0014055-000.png"
+  "icon": "res://assets/spells/haste.png"
  },
  {
   "id": 283,
@@ -5787,7 +5787,7 @@
   "effects": [
    "castSpell=Heal:100"
   ],
-  "icon": "res://assets/inventory/0014058-000.png"
+  "icon": "res://assets/spells/heal.png"
  },
  {
   "id": 284,
@@ -5809,7 +5809,7 @@
   "effects": [
    "castSpell=Ice_Missile:100"
   ],
-  "icon": "res://assets/inventory/0014039-000.png"
+  "icon": "res://assets/spells/ice_missile.png"
  },
  {
   "id": 285,
@@ -5831,7 +5831,7 @@
   "effects": [
    "castSpell=Invisibility:100"
   ],
-  "icon": "res://assets/inventory/0014046-000.png"
+  "icon": "res://assets/spells/invisibility.png"
  },
  {
   "id": 286,
@@ -5853,7 +5853,7 @@
   "effects": [
    "castSpell=Light:100"
   ],
-  "icon": "res://assets/inventory/0014049-000.png"
+  "icon": "res://assets/spells/light.png"
  },
  {
   "id": 287,
@@ -5875,7 +5875,7 @@
   "effects": [
    "castSpell=Lightning:100"
   ],
-  "icon": "res://assets/inventory/0014044-000.png"
+  "icon": "res://assets/spells/lightning.png"
  },
  {
   "id": 288,
@@ -5897,7 +5897,7 @@
   "effects": [
    "castSpell=Poison_Cloud:100"
   ],
-  "icon": "res://assets/inventory/0014040-000.png"
+  "icon": "res://assets/spells/poison_cloud.png"
  },
  {
   "id": 289,
@@ -5919,7 +5919,7 @@
   "effects": [
    "castSpell=Prismatic_Spray:100"
   ],
-  "icon": "res://assets/inventory/0014045-000.png"
+  "icon": "res://assets/spells/prismatic_spray.png"
  },
  {
   "id": 290,
@@ -5941,7 +5941,7 @@
   "effects": [
    "castSpell=Protection_from_Air:100"
   ],
-  "icon": "res://assets/inventory/0014047-000.png"
+  "icon": "res://assets/spells/protection_from_air.png"
  },
  {
   "id": 291,
@@ -5963,7 +5963,7 @@
   "effects": [
    "castSpell=Protection_from_Earth:100"
   ],
-  "icon": "res://assets/inventory/0014053-000.png"
+  "icon": "res://assets/spells/protection_from_earth.png"
  },
  {
   "id": 292,
@@ -5985,7 +5985,7 @@
   "effects": [
    "castSpell=Protection_from_Fire:100"
   ],
-  "icon": "res://assets/inventory/0014038-000.png"
+  "icon": "res://assets/spells/protection_from_fire.png"
  },
  {
   "id": 293,
@@ -6007,7 +6007,7 @@
   "effects": [
    "castSpell=Protection_from_Water:100"
   ],
-  "icon": "res://assets/inventory/0014042-000.png"
+  "icon": "res://assets/spells/protection_from_water.png"
  },
  {
   "id": 294,
@@ -6029,7 +6029,7 @@
   "effects": [
    "castSpell=Shield:100"
   ],
-  "icon": "res://assets/inventory/0014061-000.png"
+  "icon": "res://assets/spells/shield.png"
  },
  {
   "id": 295,
@@ -6051,7 +6051,7 @@
   "effects": [
    "castSpell=Slow:100"
   ],
-  "icon": "res://assets/inventory/0014063-000.png"
+  "icon": "res://assets/spells/slow.png"
  },
  {
   "id": 296,
@@ -6073,7 +6073,7 @@
   "effects": [
    "castSpell=Stone_Curse:100"
   ],
-  "icon": "res://assets/inventory/0014052-000.png"
+  "icon": "res://assets/spells/stone_curse.png"
  },
  {
   "id": 297,
@@ -6095,7 +6095,7 @@
   "effects": [
    "castSpell=Summon:100"
   ],
-  "icon": "res://assets/inventory/0014059-000.png"
+  "icon": "res://assets/spells/summon.png"
  },
  {
   "id": 298,
@@ -6117,7 +6117,7 @@
   "effects": [
    "castSpell=Teleport:100"
   ],
-  "icon": "res://assets/inventory/0014057-000.png"
+  "icon": "res://assets/spells/teleport.png"
  },
  {
   "id": 299,
@@ -6139,7 +6139,7 @@
   "effects": [
    "castSpell=Wall_of_Earth:100"
   ],
-  "icon": "res://assets/inventory/0014051-000.png"
+  "icon": "res://assets/spells/wall_of_earth.png"
  },
  {
   "id": 300,
@@ -10219,7 +10219,7 @@
   "to_hit": 0,
   "magcap": 0,
   "effects": [],
-  "icon": "res://assets/professions/blacksmith/lutetium_ingot.png"
+  "icon": "res://assets/professions/blacksmith/gold_ingot.png"
  },
  {
   "id": 504,
@@ -10300,5 +10300,225 @@
   "magcap": 0,
   "effects": [],
   "icon": "res://assets/professions/blacksmith/radium_ingot.png"
+ },
+ {
+  "id": 508,
+  "key": "Lutetium Ingot",
+  "name_ru": "Слиток лутетия",
+  "name_en": "Lutetium Ingot",
+  "quality": "Common",
+  "material": "Lutetium",
+  "type": "Ingot",
+  "price": 25,
+  "weight": 1.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/lutetium_ingot.png"
+ },
+ {
+  "id": 509,
+  "key": "Lanthanum Ingot",
+  "name_ru": "Слиток лантана",
+  "name_en": "Lanthanum Ingot",
+  "quality": "Common",
+  "material": "Lanthanum",
+  "type": "Ingot",
+  "price": 30,
+  "weight": 1.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/lanthanum_ingot.png"
+ },
+ {
+  "id": 510,
+  "key": "Gallium Ingot",
+  "name_ru": "Слиток галлия",
+  "name_en": "Gallium Ingot",
+  "quality": "Common",
+  "material": "Gallium",
+  "type": "Ingot",
+  "price": 15,
+  "weight": 1.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/gallium_ingot.png"
+ },
+ {
+  "id": 511,
+  "key": "Chromium Ingot",
+  "name_ru": "Слиток хрома",
+  "name_en": "Chromium Ingot",
+  "quality": "Common",
+  "material": "Chromium",
+  "type": "Ingot",
+  "price": 35,
+  "weight": 2.0,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/chromium_ingot.png"
+ },
+ {
+  "id": 512,
+  "key": "Wolfram Ingot",
+  "name_ru": "Слиток вольфрама",
+  "name_en": "Wolfram Ingot",
+  "quality": "Common",
+  "material": "Wolfram",
+  "type": "Ingot",
+  "price": 45,
+  "weight": 2.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/wolfram_ingot.png"
+ },
+ {
+  "id": 513,
+  "key": "Cobalt Ingot",
+  "name_ru": "Слиток кобальта",
+  "name_en": "Cobalt Ingot",
+  "quality": "Common",
+  "material": "Cobalt",
+  "type": "Ingot",
+  "price": 55,
+  "weight": 2.0,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/cobalt_ingot.png"
+ },
+ {
+  "id": 514,
+  "key": "Thorium Ingot",
+  "name_ru": "Слиток тория",
+  "name_en": "Thorium Ingot",
+  "quality": "Common",
+  "material": "Thorium",
+  "type": "Ingot",
+  "price": 200,
+  "weight": 2.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/thorium_ingot.png"
+ },
+ {
+  "id": 515,
+  "key": "Uranium Ingot",
+  "name_ru": "Слиток урана",
+  "name_en": "Uranium Ingot",
+  "quality": "Common",
+  "material": "Uranium",
+  "type": "Ingot",
+  "price": 400,
+  "weight": 2.0,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/uranium_ingot.png"
+ },
+ {
+  "id": 516,
+  "key": "Promethium Ingot",
+  "name_ru": "Слиток прометия",
+  "name_en": "Promethium Ingot",
+  "quality": "Common",
+  "material": "Promethium",
+  "type": "Ingot",
+  "price": 28,
+  "weight": 1.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/promethium_ingot.png"
+ },
+ {
+  "id": 517,
+  "key": "Neodymium Ingot",
+  "name_ru": "Слиток неодима",
+  "name_en": "Neodymium Ingot",
+  "quality": "Common",
+  "material": "Neodymium",
+  "type": "Ingot",
+  "price": 35,
+  "weight": 1.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/neodymium_ingot.png"
+ },
+ {
+  "id": 518,
+  "key": "Yttrium Ingot",
+  "name_ru": "Слиток иттрия",
+  "name_en": "Yttrium Ingot",
+  "quality": "Common",
+  "material": "Yttrium",
+  "type": "Ingot",
+  "price": 22,
+  "weight": 1.5,
+  "level": 1,
+  "damage_min": 0,
+  "damage_max": 0,
+  "defence": 0,
+  "absorption": 0,
+  "to_hit": 0,
+  "magcap": 0,
+  "effects": [],
+  "icon": "res://assets/professions/blacksmith/yttrium_ingot.png"
  }
 ]

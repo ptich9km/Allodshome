@@ -165,10 +165,13 @@ static func projectile_folder(name: String) -> String:
 static func sound_of(name: String) -> int:
 	return int(get_spell(name).get("sound", 0))
 
-## Иконка магии из канонической Книги Магии (assets/spells/spell_NN.png,
-## нарезаны из spellbook.bmp, 2 ряда x 12 = 24 слота). По индексу книги 0..23.
+## Иконка магии Книги Магии: assets/spells/{snake}.png (ChatGPT, 31 шт.).
+## index — позиция в BOOK_SPELLS (0..23).
 static func book_icon_path(index: int) -> String:
-	return "res://assets/spells/spell_%02d.png" % index
+	if index < 0 or index >= BOOK_SPELLS.size():
+		return ""
+	var spell := str(BOOK_SPELLS[index])
+	return "res://assets/spells/%s.png" % spell.to_lower().replace("-", "_").replace(" ", "_")
 
 ## Иконка заклинания (обычная, из inventory -000.png).
 static func icon_of(name: String) -> String:
@@ -288,11 +291,11 @@ static func book_item(item_key: String) -> Dictionary:
 
 ## Иконка книги стихии (для книг одного заклинания этой сферы).
 const BOOK_ICONS := {
-	"Fire": "res://assets/inventory/0014003-000.png",
-	"Water": "res://assets/inventory/0014002-000.png",
-	"Air": "res://assets/inventory/0014001-000.png",
-	"Earth": "res://assets/inventory/0014004-000.png",
-	"Astral": "res://assets/inventory/0014005-000.png",
+	"Fire": "res://assets/spells/fire_ball.png",
+	"Water": "res://assets/spells/ice_missile.png",
+	"Air": "res://assets/spells/lightning.png",
+	"Earth": "res://assets/spells/stone_missile.png",
+	"Astral": "res://assets/spells/bless.png",
 }
 
 ## Синтез предмета «книга одного заклинания» (для склада и прилавка магазина).

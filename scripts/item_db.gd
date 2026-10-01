@@ -180,6 +180,8 @@ static func is_equippable(item: Dictionary) -> bool:
 const _SMELTABLE := [
 	"Bronze", "Iron", "Steel", "Silver", "Gold",
 	"Titanium", "Terbium", "Plutonium", "Radium",
+	"Lutetium", "Lanthanum", "Gallium", "Chromium", "Wolfram",
+	"Cobalt", "Thorium", "Uranium", "Promethium", "Neodymium", "Yttrium",
 ]
 
 static func is_smeltable(item: Dictionary) -> bool:

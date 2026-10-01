@@ -4,7 +4,7 @@
 Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
 > Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
-> Последнее обновление: 30.09 (позже) — фракционное оружие `faction_w/` 247 PNG, дуотон вынесен в `tests/faction_tint.py`, удалён скрипт с API-ключом.
+> Последнее обновление: 01.10 — слитки Ingots1 (20 PNG + item_db), магия Magic1 (31 PNG), удалены иконки Аллодов spell_NN/0014*.
 
 ## Содержание
 
@@ -256,6 +256,8 @@ ui/          — UI-сцены и скрипты
 | `gen_faction_armor_tint.py` | перекраска base в цвета металлов фракций → `assets/items/faction/` (342 PNG), палитра `assets/items/faction_palette.json`; `--report` / `--sheet` / `--check` (SHA256) |
 | `extract_chatgpt_weapons.py` | **устарел** (Weapons1, панельная нарезка, старые имена). Актуален weapons2 |
 | `extract_chatgpt_weapons2.py` | нарезка `import/ChatGPTWeapons2.png` → `base_w/` (52 PNG, 13 типов × 4 качества). Компоненты по маске alpha; `--report` / `--sheet` |
+| `extract_chatgpt_ingots.py` | нарезка `import/ChatGPTIngots1.png` → `blacksmith/*_ingot.png` (20 металлов, сетка 5×4, color-key + dilate, **без** заливки дырок); `--report` / `--sheet` |
+| `extract_chatgpt_magic.py` | нарезка `import/ChatGPTMagic1.png` → `assets/spells/{spell}.png` (31 заклинание, шахматный фон, closing маски) + патч `spells_db.json` |
 | `fuzz_water.gd` | клики в воду/озеро: герой не заходит в воду (0 hits) |
 | `inventory_ui_smoke.gd` | склад: PanelContainer+тема, многоколоночная сетка, вертикальная прокрутка, иконки не обрезаны |
 | `spell_mechanics_smoke.gd` | механики: телепорт по курсору, стена 6×2 (урон/спрайт/блок из одного размера), сияние по 4–6 целям |
@@ -455,6 +457,19 @@ ui/          — UI-сцены и скрипты
 ## 12. Журнал сессий
 
 Хронология изменений. **Новое — сверху.**
+
+### 01.10 — слитки ChatGPTIngots1 + магия ChatGPTMagic1
+
+- **Skills-first:** `create-game-assets` (атлас → нарезка, гейт «проверено игроком»).
+- **Слитки:** `import/ChatGPTIngots1.png` (1536×1024, сетка 5×4) → **20 PNG** `assets/professions/blacksmith/{metal}_ingot.png` (80×80). Фон `(23,24,27)` снят color-key + дилатация маски 3 px. Скрипт `tests/extract_chatgpt_ingots.py`. Создан недостающий `gold_ingot.png`.
+- **`item_db.json`:** `Gold Ingot` путь на `gold_ingot.png` (был баг на `lutetium`); добавлены **11** Ingot id 508–518 (lutetium, lanthanum, gallium, chromium, wolfram, cobalt, thorium, uranium, promethium, neodymium, yttrium) → **20** слитков. `item_db.gd`: `_SMELTABLE` расширен всеми 20 металлами.
+- **Урок по слиткам (не повторять):** «заливка дырок» внутри силуэта (flood-fill от краёв + подмена тёмных зон цветом металла) **ухудшает** иконки — steel/terbium/cobalt/gallium/iron становятся «размазанными». Игрок: «прекрати издеваться, верни что было». **Оставлен color-key + dilate** — та версия, что подтверждена глазами. Тёмные прожилки в атласе — часть арта, не дырки от нарезки.
+- **Магия:** `import/ChatGPTMagic1.png` (1254×1254) → **31 PNG** `assets/spells/{spell}.png` (80×80). Фон — **шахматка-заглушка** (RGB, не альфа): ключ по хроме+яркости + closing; компоненты ≥2500 px; раскладка Fire 4 | Water 5 | Air 5 | Earth 5 | Astral 6+6. `control_spirit` слипался — ячейка достроена справа. Скрипт `tests/extract_chatgpt_magic.py`. **Игрок: «магии получились отлично».**
+- **Удалены иконки Аллодов:** `assets/spells/spell_00.png`…`spell_23.png` (24) + `assets/inventory/0014*.png` (96). `spells_db.json`: `icons.scroll`/`icons.super` у всех 31 → новые PNG. `item_db`: 61 предмет Scroll/SuperScroll/Book-сфер. `spell_db.gd`: `book_icon_path` по `BOOK_SPELLS` → snake-case; `BOOK_ICONS` сфер → fire_ball/ice_missile/lightning/stone_missile/bless.
+- **Промт-урок:** в запросах генерации явно писать `FULLY TRANSPARENT BACKGROUND`, `COMPLETELY inside its cell`, `no cropping`, `NO dark frame` — иначе ChatGPT режет края или кладёт тёмную плитку.
+- **Проверки:** `blacksmith_smoke` OK; `magic_smoke` OK; headless parse без SCRIPT ERROR; JSON валиден; 20/20 и 31/31 иконок на диске.
+- **Изменённые файлы:** `tests/extract_chatgpt_ingots.py`, `tests/extract_chatgpt_magic.py` (новые), `assets/professions/blacksmith/*_ingot.png` (20), `assets/items/item_db.json`, `scripts/item_db.gd`, `assets/spells/*.png` (31 новых + 24 удалены), `assets/spells/spells_db.json`, `scripts/spell_db.gd`, `assets/inventory/0014*.png` (удалены), `import/ChatGPTIngots1.png`, `import/ChatGPTMagic1.png`, `AGENTS.md`.
+- **Требуется ручная визуальная проверка:** кузня и инвентарь на 1280×800 (слитки + свитки/книги магии).
 
 ### 30.09 (позже) — фракционное оружие `faction_w/` + чистка секретов
 
