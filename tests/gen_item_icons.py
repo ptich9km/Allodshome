@@ -102,6 +102,22 @@ ARMOR_SLOT = {
 # металла для них бессмысленна (см. gen_cloak_items.py).
 CLOTH_MATERIALS = {"Linen", "Linen "}
 
+# Свитки заклинаний: арт нарезкой tests/extract_chatgpt_magic.py из атласа
+# ChatGPTMagic1.png, лежит в assets/spells/ под именем заклинания в нижнем
+# регистре со подчёркиваниями. Раньше эти предметы шли в заглушки.
+SPELL_DIR = "res://assets/spells/"
+
+# Имя заклинания в item_db не совпадает с именем файла в едином случае:
+# в баде "Fire Wall", в атласе "wall_of_fire". Ключ - slug из базы,
+# значение - имя файла без расширения.
+SPELL_ICON_ALIAS = {
+    "fire_wall": "wall_of_fire",
+    "wall_of_earth": "wall_of_earth",
+}
+
+# quality -> свиток заклинания
+SPELL_QUALITIES = ("Scroll", "SuperScroll")
+
 # quality в базе -> тир в имени файла. У металлов качество = тир напрямую,
 # но у тряпок качество ("Cheap"/"Common") приходит как слово, а файл называется
 # по тиру ("cheap"/"common").
@@ -204,7 +220,8 @@ def main() -> int:
         pal = json.load(fh)
     metals = load_metal_index(pal)
 
-    stats = {"faction": 0, "faction_w": 0, "base": 0, "ingot": 0, "placeholder": 0}
+    stats = {"faction": 0, "faction_w": 0, "base": 0, "spells": 0, "ingot": 0,
+             "placeholder": 0}
     problems = []
     assigned = {}
     new_ph = set()
@@ -242,6 +259,20 @@ def main() -> int:
                 stats["faction"] += 1
             else:
                 problems.append("металл, но тип без иконки: %s / %s" % (typ, mat))
+        elif str(it.get("quality", "")) in SPELL_QUALITIES:
+            # Свиток заклинания: спрайт из assets/spells/. Имя файла - slug типа,
+            # кроме случаев из SPELL_ICON_ALIAS ("Fire Wall" -> wall_of_fire).
+            slug = slugify(typ)
+            fname = SPELL_ICON_ALIAS.get(slug, slug)
+            path = "%s%s.png" % (SPELL_DIR, fname)
+            if ResourcePathExists(path):
+                icon = path
+                stats["spells"] += 1
+            else:
+                label = PH_TYPE_LABEL.get(typ) or "?"
+                icon = "res://assets/items/placeholder/%s.png" % slugify(typ or "item")
+                stats["placeholder"] += 1
+                new_ph.add((slugify(typ or "item"), label))
         elif typ in ARMOR_SLOT and mat in CLOTH_MATERIALS:
             # Тряпка (лён): арт есть в base/ - те же текстуры, из которых
             # faction/*_cloak_* делалась перекраска в металл. Лён не металл,
@@ -309,6 +340,15 @@ def main() -> int:
 def slugify(s: str) -> str:
     out = "".join(ch if ch.isalnum() else "_" for ch in s).strip("_").lower()
     return out or "item"
+
+
+def ResourcePathExists(res_path: str) -> bool:
+    """Проверяет, что файл по res-пути есть на диске.
+
+    Имя с большой буквы - это не опечатка: вызывается как метод у строк в коде
+    проекта (PascalCase для хелперов), но в Python принято так же.
+    """
+    return os.path.exists(os.path.join(ROOT, res_path.replace("res://", "").replace("/", os.sep)))
 
 
 def make_placeholder(path: str, label: str) -> None:

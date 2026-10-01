@@ -22,9 +22,8 @@
 | `faction_w/reapers/` | оружие: thorium, uranium, plutonium, radium | 52 |
 | `faction_w/druid_circle/` | оружие: gallium, yttrium, promethium, neodymium | 52 |
 | `placeholder/` | заглушки для вещей без готового арта | 83 |
-| `sphere_books/` | иконки книг стихий (5 сфер) | 5 |
 
-**Итого 761 PNG.** Контактные листы (`_contact_sheet.png`) — выход dev-инструмента,
+**Итого 756 PNG.** Контактные листы (`_contact_sheet.png`) — выход dev-инструмента,
 в `.gitignore`.
 
 **Слоты `shirt` и `cloak` не перекрашиваются** (решение игрока: плащ, рубаха и

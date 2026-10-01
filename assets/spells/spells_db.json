@@ -10,8 +10,8 @@
     "projectile": "firebolt",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014006-000.png",
-      "super": "res://assets/inventory/0014035-000.png"
+      "scroll": "res://assets/spells/fire_arrow.png",
+      "super": "res://assets/spells/fire_arrow.png"
     },
     "kind": "attack",
     "sound": 510,
@@ -39,8 +39,8 @@
     "projectile": "fireball",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014007-000.png",
-      "super": "res://assets/inventory/0014036-000.png"
+      "scroll": "res://assets/spells/fire_ball.png",
+      "super": "res://assets/spells/fire_ball.png"
     },
     "kind": "area",
     "sound": 512,
@@ -65,12 +65,15 @@
     "mana_cost": 22,
     "range": 200,
     "area": 0,
-    "zone_cells": [6, 2],
+    "zone_cells": [
+      6,
+      2
+    ],
     "projectile": "firewall",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014008-000.png",
-      "super": "res://assets/inventory/0014037-000.png"
+      "scroll": "res://assets/spells/wall_of_fire.png",
+      "super": "res://assets/spells/wall_of_fire.png"
     },
     "kind": "wall",
     "sound": 90,
@@ -98,8 +101,8 @@
     "projectile": "shield",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014009-000.png",
-      "super": "res://assets/inventory/0014038-000.png"
+      "scroll": "res://assets/spells/protection_from_fire.png",
+      "super": "res://assets/spells/protection_from_fire.png"
     },
     "kind": "buff",
     "sound": 516,
@@ -134,8 +137,8 @@
     "projectile": "icemissile",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014010-000.png",
-      "super": "res://assets/inventory/0014039-000.png"
+      "scroll": "res://assets/spells/ice_missile.png",
+      "super": "res://assets/spells/ice_missile.png"
     },
     "kind": "attack",
     "sound": 518,
@@ -162,12 +165,15 @@
     "area": 64,
     "zone_style": "cloud",
     "zone_life": 5.0,
-    "zone_cells": [3, 3],
+    "zone_cells": [
+      3,
+      3
+    ],
     "projectile": "poison",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014011-000.png",
-      "super": "res://assets/inventory/0014040-000.png"
+      "scroll": "res://assets/spells/poison_cloud.png",
+      "super": "res://assets/spells/poison_cloud.png"
     },
     "kind": "area",
     "sound": 520,
@@ -201,12 +207,15 @@
     "area": 80,
     "zone_style": "hail",
     "zone_life": 4.0,
-    "zone_cells": [4, 3],
+    "zone_cells": [
+      4,
+      3
+    ],
     "projectile": "meteor",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014012-000.png",
-      "super": "res://assets/inventory/0014041-000.png"
+      "scroll": "res://assets/spells/blizzard.png",
+      "super": "res://assets/spells/blizzard.png"
     },
     "kind": "area",
     "sound": 523,
@@ -246,8 +255,8 @@
     "projectile": "shield",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014013-000.png",
-      "super": "res://assets/inventory/0014042-000.png"
+      "scroll": "res://assets/spells/protection_from_water.png",
+      "super": "res://assets/spells/protection_from_water.png"
     },
     "kind": "buff",
     "sound": 524,
@@ -282,8 +291,8 @@
     "projectile": "acid",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014014-000.png",
-      "super": "res://assets/inventory/0014043-000.png"
+      "scroll": "res://assets/spells/acid_stream.png",
+      "super": "res://assets/spells/acid_stream.png"
     },
     "kind": "attack",
     "sound": 526,
@@ -318,8 +327,8 @@
     "projectile": "lightnin",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014015-000.png",
-      "super": "res://assets/inventory/0014044-000.png"
+      "scroll": "res://assets/spells/lightning.png",
+      "super": "res://assets/spells/lightning.png"
     },
     "kind": "attack",
     "sound": 528,
@@ -347,8 +356,8 @@
     "projectile": "chain",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014016-000.png",
-      "super": "res://assets/inventory/0014045-000.png"
+      "scroll": "res://assets/spells/prismatic_spray.png",
+      "super": "res://assets/spells/prismatic_spray.png"
     },
     "kind": "area",
     "sound": 530,
@@ -376,8 +385,8 @@
     "projectile": "",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014017-000.png",
-      "super": "res://assets/inventory/0014046-000.png"
+      "scroll": "res://assets/spells/invisibility.png",
+      "super": "res://assets/spells/invisibility.png"
     },
     "kind": "buff",
     "sound": 532,
@@ -411,8 +420,8 @@
     "projectile": "shield",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014018-000.png",
-      "super": "res://assets/inventory/0014047-000.png"
+      "scroll": "res://assets/spells/protection_from_air.png",
+      "super": "res://assets/spells/protection_from_air.png"
     },
     "kind": "buff",
     "sound": 534,
@@ -447,8 +456,8 @@
     "projectile": "p_air",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014019-000.png",
-      "super": "res://assets/inventory/0014048-000.png"
+      "scroll": "res://assets/spells/darkness.png",
+      "super": "res://assets/spells/darkness.png"
     },
     "kind": "debuff",
     "sound": 536,
@@ -481,7 +490,10 @@
     "area": 0,
     "projectile": "meteorit",
     "icon": "",
-    "icons": {},
+    "icons": {
+      "scroll": "res://assets/spells/stone_missile.png",
+      "super": "res://assets/spells/stone_missile.png"
+    },
     "kind": "attack",
     "sound": 540,
     "cooldown": 1.2,
@@ -505,12 +517,15 @@
     "mana_cost": 24,
     "range": 200,
     "area": 0,
-    "zone_cells": [6, 2],
+    "zone_cells": [
+      6,
+      2
+    ],
     "projectile": "wall",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014022-000.png",
-      "super": "res://assets/inventory/0014051-000.png"
+      "scroll": "res://assets/spells/wall_of_earth.png",
+      "super": "res://assets/spells/wall_of_earth.png"
     },
     "kind": "wall",
     "sound": 542,
@@ -538,8 +553,8 @@
     "projectile": "curse",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014023-000.png",
-      "super": "res://assets/inventory/0014052-000.png"
+      "scroll": "res://assets/spells/stone_curse.png",
+      "super": "res://assets/spells/stone_curse.png"
     },
     "kind": "debuff",
     "sound": 544,
@@ -577,8 +592,8 @@
     "projectile": "shield",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014024-000.png",
-      "super": "res://assets/inventory/0014053-000.png"
+      "scroll": "res://assets/spells/protection_from_earth.png",
+      "super": "res://assets/spells/protection_from_earth.png"
     },
     "kind": "buff",
     "sound": 546,
@@ -613,8 +628,8 @@
     "projectile": "diamonddust",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014021-000.png",
-      "super": "res://assets/inventory/0014050-000.png"
+      "scroll": "res://assets/spells/diamond_dust.png",
+      "super": "res://assets/spells/diamond_dust.png"
     },
     "kind": "area",
     "sound": 540,
@@ -642,8 +657,8 @@
     "projectile": "bless",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014025-000.png",
-      "super": "res://assets/inventory/0014054-000.png"
+      "scroll": "res://assets/spells/bless.png",
+      "super": "res://assets/spells/bless.png"
     },
     "kind": "buff",
     "sound": 548,
@@ -678,8 +693,8 @@
     "projectile": "",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014026-000.png",
-      "super": "res://assets/inventory/0014055-000.png"
+      "scroll": "res://assets/spells/haste.png",
+      "super": "res://assets/spells/haste.png"
     },
     "kind": "buff",
     "sound": 550,
@@ -713,8 +728,8 @@
     "projectile": "healing",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014029-000.png",
-      "super": "res://assets/inventory/0014058-000.png"
+      "scroll": "res://assets/spells/heal.png",
+      "super": "res://assets/spells/heal.png"
     },
     "kind": "heal",
     "sound": 556,
@@ -742,8 +757,8 @@
     "projectile": "drain",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014031-000.png",
-      "super": "res://assets/inventory/0014060-000.png"
+      "scroll": "res://assets/spells/drain_life.png",
+      "super": "res://assets/spells/drain_life.png"
     },
     "kind": "attack",
     "sound": 560,
@@ -776,8 +791,8 @@
     "projectile": "shield",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014032-000.png",
-      "super": "res://assets/inventory/0014061-000.png"
+      "scroll": "res://assets/spells/shield.png",
+      "super": "res://assets/spells/shield.png"
     },
     "kind": "self",
     "sound": 562,
@@ -811,8 +826,8 @@
     "projectile": "",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014030-000.png",
-      "super": "res://assets/inventory/0014059-000.png"
+      "scroll": "res://assets/spells/summon.png",
+      "super": "res://assets/spells/summon.png"
     },
     "kind": "self",
     "sound": 558,
@@ -839,7 +854,10 @@
     "area": 0,
     "projectile": "",
     "icon": "",
-    "icons": {},
+    "icons": {
+      "scroll": "res://assets/spells/animate_dead.png",
+      "super": "res://assets/spells/animate_dead.png"
+    },
     "kind": "raise",
     "sound": 552,
     "cooldown": 15.0,
@@ -871,8 +889,8 @@
     "projectile": "teleport",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014028-000.png",
-      "super": "res://assets/inventory/0014057-000.png"
+      "scroll": "res://assets/spells/teleport.png",
+      "super": "res://assets/spells/teleport.png"
     },
     "kind": "self",
     "sound": 554,
@@ -900,8 +918,8 @@
     "projectile": "curse",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014033-000.png",
-      "super": "res://assets/inventory/0014062-000.png"
+      "scroll": "res://assets/spells/curse.png",
+      "super": "res://assets/spells/curse.png"
     },
     "kind": "debuff",
     "sound": 564,
@@ -935,8 +953,8 @@
     "projectile": "p_water",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014034-000.png",
-      "super": "res://assets/inventory/0014063-000.png"
+      "scroll": "res://assets/spells/slow.png",
+      "super": "res://assets/spells/slow.png"
     },
     "kind": "debuff",
     "sound": 566,
@@ -970,8 +988,8 @@
     "projectile": "p_fire",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014020-000.png",
-      "super": "res://assets/inventory/0014049-000.png"
+      "scroll": "res://assets/spells/light.png",
+      "super": "res://assets/spells/light.png"
     },
     "kind": "self",
     "sound": 538,
@@ -999,8 +1017,8 @@
     "projectile": "bless",
     "icon": "",
     "icons": {
-      "scroll": "res://assets/inventory/0014027-000.png",
-      "super": "res://assets/inventory/0014056-000.png"
+      "scroll": "res://assets/spells/control_spirit.png",
+      "super": "res://assets/spells/control_spirit.png"
     },
     "kind": "debuff",
     "sound": 552,

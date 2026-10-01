@@ -165,10 +165,13 @@ static func projectile_folder(name: String) -> String:
 static func sound_of(name: String) -> int:
 	return int(get_spell(name).get("sound", 0))
 
-## Иконка магии из канонической Книги Магии (assets/spells/spell_NN.png,
-## нарезаны из spellbook.bmp, 2 ряда x 12 = 24 слота). По индексу книги 0..23.
+## Иконка магии Книги Магии: assets/spells/{snake}.png (ChatGPT, 31 шт.).
+## index — позиция в BOOK_SPELLS (0..23).
 static func book_icon_path(index: int) -> String:
-	return "res://assets/spells/spell_%02d.png" % index
+	if index < 0 or index >= BOOK_SPELLS.size():
+		return ""
+	var spell := str(BOOK_SPELLS[index])
+	return "res://assets/spells/%s.png" % spell.to_lower().replace("-", "_").replace(" ", "_")
 
 ## Иконка заклинания (обычная, из inventory -000.png).
 static func icon_of(name: String) -> String:
@@ -287,14 +290,17 @@ static func book_item(item_key: String) -> Dictionary:
 	return make_book_item(spell)
 
 ## Иконка книги стихии (для книг одного заклинания этой сферы).
-## Пути вынесены из assets/inventory/ (папка с иконками Аллодов удаляется):
-## сами картинки переехали в assets/items/sphere_books/ под осмысленными именами.
+## Иконка книги стихии. Раньше здесь лежали иконки книг Аллодов, вынесенные
+## из assets/inventory/ в assets/items/sphere_books/ перед удалением той папки.
+## Теперь используются заклинания-символы стихий из assets/spells/ (нарезка
+## tests/extract_chatgpt_magic.py из атласа ChatGPTMagic1.png), а папка
+## sphere_books/ удалена как осиротевшая.
 const BOOK_ICONS := {
-	"Fire": "res://assets/items/sphere_books/fire_book.png",
-	"Water": "res://assets/items/sphere_books/water_book.png",
-	"Air": "res://assets/items/sphere_books/air_book.png",
-	"Earth": "res://assets/items/sphere_books/earth_book.png",
-	"Astral": "res://assets/items/sphere_books/astral_book.png",
+	"Fire": "res://assets/spells/fire_ball.png",
+	"Water": "res://assets/spells/ice_missile.png",
+	"Air": "res://assets/spells/lightning.png",
+	"Earth": "res://assets/spells/stone_missile.png",
+	"Astral": "res://assets/spells/bless.png",
 }
 
 ## Синтез предмета «книга одного заклинания» (для склада и прилавка магазина).
