@@ -141,18 +141,20 @@ func _init() -> void:
 	_check(ingots == 20, "слитков в базе 20 (найдено: %d)" % ingots)
 	_check(ingot_bad == 0, "иконки слитков указывают верно (ошибок: %d)" % ingot_bad)
 
-	# 5. Заглушки — честные: подпись есть, картинка не пустая.
-	var ph_ok := true
-	var ph_n := 0
+	# 5. Заглушек не осталось. Контракт поменян на этапе 1 чистки (03.10):
+	#    раньше проверка требовала лишь ph_n > 0 — «пусть заглушки есть, но
+	#    файлы валидные». Теперь 8 трав переведены на настоящий арт
+	#    (assets/professional/herbalism/), и заглушек быть не должно вовсе.
+	#    ph_ok оставлен как сторож: если кто-то вернёт ссылку на заглушку,
+	#    тест скажет об этом явно, а не молча посчитает 0.
+	var ph_bad := []
 	for it5 in items:
 		var d5: Dictionary = it5
 		var icon5 := str(d5.get("icon", ""))
 		if not icon5.contains("/placeholder/"):
 			continue
-		ph_n += 1
-		if not ResourceLoader.exists(icon5):
-			ph_ok = false
-	_check(ph_ok and ph_n > 0, "заглушки существуют (предметов с заглушкой: %d)" % ph_n)
+		ph_bad.append(str(d5.get("key", "?")))
+	_check(ph_bad.is_empty(), "заглушек не осталось (осталось: %d %s)" % [ph_bad.size(), ", ".join(ph_bad.slice(0, 5))])
 
 	# 6. Каталог faction/ и faction_w/ реально используется: без item_db
 	#    589 готовых файлов лежали бы мёртвыми.

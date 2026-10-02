@@ -7235,7 +7235,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/green_leaf.png"
  },
  {
   "id": 492,
@@ -7255,7 +7255,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/white_flower.png"
  },
  {
   "id": 493,
@@ -7275,7 +7275,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/red_berry.png"
  },
  {
   "id": 494,
@@ -7295,7 +7295,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/tall_grass.png"
  },
  {
   "id": 495,
@@ -7315,7 +7315,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/lavender.png"
  },
  {
   "id": 496,
@@ -7335,7 +7335,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/mint.png"
  },
  {
   "id": 497,
@@ -7355,7 +7355,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/dandelion.png"
  },
  {
   "id": 498,
@@ -7375,7 +7375,7 @@
   "magcap": 0,
   "level": 1,
   "effects": [],
-  "icon": "res://assets/items/placeholder/herb.png"
+  "icon": "res://assets/professions/herbalism/broad_leaf.png"
  },
  {
   "id": 499,
