@@ -4,7 +4,7 @@
 Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
 > Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
-> Последнее обновление: 02.10 — merge master, WIP mage_f (8 направлений × 4 скина), ЮЗ = flip(ЮВ).
+> Последнее обновление: 02.10 — Magic2: посохи×4, книги×5, свитки×5, зелья атрибутов×4; item_db +70 иконок.
 
 ## Содержание
 
@@ -257,6 +257,7 @@ ui/          — UI-сцены и скрипты
 | `extract_chatgpt_weapons.py` | **устарел** (Weapons1, панельная нарезка, старые имена). Актуален weapons2 |
 | `extract_chatgpt_weapons2.py` | нарезка `import/ChatGPTWeapons2.png` → `base_w/` (52 PNG, 13 типов × 4 качества). Компоненты по маске alpha; `--report` / `--sheet` |
 | `extract_chatgpt_mage_f.py` | нарезка `import/ChatGPTMage_W1.png` → `wip/characters/mage_f/` (32 PNG: 4 скина × 8 направлений; СЗ=flip(СВ), ЮЗ=flip(ЮВ)) |
+| `extract_chatgpt_magic2.py` | нарезка `import/ChatGPTMagic2.png` → посохи/книги/свитки/зелья атрибутов (18 PNG) + патч `item_db` |
 | `fuzz_water.gd` | клики в воду/озеро: герой не заходит в воду (0 hits) |
 | `inventory_ui_smoke.gd` | склад: PanelContainer+тема, многоколоночная сетка, вертикальная прокрутка, иконки не обрезаны |
 | `spell_mechanics_smoke.gd` | механики: телепорт по курсору, стена 6×2 (урон/спрайт/блок из одного размера), сияние по 4–6 целям |
@@ -456,6 +457,20 @@ ui/          — UI-сцены и скрипты
 ## 12. Журнал сессий
 
 Хронология изменений. **Новое — сверху.**
+
+### 02.10 — ChatGPTMagic2: посохи, книги, свитки, зелья атрибутов
+
+- **Skills-first:** `create-game-assets` (атлас → нарезка, гейт «проверено игроком»).
+- **`import/ChatGPTMagic2.png`** (1536×1024, 4 ряда) → **18 PNG** 80×80:
+  - row0: посохи `staff_{cheap,common,good,elite}.png` → `assets/items/placeholder/`
+  - row1: книги `book_{fire,water,earth,air,astral}.png` → `assets/spells/`
+  - row2: свитки `scroll_{sphere}.png` → `assets/spells/`
+  - row3: банки `attr_{body,reaction,mind,spirit}.png` → `assets/potions/` (Сила/Ловкость/Разум/Дух)
+- **`item_db.json`:** +70 иконок. Staff по quality (Cheap/Bad→cheap … Very Rare→elite). Scroll/SuperScroll → иконка своей сферы. `Book Fire`… → `book_*.png`. `Potion Body/Mind/Spirit/Reaction` → `attr_*.png`. **Shaman Staff остался placeholder** — атлас под обычный посох.
+- **Баг скрипта:** `for sphere, path in sphere_book` затирал `Path` иконкой — `path.write_text` падал. Переименовано в `bpath`.
+- **Проверки:** 18/18, 0 missing иконок, headless после `--import` чист. **Игрок: «все идеально».**
+- **Скрипт:** `tests/extract_chatgpt_magic2.py`.
+- **Изменённые файлы:** 18 PNG (placeholder/spells/potions), `assets/items/item_db.json`, `tests/extract_chatgpt_magic2.py`, `AGENTS.md`.
 
 ### 02.10 — merge master + WIP мага-женщины (mage_f)
 
