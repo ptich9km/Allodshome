@@ -60,6 +60,12 @@ func _note(section: String, key: String) -> String:
 
 
 func _fmt(value: Variant) -> String:
+	# ConfigFile принимает число, true/false или СТРОЧКУ В КАВЫЧКАХ.
+	# Голое `bronze` он не понимает и падает с ERR_PARSE_ERROR (43).
+	# Баг был латентным: строковых значений в DEFAULTS до 03.10 не было
+	# вовсе, поэтому ветка молчала. Первое значение-строка — metal.reference_metal.
+	if value is String:
+		return '"%s"' % str(value).replace('"', '\\"')
 	if value is float:
 		return str(value)
 	return str(value)
