@@ -296,11 +296,11 @@ static func book_item(item_key: String) -> Dictionary:
 ## tests/extract_chatgpt_magic.py из атласа ChatGPTMagic1.png), а папка
 ## sphere_books/ удалена как осиротевшая.
 const BOOK_ICONS := {
-	"Fire": "res://assets/spells/fire_ball.png",
-	"Water": "res://assets/spells/ice_missile.png",
-	"Air": "res://assets/spells/lightning.png",
-	"Earth": "res://assets/spells/stone_missile.png",
-	"Astral": "res://assets/spells/bless.png",
+	"Fire": "res://assets/spells/book_fire.png",
+	"Water": "res://assets/spells/book_water.png",
+	"Air": "res://assets/spells/book_air.png",
+	"Earth": "res://assets/spells/book_earth.png",
+	"Astral": "res://assets/spells/book_astral.png",
 }
 
 ## Синтез предмета «книга одного заклинания» (для склада и прилавка магазина).
