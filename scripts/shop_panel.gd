@@ -239,8 +239,14 @@ func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
 	if buying:
 		lines.append(tr("Цена: %d з") % price)
 	else:
-		lines.append(tr("Продать за: %d з") % maxi(1, price / 2))
+		lines.append(tr("Продать за: %d з") % _sell_price(price))
 	return lines
+
+
+## Цена продажи: цена из базы, делённая на [economy] sell_price_div.
+## Раньше делитель был зашит в четырёх местах этого файла.
+func _sell_price(price: int) -> int:
+	return maxi(1, price / maxi(1, GameConfig.geti("economy", "sell_price_div")))
 
 
 func _build_shelves() -> void:
@@ -464,12 +470,12 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 		actions.add_child(count_label)
 	var button := Button.new()
 	button.name = "Trade"
-	button.text = tr("Купить %d") % price if buying else tr("%d з") % (maxi(1, price / 2))
-	button.tooltip_text = "%s — %s" % [name, tr("продать за %d з") % (maxi(1, price / 2)) if not buying else tr("купить за %d з") % price]
+	button.text = tr("Купить %d") % price if buying else tr("%d з") % _sell_price(price)
+	button.tooltip_text = "%s — %s" % [name, tr("продать за %d з") % _sell_price(price) if not buying else tr("купить за %d з") % price]
 	button.custom_minimum_size = Vector2(0, 22)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.focus_mode = Control.FOCUS_ALL
-	button.pressed.connect(_buy_item.bind(key, price) if buying else _sell_item.bind(key, maxi(1, price / 2)))
+	button.pressed.connect(_buy_item.bind(key, price) if buying else _sell_item.bind(key, _sell_price(price)))
 	actions.add_child(button)
 	# Карточку цепляем ПОСЛЕ создания кнопки: по фокусу показывать описание
 	# должна именно кнопка, а её на момент конца функции уже нет в дереве.

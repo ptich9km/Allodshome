@@ -106,7 +106,7 @@ func _run() -> void:
 	# Ожидание считаем ОТ КОНСТАНТЫ. Раньше здесь стояло 35.0, то есть был
 	# зашит сдвиг 30, и любая его смена валила тест вместо того, чтобы
 	# проверять формулу.
-	var want_sp := 45.0 + 20.0 - Game.SP_OFFSET
+	var want_sp: float = 45.0 + 20.0 - GameConfig.getf("magic", "sp_offset")
 	_check(absf(Game.spell_power(hero, "Fire") - want_sp) < 0.01,
 		("SP = навык+разум-SP_OFFSET (получено %.1f, ждём %.1f)"
 			% [Game.spell_power(hero, "Fire"), want_sp]))

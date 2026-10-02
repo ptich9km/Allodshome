@@ -1,4 +1,4 @@
-﻿extends Node2D
+extends Node2D
 class_name Game
 
 @onready var alm_map: Node2D = $Map
@@ -68,17 +68,17 @@ static func shield_reduce(unit: Node2D, dmg: int) -> int:
 ##   равные статы            -> BASE (70 %)
 ##   защита вдвое выше       -> примерно вдвое ниже
 ##   атака вдвое выше        -> упёрётся в MAX
-const HIT_BASE := 70        # шанс при равных статах, %
-const HIT_SOFTEN := 5       # сглаживание: единица в знаменателе не даёт деления на ноль
-const HIT_MIN := 5
-const HIT_MAX := 95
-
+## Константы комбат-формул перенесены в GameConfig (assets/config/game.cfg),
+## чтобы их можно было крутить без правки кода. Значения по умолчанию равны
+## прежним константам, поэтому поведение игры не меняется.
 static func hit_chance(attack: int, defense: int) -> int:
-	var a := float(attack) + HIT_SOFTEN
-	var d := float(defense) + HIT_SOFTEN
+	var soften := GameConfig.geti("combat", "hit_soften")
+	var a := float(attack) + soften
+	var d := float(defense) + soften
 	if d <= 0.0:
-		return HIT_MAX
-	return clampi(int(round(float(HIT_BASE) * a / d)), HIT_MIN, HIT_MAX)
+		return GameConfig.geti("combat", "hit_max")
+	return clampi(int(round(float(GameConfig.geti("combat", "hit_base")) * a / d)),
+		GameConfig.geti("combat", "hit_min"), GameConfig.geti("combat", "hit_max"))
 
 ## Промах? Юниты с методами get_attack()/get_defense() участвуют полностью.
 static func is_miss(attacker: Node2D, defender: Node2D) -> bool:
@@ -127,10 +127,11 @@ static func spell_power(caster: Node2D, sphere: String) -> float:
 	var skill := 0.0
 	if caster.has_method("sphere_skill"):
 		skill = float(caster.call("sphere_skill", sphere))
-	return maxf(0.0, skill + mind - SP_OFFSET) + float(StatusEffects.stat_flat(caster, "power"))
+	return maxf(0.0, skill + mind - GameConfig.getf("magic", "sp_offset")) + float(StatusEffects.stat_flat(caster, "power"))
 
 
-## Порог силы магии: SP = навык сферы + разум - SP_OFFSET.
+## Порог силы магии: SP = навык сферы + разум - offset.
+## offset лежит в GameConfig: [magic] sp_offset.
 ##
 ## В оригинале Allods II здесь стоит 30, и константа верная ДЛЯ ОРИГИНАЛЬНЫХ
 ## статов: у мага 6-го уровня разум ~84. Наши статы в 7–10 раз меньше
@@ -141,9 +142,6 @@ static func spell_power(caster: Node2D, sphere: String) -> float:
 ## Смещение 15 выбрано игроком: на старте мага SP = 3, при прокачке навыка
 ## сферы 5 -> 15 получаем SP = 13 (+13 % урона), к 30 — SP = 28. Форма
 ## оригинала сохранена, масштаб приведён к нашим числам.
-const SP_OFFSET := 15.0
-
-
 ## Урон заклинания с учётом силы кастера и множителя заклинания.
 ## final = base * power_coef * (1 + spell_power/100)
 static func spell_damage(caster: Node2D, spell_name: String, sphere: String, base_damage: int) -> int:
@@ -158,7 +156,10 @@ static func spell_damage(caster: Node2D, spell_name: String, sphere: String, bas
 static func deal_damage(target: Node2D, dmg: int, kind: String, sphere: String, attacker: Node2D) -> int:
 	if not is_instance_valid(target) or dmg <= 0:
 		return 0
-	var final := dmg
+	# Глобальный множитель урона - главный рычаг баланса (идея из AION).
+	# Применяется здесь, в ЕДИНОЙ точке урона, поэтому множитель одинаков
+	# для ближнего боя, магии, снарядов и AoE.
+	var final := int(round(float(dmg) * GameConfig.getf("combat", "damage_multiplier")))
 	if kind == "magic":
 		# Сопротивление — процент от урона (как в оригинале)
 		var prot := unit_protection(target, sphere)
@@ -320,7 +321,6 @@ static func request_map_by_path(path: String) -> void:
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
-const ATTACK_COOLDOWN: float = 1.0
 const AGGRO_RADIUS: float = 150.0
 const DEAGGRO_RADIUS: float = 200.0
 

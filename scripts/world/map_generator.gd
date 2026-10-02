@@ -655,27 +655,35 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 		Vector2i(5, 3), Vector2i(-5, 3), Vector2i(5, -3), Vector2i(-5, -3),
 		Vector2i(3, 5), Vector2i(-3, 5), Vector2i(3, -5), Vector2i(-3, -5),
 	]
-	var guards_n := rng.randi_range(3, 5)
+	var guards_n := rng.randi_range(
+		GameConfig.zonei(_zone, "guard_count_min"), GameConfig.zonei(_zone, "guard_count_max"))
 	for i in range(guards_n):
 		var post := _post_cell(center, guard_offsets, posts_taken)
 		if post.x < 0:
 			continue
 		var set_name: String = _pick(rng, GUARD_SETS)
-		var hp := rng.randi_range(60, 100)
-		var dmg := rng.randi_range(6, 10)
+		# Стали NPC по зоне приходят из GameConfig [zone] - сейчас значения
+		# одинаковые для всех зон (было: hp 60-100, урон 6-10 зашито здесь).
+		var hp := rng.randi_range(
+			GameConfig.zonei(_zone, "guard_hp_min"), GameConfig.zonei(_zone, "guard_hp_max"))
+		var dmg := rng.randi_range(
+			GameConfig.zonei(_zone, "guard_damage_min"), GameConfig.zonei(_zone, "guard_damage_max"))
 		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg))
 	# Капитан у площади
 	var cap := _post_cell(center, [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)], posts_taken)
 	if cap.x >= 0:
-		_npcs_out.append(_npc_rec(cap, CAPTAIN_SET, "guard", false, 120, 12))
+		_npcs_out.append(_npc_rec(cap, CAPTAIN_SET, "guard", false,
+			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage")))
 	# Жители (стоят, не патрулируют) — кольца 3–4
-	var cit_n := rng.randi_range(6, 10)
+	var cit_n := rng.randi_range(
+		GameConfig.zonei(_zone, "citizen_count_min"), GameConfig.zonei(_zone, "citizen_count_max"))
 	for i in range(cit_n):
 		var post := _post_cell(center, citizens_offsets, posts_taken)
 		if post.x < 0:
 			continue
 		var set_name: String = _pick(rng, CITIZEN_SETS)
-		_npcs_out.append(_npc_rec(post, set_name, "citizen", false, 30, 0))
+		_npcs_out.append(_npc_rec(post, set_name, "citizen", false,
+			GameConfig.zonei(_zone, "citizen_hp"), 0))
 
 ## Свободный пост: клетка дороги в городе, не на площади, не занята.
 func _post_cell(center: Vector2i, offsets: Array, taken: Dictionary) -> Vector2i:
@@ -703,6 +711,13 @@ func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool, hp: 
 
 ## Этап 7: деревья/объекты в _obstacles (ID из alm_objects.json). Кластерный
 ## шум по биому; не ставим на дорогу, у дорог, в городах и у спавна/портала.
+# Плотность деревьев по зонам. Раньше была словарём прямо в коде:
+# start 0.06, mid 0.08, hard 0.10, faction 0.09. Значения из GameConfig.
+func _zone_tree_density() -> float:
+	var v := GameConfig.zonef(_zone, "tree_density")
+	return 0.08 if v < 0.0 else v
+
+
 func _place_objects(rng: RandomNumberGenerator) -> void:
 	if _obj_noise == null:
 		_obj_noise = FastNoiseLite.new()
@@ -710,7 +725,7 @@ func _place_objects(rng: RandomNumberGenerator) -> void:
 		_obj_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 		_obj_noise.frequency = 1.0 / 16.0
 		_obj_noise.fractal_octaves = 2
-	var density: float = {"start": 0.06, "mid": 0.08, "hard": 0.10, "faction": 0.09}.get(_zone, 0.08)
+	var density: float = _zone_tree_density()
 	for y in range(H):
 		for x in range(W):
 			var t := _terrain[y * W + x]
@@ -821,7 +836,9 @@ func _herb_cell_ok(cell: Vector2i) -> bool:
 ## свободных клетках, вне городов и не ближе 20 клеток к спавну.
 func _place_greys(rng: RandomNumberGenerator) -> void:
 	var cfg: Dictionary = GRAY_ZONE.get(_zone, GRAY_ZONE["mid"])
-	var count: int = rng.randi_range(int(cfg["count"][0]), int(cfg["count"][1]))
+	# Диапазоны приходят из GameConfig [zone] — их можно крутить без кода.
+	var count: int = rng.randi_range(
+		GameConfig.zonei(_zone, "gray_count_min"), GameConfig.zonei(_zone, "gray_count_max"))
 	var placed := 0
 	var tries := 0
 	while placed < count and tries < 800:
@@ -911,8 +928,10 @@ func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary
 	for i in range(cells.size()):
 		var cc: Vector2i = cells[i]
 		var set_name: String = _pick(rng, cfg["pool"])
-		var hp := rng.randi_range(int(cfg["hp"][0]), int(cfg["hp"][1]))
-		var dmg := rng.randi_range(int(cfg["dmg"][0]), int(cfg["dmg"][1]))
+		var hp := rng.randi_range(
+			GameConfig.zonei(_zone, "gray_hp_min"), GameConfig.zonei(_zone, "gray_hp_max"))
+		var dmg := rng.randi_range(
+			GameConfig.zonei(_zone, "gray_damage_min"), GameConfig.zonei(_zone, "gray_damage_max"))
 		_npcs_out.append({
 			"x": int(cc.x), "y": int(cc.y), "set": set_name,
 			"hp_max": hp, "damage": dmg,

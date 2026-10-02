@@ -34,7 +34,7 @@ var _stuck_frames := 0
 var _repath_timer := 0.0
 
 # --- Экономика (P0): золото и склад владений ---
-var gold: int = 20
+var gold: int = 20  # переопределяется из GameConfig [economy] start_gold в _ready
 var inventory: Array = []   # ключи предметов item_db ("Common iron Long Sword", "Potion ...")
 ## Экипированные предметы: слот ("weapon"/"shield"/"head"/"cloak"/"body"/"hands"/
 ## "feet"/"amulet"/"ring1"/"ring2") -> ключ item_db (см. ItemDB.EQUIP_SLOTS).
@@ -187,8 +187,10 @@ var _anim: UnitAnim = null
 
 func _ready():
 	_apply_hero_choice()
-	# Экономика (P0): стартовое золото и склад владений
-	gold = 20
+	# Экономика (P0): стартовое золото и склад владений.
+	# Стартовое золото лежит в GameConfig [economy] start_gold. ТУТ БЫЛО 20 -
+	# при стартовой цене оружия 150-600 игрок не мог купить своё же оружие.
+	gold = GameConfig.geti("economy", "start_gold")
 	inventory.clear()
 	_grant_starter_set()
 	# Только маги имеют ману и читают книги магии; воины — свитки (заряды).
@@ -614,8 +616,7 @@ func _can_move_to(pos: Vector2) -> bool:
 	return nxt == cur
 
 # --- Физика движения тела (плавный разгон/торможение, без «льда») ---
-const MOVE_ACCEL := 1100.0   # px/s² — разгон до 120 px/s за ~0.11 с
-const MOVE_DECEL := 1800.0   # px/s² — тормоз с 120 px/s за ~0.07 с
+## Разгон/торможение - в GameConfig [movement] accel/decel.
 
 ## Движение с проверкой проходимости.
 ## Сначала пробуем полный вектор; если он упирается в воду/границу карты, пробуем
@@ -631,7 +632,7 @@ func _move_checked(direction: Vector2, speed: float, delta: float):
 	var step := wanted * delta
 	if _can_move_to(global_position + step):
 		_last_move_dir = direction
-		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
+		velocity = velocity.move_toward(wanted, GameConfig.getf("movement", "accel") * delta)
 		return
 	if delta <= 0.0:
 		velocity = Vector2.ZERO
@@ -642,12 +643,12 @@ func _move_checked(direction: Vector2, speed: float, delta: float):
 	elif _can_move_to(global_position + Vector2(0.0, step.y)):
 		slide = Vector2(0.0, step.y)
 	if slide == Vector2.ZERO:
-		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 	else:
 		# Целевая скорость = разрешённый шаг / delta: по освободившейся оси полный ход,
 		# по заблокированной — ноль. Кадра «скольжения» не ускоряют.
 		_last_move_dir = slide.normalized()
-		velocity = velocity.move_toward(slide / delta, MOVE_ACCEL * delta)
+		velocity = velocity.move_toward(slide / delta, GameConfig.getf("movement", "accel") * delta)
 
 func _create_health_bar():
 	health_bar = preload("res://scripts/health_bar.gd").new()
@@ -946,9 +947,9 @@ func attack_enemy(delta):
 			# шёл через magic_damage за 0 маны — сильнее Fire_Ball за 15 маны.
 			if Game.hero_class == "mage" and weapon == "staff":
 				var sphere := _active_sphere()
-				attack_cooldown = Game.ATTACK_COOLDOWN
+				attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 				# Без маны посох бьёт как слабое физическое оружие
-				if not Game.debug_magic and has_mana and current_mana < STAFF_MANA_COST:
+				if not Game.debug_magic and has_mana and current_mana < GameConfig.geti("magic", "staff_mana_cost"):
 					Game.deal_damage(attack_target, maxi(1, get_damage_min() / 2), "physical", "", self)
 					_sound_weapon_attack()
 					return
@@ -961,7 +962,7 @@ func attack_enemy(delta):
 					Game.deal_damage(attack_target, staff_dmg, "magic", sphere, self)
 					SpellVFX.impact_burst(attack_target.global_position, sphere, false)
 				if not Game.debug_magic:
-					current_mana = maxi(0, current_mana - STAFF_MANA_COST)
+					current_mana = maxi(0, current_mana - GameConfig.geti("magic", "staff_mana_cost"))
 				_play_sphere_sound(sphere)
 				_apply_spell_experience(sphere)
 				return
@@ -970,7 +971,7 @@ func attack_enemy(delta):
 			print("Атакуем! Урон: ", damage)
 			_pending_attack_damage = damage
 			_impact_timer = UnitDB.attack_delay(anim_set_name())
-			attack_cooldown = Game.ATTACK_COOLDOWN
+			attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 		elif _impact_timer >= 0.0:
 			_impact_timer -= delta
 			if _impact_timer < 0.0:
@@ -1004,7 +1005,6 @@ func _sound_weapon_attack() -> void:
 	SoundDB.play(id)
 
 ## Мана за удар посохом (магический сферный удар).
-const STAFF_MANA_COST := 4
 
 ## Магический урон: база + Mind + навык сферы (как в Allods2).
 ## Оставлено для совместимости: реальная формула живёт в Game.spell_damage /
@@ -1375,12 +1375,9 @@ func heal_amount(amount: int) -> int:
 ## Раньше это был одиночный снаряд — попадание было одно, а по названию
 ## «сияние» ожидалось веерное сражение. Цели — до CHAIN_MAX ближайших врагов
 ## в радиусе area от точки каста; между ними рисуются молнии.
-const CHAIN_MAX := 6
-const CHAIN_MIN := 4
 ## Радиус веера вокруг точки прицела. Раньше он же был и радиусом поиска целей
 ## (max(area, 96) = 96 px), и теснота была не в веере, а в том, что цели искались
 ## от КУРСОРА без всякой проверки расстояния до мага.
-const CHAIN_RADIUS := 160.0
 
 func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
 		dmg: int, area: float, target_position: Vector2) -> void:
@@ -1389,7 +1386,7 @@ func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
 	# базы не читалась вообще, и клик в 260 px бил врагов там, сколько бы
 	# далеко от мага они ни стояли: молния летела через полкарты.
 	var reach := SpellDB.range_of(spell_name)
-	var targets: Array = _chain_targets(target_position, maxf(area, CHAIN_RADIUS),
+	var targets: Array = _chain_targets(target_position, maxf(area, GameConfig.getf("magic", "chain_radius")),
 		origin, reach)
 	if targets.is_empty():
 		# Никого в досягаемости — бьём в точку прицела, чтобы каст не пропадал
@@ -1446,7 +1443,7 @@ func _chain_targets(aim: Vector2, radius: float, origin: Vector2,
 			< b.global_position.distance_squared_to(aim))
 	var out: Array = []
 	for e in found:
-		if out.size() >= CHAIN_MAX:
+		if out.size() >= GameConfig.geti("magic", "chain_max_targets"):
 			break
 		out.append(e)
 	return out

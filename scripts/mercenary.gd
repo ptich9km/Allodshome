@@ -144,7 +144,7 @@ func _attack(target: Node2D) -> void:
 		return
 	if not Game.enemies.has(target):
 		return
-	attack_cooldown = 1.0
+	attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 	# Замах: урон и звук — в момент удара (_impact_timer обрабатывается в _physics_process)
 	_pending_target = target
 	_impact_timer = UnitDB.attack_delay(anim_set)
@@ -181,14 +181,16 @@ func heal_amount(amount: int) -> int:
 
 ## --- Производные характеристики (как у врагов/героя) для Game.deal_damage ---
 func get_attack() -> int:
-	return damage / 2 + max_hp / 30 + StatusEffects.stat_flat(self, "attack")
+	return damage / GameConfig.geti("combat", "enemy_attack_dmg_div") \
+		+ max_hp / GameConfig.geti("combat", "enemy_attack_hp_div") \
+		+ StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	var base := max_hp / 25
+	var base := max_hp / GameConfig.geti("combat", "enemy_defense_div")
 	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	return max_hp / 40
+	return max_hp / GameConfig.geti("combat", "enemy_absorption_div")
 
 ## Сопротивление в процентах. Раньше все get_protection_* были жёстко 0 —
 ## наёмник получал полный урон магией по любой стихии.

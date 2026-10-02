@@ -221,9 +221,9 @@ func _test_not_equippable() -> void:
 
 func _test_hit_chance_relative() -> void:
 	# Равные статы -> BASE.
-	_check(Game.hit_chance(10, 10) == Game.HIT_BASE,
+	_check(Game.hit_chance(10, 10) == GameConfig.geti("combat", "hit_base"),
 		"равные статы дают базовый шанс %d (получено %d)"
-			% [Game.HIT_BASE, Game.hit_chance(10, 10)])
+			% [GameConfig.geti("combat", "hit_base"), Game.hit_chance(10, 10)])
 
 	# Броня РЕАЛЬНО снижает шанс — это и было главным требованием.
 	var naked := Game.hit_chance(10, 5)
@@ -231,7 +231,7 @@ func _test_hit_chance_relative() -> void:
 	_check(naked > armored,
 		"броня снижает шанс попадания: без брони %d %%, в тяжёлой %d %%"
 			% [naked, armored])
-	_check(naked <= Game.HIT_MAX, "без брони шанс не выше максимума")
+	_check(naked <= GameConfig.geti("combat", "hit_max"), "без брони шанс не выше максимума")
 
 	# Относительность: та же броня одинаково мешает и слабому, и сильному врагу.
 	var vs_weak := Game.hit_chance(4, 23)      # гоблин
@@ -241,13 +241,13 @@ func _test_hit_chance_relative() -> void:
 	_check(vs_weak < vs_weak_naked and vs_strong < vs_strong_naked,
 		"броня снижает шанс и против слабого (%d->%d), и против сильного (%d->%d)"
 			% [vs_weak_naked, vs_weak, vs_strong_naked, vs_strong])
-	_check(vs_strong_naked <= Game.HIT_MAX and vs_strong <= Game.HIT_MAX,
+	_check(vs_strong_naked <= GameConfig.geti("combat", "hit_max") and vs_strong <= GameConfig.geti("combat", "hit_max"),
 		"сильный атакующий не выходит за максимум ни голым, ни в броне")
 
 	# Границы соблюдаются на краях.
-	_check(Game.hit_chance(0, 999) == Game.HIT_MIN, " нижний кламп %d" % Game.HIT_MIN)
-	_check(Game.hit_chance(999, 0) == Game.HIT_MAX, "верхний кламп %d" % Game.HIT_MAX)
-	_check(Game.hit_chance(0, 0) == Game.HIT_BASE, "нулевые статы не дают деления на ноль")
+	_check(Game.hit_chance(0, 999) == GameConfig.geti("combat", "hit_min"), " нижний кламп %d" % GameConfig.geti("combat", "hit_min"))
+	_check(Game.hit_chance(999, 0) == GameConfig.geti("combat", "hit_max"), "верхний кламп %d" % GameConfig.geti("combat", "hit_max"))
+	_check(Game.hit_chance(0, 0) == GameConfig.geti("combat", "hit_base"), "нулевые статы не дают деления на ноль")
 
 
 func _finish() -> void:

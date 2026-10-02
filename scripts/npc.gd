@@ -165,7 +165,7 @@ func _guard_combat(delta: float) -> bool:
 		_chase_move(delta, target)
 	else:
 		if attack_cooldown <= 0.0 and _impact_timer < 0.0:
-			attack_cooldown = 1.0
+			attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 			_impact_timer = UnitDB.attack_delay(anim_set)
 		elif _impact_timer >= 0.0:
 			_impact_timer -= delta
@@ -226,14 +226,16 @@ func _unit_sound_at(idx: int) -> int:
 
 ## --- Статы (для Game.unit_*: атака->точность, защита->уклонение) ---
 func get_attack() -> int:
-	return damage / 2 + max_hp / 30 + StatusEffects.stat_flat(self, "attack")
+	return damage / GameConfig.geti("combat", "enemy_attack_dmg_div") \
+		+ max_hp / GameConfig.geti("combat", "enemy_attack_hp_div") \
+		+ StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	var base := max_hp / 25
+	var base := max_hp / GameConfig.geti("combat", "enemy_defense_div")
 	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	return max_hp / 40
+	return max_hp / GameConfig.geti("combat", "enemy_absorption_div")
 
 func _resist(sphere: String) -> int:
 	return UnitDB.resist_of(anim_set, sphere) + StatusEffects.resist_bonus(self, sphere)
@@ -280,16 +282,18 @@ func _drop_loot() -> void:
 	var mat := "steel" if role == "guard" else "bronze"
 	var pool: Array = []
 	var gold_base := 3 + maxi(1, max_hp / 8)
-	pool.append({"gold": gold_base + randi() % maxi(1, gold_base)})
+	var gold_mult := GameConfig.getf("economy", "loot_gold_multiplier")
+	pool.append({"gold": int(round(float(gold_base + randi() % maxi(1, gold_base)) * gold_mult))})
 	# жители щедры на зелья, стражей - реже: они вооружены
-	var potion_chance := 50 if role == "citizen" else 25
+	var potion_chance := GameConfig.geti("loot", "npc_citizen_potion_chance") if role == "citizen" \
+		else GameConfig.geti("loot", "npc_guard_potion_chance")
 	if randi() % 100 < potion_chance:
 		var potion := "Potion Medium Healing" if randi() % 2 == 0 \
 			else "Potion Medium Mana"
 		if not ItemDB.find(potion).is_empty():
 			pool.append({"key": potion})
 	# снаряжение: только сражу, и не каждый раз
-	if role == "guard" and randi() % 100 < 30:
+	if role == "guard" and randi() % 100 < GameConfig.geti("loot", "npc_guard_gear_chance"):
 		var gear := _random_gear(mat)
 		if not gear.is_empty():
 			pool.append(gear)

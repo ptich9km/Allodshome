@@ -78,7 +78,7 @@ func _physics_process(delta):
 						if _corpse_timer <= 0.0:
 							queue_free()
 							return
-		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 		move_and_slide()
 		_apply_relief_stand()
 		return
@@ -120,9 +120,9 @@ func _physics_process(delta):
 			else:
 				# Держим стоп между ударами: без этого инерция от погони
 				# несёт монстра мимо игрока — он «бегает вокруг, то туда, то сюда»
-				velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+				velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 				if attack_cooldown <= 0.0 and _impact_timer < 0.0:
-					attack_cooldown = 1.0
+					attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 					# Единая точка урона (промах + поглощение бронёй) — на кадре удара,
 					# а не в начале замаха: удар звучит по анимации.
 					_impact_timer = UnitDB.attack_delay(anim_set)
@@ -174,8 +174,7 @@ func _apply_relief_stand() -> void:
 		health_bar.position.y = -(h + z + _anim.sprite_height() + 6.0)  # над головой
 
 # --- Физика движения (плавный разгон/торможение + проходимость) ---
-const MOVE_ACCEL := 1100.0
-const MOVE_DECEL := 1800.0
+## Разгон/торможение - в GameConfig [movement] accel/decel.
 
 ## Движение с проверкой проходимости карты (летающие игнорируют землю).
 ## Как у игрока: полный вектор -> X-only -> Y-only. Иначе, упираясь в стену или
@@ -186,7 +185,7 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	var wanted := direction * speed
 	var step := wanted * delta
 	if _can_step(step):
-		velocity = velocity.move_toward(wanted, MOVE_ACCEL * delta)
+		velocity = velocity.move_toward(wanted, GameConfig.getf("movement", "accel") * delta)
 		return
 	if delta <= 0.0:
 		velocity = Vector2.ZERO
@@ -197,9 +196,9 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	elif _can_step(Vector2(0.0, step.y)):
 		slide = Vector2(0.0, step.y)
 	if slide == Vector2.ZERO:
-		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 	else:
-		velocity = velocity.move_toward(slide / delta, MOVE_ACCEL * delta)
+		velocity = velocity.move_toward(slide / delta, GameConfig.getf("movement", "accel") * delta)
 
 ## Разрешён ли сдвиг: проходимая клетка (летающие игнорируют землю). Выход из
 ## СВОЕЙ непроходимой клетки разрешаем — иначе враг не сможет выбраться сам.
@@ -259,23 +258,25 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			wp = _path[0]
 			_move_checked(Game.safe_dir(global_position, wp), effective_speed(), delta)
 		else:
-			velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+			velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, MOVE_DECEL * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 
 ## --- Производные характеристики (по данным монстра, как у героя) ---
 ## Применяются через Game.unit_*: атака->точность, защита->уклонение,
 ## поглощение->броня, защиты -> защита от стихий (для магии).
 
 func get_attack() -> int:
-	return damage / 2 + max_hp / 30 + StatusEffects.stat_flat(self, "attack")
+	return damage / GameConfig.geti("combat", "enemy_attack_dmg_div") \
+		+ max_hp / GameConfig.geti("combat", "enemy_attack_hp_div") \
+		+ StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	var base := max_hp / 25
+	var base := max_hp / GameConfig.geti("combat", "enemy_defense_div")
 	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	return max_hp / 40
+	return max_hp / GameConfig.geti("combat", "enemy_absorption_div")
 
 ## Сопротивление стихии — из данных набора (assets/units/units_db.json, поле
 ## "resist"). Раньше было max_hp/60, из-за чего босс с большим HP становился
@@ -373,10 +374,11 @@ func _relief_here() -> float:
 func _make_loot() -> Array:
 	var pool: Array = []
 	var gold_base := 4 + max_hp / 5
-	pool.append({"gold": gold_base + randi() % gold_base})
-	if randi() % 100 < 45:
+	var gold_mult := GameConfig.getf("economy", "loot_gold_multiplier")
+	pool.append({"gold": int(round(float(gold_base + randi() % gold_base) * gold_mult))})
+	if randi() % 100 < GameConfig.geti("loot", "enemy_potion_chance"):
 		pool.append({"key": "Potion Medium Healing" if randi() % 2 == 0 else "Potion Mana Regeneration"})
-	if randi() % 100 < 35:
+	if randi() % 100 < GameConfig.geti("loot", "enemy_gear_chance"):
 		var item := _random_gear()
 		if not item.is_empty():
 			pool.append(item)
