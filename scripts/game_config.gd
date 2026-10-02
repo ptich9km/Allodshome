@@ -126,6 +126,7 @@ const DEFAULTS := {
 		"start.citizen_count_min": 6,  "start.citizen_count_max": 10,
 		"start.captain_hp": 120,       "start.captain_damage": 12,
 		"start.interest_points": 0,    # руины/стоянки/святилища — этап спавна
+		"start.poi_hp": 60,           "start.poi_damage": 6,
 		"start.tree_density": 0.06,
 
 		"mid.gray_count_min": 10,      "mid.gray_count_max": 14,
@@ -138,6 +139,7 @@ const DEFAULTS := {
 		"mid.citizen_count_min": 6,    "mid.citizen_count_max": 10,
 		"mid.captain_hp": 120,         "mid.captain_damage": 12,
 		"mid.interest_points": 0,
+		"mid.poi_hp": 60,             "mid.poi_damage": 6,
 		"mid.tree_density": 0.08,
 
 		"hard.gray_count_min": 14,     "hard.gray_count_max": 18,
@@ -150,18 +152,20 @@ const DEFAULTS := {
 		"hard.citizen_count_min": 6,   "hard.citizen_count_max": 10,
 		"hard.captain_hp": 120,        "hard.captain_damage": 12,
 		"hard.interest_points": 0,
+		"hard.poi_hp": 60,            "hard.poi_damage": 6,
 		"hard.tree_density": 0.10,
 
 		"faction.gray_count_min": 12,  "faction.gray_count_max": 16,
 		"faction.gray_hp_min": 50,     "faction.gray_hp_max": 95,
 		"faction.gray_damage_min": 7,  "faction.gray_damage_max": 11,
 		"faction.guard_hp_min": 60,    "faction.guard_hp_max": 100,
-"faction.guard_damage_min": 6, "faction.guard_damage_max": 10,
+		"faction.guard_damage_min": 6, "faction.guard_damage_max": 10,
 		"faction.guard_count_min": 3,  "faction.guard_count_max": 5,
 		"faction.citizen_hp": 30,
 		"faction.citizen_count_min": 6, "faction.citizen_count_max": 10,
 		"faction.captain_hp": 120,     "faction.captain_damage": 12,
 		"faction.interest_points": 0,
+		"faction.poi_hp": 60,         "faction.poi_damage": 6,
 		"faction.tree_density": 0.09,
 	},
 }

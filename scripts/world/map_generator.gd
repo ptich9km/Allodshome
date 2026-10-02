@@ -29,6 +29,7 @@ const STREAM_TERRAIN := -4200    ## 42 - 4242 (rng.seed и elev_noise.seed)
 const STREAM_JITTER := 5757      ## 9999 - 4242 (jitter_noise.seed)
 const STREAM_INTERIOR := -4235   ## 7 - 4242 (_interior_noise.seed)
 const STREAM_INTERIOR_HI := -4143 ## 99 - 4242 (_interior_hi.seed)
+const STREAM_POI := -3042        ## 1200 - 4242 (точки интереса, 03.10)
 
 ## Куда писать результат (задаётся в generate()).
 var _out_dir: String = ""
@@ -62,6 +63,7 @@ var _reserved := {}           # Vector2i -> true (здания, спавн, по
 var _structures_out: Array = []   # {x, y, type_id}
 var _npcs_out: Array = []         # {x, y, set, role, patrol, post, hp_max, damage}
 var _herbs_out: Array = []        # {x, y, item, icon}
+var _interest_out: Array = []     # {x, y, kind, label, members} — якоря точек интереса
 var _obj_noise: FastNoiseLite
 
 # Transition DB
@@ -240,6 +242,12 @@ func _generate() -> void:
 
 	# 9. Серые: кластеры у дорог и в лесу (только на не-занятых клетках)
 	_place_greys(rng)
+
+	# 9b. Точки интереса вне городов: статичные группы NPC. Выключено по
+	# умолчанию (interest_points = 0 во всех зонах), включает игрок.
+	# Отдельный поток RNG, чтобы включение точек интереса НЕ сдвигало
+	# деревья, травы и Серых — иначе старая карта менялась бы целиком.
+	_place_interest_points(rng_from_seed(_seed + STREAM_POI))
 
 	# 10. Tiles with transitions from DB
 	for y in range(H):
@@ -708,6 +716,116 @@ func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool, hp: 
 		"post": [post.x, post.y],
 		"hp_max": hp, "damage": dmg,
 	}
+
+## Этап 8: точки интереса ВНЕ городов.
+##
+## Что это и зачем. Решение игрока (03.10): «масштаб по зонам + точки
+## интереса, без бродячих NPC». То есть мир вне городов не должен быть
+## пустым (сейчас там только Серые и деревья), но и бродячих NPC, которых
+## нигде не найти, игрок не хочет. Поэтому точка интереса — это маленькая
+## СТАТИЧНАЯ группа NPC на одном месте: стоят, не патрулируют, не лезут
+## ни в какие дела.
+##
+## Почему НЕ свой sidecar. Первая мысль была завести .interest.json и
+## новый загрузчик в alm_map.gd. Отказался сознательно: точка интереса —
+## это просто NPC, а NPC уже умеют грузиться из .npcs.json. Новый файл +
+## новый путь загрузки + новый код спавна = втрое больше мест, где можно
+## ошибиться, ради функции, выключенной по умолчанию. Поэтому POI пишутся
+## обычными записями в .npcs.json с добавленным полем "poi".
+##
+## Выключено по умолчанию: interest_points = 0 во всех зонах ([zone]).
+## Пока игрок не поднимет число, поведение игры не отличается от прежнего.
+const POI_KINDS := [
+	# kind -> наборы NPC. Наборы проверены по assets/units/units_db.json:
+	# humans/militia из заметок §8.2 В БАЗЕ НЕТ, militia не существует —
+	# поставил реальные. Ошибку поймал тест npc_spawn_smoke, не ревью.
+	{"kind": "camp",   "sets": ["humans/clubman", "humans/axeman"], "label": "Стоянка"},
+	{"kind": "ruins",  "sets": ["humans/archer", "humans/xbowman"], "label": "Руины"},
+	{"kind": "shrine", "sets": ["humans/swordsman_", "humans/pikeman_"], "label": "Святилище"},
+]
+
+## Минимальные дистанции POI (клетки). Отдельны от трав: точка интереса
+## должна быть заметна издалека, трава — нет.
+const POI_MIN_CITY_DISTANCE := 12     # не ближе города
+const POI_MIN_SPAWN_DISTANCE := 14    # не ближе спавна/портала
+const POI_MIN_EACH_OTHER := 16         # разрежены между собой
+
+
+func _place_interest_points(rng: RandomNumberGenerator) -> void:
+	var target := GameConfig.zonei(_zone, "interest_points")
+	if target <= 0:
+		print("POI: выключено (interest_points=%d в зоне %s)" % [target, _zone])
+		return
+	var placed := 0
+	var tries := 0
+	while placed < target and tries < 600:
+		tries += 1
+		var anchor := Vector2i(rng.randi_range(3, W - 4), rng.randi_range(3, H - 4))
+		if not _poi_cell_ok(anchor):
+			continue
+		var kind: Dictionary = POI_KINDS[rng.randi() % POI_KINDS.size()]
+		# небольшая группа вокруг якоря: 2-3 NPC, стоят рядом
+		var members := rng.randi_range(2, 3)
+		var hp := GameConfig.zonei(_zone, "poi_hp")
+		var dmg := GameConfig.zonei(_zone, "poi_damage")
+		var taken := 0
+		for i in range(members):
+			var spot := anchor + Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
+			if not _poi_spot_ok(spot):
+				continue
+			var set_name: String = str(kind["sets"][i % (kind["sets"] as Array).size()])
+			var rec := _npc_rec(spot, set_name, "guard", false, hp, dmg)
+			rec["poi"] = str(kind["kind"])
+			rec["poi_label"] = str(kind["label"])
+			_npcs_out.append(rec)
+			taken += 1
+		if taken > 0:
+			_interest_out.append({
+				"x": anchor.x, "y": anchor.y,
+				"kind": str(kind["kind"]), "label": str(kind["label"]),
+				"members": taken,
+			})
+			placed += 1
+	print("POI: %d/%d kind=%s" % [placed, target,
+		", ".join(POI_KINDS.map(func(k: Dictionary) -> String: return str(k["kind"])))])
+
+
+## Якорь точки интереса: суша, не в городе, не у спавна/портала, не на дороге,
+## не занято объектом. Как _herb_cell_ok, но с другими дистанциями.
+func _poi_cell_ok(cell: Vector2i) -> bool:
+	if cell.x < 3 or cell.y < 3 or cell.x >= W - 3 or cell.y >= H - 3:
+		return false
+	var terrain := _terrain[cell.y * W + cell.x]
+	if terrain != 0 and terrain != 4:      # трава или почва; воду/горы/песок/грязь — нет
+		return false
+	if _obstacles[cell.y * W + cell.x] != 0:
+		return false
+	if _reserved.has(cell) or _near_road(cell):
+		return false
+	if _near_city(cell, POI_MIN_CITY_DISTANCE):
+		return false
+	if _near_point(cell, _spawn_pos, POI_MIN_SPAWN_DISTANCE):
+		return false
+	if _near_point(cell, _portal_pos, POI_MIN_SPAWN_DISTANCE):
+		return false
+	for record in _interest_out:
+		var dx := absi(cell.x - int(record.get("x", -1)))
+		var dy := absi(cell.y - int(record.get("y", -1)))
+		if dx < POI_MIN_EACH_OTHER and dy < POI_MIN_EACH_OTHER:
+			return false
+	return true
+
+
+func _poi_spot_ok(cell: Vector2i) -> bool:
+	if cell.x < 2 or cell.y < 2 or cell.x >= W - 2 or cell.y >= H - 2:
+		return false
+	if _obstacles[cell.y * W + cell.x] != 0 or _reserved.has(cell):
+		return false
+	for record in _npcs_out:
+		if int(record.get("x", -1)) == cell.x and int(record.get("y", -1)) == cell.y:
+			return false
+	return true
+
 
 ## Этап 7: деревья/объекты в _obstacles (ID из alm_objects.json). Кластерный
 ## шум по биому; не ставим на дорогу, у дорог, в городах и у спавна/портала.
