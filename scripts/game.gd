@@ -32,7 +32,10 @@ static var pending_scroll: Dictionary = {}   # прицеливание свит
 static var pending_spell: Dictionary = {}    # выбор заклинания из книги: {"name"}
 static var hotbar: Dictionary = {}           # быстрый вызов: слот 0..8 (клавиши 1..9) -> имя заклинания
 static var _spell_targeting_frame: int = -1  # кадр, когда начато прицеливание (защита от двойного каста)
-static var debug_magic: bool = true  # ВРЕМЕННО: все заклинания + бесконечная мана
+## Отладочные переключатели. Источник правды — game.cfg [debug], чтобы не
+## править код ради каждой отладки. Значение читается ОДИН раз при старте;
+## тесты и дебаг присваивают переменную напрямую как раньше (перекрытие).
+static var debug_magic: bool = GameConfig.geti("debug", "all_magic") != 0
 
 # --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
 static func apply_shield(unit: Node2D, strength: int, seconds: float) -> void:

@@ -13,7 +13,7 @@ class_name GameUI
 @onready var minimap_rect: ColorRect = $MinimapPanel/MinimapMargin/MinimapRect
 @onready var coords_label: Label = $CoordsLabel
 
-var show_coords := false
+var show_coords := GameConfig.geti("debug", "show_coords") != 0
 var hero_portrait: Texture2D = null   # дефолтный портрет героя (сброс ховера)
 var _hover_name := ""
 var cmd_buttons: Array = []
