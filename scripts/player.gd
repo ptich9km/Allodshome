@@ -54,6 +54,12 @@ const SKILL_NAMES := [
 var experience := {}        # name -> очки опыта по навыку
 const UNIT_EXP_BASE := 100  # множитель опыта цели (Template.Experience у разработчиков)
 
+## База опыта за урон/убийство — из конфига [progression] unit_exp_base.
+## Константа выше осталась запасным значением и перекрытием для тестов.
+func _unit_exp_base() -> int:
+	var v := GameConfig.geti("progression", "unit_exp_base")
+	return UNIT_EXP_BASE if v <= 0 else v
+
 ## Очки опыта, соответствующие уровню навыка (обратная формула).
 static func skill_to_exp(skill: int) -> int:
 	return int((pow(1.1, float(skill)) - 1.0) * 1000.0)
@@ -129,7 +135,7 @@ func _apply_attack_experience(target: Node2D, damage: int) -> void:
 	var target_hp := 50
 	if "max_hp" in target:
 		target_hp = maxi(int(target.max_hp), 1)
-	var f := float(damage) / float(target_hp) * UNIT_EXP_BASE * (1.0 + mind / 100.0)
+	var f := float(damage) / float(target_hp) * _unit_exp_base() * (1.0 + mind / 100.0)
 	var target_cur := 0
 	if "current_hp" in target:
 		target_cur = int(target.current_hp)
@@ -419,6 +425,9 @@ func _calc_speed() -> float:
 	var reaction := 2 * agility
 	var base := clampf(float(reaction) / 5.0 + 12.0, 12.0, 255.0)
 	var speed := base * 7.5
+	# Общий множитель скорости из конфига [movement] speed_multiplier
+	# (по умолчанию 1.0, то есть ничего не меняет) — ручка для баланса и тестов.
+	speed *= GameConfig.getf("movement", "speed_multiplier")
 	# Нагрузка (вес предметов в инвентаре): перегруз замедляет до 0.5x
 	speed *= _load_penalty()
 	return speed

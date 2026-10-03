@@ -289,6 +289,24 @@ const ZONE_CITY_COUNTS := {
 const CITY_RADIUS := 8
 const CITY_GAP := 2
 
+## Радиус и зазор города — из конфига [spawn]. Константы выше остались
+## запасным значением и перекрытием для тестов, которые подставляют свои.
+static func city_radius() -> int:
+	var v := GameConfig.geti("spawn", "city_radius")
+	return CITY_RADIUS if v <= 0 else v
+
+static func city_gap() -> int:
+	var v := GameConfig.geti("spawn", "city_gap")
+	return CITY_GAP if v <= 0 else v
+
+static func herb_region_grid() -> int:
+	var v := GameConfig.geti("spawn", "herb_region_grid")
+	return HERB_REGION_GRID if v <= 0 else v
+
+static func herb_min_distance() -> int:
+	var v := GameConfig.geti("spawn", "herb_min_distance")
+	return HERB_MIN_DISTANCE if v <= 0 else v
+
 ## Выступ здания вверх для КАЖДОГО проверяемого футпринта (full_height − h).
 ## Передаётся в _footprint_fits через поле: GDScript не даёт передавать его
 ## аргументом без засорения сигнатуры у всех вызывающих.
@@ -382,7 +400,7 @@ func _place_cities(rng: RandomNumberGenerator) -> void:
 		if not far_enough:
 			continue
 		_cities.append({"pos": p, "faction": _faction_for(_cities.size())})
-		_fill_city_oval(p, CITY_RADIUS, CITY_RADIUS)
+		_fill_city_oval(p, city_radius(), city_radius())
 	print("CITIES: %d/%d (zone=%s)" % [_cities.size(), count, _zone])
 
 ## Присвоение фракции городу (метка-данные; арта/маркеров пока нет).
@@ -600,7 +618,7 @@ func _place_city_building(center: Vector2i, spec: Dictionary) -> bool:
 	var full_h: int = int(spec.get("fh", h))
 	var vis_rows: int = maxi(0, full_h - h)  # визуальный выступ здания выше футпринта
 	_pending_vis_rows = vis_rows
-	for r in range(2, CITY_RADIUS + 1):
+	for r in range(2, city_radius() + 1):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if abs(dx) != r and abs(dy) != r:
@@ -634,8 +652,12 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 			if _terrain[c.y * W + c.x] != 3:
 				return false
 	var vis_rows := _pending_vis_rows
-	for yy in range(-1 - vis_rows, h + 1):
-		for xx in range(-1, w + 1):
+	# Зазор берётся из [spawn] city_gap. Раньше здесь стоял зашитый 1, хотя
+	# константа CITY_GAP и комментарий обещали 2 — то есть решение игрока
+	# от 26.09 («зазор 1 -> 2») в коде не было применено, и city_layout_smoke
+	# подстроился под факт (`gap >= CITY_GAP - 1`).
+	for yy in range(-city_gap() - vis_rows, h + city_gap()):
+		for xx in range(-city_gap(), w + city_gap()):
 			var c := tl + Vector2i(xx, yy)
 			if c.x < 1 or c.y < 1 or c.x >= W - 1 or c.y >= H - 1:
 				return false
@@ -643,7 +665,7 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 				return false
 			# Кольцо вокруг здания шириной CITY_GAP свободно от других зданий.
 			var d := maxi(abs(c.x - center.x), abs(c.y - center.y))
-			if d <= 1 or d > CITY_RADIUS:
+			if d <= 1 or d > city_radius():
 				return false
 	return true
 
@@ -892,10 +914,10 @@ func _place_herbs(rng: RandomNumberGenerator) -> void:
 	var target_count: int = int(HERB_TARGET_COUNTS.get(_zone, 26))
 	var herb_index := rng.randi() % HERB_ITEMS.size()
 	var regions_filled := 0
-	var region_width := W / HERB_REGION_GRID
-	var region_height := H / HERB_REGION_GRID
-	for region_y in range(HERB_REGION_GRID):
-		for region_x in range(HERB_REGION_GRID):
+	var region_width := W / herb_region_grid()
+	var region_height := H / herb_region_grid()
+	for region_y in range(herb_region_grid()):
+		for region_x in range(herb_region_grid()):
 			var min_x := region_x * region_width + 2
 			var max_x := mini((region_x + 1) * region_width - 3, W - 3)
 			var min_y := region_y * region_height + 2
@@ -915,7 +937,7 @@ func _place_herbs(rng: RandomNumberGenerator) -> void:
 			continue
 		herb_index = _append_herb(cell, herb_index)
 	print("HERBS: %d/%d regions=%d/%d min_distance=%d" % [
-		_herbs_out.size(), target_count, regions_filled, HERB_REGION_GRID * HERB_REGION_GRID, HERB_MIN_DISTANCE])
+		_herbs_out.size(), target_count, regions_filled, herb_region_grid() * herb_region_grid(), herb_min_distance()])
 
 func _append_herb(cell: Vector2i, herb_index: int) -> int:
 	var herb: Dictionary = HERB_ITEMS[herb_index % HERB_ITEMS.size()]
@@ -929,7 +951,7 @@ func _herb_spacing_ok(cell: Vector2i) -> bool:
 	for record in _herbs_out:
 		var dx := absi(cell.x - int(record.get("x", -1)))
 		var dy := absi(cell.y - int(record.get("y", -1)))
-		if dx < HERB_MIN_DISTANCE and dy < HERB_MIN_DISTANCE:
+		if dx < herb_min_distance() and dy < herb_min_distance():
 			return false
 	return true
 

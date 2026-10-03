@@ -33,8 +33,6 @@ const NOTES := {
 	"magic.sp_offset": "SP = навык + разум - это",
 	"economy.start_gold": "СТАРТОВОЕ ЗОЛОТО. Сейчас 20, а оружие стоит 150-600.",
 	"economy.sell_price_div": "продажа в магазине = цена / это",
-	"metal.price_per_defence": "золота за единицу защиты. Проверено: Crossbow = слиток x 1600",
-	"metal.price_per_damage": "золота за единицу среднего урона",
 	"spawn.tree_density": "плотность деревьев на карте",
 	"mob_tier.hp_multiplier": "множитель HP по тиру моба (идея из AION). Тиров пока нет.",
 }

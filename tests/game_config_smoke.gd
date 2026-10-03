@@ -35,8 +35,6 @@ const RANGES := {
 	"loot.npc_citizen_potion_chance": [0, 100],
 	"loot.npc_guard_potion_chance": [0, 100],
 	"loot.npc_guard_gear_chance": [0, 100],
-	"metal.price_per_defence": [1, 1000000],
-	"metal.price_per_damage": [1, 1000000],
 	"metal.absorption_min": [0, 100],
 	"metal.absorption_max": [0, 100],
 	"spawn.tree_density": [0.0, 1.0],

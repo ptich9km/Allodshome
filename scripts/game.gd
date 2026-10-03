@@ -114,7 +114,7 @@ static func unit_protection(u: Node2D, sphere: String) -> int:
 		return 0
 	var m := "get_protection_%s" % sphere.to_lower()
 	if u.has_method(m):
-		return clampi(int(u.call(m)), 0, 95)
+		return clampi(int(u.call(m)), 0, GameConfig.geti("combat", "protection_max"))
 	return 0
 
 ## --- Сила магии: ОДИН стат на урон, лечение, щит и вампиризм ---
@@ -285,6 +285,12 @@ var _autosave_accum: float = 0.0
 ## через 60 с после старта, а не сразу, поэтому отдельного "минимального
 ## времени" не нужно.
 const AUTOSAVE_INTERVAL := 60.0
+
+## Интервал автосейва — из конфига [autosave] interval. Константа выше
+## осталась как запасное значение и как перекрытие для тестов.
+static func autosave_interval() -> float:
+	var v := GameConfig.getf("autosave", "interval")
+	return AUTOSAVE_INTERVAL if v <= 0.0 else v
 
 # --- Выбор героя на старте (сцена character_select) ---
 static var hero_class: String = "warrior"   # warrior | mage
@@ -1416,7 +1422,7 @@ func _set_menu_status(text: String) -> void:
 ## игрок жмёт «Сохранить» и тут же получает автосейв поверх).
 func _autosave_tick(delta: float) -> void:
 	_autosave_accum += delta
-	if _autosave_accum < AUTOSAVE_INTERVAL:
+	if _autosave_accum < autosave_interval():
 		return
 	_autosave_accum = 0.0
 	if _save_menu != null and is_instance_valid(_save_menu):

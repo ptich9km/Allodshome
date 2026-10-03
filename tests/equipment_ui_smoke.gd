@@ -12,6 +12,8 @@ extends SceneTree
 ## Запуск: godot --headless --path . --script res://tests/equipment_ui_smoke.gd
 
 var _fails: Array[String] = []
+var _checks := 0
+var _sections_done := {}
 
 func _initialize() -> void:
 	Game.hero_stats = {"body": 12, "agility": 11, "mind": 9, "spirit": 8,
@@ -24,9 +26,20 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _check(ok: bool, what: String) -> void:
+	_checks += 1
 	if not ok:
 		_fails.append(what)
 	print("EQPUI: %s %s" % ["ok  " if ok else "FAIL", what])
+
+## Секция проверок обязана ДОЙТИ до конца и отметиться здесь. Если она
+## оборвалась ошибкой (как было с Nil вместо словаря), отметки не будет —
+## и _report() упадёт. Раньше этого механизма не было, поэтому оборванная
+## секция давала RESULT: OK.
+func _finish_section(name: String) -> void:
+	_sections_done[name] = true
+
+const SECTIONS := ["panel", "slot_mapping", "rings", "two_handed",
+	"unequip", "highlight", "stats_bars"]
 
 func _run() -> void:
 	var packed: PackedScene = load("res://scenes/main.tscn")
@@ -57,7 +70,23 @@ func _run() -> void:
 # --- 1. Панель собрана и в пределах окна ------------------------------------
 
 func _test_panel(ui) -> void:
-	var slots: Dictionary = ui.get("_equip_slots")
+	# Поле `_equip_slots` живёт в InventoryPanel (scripts/inventory_panel.gd),
+	# а НЕ в GameUI. Раньше здесь стояло ui.get("_equip_slots") — это Nil, на
+	# присвоении к типизированной Dictionary Godot ронял SCRIPT ERROR, функция
+	# прерывалась, а тест всё равно печатал RESULT: OK. То есть ВСЕ проверки
+	# экипировки не выполнялись, а тест был зелёным.
+	var panel: Node = ui.get("_inventory_panel")
+	if panel == null or not is_instance_valid(panel):
+		_check(false, "склад открыт: InventoryPanel создан")
+		_finish_section("panel")
+		return
+	_check(true, "склад открыт: InventoryPanel создан")
+	var slots_v: Variant = panel.get("_equip_slots")
+	if typeof(slots_v) != TYPE_DICTIONARY:
+		_check(false, "_equip_slots — словарь (получено %s)" % type_string(typeof(slots_v)))
+		_finish_section("panel")
+		return
+	var slots: Dictionary = slots_v
 	_check(slots.size() == ItemDB.EQUIP_SLOTS.size(),
 		"слотов столько же, сколько в EQUIP_SLOTS (%d)" % slots.size())
 	for slot in ItemDB.EQUIP_SLOTS:
@@ -70,15 +99,24 @@ func _test_panel(ui) -> void:
 		if icon != null:
 			_check(icon.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
 				"иконка слота %s не обрезается (KEEP_ASPECT_CENTERED)" % slot)
-	_check(ui.get("_doll") is TextureRect, "кукла (полноростовый спрайт) на месте")
-	var panel: Control = ui.get_node_or_null("StatsPanel")
-	if panel != null:
-		# Headless-вьюпорт маленький, поэтому проверяем не абсолютные координаты,
-		# а то, что панель имеет нормальный размер (в игре якоря держат её справа).
-		_check(panel.size.x > 300.0 and panel.size.y > 400.0,
-			"правая панель имеет полноразмерную геометрию (%.0f×%.0f)" % [panel.size.x, panel.size.y])
+	# Портрет героя. Раньше здесь было `_doll` — такого поля в ui.gd НЕТ ни
+	# разу за всё время (проверено), кукла называется mini_portrait. Ошибка была
+	# спрятана: секция падала на Nil раньше этой строки и до неё не доходила.
+	_check(ui.get("mini_portrait") is TextureRect,
+		"мини-портрет героя на месте (поле mini_portrait)")
+	var stats_panel: Control = ui.get_node_or_null("StatsPanel")
+	if stats_panel != null:
+		# Правая панель по дизайну 180×370 (журнал 29.09), поэтому проверяем НЕ
+		# 300×400 — на headless-вьюпорте ширину ещё и масштабирует. Ловим только
+		# «панель схлопнулась», а не конкретный размер.
+		_check(stats_panel.size.x >= 150.0 and stats_panel.size.y >= 300.0,
+			"правая панель имеет разумную геометрию (%.0f×%.0f)"
+				% [stats_panel.size.x, stats_panel.size.y])
+	else:
+		_check(false, "StatsPanel существует")
 	_check(ui.get("_hp_label") is Label, "метка ЖИЗНЬ создана")
 	_check(ui.get("_mp_label") is Label, "метка МАНА создана")
+	_finish_section("panel")
 
 # --- 2. Маппинг типов на слоты ----------------------------------------------
 
@@ -111,6 +149,7 @@ func _test_slot_mapping() -> void:
 		if not it.is_empty():
 			_check(ItemDB.slot_of(it) == str(expect[key]),
 				"%s -> слот %s (получено %s)" % [key, expect[key], ItemDB.slot_of(it)])
+	_finish_section("slot_mapping")
 
 # --- 3. Кольца: ring1, затем ring2 -------------------------------------------
 
@@ -122,6 +161,7 @@ func _test_rings(player: Player) -> void:
 			break
 	_check(ring_key != "", "в базе есть кольцо")
 	if ring_key == "":
+		_finish_section("rings")
 		return
 	var ring := ItemDB.find(ring_key)
 	_check(player.equip_item(ring), "кольцо надевается")
@@ -130,6 +170,7 @@ func _test_rings(player: Player) -> void:
 	_check(str(player.equipped.get("ring2", "")) == ring_key, "второе кольцо — в ring2")
 	player.equipped.erase("ring1")
 	player.equipped.erase("ring2")
+	_finish_section("rings")
 
 # --- 4. Двуручное освобождает щит -------------------------------------------
 
@@ -142,12 +183,14 @@ func _test_two_handed(player: Player) -> void:
 			break
 	_check(th_key != "", "в базе есть двуручный меч")
 	if th_key == "":
+		_finish_section("two_handed")
 		return
 	player.equip_item(ItemDB.find("Common bronze Buckler"))
 	_check(player.equipped.has("shield"), "щит надет перед двуручником")
 	player.equip_item(ItemDB.find(th_key))
 	_check(not player.equipped.has("shield"), "двуручный меч снял щит")
 	player.unequip_slot("weapon")
+	_finish_section("two_handed")
 
 # --- 5. Клик по заполненному слоту снимает предмет ---------------------------
 
@@ -165,6 +208,7 @@ func _test_unequip_slot(ui, player: Player) -> void:
 		inv.call("_on_slot_clicked", "weapon")
 	_check(not player.equipped.has("weapon"), "клик по слоту снял оружие")
 	_check(player.inventory.has(key), "снятый предмет вернулся в инвентарь (%s)" % key)
+	_finish_section("unequip")
 
 # --- 6. Подсветка подходящих предметов по пустому слоту ----------------------
 
@@ -177,6 +221,7 @@ func _test_highlight(ui, player: Player) -> void:
 			break
 	_check(helm_key != "", "в базе есть шлем")
 	if helm_key == "":
+		_finish_section("highlight")
 		return
 	# Подсветка слотов живёт в InventoryPanel (_highlight_slot,
 	# _item_matches_slot), а не в GameUI: слоты экипировки переехали в панель
@@ -185,6 +230,7 @@ func _test_highlight(ui, player: Player) -> void:
 	var inv = ui.get("_inventory_panel")
 	if inv == null or not inv.has_method("_item_matches_slot"):
 		_check(false, "панель склада доступна для проверки подсветки")
+		_finish_section("highlight")
 		return
 	inv.set("_highlight_slot", "head")
 	_check(str(inv.get("_highlight_slot")) == "head", "подсветка включена для слота head")
@@ -196,6 +242,7 @@ func _test_highlight(ui, player: Player) -> void:
 	_check(str(inv.get("_highlight_slot")) == "", "подсветка сброшена")
 	_check(bool(inv.call("_item_matches_slot", ItemDB.find("Common iron Long Sword"))),
 		"без подсветки подходит любой предмет")
+	_finish_section("highlight")
 
 # --- 7. Статы обновлены ------------------------------------------------
 
@@ -208,8 +255,20 @@ func _test_stats_bars(ui, player: Player) -> void:
 	if labels.has("attrs"):
 		var t := str((labels["attrs"] as Label).text)
 		_check(t.contains("Тело"), "строка атрибутов заполнена (%s)" % t)
+	_finish_section("stats_bars")
 
 func _report() -> void:
+	# Каждая секция обязана была отметиться. Оборванная секция = недочитанные
+	# проверки, и раньше это молча считалось успехом.
+	var lost: Array[String] = []
+	for s in SECTIONS:
+		if not _sections_done.get(s, false):
+			lost.append(s)
+	if not lost.is_empty():
+		_fails.append("секции не дошли до конца: %s (их проверки НЕ выполнялись)"
+				% ", ".join(lost))
+		print("EQPUI: FAIL секции не дошли до конца: %s" % ", ".join(lost))
+	print("EQPUI: checks=%d fails=%d" % [_checks, _fails.size()])
 	if _fails.is_empty():
 		print("RESULT: OK")
 		quit(0)

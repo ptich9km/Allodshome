@@ -125,18 +125,21 @@ func _test_no_overlap() -> void:
 		"здания не пересекаются (включая выступ вверх), пар: %d %s"
 			% [overlaps.size(), str(overlaps.duplicate().slice(0, 3))])
 
-	# Зазор: между соседними прямоугольниками хотя бы CITY_GAP-1 свободных клеток.
+	# Зазор: между соседними прямоугольниками хотя бы city_gap свободных клеток.
+	# Раньше проверка была `CITY_GAP - 1`, то есть >= 1 — она подстроилась под
+	# фактический зашитый в коде зазор 1 и молча разрешала ему расти.
+	# Теперь зазор реально берётся из конфига, и проверка требует честного значения.
 	var too_close: Array = []
 	for i in range(boxes.size()):
 		for j in range(i + 1, boxes.size()):
 			var a2: Dictionary = boxes[i]
 			var b2: Dictionary = boxes[j]
 			var g := _gap_between(a2, b2)
-			if g < MapGenerator.CITY_GAP - 1:
+			if g < MapGenerator.city_gap():
 				too_close.append([a2["id"], b2["id"], g])
 	_check(too_close.is_empty(),
 		"между зданиями не меньше %d клеток, нарушений: %d %s"
-			% [MapGenerator.CITY_GAP - 1, too_close.size(), str(too_close.duplicate().slice(0, 3))])
+			% [MapGenerator.city_gap(), too_close.size(), str(too_close.duplicate().slice(0, 3))])
 
 	# Все функциональные здания на месте (магазин/таверна/кузница/школа/алхимия).
 	var usable := 0
