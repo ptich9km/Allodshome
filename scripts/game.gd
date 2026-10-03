@@ -274,6 +274,34 @@ static func movement_direction(unit: Node2D, desired: Vector2) -> Vector2:
 	var result := desired.normalized() + separation * 1.5
 	return result.normalized() if result.length_squared() > 0.0001 else desired.normalized()
 
+
+## Лучшее скольжение, когда полный шаг заблокирован.
+##
+## Зачем. Раньше одно и то же было продублировано в трёх местах, и все три
+## варианта выбирали ось ПО ПОРЯДКУ (`if can_x ... elif can_y ...`), а не по
+## близости к направлению движения. При перекрытом диагональном шаге (дерево,
+## угол здания) юнит шёл строго по X, даже если «правильным» было Y. Звери у
+## деревьев дёргались лошадью: шаг в диагональ превращался в шаг по одной оси.
+## Замер 03.10 показал, что при свободном движении по диагонали 179 кадров
+## из 179 были диагональными (угол 0.998) — то есть ломало именно СКОЛЬЖЕНИЕ,
+## а не сама походка.
+##
+## Возвращает единичную ось (или ZERO, если нельзя ни туда, ни сюда).
+static func choose_slide(desired: Vector2, can_x: bool, can_y: bool) -> Vector2:
+	if can_x and can_y:
+		# Обе свободны — берём ту, что вносит большую часть движения.
+		var wx := absf(desired.x)
+		var wy := absf(desired.y)
+		var total := wx + wy
+		if total <= 0.0:
+			return Vector2.ZERO
+		return Vector2(signf(desired.x), 0.0) if wx >= wy else Vector2(0.0, signf(desired.y))
+	if can_x:
+		return Vector2(signf(desired.x), 0.0)
+	if can_y:
+		return Vector2(0.0, signf(desired.y))
+	return Vector2.ZERO
+
 var _select_ring: SelectRing = null       # подсветка цели (ховер/атака)
 var _pending_building := ""               # здание, к которому герой подходит («вход»)
 var _pending_s: Dictionary = {}           # структура-цель ожидающего входа

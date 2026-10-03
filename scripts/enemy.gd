@@ -191,10 +191,11 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 	var slide := Vector2.ZERO
-	if _can_step(Vector2(step.x, 0.0)):
-		slide = Vector2(step.x, 0.0)
-	elif _can_step(Vector2(0.0, step.y)):
-		slide = Vector2(0.0, step.y)
+	# Обе оси пробуем всегда, а не «X, иначе Y»: выбор по близости к желаемому
+	# направлению (Game.choose_slide) убирает дёрганье у деревьев и углов.
+	var slide_axis := Game.choose_slide(direction,
+		_can_step(Vector2(step.x, 0.0)), _can_step(Vector2(0.0, step.y)))
+	slide = Vector2(slide_axis.x * step.x, slide_axis.y * step.y)
 	if slide == Vector2.ZERO:
 		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
 	else:

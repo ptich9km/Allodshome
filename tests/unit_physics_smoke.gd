@@ -51,9 +51,48 @@ func _run() -> void:
 		return
 
 	_test_motion_mode()
+	_test_choose_slide()
 	_test_enemy_slide()
 	_test_select_ring()
 	_finish()
+
+
+# --- 1b. Выбор оси при скольжении (Game.choose_slide) -----------------------
+
+## Замер 03.10: свободное движение диагональное (179 кадров из 179, угол
+## 0.998), то есть ломало не сама походка, а СКОЛЬЖЕНИЕ. Раньше ось
+## выбиралась по порядку `if can_x ... elif can_y ...`, а не по близости к
+## направлению, и звери дёргались у деревьев.
+func _test_choose_slide() -> void:
+	print("-- скольжение: выбор оси --")
+	var diag := Vector2(0.7071, 0.7071)
+	# Обе оси свободны и направление строго диагональное — выбор неоднозначен,
+	# но ось обязана быть одной из двух, а не «ничейной».
+	var s := Game.choose_slide(diag, true, true)
+	_check(s == Vector2(1, 0) or s == Vector2(0, 1),
+		"обе оси свободны — выбрана одна из них (%s)" % str(s))
+
+	# Направление сильно по X: выбирать надо X, даже если порядок проверок
+	# другой. Именно этот случай ломался раньше.
+	var mostly_x := Vector2(0.9, 0.1)
+	_check(Game.choose_slide(mostly_x, true, true) == Vector2(1, 0),
+		"движение преимущественно по X -> скользим по X")
+	_check(Game.choose_slide(Vector2(0.1, 0.9), true, true) == Vector2(0, 1),
+		"движение преимущественно по Y -> скользим по Y")
+
+	# Закрытая ось исключается.
+	_check(Game.choose_slide(mostly_x, false, true) == Vector2(0, 1),
+		"X закрыт -> скользим по Y")
+	_check(Game.choose_slide(mostly_x, true, false) == Vector2(1, 0),
+		"Y закрыт -> скользим по X")
+	_check(Game.choose_slide(diag, false, false) == Vector2.ZERO,
+		"обе оси закрыты -> никуда не скользим (нужно тормозить)")
+
+	# Знак берётся из направления: влево-вверх не должно уводить вправо.
+	_check(Game.choose_slide(Vector2(-0.9, 0.1), true, true) == Vector2(-1, 0),
+		"движение влево -> скользим влево, а не вправо")
+	_check(Game.choose_slide(Vector2(0.0, 0.0), true, true) == Vector2.ZERO,
+		"нулевое направление -> ZERO, а не случайная ось")
 
 
 # --- 1. motion_mode (осознанно НЕ меняем) --------------------------------

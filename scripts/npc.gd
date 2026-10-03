@@ -353,13 +353,31 @@ func heal_amount(amount: int) -> int:
 func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	direction = Game.movement_direction(self, direction)
 	var wanted := direction * speed
+	var step := wanted * delta
 	var can_step := true
+	var can_x := false
+	var can_y := false
 	if alm_map != null and alm_map.has_method("is_walkable_world"):
-		var next := global_position + wanted * delta
 		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
-		can_step = alm_map.is_walkable_world(next) \
-			or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
-				== Vector2i(int(next.x) / 32, int(next.y) / 32)
+		var here := Vector2i(int(global_position.x) / 32, int(global_position.y) / 32)
+		can_step = alm_map.is_walkable_world(global_position + step) \
+			or here == Vector2i(int((global_position.x + step.x) / 32),
+				int((global_position.y + step.y) / 32))
+		if can_step:
+			velocity = velocity.move_toward(wanted, 1100.0 * delta)
+			return
+		can_x = alm_map.is_walkable_world(global_position + Vector2(step.x, 0.0)) \
+			or here == Vector2i(int((global_position.x + step.x) / 32), int(global_position.y / 32))
+		can_y = alm_map.is_walkable_world(global_position + Vector2(0.0, step.y)) \
+			or here == Vector2i(int(global_position.x / 32), int((global_position.y + step.y) / 32))
+		# Скольжение по ближайшей к движению оси. Раньше его не было вовсе:
+		# страж, упёршийся в угол, просто останавливался, и патруль мог
+		# зависнуть на месте.
+		var axis := Game.choose_slide(direction, can_x, can_y)
+		if axis != Vector2.ZERO:
+			var slide := Vector2(axis.x * step.x, axis.y * step.y)
+			velocity = velocity.move_toward(slide / maxf(delta, 0.0001), 1100.0 * delta)
+			return
 	if can_step:
 		velocity = velocity.move_toward(wanted, 1100.0 * delta)
 	else:
