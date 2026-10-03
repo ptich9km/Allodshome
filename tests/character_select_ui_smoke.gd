@@ -58,7 +58,17 @@ func _inspect(cs, size_px: Vector2i, tag: String) -> void:
 	root.size = size_px
 	for i in range(3):
 		await process_frame
-	var win := Rect2(Vector2.ZERO, Vector2(size_px))
+	# Вписывание проверяем в НАСТОЯЩИЙ вьюпорт, а не в выдуманное окно size_px.
+	# При stretch/aspect="expand" логическая область не равна размеру окна:
+	# замер 03.10 — при root.size = 1280x600 реальный get_visible_rect()
+	# равен 1706x800 (окно шире базовых 1280x800). Интерфейс, построенный под
+	# эту область, в окно 1280x600 визуально помещается целиком — масштаб 0.75,
+	# и прежняя проверка требовала вписаться в 1280x600, ругаясь на верную
+	# вёрстку. Размер 1706x800 в отчёте и был этой логической областью,
+	# а не «интерфейс шире окна».
+	var win := root.get_visible_rect()
+	print("[%s] вьюпорт после resize: %s (окно %dx%d)"
+			% [tag, str(win), size_px.x, size_px.y])
 	var worst := ""
 	for node in _walk(cs):
 		var c := node as Control

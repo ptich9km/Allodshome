@@ -115,7 +115,13 @@ func _fits(w: int, h: int, tag: String) -> void:
 	root.size = Vector2i(w, h)
 	for i in range(3):
 		await process_frame
-	var win := Rect2(Vector2.ZERO, Vector2(w, h))
+	# Вписывание проверяем в НАСТОЯЩИЙ вьюпорт, а не в выдуманное окно w×h.
+	# При stretch/aspect="expand" логическая область не равна размеру окна:
+	# замер 03.10 — при root.size = 1280x600 реальный get_visible_rect()
+	# равен 1706x800. Интерфейс, построенный под него, в окно 1280x600
+	# визуально помещается целиком, и прежняя проверка ругалась впустую.
+	var win := root.get_visible_rect()
+	print("[%s] вьюпорт после resize: %s (окно %dx%d)" % [tag, str(win), w, h])
 	var worst := ""
 	for node in _walk(_panel):
 		var c := node as Control

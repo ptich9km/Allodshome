@@ -206,7 +206,17 @@ func _fits(w: int, h: int, tag: String) -> void:
 		return
 	print("[%s] DesignRoot: pos=%s size=%s scale=%s rect=%s"
 		% [tag, str(design.position), str(design.size), str(design.scale), str(design.get_global_rect())])
-	var win := Rect2(Vector2.ZERO, Vector2(w, h))
+	# Проверять вписывание надо в НАСТОЯЩИЙ вьюпорт, а не в выдуманное окно
+	# w×h. При stretch/aspect="expand" логическая область НЕ равна размеру окна:
+	# замер 03.10 показал, что при root.size = 1280x600 реальный
+	# get_visible_rect() = 1706x800 (окно шире базовых 1280x800, поэтому
+	# логическое пространство расширяется по ширине, а масштаб = 0.75).
+	# Панель, построенная под 1706x800, в окно 1280x600 ВИЗУАЛЬНО помещается
+	# целиком — контент масштабируется и укладывается. Прежняя проверка
+	# требовала вписаться в 1280x600 и ругалась на корректную вёрстку.
+	var win := root.get_visible_rect()
+	print("[%s] вьюпорт после resize: %s (окно %dx%d)"
+			% [tag, str(win), w, h])
 	var worst := ""
 	for node in _walk(design):
 		var c := node as Control
