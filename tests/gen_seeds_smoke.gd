@@ -85,8 +85,15 @@ func _hash(path: String) -> String:
 
 ## .alm + все sidecar-ы существуют и непустые; заголовок .alm валиден.
 func _check_files(alm_path: String, tag: String) -> void:
-	## zone_has_portal - ожидание для этой карты: портал есть только в "start".
-	var zone_has_portal: bool = alm_path.ends_with("_start")
+	## zone_has_portal - ожидание для этой карты. 03.10: игрок решил добавить
+	## "mid" — без этого выход из зоны новичка ведёт в никуда и зон ровно одна,
+	## поэтому список вырос с ["start"] до ["start", "mid"].
+	## ВАЖНО: сравниваем с _basename(alm_path), а НЕ с alm_path: путь кончается
+	## на ".alm", и ends_with("_mid") по нему всегда было false. То есть ветка
+	## «портал есть» не выполнялась НИКОГДА, и проверка проходила только потому,
+	## что в mid портала не было.
+	var zone_has_portal: bool = _basename(alm_path).ends_with("_start") \
+		or _basename(alm_path).ends_with("_mid")
 	_check(FileAccess.file_exists(alm_path), "[%s] .alm существует" % tag)
 	if FileAccess.file_exists(alm_path):
 		var f := FileAccess.open(alm_path, FileAccess.READ)

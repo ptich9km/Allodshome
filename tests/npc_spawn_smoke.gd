@@ -84,15 +84,23 @@ func _run() -> void:
 		return
 	_check(true, "game.cfg грузится")
 
+	## Сколько точек интереса в каждой зоне (решение игрока 03.10: минимум 3-4,
+	## далеко от города; зона новичка остаётся тихой).
+	var want_poi := {"start": 0, "mid": 3, "hard": 4, "faction": 3}
+
 	for zone in ZONES:
 		var n := int(cfg.get_value("zone", "%s.interest_points" % zone, -999))
-		_check(n == 0, "точки интереса выключены в зоне %s (interest_points=%d)" % [zone, n])
+		# Контракт поменян 03.10: точки интереса ВКЛЮЧЕНЫ в mid/hard/faction,
+		# а зона новичка осталась тихой. Раньше здесь стояло «interest_points == 0
+		# во всех зонах», то есть тест сторожил ОТКЛЮЧЁННУЮ функцию.
+		_check(n == int(want_poi.get(zone, 0)),
+			"точки интереса в зоне %s = %d (ожидалось %d)" % [zone, n, int(want_poi.get(zone, 0))])
 		_check(int(cfg.get_value("zone", "%s.poi_hp" % zone, 0)) > 0,
 			"у зоны %s заданы статы NPC точки (poi_hp)" % zone)
 		_check(int(cfg.get_value("zone", "%s.poi_damage" % zone, -1)) >= 0,
 			"у зоны %s задан урон NPC точки (poi_damage)" % zone)
 
-	print("-- карта по умолчанию чиста --")
+	print("-- точки интереса появились на карте --")
 	if not FileAccess.file_exists(MAP_NPCS):
 		print("  (карта %s отсутствует — проверка пропущена)" % MAP_NPCS)
 	else:
@@ -101,11 +109,59 @@ func _run() -> void:
 		if parsed is Dictionary:
 			npcs = (parsed as Dictionary).get("npcs", [])
 		var poi := 0
+		var poi_cells := {}
 		for n in npcs:
 			var d: Dictionary = n
-			if d.has("poi"):
-				poi += 1
-		_check(poi == 0, "в закоммиченной карте нет точек интереса (найдено: %d)" % poi)
+			if not d.has("poi"):
+				continue
+			poi += 1
+			# ровно один NPC на клетке точки: в кластере не должно быть
+			# наложений (такой же баг был с Серыми)
+			poi_cells["%s:%d,%d" % [str(d["poi"]), int(d.get("x", 0)), int(d.get("y", 0))]] = true
+		_check(poi > 0, "в закоммиченной карте точки интереса есть (найдено NPC: %d)" % poi)
+		var poi_kinds := {}
+		for n2 in npcs:
+			var d2: Dictionary = n2
+			if d2.has("poi"):
+				poi_kinds[str(d2["poi"])] = true
+		_check(poi_kinds.size() >= 2, "точки интереса разных видов (видов: %d)" % poi_kinds.size())
+		# все NPC одной точки должны быть рядом друг с другом (это кластер)
+		_check(poi_cells.size() == poi,
+			"на каждой клетке точки ровно один NPC (клеток: %d, NPC: %d)" % [poi_cells.size(), poi])
+
+	print("-- Серые разведены по карте --")
+	# Жалоба игрока 03.10: «1 Серый на карте». Замер показал 15 Серых на 6
+	# клетках, причём все в одной половине карты. Причина была двойная:
+	# якоря кластеров не проверялись на занятость, а `_near_gray_cell` писал в
+	# переданный по ссылке массив, а вызывающий код добавлял клетку ещё раз —
+	# кластер из 3 давал 5 записей, две из них на одной клетке.
+	if not FileAccess.file_exists(MAP_NPCS):
+		print("  (карта %s отсутствует — проверка пропущена)" % MAP_NPCS)
+	else:
+		var parsed2: Variant = JSON.parse_string(FileAccess.get_file_as_string(MAP_NPCS))
+		var npcs2: Array = []
+		if parsed2 is Dictionary:
+			npcs2 = (parsed2 as Dictionary).get("npcs", [])
+		var gray_cells := {}
+		var gray_n := 0
+		var gray_regions := {}
+		for g in npcs2:
+			var d: Dictionary = g
+			if str(d.get("role", "")) == "guard" or str(d.get("role", "")) == "citizen":
+				continue
+			if not d.has("set"):
+				continue
+			gray_n += 1
+			gray_cells["%d,%d" % [int(d.get("x", 0)), int(d.get("y", 0))]] = true
+			# сетка 3x3 — та же, что у генератора при разведении
+			gray_regions["%d,%d" % [int(d.get("x", 0)) * 3 / 128,
+				int(d.get("y", 0)) * 3 / 128]] = true
+		_check(gray_n > 0, "Серые на карте есть (%d)" % gray_n)
+		_check(gray_cells.size() == gray_n,
+			"на каждой клетке ровно один Серый (клеток: %d, Серых: %d) — было 6 клеток на 15"
+				% [gray_cells.size(), gray_n])
+		_check(gray_regions.size() >= 4,
+			"Серые разведены по карте (регионов 3x3: %d из 9) — было 2" % gray_regions.size())
 
 	_finish()
 

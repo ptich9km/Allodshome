@@ -63,6 +63,7 @@ var _reserved := {}           # Vector2i -> true (здания, спавн, по
 var _structures_out: Array = []   # {x, y, type_id}
 var _npcs_out: Array = []         # {x, y, set, role, patrol, post, hp_max, damage}
 var _herbs_out: Array = []        # {x, y, item, icon}
+var _gray_cells := {}             # "x,y" -> true, занятые Серыми клетки (03.10)
 var _interest_out: Array = []     # {x, y, kind, label, members} — якоря точек интереса
 var _obj_noise: FastNoiseLite
 
@@ -341,10 +342,14 @@ const BLACKSMITH_FOLDERS := ["blacksmith1", "blacksmith2"]
 const HOUSE_FOLDERS := ["shed1", "shed2", "shed3", "khut1", "khut2", "hut1", "hut4", "hut5", "bighouse1", "bighouse2"]
 const DECOR_FOLDERS := ["well1", "well2", "well3", "campfire", "mill1", "mill2"]
 
-## Зоны, в которых генератор ставит портал. Сейчас это только зона новичка:
-## её портал - выход в "mid". Игра линейная, обратного пути нет, поэтому в
-## остальных зонах маркера нет вовсе (решение игрока).
-const ZONES_WITH_PORTAL := ["start"]
+## Зоны, в которых генератор ставит портал.
+##
+## 03.10: было только ["start"], и игрок решил добавить "mid" — без этого
+## выход из зоны новичка ведёт в никуда и зон становится ровно одна.
+## ВАЖНО: `_drop_portal_json()` вызывается для зон из этого списка и стирает
+## старый sidecar. Если добавить зону в список и забыть убрать вызов, то
+## генератор сотрёт портал, который сам же только что поставил.
+const ZONES_WITH_PORTAL := ["start", "mid"]
 
 # НПЦ городов.
 const GUARD_SETS := ["humans/swordsman", "humans/archer", "humans/pikeman_"]
@@ -369,6 +374,13 @@ const HERB_ITEMS := [
 const HERB_TARGET_COUNTS := {"start": 20, "mid": 26, "hard": 30, "faction": 28}
 const HERB_REGION_GRID := 4
 const HERB_MIN_DISTANCE := 6
+
+## Разведение Серых по карте (03.10). GRAY_MIN_DISTANCE — минимальная
+## дистанция между любыми двумя Серыми, иначе кластеры жмутся в угол.
+## GRAY_REGION_GRID — на сколько частей делим карту для отчёта о покрытии.
+const GRAY_MIN_DISTANCE := 7
+const GRAY_REGION_GRID := 3
+const GRAY_MIN_SPAWN_DISTANCE := 14   # не тыкать зверя прямо в лицо новичку
 
 var _spawn_pos: Vector2i = Vector2i(-1, -1)
 var _portal_pos: Vector2i = Vector2i(-1, -1)
@@ -498,9 +510,8 @@ func _place_portal_spawn() -> void:
 	_spawn_pos = _find_land_near(city0, 8)
 	_save_spawn_json()
 	_reserved[_spawn_pos] = true
-	# Портал есть только в зоне новичка: это выход из неё в "mid". В остальных
-	# зонах маркера нет вовсе, а не заглушка - иначе игрок видит портал, который
-	# никуда не ведёт (решение игрока: игра линейная, Z2 без портала).
+	# Портал есть в зоне новичка (выход в "mid") и в "mid" (выход в "hard").
+	# В "hard" и "faction" маркера нет вовсе — это конец маршрута, а не заглушка.
 	if _zone in ZONES_WITH_PORTAL:
 		_portal_pos = _find_land_far(city0, 40)
 		_save_portal_json()
@@ -768,7 +779,7 @@ const POI_KINDS := [
 
 ## Минимальные дистанции POI (клетки). Отдельны от трав: точка интереса
 ## должна быть заметна издалека, трава — нет.
-const POI_MIN_CITY_DISTANCE := 12     # не ближе города
+const POI_MIN_CITY_DISTANCE := 18     # далеко от города (решение игрока 03.10)
 const POI_MIN_SPAWN_DISTANCE := 14    # не ближе спавна/портала
 const POI_MIN_EACH_OTHER := 16         # разрежены между собой
 
@@ -974,12 +985,37 @@ func _herb_cell_ok(cell: Vector2i) -> bool:
 
 ## Этап 9: Серые — кластеры у дорог (сбоку) и в лесных массивах. Только на
 ## свободных клетках, вне городов и не ближе 20 клеток к спавну.
+##
+## Замер 03.10 (жалоба игрока «1 Серый на карте»): при 15 Серых на 6 клетках
+## сидело по 2-3 врага, и все они жались в одну половину карты (y=74..118).
+## Две причины: якорь кластера не проверялся на занятость, и якоря выбирались
+## независимо, так что все шли из одного и того же случайного угла.
+## Теперь сначала обходим РЕГИОНЫ по очереди и по кластеру в каждом, а уже
+## потом добираем случайно — так покрытие карты гарантировано.
 func _place_greys(rng: RandomNumberGenerator) -> void:
 	var cfg: Dictionary = GRAY_ZONE.get(_zone, GRAY_ZONE["mid"])
-	# Диапазоны приходят из GameConfig [zone] — их можно крутить без кода.
 	var count: int = rng.randi_range(
 		GameConfig.zonei(_zone, "gray_count_min"), GameConfig.zonei(_zone, "gray_count_max"))
 	var placed := 0
+
+	# Список регионов в перемешанном порядке — чтобы зоны «раньше» не выбирались
+	# всегда одинаково и карта не была предсказуемой.
+	var regions: Array = []
+	for ry in range(GRAY_REGION_GRID):
+		for rx in range(GRAY_REGION_GRID):
+			regions.append(Vector2i(rx, ry))
+	_shuffle(rng, regions)
+
+	for reg in regions:
+		if placed >= count:
+			break
+		var anchor := _gray_anchor_in_region(rng, reg)
+		if anchor.x < 0:
+			continue
+		placed += _gray_cluster(rng, anchor, cfg)
+
+	# Добор: если регионы не дали нужного количества (мало дорог/леса в части
+	# карты), берём любые подходящие якоря.
 	var tries := 0
 	while placed < count and tries < 800:
 		tries += 1
@@ -990,10 +1026,81 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 				anchor = _side_road_cell(rng, road)
 		else:
 			anchor = _forest_anchor(rng)
-		if anchor.x < 0:
+		if anchor.x < 0 or not _gray_anchor_ok(anchor):
 			continue
 		placed += _gray_cluster(rng, anchor, cfg)
-	print("GRAY: %d/%d" % [placed, count])
+
+	var regions_used := {}
+	for k in _gray_cells.keys():
+		var p := str(k).split(",")
+		regions_used["%d,%d" % [int(p[0]) * GRAY_REGION_GRID / W,
+			int(p[1]) * GRAY_REGION_GRID / H]] = true
+	print("GRAY: %d/%d клеток=%d регионов=%d/%d" % [
+		placed, count, _gray_cells.size(), regions_used.size(),
+		GRAY_REGION_GRID * GRAY_REGION_GRID])
+
+
+## Якорь Серого внутри конкретного региона карты (сетка GRAY_REGION_GRID).
+## Две попытки: сначала ищем клетку рядом с дорогой или лесом (звери выглядят
+## как звери), а если в регионе такого нет — берём любую свободную сушу.
+## Без второй попытки регионы без дорог и леса оставались пустыми: замер
+## 03.10 давал 3 региона из 9.
+func _gray_anchor_in_region(rng: RandomNumberGenerator, reg: Vector2i) -> Vector2i:
+	var rw := W / GRAY_REGION_GRID
+	var rh := H / GRAY_REGION_GRID
+	var x0 := reg.x * rw
+	var y0 := reg.y * rh
+	var fallback := Vector2i(-1, -1)
+	for attempt in range(60):
+		var c := Vector2i(rng.randi_range(x0 + 2, x0 + rw - 3),
+			rng.randi_range(y0 + 2, y0 + rh - 3))
+		if not _gray_cell_ok(c):
+			continue
+		if _near_point(c, _spawn_pos, GRAY_MIN_SPAWN_DISTANCE):
+			continue
+		if not _gray_anchor_ok(c):
+			continue
+		if _near_road(c) or _forest_anchor_ok(c):
+			return c
+		if fallback.x < 0:
+			fallback = c
+	return fallback
+
+
+## Есть ли вокруг клетки хотя бы два дерева (объекта) — признак лесной местности.
+func _forest_anchor_ok(c: Vector2i) -> bool:
+	var trees := 0
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = c + d
+		if n.x < 0 or n.y < 0 or n.x >= W or n.y >= H:
+			continue
+		if _obstacles[n.y * W + n.x] > 0:
+			trees += 1
+	return trees >= 2
+
+
+## Перемешивание массива по rng генератору (глобальный random.* не используем —
+## иначе генерация перестанет быть детерминированной по сиду).
+func _shuffle(rng: RandomNumberGenerator, arr: Array) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp: Variant = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
+
+
+## Якорь кластера не должен совпадать с уже занятым и должен быть отделён от
+## других якорей, иначе все Серые слипаются в одном углу карты.
+func _gray_anchor_ok(anchor: Vector2i) -> bool:
+	if _gray_cells.has("%d,%d" % [anchor.x, anchor.y]):
+		return false
+	for k in _gray_cells.keys():
+		var p := str(k).split(",")
+		var dx := absi(anchor.x - int(p[0]))
+		var dy := absi(anchor.y - int(p[1]))
+		if dx < GRAY_MIN_DISTANCE and dy < GRAY_MIN_DISTANCE:
+			return false
+	return true
 
 ## Случайная клетка дороги вне городов и подальше от спавна.
 func _road_anchor(rng: RandomNumberGenerator) -> Vector2i:
@@ -1055,6 +1162,10 @@ func _gray_cell_ok(c: Vector2i) -> bool:
 		return false
 	if _near_city(c, 6):
 		return false
+	# Клетка уже занята другим Серым. Без этой проверки кластеры накладывались:
+	# их якоря подбирались независимо, и на 6 клетках сидело по 2-3 врага.
+	if _gray_cells.has("%d,%d" % [c.x, c.y]):
+		return false
 	return true
 
 ## Кластер из 2–4 Серых вокруг anchor (ячейки разнесены).
@@ -1067,6 +1178,7 @@ func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary
 		cells.append(c)
 	for i in range(cells.size()):
 		var cc: Vector2i = cells[i]
+		_gray_cells["%d,%d" % [cc.x, cc.y]] = true
 		var set_name: String = _pick(rng, cfg["pool"])
 		var hp := rng.randi_range(
 			GameConfig.zonei(_zone, "gray_hp_min"), GameConfig.zonei(_zone, "gray_hp_max"))
@@ -1078,6 +1190,11 @@ func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary
 		})
 	return cells.size()
 
+## Соседняя клетка для кластера. ВАЖНО: массив `taken` здесь ТОЛЬКО читается.
+## Раньше сюда писали `taken.append(c)`, а вызывающий код потом делал
+## `cells.append(c)` — а массив передаётся по ССЫЛКЕ, и клетка попадала в
+## список дважды. Кластер из 3 превращался в 5 записей, две из них на одной
+## клетке: замер 03.10 давал 15 Серых на 9 клетках, и игрок видел «1 Серый».
 func _near_gray_cell(rng: RandomNumberGenerator, anchor: Vector2i, taken: Array) -> Vector2i:
 	for attempt in range(12):
 		var off := Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
@@ -1086,7 +1203,6 @@ func _near_gray_cell(rng: RandomNumberGenerator, anchor: Vector2i, taken: Array)
 		var c: Vector2i = anchor + off
 		if taken.has(c) or not _gray_cell_ok(c):
 			continue
-		taken.append(c)
 		return c
 	return Vector2i(-1, -1)
 
