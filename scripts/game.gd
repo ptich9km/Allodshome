@@ -1303,12 +1303,106 @@ func _check_portal() -> void:
 			return
 
 func _on_portal_enter() -> void:
-	# Placeholder: телепорт обратно на спавн
-	print("TELEPORT! → spawn")
-	if is_instance_valid(alm_map) and is_instance_valid(player):
+	# Заглушка была: «телепорт обратно на спавн», то есть портал в никуда.
+	# Теперь портал ведёт в следующую зону маршрута.
+	var next_zone := str(PORTAL_CHAIN.get(Game.map_zone, ""))
+	if next_zone == "":
+		print("Портал из зоны '%s' ведёт в никуда — конец маршрута" % Game.map_zone)
+		return
+	travel_to_zone(next_zone)
+
+
+## Куда ведёт портал: start -> mid -> hard. В hard/faction портала нет,
+## это конец маршрута (так и задумано игроком).
+const PORTAL_CHAIN := {"start": "mid", "mid": "hard"}
+
+var _travelling := false
+
+## Переход в другую зону через портал.
+##
+## Почему ГОРЯЧАЯ ЗАМЕНА карты, а не change_scene_to_file: смена сцены
+## вызывает Main._ready, который делает `Game.party.clear()`, а золото и
+## инвентарь живут на узле Player. То есть переход через сцену уничтожил бы
+## отряд и снаряжение — это и было признано непригодным при исследовании.
+## Узел Map — обычный Node2D, его можно пересоздать, а герой, партия и HUD
+## остаются живы.
+func travel_to_zone(zone: String) -> void:
+	if _travelling:
+		return
+	if not is_instance_valid(player):
+		return
+	_travelling = true
+	var seed_value: int = Game.map_seed
+	if seed_value == 0:
+		seed_value = 4242
+	var new_path := MapGenerator.ensure_map(seed_value, zone, MapGenerator.MAPS_DIR)
+	if new_path == "" or not FileAccess.file_exists(new_path):
+		push_error("Не удалось подготовить карту зоны '%s'" % zone)
+		_travelling = false
+		return
+	await _swap_map(new_path, zone)
+	_travelling = false
+	print("Переход: зона '%s', карта %s" % [zone, new_path])
+
+
+## Пересоздать узел Map и переселить на него героя и партию.
+func _swap_map(new_path: String, zone: String) -> void:
+	_clear_world_units()
+	# Зона меняется ДО создания карты: AlmMap._ready и спавн используют
+	# Game.map_zone, и он должен уже совпадать с новой картой.
+	Game.map_zone = zone
+	Game.pending_map_path = new_path
+	if is_instance_valid(alm_map):
+		remove_child(alm_map)
+		alm_map.queue_free()
+	var fresh := Node2D.new()
+	fresh.name = "Map"
+	fresh.set_script(load("res://scripts/alm_map.gd"))
+	fresh.set("tile_size", 32)
+	fresh.set("alm_path", new_path)
+	add_child(fresh)
+	move_child(fresh, 0)
+	alm_map = fresh
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# Герой и партия — на спавн новой зоны.
+	if alm_map != null and alm_map.has_method("get_spawn_pos"):
 		var sp: Vector2 = alm_map.call("get_spawn_pos")
-		player.global_position = sp
-		player.reset_physics_interpolation()
+		if sp != Vector2.ZERO:
+			player.global_position = sp
+			player.reset_physics_interpolation()
+			player.stop_movement()
+	for m in Game.party:
+		var unit: Node2D = m as Node2D
+		if is_instance_valid(unit):
+			unit.global_position = player.global_position + Vector2(32, 0)
+			unit.reset_physics_interpolation()
+	_spawn_map_units()
+	if camera != null and is_instance_valid(player):
+		camera.position = player.camera_focus()
+		camera.make_current()
+
+
+## Снести всё, что принадлежит прежней карте: врагов, NPC и их мешки с лутом.
+## Без этого после перехода на карте остались бы юниты прошлой зоны, а
+## Game.enemies/npcs копились бы впустую.
+func _clear_world_units() -> void:
+	for u in Game.enemies:
+		var e: Node = u as Node
+		if is_instance_valid(e):
+			e.queue_free()
+	Game.enemies.clear()
+	for n in Game.npcs:
+		var node: Node = n as Node
+		if is_instance_valid(node):
+			node.queue_free()
+	Game.npcs.clear()
+	# Мешки с лутом лежат отдельными узлами рядом с юнитами.
+	for child in get_children():
+		if child.is_in_group("loot_bag") or child.name.begins_with("LootBag"):
+			child.queue_free()
+	if is_instance_valid(player):
+		player.stop_movement()
 
 func _process_action_mode():
 	if action_mode == "none" or not is_instance_valid(player):
