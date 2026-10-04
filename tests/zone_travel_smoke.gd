@@ -126,8 +126,34 @@ func _run() -> void:
 	var npcs_after: int = Game.npcs.size()
 	print("  после перехода: врагов=%d NPC=%d" % [enemies_after, npcs_after])
 	_check(npcs_after > 0, "в новой зоне есть NPC (%d)" % npcs_after)
-	_check(enemies_after <= npcs_after + npcs_before + enemies_before,
-		"юниты прежней зоны не накоплены (врагов %d -> %d)" % [enemies_before, enemies_after])
+	# Старых юнитов не осталось: считаем, сколько Серых ПРОПИСАНО в новой карте,
+	# и сравниваем с живыми. Раньше здесь была грубая граница вида
+	# "enemies_after <= npcs_after + ...", и она сломалась сама собой, когда
+	# плотность подняли с 15 до 71: в start зверьков 25, в mid 84 — рост законный.
+	var map_base: String = str(Game.pending_map_path).get_basename()
+	var parsed: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string(map_base + ".npcs.json"))
+	var rec_gray := 0
+	if parsed is Dictionary:
+		for rec in (parsed as Dictionary).get("npcs", []):
+			var d: Dictionary = rec
+			if str(d.get("role", "")) == "guard" or str(d.get("role", "")) == "citizen":
+				continue
+			if d.has("set"):
+				rec_gray += 1
+	print("  в данных новой карты серых: %d" % rec_gray)
+	_check(rec_gray > 0, "в данных новой карты есть Серые (%d)" % rec_gray)
+	var live_gray := 0
+	for e2 in Game.enemies:
+		if not is_instance_valid(e2):
+			continue
+		var en: Node = e2 as Node
+		var sn := str(en.get("anim_set"))
+		if UnitDB.has(sn) and UnitDB.is_hostile(sn):
+			live_gray += 1
+	_check(live_gray <= rec_gray + 2,
+		"на карте не больше Серых, чем прописано (%d живых, %d в данных) — старые не накопились"
+			% [live_gray, rec_gray])
 
 	# Герой должен стоять на проходимой клетке новой карты.
 	if new_map != null and new_map.has_method("is_walkable_world"):

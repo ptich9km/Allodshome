@@ -108,6 +108,14 @@ const DEFAULTS := {
 		"herb_min_distance": 6,
 		"city_radius": 9,
 		"city_gap": 2,
+
+		# Респавн Серых. Замер 03.10: респавна НЕ БЫЛО вообще — убил всех в зоне,
+		# и зона становилась пустой навсегда. Теперь держим лимит.
+		# gray_target — сколько живых Серых держим; берётся из зоны, если 0.
+		# gray_respawn_min_dist — клеток от героя, чтобы зверь не появлялся на глазах.
+		"gray_target": 80,
+		"gray_respawn_seconds": 20.0,
+		"gray_respawn_min_dist": 26,
 	},
 	"mob_tier": {
 		# Множители по тирам мобов (идея из AION). Тиров Серых в игре ещё нет,
@@ -123,7 +131,7 @@ const DEFAULTS := {
 		# Сейчас зоны различаются только по Серым (GRAY_ZONE), а стражи и
 		# горожане одинаковы везде. Этап баланса поднимет Серых в ранних зонах,
 		# этап спавна разведёт стражей по зонам. Пока дефолты = как было.
-		"start.gray_count_min": 6,     "start.gray_count_max": 10,
+		"start.gray_count_min": 18,     "start.gray_count_max": 26,
 		"start.gray_hp_min": 25,       "start.gray_hp_max": 45,
 		"start.gray_damage_min": 4,    "start.gray_damage_max": 6,
 		"start.guard_hp_min": 60,      "start.guard_hp_max": 100,
@@ -136,7 +144,7 @@ const DEFAULTS := {
 		"start.poi_hp": 60,           "start.poi_damage": 6,
 		"start.tree_density": 0.06,
 
-		"mid.gray_count_min": 10,      "mid.gray_count_max": 14,
+		"mid.gray_count_min": 70,      "mid.gray_count_max": 90,
 		"mid.gray_hp_min": 45,         "mid.gray_hp_max": 75,
 		"mid.gray_damage_min": 6,      "mid.gray_damage_max": 9,
 		"mid.guard_hp_min": 60,        "mid.guard_hp_max": 100,
@@ -149,7 +157,7 @@ const DEFAULTS := {
 		"mid.poi_hp": 60,             "mid.poi_damage": 6,
 		"mid.tree_density": 0.08,
 
-		"hard.gray_count_min": 14,     "hard.gray_count_max": 18,
+		"hard.gray_count_min": 90,     "hard.gray_count_max": 120,
 		"hard.gray_hp_min": 70,        "hard.gray_hp_max": 120,
 		"hard.gray_damage_min": 9,     "hard.gray_damage_max": 14,
 		"hard.guard_hp_min": 60,       "hard.guard_hp_max": 100,
@@ -162,7 +170,7 @@ const DEFAULTS := {
 		"hard.poi_hp": 60,            "hard.poi_damage": 6,
 		"hard.tree_density": 0.10,
 
-		"faction.gray_count_min": 12,  "faction.gray_count_max": 16,
+		"faction.gray_count_min": 60,  "faction.gray_count_max": 80,
 		"faction.gray_hp_min": 50,     "faction.gray_hp_max": 95,
 		"faction.gray_damage_min": 7,  "faction.gray_damage_max": 11,
 		"faction.guard_hp_min": 60,    "faction.guard_hp_max": 100,

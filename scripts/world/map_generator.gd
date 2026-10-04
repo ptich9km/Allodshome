@@ -95,8 +95,20 @@ const _TRANSITION_DIR_ORDER := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 static func map_basename(seed_value: int, zone: String) -> String:
 	return "map_%d_%s" % [seed_value, zone]
 
-## Путь к карте по сиду. Если карта уже сгенерирована — переиспользуем её
-## (генерация не нужна), иначе генерируем. Пустая строка при ошибке.
+## Версия генератора. Записывается в .npcs.json и проверяется при загрузке.
+##
+## ЗАЧЕМ. Замер 03.10: подняли плотность Серых с 15 до 71 на карту, но в игре
+## оставалось 15. Причина: `ensure_map` переиспользовал УЖЕ СГЕНЕРИРОВАННУЮ карту
+## из user://maps/, а её .npcs.json был датирован 28.09 — то есть создан до
+## изменения настроек. Настройки влияли только на новые карты, а старых в
+## user://maps/ лежало 58 файлов.
+##
+## Теперь при несовпадении версии карта перегенерируется сама. Меняешь
+## city_gap, плотность Серых или правила разведения — поднимаешь GEN_VERSION.
+const GEN_VERSION := 5
+
+## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
+## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
 ##
 ## Наличие .npcs.json проверяется не просто «для аккуратности»: если запись оборвалась
 ## на середине, .alm может существовать, а sidecar-ы — нет, и карта загрузится
@@ -104,9 +116,25 @@ static func map_basename(seed_value: int, zone: String) -> String:
 static func ensure_map(seed_value: int, zone: String = "mid", dir: String = MAPS_DIR) -> String:
 	var base: String = map_basename(seed_value, zone)
 	var path: String = dir + base + ".alm"
-	if FileAccess.file_exists(path) and FileAccess.file_exists(dir + base + ".npcs.json"):
-		return path
+	var npcs_path: String = dir + base + ".npcs.json"
+	if FileAccess.file_exists(path) and FileAccess.file_exists(npcs_path):
+		if _saved_gen_version(npcs_path) == GEN_VERSION:
+			return path
+		print("MapGenerator: версия генератора изменилась (%d -> %d), карта %s перегенерируется"
+				% [_saved_gen_version(npcs_path), GEN_VERSION, base])
 	return MapGenerator.new().generate(seed_value, zone, dir)
+
+## Версия, записанная в sidecar (-1 = файла нет или поле нечитаемо).
+static func _saved_gen_version(npcs_path: String) -> int:
+	var f := FileAccess.open(npcs_path, FileAccess.READ)
+	if f == null:
+		return -1
+	var txt := f.get_as_text()
+	f.close()
+	var parsed: Variant = JSON.parse_string(txt)
+	if not (parsed is Dictionary):
+		return -1
+	return int((parsed as Dictionary).get("gen_version", -1))
 
 ## Сгенерировать карту по сиду. Возвращает путь к .alm (пустая строка при ошибке).
 ## dir — каталог с завершающим слэшем (обычно "user://maps/").
@@ -1868,7 +1896,9 @@ func _save_sidecars() -> void:
 		f.close()
 	var n := FileAccess.open(_out_dir + _basename + ".npcs.json", FileAccess.WRITE)
 	if n:
-		n.store_string(JSON.stringify({"npcs": _npcs_out}))
+		# gen_version — чтобы ensure_map перегенерировал карту после правки
+		# настроек генерации (плотность, зазоры, разведение). См. GEN_VERSION.
+		n.store_string(JSON.stringify({"npcs": _npcs_out, "gen_version": GEN_VERSION}))
 		n.close()
 	var h := FileAccess.open(_out_dir + _basename + ".herbs.json", FileAccess.WRITE)
 	if h:

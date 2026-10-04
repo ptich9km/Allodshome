@@ -1240,6 +1240,7 @@ static func camera_trauma(amount: float) -> void:
 func _process(delta):
 	if is_paused:
 		return
+	_gray_respawn_tick(delta)
 	if is_instance_valid(player) and camera:
 		_autosave_tick(delta)
 		camera.position = camera.position.lerp(player.camera_focus(), 5.0 * delta)
@@ -1405,6 +1406,82 @@ func _clear_world_units() -> void:
 			child.queue_free()
 	if is_instance_valid(player):
 		player.stop_movement()
+
+## --- Респавн Серых (03.10) --------------------------------------------------
+##
+## Замер: респавна не было НИКАКОГО. Убил всех в зоне — зона пустая навсегда,
+## и «карта скучная» со временем становилась только скучнее. Теперь держим
+## лимит: если живых меньше цели, через каждые N секунд появляется один зверь
+## вдали от героя.
+var _gray_respawn_accum := 0.0
+
+func _alive_gray_count() -> int:
+	var n := 0
+	for e in Game.enemies:
+		var unit: Node = e as Node
+		if not is_instance_valid(unit):
+			continue
+		if UnitDB.has(str(unit.get("anim_set"))) and UnitDB.is_hostile(str(unit.get("anim_set"))):
+			n += 1
+	return n
+
+func _gray_respawn_tick(delta: float) -> void:
+	var period := GameConfig.getf("spawn", "gray_respawn_seconds")
+	if period <= 0.0:
+		return
+	var target := GameConfig.geti("spawn", "gray_target")
+	if target <= 0:
+		target = maxi(GameConfig.zonei(Game.map_zone, "gray_count_min"),
+			GameConfig.zonei(Game.map_zone, "gray_count_max"))
+	if not is_instance_valid(player) or not is_instance_valid(alm_map):
+		return
+	_gray_respawn_accum += delta
+	if _gray_respawn_accum < period:
+		return
+	_gray_respawn_accum = 0.0
+	if _alive_gray_count() >= target:
+		return
+	var cell := _gray_respawn_cell()
+	if cell.x < 0:
+		return
+	var pool: Array = (MapGenerator.GRAY_ZONE.get(Game.map_zone,
+		MapGenerator.GRAY_ZONE["mid"]) as Dictionary).get("pool", [])
+	if pool.is_empty():
+		return
+	var set_name: String = str(pool[randi() % pool.size()])
+	var spot := _find_open_spot(cell, int(alm_map.get("tile_size")))
+	if spot.x < 0.0:
+		return
+	var e2 := Enemy.new()
+	e2.name = "Monster_" + set_name.get_file()
+	e2.anim_set = set_name
+	e2.max_hp = randi_range(GameConfig.zonei(Game.map_zone, "gray_hp_min"),
+		GameConfig.zonei(Game.map_zone, "gray_hp_max"))
+	e2.damage = randi_range(GameConfig.zonei(Game.map_zone, "gray_damage_min"),
+		GameConfig.zonei(Game.map_zone, "gray_damage_max"))
+	e2.position = spot
+	e2.home_position = spot
+	add_child(e2)
+	Game.enemies.append(e2)
+
+## Случайная проходимая клетка не ближе gray_respawn_min_dist от героя.
+func _gray_respawn_cell() -> Vector2i:
+	var min_d := maxi(4, GameConfig.geti("spawn", "gray_respawn_min_dist"))
+	var mw: int = int(alm_map.get("map_width"))
+	var mh: int = int(alm_map.get("map_height"))
+	if mw <= 0 or mh <= 0:
+		return Vector2i(-1, -1)
+	var px := int(player.global_position.x / 32)
+	var py := int(player.global_position.y / 32)
+	for _i in range(80):
+		var c := Vector2i(randi_range(2, mw - 3), randi_range(2, mh - 3))
+		if absi(c.x - px) < min_d or absi(c.y - py) < min_d:
+			continue
+		if not alm_map.call("is_walkable_world", Vector2(c.x * 32 + 16, c.y * 32 + 16)):
+			continue
+		return c
+	return Vector2i(-1, -1)
+
 
 func _process_action_mode():
 	if action_mode == "none" or not is_instance_valid(player):
