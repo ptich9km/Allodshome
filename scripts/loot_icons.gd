@@ -49,6 +49,13 @@ static func icon_for(item: Dictionary) -> String:
 
 
 static func gold_icon() -> String:
+	# 03.10: раньше здесь был СЛИТОК (gold_ingot.png). Но слиток — это предмет
+	# из item_db, а золото — число у игрока, и игрок искал слиток в инвентаре
+	# после подбора. У золота теперь своя картинка — монета
+	# (tests/gen_gold_coin.py, 32x32, тот же стиль, что у баночек).
+	var coin := "%sgold_coin.png" % LOOT_DIR
+	if ResourceLoader.exists(coin):
+		return coin
 	return "%sgold_ingot.png" % INGOT_DIR
 
 

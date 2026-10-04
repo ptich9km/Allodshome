@@ -276,8 +276,9 @@ func take_damage(dmg: int, _attacker: Node2D) -> int:
 ## больше, поэтому сильный страж роняет большую баночку. Правило общее с
 ## enemy.gd:_make_loot, чтобы лут читался одинаково.
 func _drop_loot() -> void:
-	var bag_prefab := load("res://scripts/loot_bag.gd")
-	if bag_prefab == null:
+	# Мешок убран (03.10): игрок сразу видит, что именно выпало.
+	var drop_script: GDScript = load("res://scripts/loot_drop.gd")
+	if drop_script == null:
 		return
 	var mat := "steel" if role == "guard" else "bronze"
 	var pool: Array = []
@@ -297,18 +298,18 @@ func _drop_loot() -> void:
 		var gear := _random_gear(mat)
 		if not gear.is_empty():
 			pool.append(gear)
-	var bag: LootBag = bag_prefab.new()
-	bag.items = pool
-	bag.potion_size = _potion_size()
-	bag.global_position = global_position
+	var drop: LootDrop = drop_script.new()
+	drop.items = pool
+	drop.potion_size = _potion_size()
+	drop.global_position = global_position
 	# Родитель, а не get_tree().current_scene: current_scene равен null в
-	# headless-скриптах и при добавлении узла из теста, мешок просто не появлялся.
+	# headless-скриптах и при добавлении узла из теста, добыча просто не появлялась.
 	# Родитель всегда есть и в том, и в другом случае.
 	var host := get_parent()
 	if host == null:
 		host = get_tree().current_scene
 	if host != null:
-		host.add_child(bag)
+		host.add_child(drop)
 
 
 func _potion_size() -> String:

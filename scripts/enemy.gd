@@ -344,25 +344,27 @@ func _unit_sound_at(idx: int) -> int:
 	return SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx)
 
 func _drop_loot():
-	var bag_prefab := load("res://scripts/loot_bag.gd")
-	if bag_prefab == null:
+	# Мешок убран (03.10): игрок сразу видит, что именно выпало. Класс переименован
+	# loot_bag.gd -> loot_drop.gd, поэтому здесь новый путь и новое имя.
+	var drop_script: GDScript = load("res://scripts/loot_drop.gd")
+	if drop_script == null:
 		return
-	var bag: LootBag = bag_prefab.new()
-	bag.items = _make_loot()
+	var drop: LootDrop = drop_script.new()
+	drop.items = _make_loot()
 	# Размер баночки зелья по силе врага: труп муравья и труп босса не должны
 	# выглядеть одинаково. Пороги те же, что в npc.gd:_potion_size.
-	bag.potion_size = "large" if max_hp >= 100 else ("medium" if max_hp >= 55 else "small")
-	# Мешок на высоте рельефа (юнит поднят на высоту холма; без этого мешок
-	# «тонет» ниже уровня земли на высоту рельефа)
+	drop.potion_size = "large" if max_hp >= 100 else ("medium" if max_hp >= 55 else "small")
+	# Добыча на высоте рельефа (юнит поднят на высоту холма; без этого иконки
+	# «тонут» ниже уровня земли на высоту рельефа)
 	var h := _relief_here()
-	bag.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16) - h)
+	drop.global_position = global_position + Vector2(randf_range(-22, 22), randf_range(-16, 16) - h)
 	# Родитель, а не get_tree().current_scene: последний равен null в
 	# headless-скриптах и при спавне юнита из теста.
 	var host := get_parent()
 	if host == null:
 		host = get_tree().current_scene
 	if host != null:
-		host.add_child(bag)
+		host.add_child(drop)
 
 ## Высота рельефа под юнитом (0, если карты нет).
 func _relief_here() -> float:

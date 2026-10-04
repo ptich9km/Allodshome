@@ -2,7 +2,7 @@ extends SceneTree
 ## Проверка иконок лута и выпадения лута из NPC.
 ##
 ## ЗАКРОЕМЫЕ БАГИ (найдены по коду до написания теста):
-##  * player.add_gold() НЕ СУЩЕСТВОВАЛ, хотя loot_bag.gd звал его по
+##  * player.add_gold() НЕ СУЩЕСТВОВАЛ, хотя loot_drop.gd звал его по
 ##    has_method. Золото падало в запасную ветку `_player.gold += gold` -
 ##    начислялось, но без записи в лог/сигнал, и это маскировало ошибку;
 ##  * NPC (жители, стража) НЕ РОНЯЛИ лут вовсе: лут был только у врагов;
@@ -120,8 +120,13 @@ func _test_icon_for_armor() -> void:
 
 func _test_gold_icon() -> void:
 	var p := LootIcons.gold_icon()
-	_check(p.ends_with("gold_ingot.png"), "золото -> слиток (получено %s)" % p.get_file())
-	_check(ResourceLoader.exists(p), "иконка золотого слитка существует")
+	# Контракт поменян 03.10: раньше здесь ТРЕБОВАЛСЯ слиток, и это было ошибкой —
+	# слиток это предмет из item_db, а золото это число у игрока. Игрок брал
+	# мешок, видел слиток и не находил его в инвентаре.
+	_check(p.ends_with("gold_coin.png"), "золото -> монета (получено %s)" % p.get_file())
+	_check(not p.ends_with("gold_ingot.png"),
+		"золото НЕ рисуется слитком (слиток — предмет, золото — число)")
+	_check(ResourceLoader.exists(p), "файл монеты на месте")
 
 
 func _test_potion_icons() -> void:
@@ -233,7 +238,7 @@ func _test_npc_drops_loot() -> void:
 
 	# содержимое мешка осмысленно
 	if after > before:
-		var bag: LootBag = get_nodes_in_group("loot")[-1] as LootBag
+		var bag: LootDrop = get_nodes_in_group("loot")[-1] as LootDrop
 		_check(bag != null and not bag.items.is_empty(), "мешок NPC не пустой")
 		if bag != null:
 			var has_gold := false
@@ -262,7 +267,7 @@ func _test_npc_drops_loot() -> void:
 		await process_frame
 		var bags := get_nodes_in_group("loot")
 		if bags.size() > 0:
-			var gb: LootBag = bags[-1] as LootBag
+			var gb: LootDrop = bags[-1] as LootDrop
 			if gb != null:
 				if gb.potion_size != "medium":
 					_check(false, "страж (90 HP) роняет среднюю баночку, получено %s" % gb.potion_size)

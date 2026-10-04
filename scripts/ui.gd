@@ -49,6 +49,14 @@ func setup_ui(p: Player):
 	refresh_spell_book()
 	_setup_stats_area()
 	_update_preview_hero()
+	# Иконка монеты в счётчике золота (03.10). Тот же спрайт, что лежит на земле
+	# при убийстве, — игрок видит одинаковую картинку в луте и в панели.
+	var gold_icon := get_node_or_null(
+		"StatsPanel/StatsMargin/StatsCol/GoldRow/GoldIcon") as TextureRect
+	if gold_icon != null:
+		var gp := LootIcons.gold_icon()
+		if gp != "":
+			gold_icon.texture = load(gp)
 
 	# Карта для миникарты
 	alm_map = get_tree().get_first_node_in_group("alm_map")
@@ -735,7 +743,7 @@ func _world_hover_target() -> Array:
 				return ["b%d" % int(h.get("type_id", -1)), _building_tooltip_lines(h)]
 	# 3) Лут на земле.
 	for lb in get_tree().get_nodes_in_group("loot"):
-		if is_instance_valid(lb) and lb is LootBag \
+		if is_instance_valid(lb) and lb is LootDrop \
 				and lb.global_position.distance_to(world) < 22.0:
 			return ["l%d" % lb.get_instance_id(), _loot_tooltip_lines(lb)]
 	return ["", []]
@@ -771,7 +779,7 @@ func _building_tooltip_lines(h: Dictionary) -> Array:
 	lines.append("Здание")
 	return lines
 
-func _loot_tooltip_lines(lb: LootBag) -> Array:
+func _loot_tooltip_lines(lb: LootDrop) -> Array:
 	var lines: Array = ["Добыча"]
 	var gold := 0
 	var names: Array[String] = []
@@ -1227,6 +1235,14 @@ func _two_col_row_grid(parent: VBoxContainer,
 	return rv
 
 
+## Обновить счётчик золота в панели справа. Отдельный метод, чтобы его можно
+## было дёрнуть и из подбора лута, не пересчитывая всю статистику.
+func _update_gold(amount: int) -> void:
+	var lbl := get_node_or_null("StatsPanel/StatsMargin/StatsCol/GoldRow/GoldLabel") as Label
+	if lbl != null:
+		lbl.text = str(amount)
+
+
 func _update_stats():
 	if not is_instance_valid(player):
 		return
@@ -1245,6 +1261,11 @@ func _update_stats():
 		_hp_label.text = "%d / %d" % [p.current_hp, p.max_hp]
 	if _mp_label != null:
 		_mp_label.text = "%d / %d" % [p.current_mana, p.max_mana]
+
+	# Золото (03.10). Замер: player.gold есть, но в HUD он не показывался НИГДЕ —
+	# только в таверне и магазине. Игрок брал мешок, видел нарисованный слиток и
+	# не находил его в инвентаре, потому что это было золото, а не предмет.
+	_update_gold(int(p.get("gold") if "gold" in p else 0))
 
 	# Боевые статы
 	_set_stat("damage", "%d-%d" % [p.get_damage_min(), p.get_damage_max()])
@@ -1588,3 +1609,7 @@ func _on_inventory_changed() -> void:
 func refresh_inventory() -> void:
 	if is_instance_valid(_inventory_panel):
 		_inventory_panel._refresh_inventory_grid()
+	# Золото тоже могло измениться (подбор лута), а панель инвентаря открыта
+	# не всегда — поэтому обновляем счётчик здесь, а не только в _update_stats.
+	if is_instance_valid(player):
+		_update_gold(int(player.get("gold") if "gold" in player else 0))

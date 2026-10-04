@@ -1399,7 +1399,9 @@ func _clear_world_units() -> void:
 	Game.npcs.clear()
 	# Мешки с лутом лежат отдельными узлами рядом с юнитами.
 	for child in get_children():
-		if child.is_in_group("loot_bag") or child.name.begins_with("LootBag"):
+		# Мешки лута переименованы в LootDrop (03.10), но группа осталась
+		# прежней — на неё завязана очистка при переходе между зонами.
+		if child.is_in_group("loot_bag") or child.name.begins_with("LootDrop"):
 			child.queue_free()
 	if is_instance_valid(player):
 		player.stop_movement()
