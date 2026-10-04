@@ -647,7 +647,7 @@ func _on_open_alm() -> void:
 	var fd := FileDialog.new()
 	fd.access = FileDialog.ACCESS_FILESYSTEM
 	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	fd.filters = PackedStringArray(["*.alm ; Карта Allods 2 (.alm)", "*.json ; Карта редактора (.json)"])
+	fd.filters = PackedStringArray(["*.alm ; Карта Mirotokhome (.alm)", "*.json ; Карта редактора (.json)"])
 	fd.file_selected.connect(_open_alm_file)
 	add_child(fd)
 	fd.popup_centered(Vector2i(700, 500))

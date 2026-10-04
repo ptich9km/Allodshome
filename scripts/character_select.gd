@@ -174,7 +174,7 @@ func _setup_title() -> void:
 	_root.add_child(box)
 	var title := Label.new()
 	title.theme_type_variation = &"CsTitle"
-	title.text = "АЛЛОДЫ: ДОМ"
+	title.text = "MIROTOKHOME"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var sub := Label.new()

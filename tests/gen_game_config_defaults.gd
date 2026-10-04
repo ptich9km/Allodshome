@@ -72,7 +72,7 @@ func _fmt(value: Variant) -> String:
 func build_text() -> String:
 	var lines: Array[String] = []
 	lines.append("; ============================================================")
-	lines.append("; Allods Home - игровой конфиг")
+	lines.append("; Mirotokhome - игровой конфиг")
 	lines.append(";")
 	lines.append("; Эталоны по умолчанию. Сгенерировано из DEFAULTS в")
 	lines.append("; scripts/game_config.gd - правь значения здесь, потом перезапусти игру.")
