@@ -70,6 +70,15 @@ BAND_PX = 8.0
 NOISE_AMP = 0.25
 DITHER = 1.0 / 16.0 # Bayer 4x4, амплитуда квантования
 
+# Диагонали (NE/SE/SW/NW): полоса у края активна только в ЗОНЕ УГЛА,
+# длина DIAGONAL_SPAN вдоль каждого края от угла. Без этого min(y, 31-x)
+# для NE размазывал B по ВСЕМУ верхнему и правому краю (даже у левого
+# угла y=0 → чистый B), и на карте цепочка диагональных клеток читалась
+# как сетка из сплошных полос. Кардиналы N/E/S/W затрагивают один край
+# целиком — их логика не меняется.
+# Решение игрока 05.10: «полоски не на всю длину текстуры, а наполовину».
+DIAGONAL_SPAN = TILE // 2  # 16 px
+
 # Упорядоченная матрица Байера 4x4: даёт упорядоченный дизеринг, поэтому стык
 # выглядит сеткой разной плотности, а не гладким градиентом. На 32x32 это
 # читается как пиксель-арт, на гладком градиенте - как «размытая картинка».
@@ -79,6 +88,20 @@ BAYER4 = [
     [3, 11, 1, 9],
     [15, 7, 13, 5],
 ]
+
+# Для диагонали: какой участок края активен (True = край участвует в min).
+# Ключ — (направление, край); направление передаётся в edge_distance.
+# NE: top только правая половина (x >= SPAN), right только верхняя (y < SPAN).
+DIAGONAL_EDGE_ACTIVE = {
+    ("NE", "top"):   lambda x, y: x >= TILE - DIAGONAL_SPAN,
+    ("NE", "right"): lambda x, y: y < DIAGONAL_SPAN,
+    ("SE", "bottom"): lambda x, y: x >= TILE - DIAGONAL_SPAN,
+    ("SE", "right"): lambda x, y: y >= TILE - DIAGONAL_SPAN,
+    ("SW", "bottom"): lambda x, y: x < DIAGONAL_SPAN,
+    ("SW", "left"):  lambda x, y: y >= TILE - DIAGONAL_SPAN,
+    ("NW", "top"):   lambda x, y: x < DIAGONAL_SPAN,
+    ("NW", "left"):  lambda x, y: y < DIAGONAL_SPAN,
+}
 
 
 def hash01(*parts):
@@ -123,10 +146,18 @@ def _octave(seed_parts, octave, u, v):
     return a + (b - a) * sy
 
 
-def edge_distance(edges, x, y):
-    """Расстояние (в px) от ближайшего из заданных краёв плитки."""
+def edge_distance(edges, x, y, direction=None):
+    """Расстояние (в px) от ближайшего из заданных краёв плитки.
+
+    Для диагоналей (direction in NE/SE/SW/NW) край учитывается только в
+    зоне угла (DIAGONAL_SPAN вдоль края). Вне зоны край пропускается;
+    если не осталось активных краёв — 999 (чистый A, без бленда).
+    """
     best = 999.0
     for e in edges:
+        act = DIAGONAL_EDGE_ACTIVE.get((direction, e)) if direction else None
+        if act is not None and not act(x, y):
+            continue
         if e == "top":
             best = min(best, float(y))
         elif e == "bottom":
@@ -138,7 +169,7 @@ def edge_distance(edges, x, y):
     return best
 
 
-def make_tile(a_img, b_img, edges, seed_parts):
+def make_tile(a_img, b_img, edges, seed_parts, direction=None):
     """Плитка A с кромкой, уходящей в B по краям edges.
 
     Маска: 1 у самого края, 0 на расстоянии BAND_PX. Расстояние возмущается
@@ -151,7 +182,7 @@ def make_tile(a_img, b_img, edges, seed_parts):
     op = out.load()
     for y in range(TILE):
         for x in range(TILE):
-            d = edge_distance(edges, x, y)
+            d = edge_distance(edges, x, y, direction)
             base = 1.0 - (d / BAND_PX)
             if base < 0.0:
                 base = 0.0
@@ -206,7 +237,7 @@ def main():
                     # одной и той же картинкой и вариации отличались.
                     a_tile = base[a][(a + v * 2) % 6]
                     b_tile = base[b][(b * 2 + v + 1) % 6]
-                    t = make_tile(a_tile, b_tile, edges, seed_parts)
+                    t = make_tile(a_tile, b_tile, edges, seed_parts, direction)
                     strip.paste(t, (0, row * TILE))
             path = os.path.join(OUT_DIR, "tile%d-%02d.bmp" % (file_n, a))
             # Хеш считаем по BMP-байтам, а не по сырому RGB: на диске лежит
