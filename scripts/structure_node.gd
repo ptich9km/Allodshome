@@ -1,12 +1,13 @@
 class_name StructureNode
 extends Node2D
-## Здание из .alm (структура). Собирает сетку тайлов fw×fh из кадров
-## house-001..N (папка из StructureDB), добавляет тень houseb и анимацию фаз.
+## Здание из .alm (структура).
 ##
-## Раскладка кадров: файл хранит блоки — база (первые fw*fh кадров) и при
-## Phases>1 дополнительные блоки-фазы по той же сетке. Номер кадра тайла:
-##   frame = block * (fw*fh) + (fw*ly + lx) + 1
-## Число блоков = реальное число кадров / сетку (автоопределение).
+## Два режима:
+## 1) Сетка (Allods): кадры house-001..N по тайлам 32×32 (fw×fh) + тень houseb.
+## 2) whole_image (арт Alice): ОДНА PNG на всё здание (house-001.png = весь дом),
+##    без нарезки и без houseb — иначе Godot шумит «Resource not found».
+##
+## Сетка: frame = block * (fw*fh) + (fw*ly + lx) + 1.
 
 const TILE := 32  # размер тайла структуры
 
@@ -18,6 +19,7 @@ var sel_box := Rect2i(0, 0, 96, 96)  # хитбокс выделения [x1,y1,
 var shadow_y := 0         # сдвиг тени по Y из реестра
 var use_anim := true      # проигрывать анимацию фаз, если есть
 var max_blocks := 0       # ограничение числа блоков (0 = без ограничений)
+var whole_image := false  # один спрайт house-001.png (не сетка тайлов)
 
 var _blocks := 1          # число блоков кадров (база + фазы)
 var _valid_blocks: Array = [0]  # блоки, пригодные для анимации (0 = база)
@@ -44,6 +46,23 @@ func build() -> void:
 	_build()
 
 func _build() -> void:
+	# --- Режим «одно здание = один файл» (Alice) ---
+	if whole_image:
+		_blocks = 1
+		_valid_blocks = [0]
+		_active = false
+		var s := Sprite2D.new()
+		s.name = "Whole"
+		s.centered = false
+		s.position = Vector2.ZERO
+		var path := "res://assets/structures/%s/house-001.png" % folder
+		if ResourceLoader.exists(path):
+			s.texture = load(path)
+		add_child(s)
+		_tiles.append(s)
+		return
+
+	# --- Сетка тайлов (Allods) ---
 	# Определить число блоков по реальным кадрам в папке
 	var grid := fw * fh
 	var dir := DirAccess.open("res://assets/structures/%s" % folder)
@@ -94,29 +113,32 @@ func _build() -> void:
 	for ly in range(fh):
 		for lx in range(fw):
 			var idx := _tiles.size()
-			var s := Sprite2D.new()
-			s.name = "Tile%d" % idx
-			s.position = Vector2(lx * TILE, ly * TILE)
-			add_child(s)
-			_tiles.append(s)
-	# Тень: отдельным слоем под зданием (houseb-NNN), сдвиг вниз.
-	# Узел здания стоит верхом на клетке (y-fh+th); корпус — клетки y..y+th-1.
-	# Тень-ромб кладём так, чтобы её верх был на уровне земли (нижняя кромка корпуса).
+			var ts := Sprite2D.new()
+			ts.name = "Tile%d" % idx
+			ts.position = Vector2(lx * TILE, ly * TILE)
+			add_child(ts)
+			_tiles.append(ts)
+	# Тень: только если в папке ЕСТЬ houseb-001 (у Alice теней нет — не создаём,
+	# иначе _apply_frame шумит Resource not found на каждой клетке).
 	var shadow_off := float(fh - th) * TILE
-	for ly in range(fh):
-		for lx in range(fw):
-			var s := Sprite2D.new()
-			s.name = "Shadow%d" % _shadow_tiles.size()
-			s.position = Vector2(lx * TILE, ly * TILE + shadow_off)
-			s.z_index = -2
-			s.modulate = Color(1, 1, 1, 0.4)   # полупрозрачная тень (не «второе здание»)
-			add_child(s)
-			_shadow_tiles.append(s)
+	if ResourceLoader.exists("res://assets/structures/%s/houseb-001.png" % folder):
+		for ly in range(fh):
+			for lx in range(fw):
+				var sh := Sprite2D.new()
+				sh.name = "Shadow%d" % _shadow_tiles.size()
+				sh.position = Vector2(lx * TILE, ly * TILE + shadow_off)
+				sh.z_index = -2
+				sh.modulate = Color(1, 1, 1, 0.4)
+				add_child(sh)
+				_shadow_tiles.append(sh)
 	_apply_frame()
 
 ## Размер файла кадра house-NNN в байтах (-1, если файла нет).
 func _house_size(frame: int) -> int:
-	var f := FileAccess.open("res://assets/structures/%s/house-%03d.png" % [folder, frame], FileAccess.READ)
+	var path := "res://assets/structures/%s/house-%03d.png" % [folder, frame]
+	if not ResourceLoader.exists(path):
+		return -1
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return -1
 	var sz := f.get_length()
@@ -147,23 +169,30 @@ func _is_phase_broken(block: int, grid: int) -> bool:
 ## _phase — индекс в _valid_blocks, а НЕ номер блока: битые фазы вычеркнуты,
 ## и анимация идёт только по пригодным (у mill2 пропускается фаза 3).
 func _apply_frame() -> void:
+	if whole_image:
+		if _tiles.is_empty():
+			return
+		var path := "res://assets/structures/%s/house-001.png" % folder
+		if ResourceLoader.exists(path):
+			(_tiles[0] as Sprite2D).texture = load(path)
+		return
 	var grid := fw * fh
 	var block: int = _current_block()
 	for i in range(_tiles.size()):
 		var frame := block * grid + i + 1
-		var tex: Variant = load("res://assets/structures/%s/house-%03d.png" % [folder, frame])
-		if tex == null:
-			tex = load("res://assets/structures/%s/house-%03d.png" % [folder, i + 1])
-		if tex != null:
-			(_tiles[i] as Sprite2D).texture = tex
+		var path := "res://assets/structures/%s/house-%03d.png" % [folder, frame]
+		if not ResourceLoader.exists(path):
+			path = "res://assets/structures/%s/house-%03d.png" % [folder, i + 1]
+		if ResourceLoader.exists(path):
+			(_tiles[i] as Sprite2D).texture = load(path)
 	for i in range(_shadow_tiles.size()):
-		var s := _shadow_tiles[i] as Sprite2D
-		var tex: Variant = load("res://assets/structures/%s/houseb-%03d.png" % [folder, i + 1])
-		if tex != null:
-			s.texture = tex
-			s.visible = true
+		var sh := _shadow_tiles[i] as Sprite2D
+		var spath := "res://assets/structures/%s/houseb-%03d.png" % [folder, i + 1]
+		if ResourceLoader.exists(spath):
+			sh.texture = load(spath)
+			sh.visible = true
 		else:
-			s.visible = false
+			sh.visible = false
 
 ## Номер блока для текущего индекса фазы.
 func _current_block() -> int:

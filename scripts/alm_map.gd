@@ -243,16 +243,17 @@ func herb_at_position(world_position: Vector2) -> HerbNode:
 func get_herbs() -> Array:
 	return _herbs
 
-## Собрать Node2D-здание: сетка house-NNN + тень houseb + анимация фаз.
+## Собрать Node2D-здание: whole_image (одна PNG) или сетка house-NNN + тень.
 func _make_structure(job: Dictionary) -> Node2D:
 	var node := StructureNode.new()
 	node.folder = str(job["dir"])
 	node.fw = int(job["fw"])
 	node.th = int(job["th"])
 	node.fh = int(job["fh"])
+	node.whole_image = bool(job.get("whole_image", false))
 	var anim_times: Array = job.get("anim_times", [])
 	node.set_anim_times(anim_times)
-	node.use_anim = int(job.get("phases", 1)) > 1
+	node.use_anim = int(job.get("phases", 1)) > 1 and not node.whole_image
 	node.max_blocks = int(job.get("phases", 0))
 	node.build()
 	return node
@@ -287,6 +288,7 @@ func _structure_frame_job(type_id: int, st: Dictionary) -> Dictionary:
 		"phases": int(def.get("phases", 1)),
 		"anim_times": StructureDB.anim_time(dir_name, int(def.get("phases", 1))),
 		"sel": sel,
+		"whole_image": int(def.get("whole_image", 0)) != 0,
 	}
 	_structure_jobs[type_id] = job
 	return job

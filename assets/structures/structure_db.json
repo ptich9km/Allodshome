@@ -5676,8 +5676,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5693,7 +5693,8 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  },
  "201": {
   "id": 201,
@@ -5705,8 +5706,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5722,7 +5723,8 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  },
  "202": {
   "id": 202,
@@ -5734,8 +5736,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5751,7 +5753,8 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  },
  "203": {
   "id": 203,
@@ -5763,8 +5766,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5780,7 +5783,8 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  },
  "204": {
   "id": 204,
@@ -5792,8 +5796,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5809,7 +5813,8 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  },
  "205": {
   "id": 205,
@@ -5821,8 +5826,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5838,7 +5843,8 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  },
  "206": {
   "id": 206,
@@ -5850,8 +5856,8 @@
   "full_height": 3,
   "sel": [
    0,
-   0,
    96,
+   0,
    96
   ],
   "shadow_y": 0,
@@ -5867,6 +5873,7 @@
   "light_radius": 0,
   "light_pulse": 0,
   "variable_size": 0,
-  "tiles_per_frame": 9
+  "tiles_per_frame": 1,
+  "whole_image": 1
  }
 }

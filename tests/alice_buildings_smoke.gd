@@ -45,6 +45,12 @@ func _run() -> void:
 		_check(int(def.get("full_height", 0)) == 3, "id %d full_height=3" % id)
 		var tex: Texture2D = StructureDB.preview_texture(id)
 		_check(tex != null, "id %d house-001.png грузится" % id)
+		_check(int(def.get("whole_image", 0)) == 1, "id %d whole_image=1" % id)
+		var png := "res://assets/structures/%s/house-001.png" % folder
+		_check(ResourceLoader.exists(png), "id %d один файл house-001" % id)
+		# не должно остаться нарезки house-002..
+		_check(not ResourceLoader.exists("res://assets/structures/%s/house-002.png" % folder),
+			"id %d нет house-002 (не сетка)" % id)
 
 	# --- Клик: _structure_kind по type_id ---
 	var game := Game
