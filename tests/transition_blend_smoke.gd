@@ -293,9 +293,11 @@ func _test_map() -> void:
 			var owner: int = AlmLoader.terrain_type(hflags[i])
 			if file_n < FILE_BASE:
 				interiors += 1
-				# Если у клетки есть отличающийся кардинальный сосед, а тайл
-				# НЕ переходный — переход где-то не сработал.
-				if _has_differing_cardinal(terrain, hflags, w, h, x, y, owner):
+				# Односторонний переход t < n (05.10): переход ставит только
+				# клетка с МЕНЬШИМ типом. Сосед с большим типом — чистый
+				# интерьер, это норма, а не пропуск. Считаем ошибкой только
+				# «малый тип на кромке без перехода».
+				if _has_smaller_type_cardinal(terrain, hflags, w, h, x, y, owner):
 					boundary_without_transition += 1
 				continue
 			transitions += 1
@@ -313,7 +315,7 @@ func _test_map() -> void:
 	_check(wrong_owner == 0, "у всех переходов валидный биом-владелец (ошибок: %d)" % wrong_owner)
 	_check(wrong_row == 0, "row = сосед*2 + вариация (ошибок: %d)" % wrong_row)
 	_check(boundary_without_transition == 0,
-		"все кромки получили переход (пропущено: %d)" % boundary_without_transition)
+		"у малых типов на кромке есть переход t < n (пропущено: %d)" % boundary_without_transition)
 	_test_seam_metric(m, w, h)
 	_test_transition_keeps_walkability(m, w, h)
 
@@ -347,7 +349,8 @@ func _test_transition_keeps_walkability(m: Dictionary, w: int, h: int) -> void:
 	_check(wrong == 0,
 		"переходный тайл не меняет проходимость биома (расхождений: %d)" % wrong)
 
-func _has_differing_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
+## Есть ли кардинальный сосед с БОЛЬШИМ типом (значит, переход t < n обязателен).
+func _has_smaller_type_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
 		w: int, h: int, x: int, y: int, owner: int) -> bool:
 	if owner < 0:
 		return false
@@ -357,7 +360,7 @@ func _has_differing_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
 		if nx < 0 or ny < 0 or nx >= w or ny >= h:
 			continue
 		var nt: int = AlmLoader.terrain_type(hflags[ny * w + nx])
-		if nt >= 0 and nt != owner:
+		if nt > owner:
 			return true
 	return false
 
