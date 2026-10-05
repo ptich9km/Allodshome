@@ -26,8 +26,24 @@ var _allowwalk: Dictionary = {} # клетки «Разрешить проход
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
 
 var mesh: MeshInstance2D
+## Второй слой рельефа: мягкая смесь вода–песок (пилот 05.10).
+## MeshInstance2D в Godot 4.7 не имеет surface_override_material — поэтому
+## отдельный узел со своим ShaderMaterial, а не вторая поверхность ArrayMesh.
+var blend_mesh: MeshInstance2D
 var _atlas: ImageTexture
 var _cell_uv := {}              # "f{v}-r{row}" -> Rect4(u0,v0,u1,v1)
+## Пилот мягкой смеси вода–песок (05.10).
+var _biome_mask: ImageTexture
+var _blend_water: ImageTexture
+var _blend_sand: ImageTexture
+var _blend_cells := 0
+var _atlas_cells := 0
+const WATER_T := 2
+const SAND_T := 5
+## Сколько клеток карты в одну плитку текстуры бленда.
+## 1.0 = текстура 32px ровно на клетку 32px (как интерьеры атласа).
+## 8.0 давал ×8-зум + linear → «песок под лупой» (жалоба 05.10).
+const BLEND_CELLS_PER_TEX := 1.0
 var _obstacle_db := {}          # .alm obstacle id -> {folder, w, h, cx, cy, phases}
 var obstacles_root: Node2D      # слой препятствий (y-sort)
 var buildings: Node2D           # слой зданий (y-sort)
@@ -483,12 +499,17 @@ func _build_relief_mesh() -> void:
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Пилот: вода(2)/песок(5) — отдельная поверхность с мягкой смесью.
+	var st_blend := SurfaceTool.new()
+	st_blend.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	# Cache terrain types for all cells
 	var types := PackedInt32Array()
 	types.resize(map_width * map_height)
 	for i in range(types.size()):
 		types[i] = AlmLoader.terrain_type(_hflags[i])
+
+	_build_blend_assets()
 
 	for y in range(map_height):
 		for x in range(map_width):
@@ -497,21 +518,6 @@ func _build_relief_mesh() -> void:
 			if t < 0:
 				continue
 
-			# Get atlas UV for this cell
-			var file_n := (_hflags[i] & 0xF) + 1
-			var vmax := 4 if file_n == 4 else 16
-			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
-			var row := _terrain[i] & 0xF
-			var uv := _uv_for_cell(file_n, variant, row)
-			if uv == Vector4(0, 0, 0, 0):
-				continue
-
-			# COLOR: r=g=b=1.0 (атлас color), a=brightness
-			var br := _brightness(x, y)
-			st.set_color(Color(1.0, 1.0, 1.0, br))
-
-
-			# Quad corners with height
 			var h00 := _node_h(x, y)
 			var h10 := _node_h(x + 1, y)
 			var h01 := _node_h(x, y + 1)
@@ -521,46 +527,54 @@ func _build_relief_mesh() -> void:
 			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
 			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
 
-			# UV from atlas
+			var br := _brightness(x, y)
+
+			# --- Вода/песок: мягкая смесь по маске биомов ---
+			if _is_blend_terrain(t):
+				_blend_cells += 1
+				# UV угла клетки в0..1 по карте — линейная фильтрация маски
+				# интерполирует значение между соседними клетками, шов мягкий.
+				var u0 := float(x) / float(map_width)
+				var v0 := float(y) / float(map_height)
+				var u1 := float(x + 1) / float(map_width)
+				var v1 := float(y + 1) / float(map_height)
+				st_blend.set_color(Color(float(t) / 6.0, 0.0, 0.0, br))
+				st_blend.set_uv(Vector2(u0, v0)); st_blend.add_vertex(p00)
+				st_blend.set_uv(Vector2(u1, v0)); st_blend.add_vertex(p10)
+				st_blend.set_uv(Vector2(u0, v1)); st_blend.add_vertex(p01)
+				st_blend.set_uv(Vector2(u1, v0)); st_blend.add_vertex(p10)
+				st_blend.set_uv(Vector2(u1, v1)); st_blend.add_vertex(p11)
+				st_blend.set_uv(Vector2(u0, v1)); st_blend.add_vertex(p01)
+				continue
+
+			# --- Остальные биомы: атлас, как раньше ---
+			_atlas_cells += 1
+			var file_n := (_hflags[i] & 0xF) + 1
+			var vmax := 4 if file_n == 4 else 16
+			var variant := clampi((_terrain[i] >> 4) & 0xF, 0, vmax - 1)
+			var row := _terrain[i] & 0xF
+			var uv := _uv_for_cell(file_n, variant, row)
+			if uv == Vector4(0, 0, 0, 0):
+				continue
+
+			st.set_color(Color(1.0, 1.0, 1.0, br))
+
 			var u0 := uv.x
 			var v0 := uv.y
 			var u1 := uv.z
 			var v1 := uv.w
 
-			# --- Разбивка повтора на переходах (03.10) ---
-			# Замер: игрок жаловался, что стыки биомов читаются как СЕТКА. Причина не
-			# в ширине полосы (она 13 px из 32, то есть меньше половины), а в том,
-			# что шум и дизеринг Байера в gen_transition_tiles.py считаются в
-			# локальных координатах плитки, а сид зависит только от пары биомов.
-			# Значит тысячи плиток одного типа попиксельно идентичны, а Байер 4x4
-			# повторяется, выровненный по сетке, — глаз ловит повтор и читает его
-			# как решётку.
-			#
-			# Почему НЕ поворот на 90 градусов: у плитки перехода биом B обязан
-			# лежать на конкретной стороне (EDGE_SETS в gen_transition_tiles.py), и
-			# поворот увёл бы его на другую сторону, то есть переход стал бы врать.
-			# Безопасна только симметрия, СОХРАНЯЮЩАЯ нужную сторону:
-			#   кардинальные (N/S) — зеркало по X, верх остаётся верхом;
-			#   кардинальные (E/W) — зеркало по Y, право остаётся правом;
-			#
-			# ВАЖНО, это стоило сломанной диагонали. У кардинальных плиток B лежит
-			# на ОДНОМ краю (N=top, E=right, ...), поэтому зеркало по свободной оси
-			# допустимо. А у диагональных B лежит на ДВУХ краях сразу
-			# (NE=("top","right")) — это угол, и транспонирование переводит
-			# (top,right) -> (left,bottom): B уезжает на противоположные стороны, и
-			# переход начинает врать. Игрок это сразу увидел («сломал то, что уже
-			# было хорошо»). Для диагоналей безопасна только тождественная раскладка,
-			# поэтому их не трогаем. Сторож — tests/transition_grid_smoke.gd.
+			# Зеркало кардинальных переходов (03.10): только N/S по X, E/W по Y.
 			var file_n_cell := (_hflags[i] & 0xF) + 1
 			if file_n_cell >= 8 and file_n_cell <= 15:
-				var dir_index := file_n_cell - 8   # N, NE, E, SE, S, SW, W, NW
+				var dir_index := file_n_cell - 8
 				var cardinal: bool = dir_index % 2 == 0
 				if cardinal and (abs(hash(Vector2i(x, y))) & 1) == 1:
-					if dir_index == 0 or dir_index == 4:   # N, S: зеркало по X
+					if dir_index == 0 or dir_index == 4:
 						var su := u0
 						u0 = u1
 						u1 = su
-					else:                                        # E, W: зеркало по Y
+					else:
 						var sv := v0
 						v0 = v1
 						v1 = sv
@@ -573,11 +587,13 @@ func _build_relief_mesh() -> void:
 			st.set_uv(Vector2(u1, v1)); st.add_vertex(p11)
 			st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
 
-	var arr: Array = st.commit_to_arrays()
 	var amesh := ArrayMesh.new()
-	amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var arr: Array = st.commit_to_arrays()
+	if not arr.is_empty() and (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() > 0:
+		amesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	mesh.mesh = amesh
 
-	# Inline shader — CUSTOM0 for terrain type (not modulated by Godot)
+	# Surface 0: атлас (та же схема, что работала — яркость в COLOR.a).
 	var mat := ShaderMaterial.new()
 	var shader := Shader.new()
 	shader.code = """shader_type canvas_item;
@@ -588,9 +604,120 @@ void fragment() {
 }"""
 	mat.shader = shader
 	mat.set_shader_parameter("u_atlas", _atlas)
-	mesh.mesh = amesh
 	mesh.material = mat
-	print("AlmMap: меш собран (%d клеток, inline shader)" % (map_width * map_height))
+
+	# Слой бленда: вода/песок, мягкая смесь + шум.
+	if _blend_cells > 0:
+		var arr_b: Array = st_blend.commit_to_arrays()
+		if not arr_b.is_empty() and (arr_b[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() > 0:
+			var bmesh := ArrayMesh.new()
+			bmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr_b)
+			if blend_mesh == null:
+				blend_mesh = MeshInstance2D.new()
+				blend_mesh.name = "BlendMesh"
+				blend_mesh.z_index = mesh.z_index
+				add_child(blend_mesh)
+			blend_mesh.mesh = bmesh
+			# Пиксель-арт: nearest на самом узле, иначе Godot может сгладить.
+			blend_mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			var mat_b := ShaderMaterial.new()
+			var sh_b := Shader.new()
+			sh_b.code = """shader_type canvas_item;
+uniform sampler2D u_biome : filter_linear, repeat_disable;
+uniform sampler2D u_water : filter_nearest, repeat_disable;
+uniform sampler2D u_sand : filter_nearest, repeat_disable;
+uniform float u_noise_amp : hint_range(0.0, 0.3) = 0.06;
+uniform float u_soft_lo : hint_range(0.0, 1.0) = 0.28;
+uniform float u_soft_hi : hint_range(0.0, 1.0) = 0.72;
+uniform vec2 u_map_cells = vec2(128.0, 128.0);
+
+float hash12(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+void fragment() {
+	// Маска linear — мягкий шов. Текстуры: 1 клетка = 1 тайл 32px, nearest.
+	float b = texture(u_biome, UV).r;
+	float m = smoothstep(0.22, 0.78, b);
+	vec2 cell = floor(UV * u_map_cells);
+	vec2 local = fract(UV * u_map_cells);
+	m += (hash12(cell) - 0.5) * u_noise_amp;
+	m = clamp(m, 0.0, 1.0);
+	m = smoothstep(u_soft_lo, u_soft_hi, m);
+	// Полосы из 6 вариантов (строки BMP): variety без размытия.
+	float vw = floor(hash12(cell + vec2(3.1, 7.7)) * 6.0);
+	float vs = floor(hash12(cell + vec2(11.3, 2.9)) * 6.0);
+	vec2 wuv = vec2(local.x, (local.y + vw) / 6.0);
+	vec2 suv = vec2(local.x, (local.y + vs) / 6.0);
+	vec3 wcol = texture(u_water, wuv).rgb;
+	vec3 scol = texture(u_sand, suv).rgb;
+	COLOR = vec4(mix(wcol, scol, m) * COLOR.a, 1.0);
+}"""
+			mat_b.shader = sh_b
+			mat_b.set_shader_parameter("u_biome", _biome_mask)
+			mat_b.set_shader_parameter("u_water", _blend_water)
+			mat_b.set_shader_parameter("u_sand", _blend_sand)
+			mat_b.set_shader_parameter("u_map_cells", Vector2(map_width, map_height))
+			blend_mesh.material = mat_b
+
+	print("AlmMap: меш собран (атлас=%d, бленд-вода/песок=%d, blend_layer=%s)" % [
+		_atlas_cells, _blend_cells, "yes" if blend_mesh != null else "no"])
+
+func _is_blend_terrain(t: int) -> bool:
+	return t == WATER_T or t == SAND_T
+
+## Маска биомов + интерьерные текстуры воды/песка для пилота смеси.
+func _build_blend_assets() -> void:
+	if _biome_mask != null and _blend_water != null and _blend_sand != null:
+		return
+	var img := Image.create(map_width, map_height, false, Image.FORMAT_RF)
+	for y in range(map_height):
+		for x in range(map_width):
+			var t: int = AlmLoader.terrain_type(_hflags[y * map_width + x])
+			if t < 0:
+				t = 0
+			img.set_pixel(x, y, Color(float(t) / 6.0, 0.0, 0.0, 1.0))
+	# Блюр — мягкая кромка между клетками разных типов (не дизеринг).
+	for _p in range(3):
+		img = _box_blur_rf(img)
+	_biome_mask = ImageTexture.create_from_image(img)
+	_blend_water = _load_blend_strip("res://assets/terrain/tile3-00.bmp")
+	_blend_sand = _load_blend_strip("res://assets/terrain/tile6-00.bmp")
+	print("AlmMap: blend-маска %dx%d, water=%s sand=%s" % [
+		map_width, map_height,
+		"ok" if _blend_water else "FAIL", "ok" if _blend_sand else "FAIL"])
+
+## Полоса из 6 вариантов (строк BMP32x448). Nearest — текстура не «плывёт».
+func _load_blend_strip(path: String) -> ImageTexture:
+	if not ResourceLoader.exists(path):
+		push_error("AlmMap: нет текстуры бленда " + path)
+		return null
+	var tex: Texture2D = load(path)
+	var img: Image = tex.get_image()
+	img.convert(Image.FORMAT_RGBA8)
+	var variants := 6
+	var strip := Image.create(TILE, TILE * variants, false, Image.FORMAT_RGBA8)
+	for r in range(variants):
+		var y0 := r * TILE
+		if y0 + TILE > img.get_height():
+			break
+		strip.blit_rect(img, Rect2i(0, y0, TILE, TILE), Vector2i(0, r * TILE))
+	var it := ImageTexture.create_from_image(strip)
+	# Фильтр задаёт узел (blend_mesh.texture_filter) и hint в шейдере.
+	return it
+
+func _box_blur_rf(src: Image) -> Image:
+	var dst := src.duplicate()
+	var w := src.get_width()
+	var h := src.get_height()
+	for y in range(h):
+		for x in range(w):
+			var acc := 0.0
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					acc += src.get_pixel(clampi(x + dx, 0, w - 1), clampi(y + dy, 0, h - 1)).r
+			dst.set_pixel(x, y, Color(acc / 9.0, 0.0, 0.0, 1.0))
+	return dst
 
 func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
 	st.set_uv(Vector2(u, v))
