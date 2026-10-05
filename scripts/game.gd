@@ -1604,6 +1604,11 @@ func _delete_slot(slot: String) -> void:
 
 
 func _quit_to_menu() -> void:
+	# Паузу обязательно снять: иначе главное меню откроется в остановленном
+	# дереве — без анимации фона и без реакции на ввод. Игрок жал Пробел (пауза)
+	# и уходил в меню по Esc, а `get_tree().paused` оставалось в true.
+	is_paused = false
+	get_tree().paused = false
 	_save_to_slot(SaveSystem.AUTOSAVE_SLOT)
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 

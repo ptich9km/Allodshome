@@ -104,7 +104,7 @@ static func base_theme(spec: Dictionary = {}) -> Theme:
 	var hover_border: Color = spec.get("hover_border", Color(1.0, 0.74, 0.26))
 	var pressed_bg: Color = spec.get("pressed_bg", Color(0.15, 0.08, 0.04, 1.0))
 	var pressed_border: Color = spec.get("pressed_border", Color(0.66, 0.36, 0.12))
-	var disabled_bg: Color = spec.get("disabled_bg", Color(0.16, 0.14, 0.13, 0.88))
+	var disabled_bg: Color = spec.get("disabled_bg", Color(0.094, 0.086, 0.078, 1.0))
 	var disabled_border: Color = spec.get("disabled_border", Color(0.35, 0.30, 0.26))
 	var focus_border: Color = spec.get("focus_border", Color(1.0, 0.78, 0.20))
 
@@ -178,6 +178,78 @@ static func add_slot(theme: Theme, name: StringName) -> void:
 	add_panel(theme, name, SLOT_BG, SLOT_BORDER, 5)
 
 
+## Панель с нарисованной 9-slice рамкой из `assets/ui/frames/`.
+##
+## Рамки непрозрачные — требование игрока «без прозрачности в меню». Поля
+## берутся из `frames_db.json`, который пишет `tests/gen_ui_frames.py`; если
+## текстуры нет, панель молча падает назад на `add_panel`, чтобы удалённый ассет
+## не уронил меню.
+static func add_frame(theme: Theme, name: StringName, tex_path: String,
+		fallback_bg: Color = Color(0.071, 0.055, 0.043, 1.0),
+		fallback_border: Color = Color(0.478, 0.290, 0.118)) -> void:
+	if not ResourceLoader.exists(tex_path):
+		push_warning("UiKit.add_frame: нет %s — беру плоскую панель" % tex_path)
+		add_panel(theme, name, fallback_bg, fallback_border, 8)
+		return
+	var tex = load(tex_path)
+	if not (tex is Texture2D):
+		push_warning("UiKit.add_frame: %s не Texture2D" % tex_path)
+		add_panel(theme, name, fallback_bg, fallback_border, 8)
+		return
+	var db := _frame_margins()
+	var m: Dictionary = db.get(name_of_frame(tex_path), {})
+	var style := StyleBoxTexture.new()
+	style.texture = tex
+	# Непрозрачность даёт САМА текстура (тело рамки залито в assets/ui/frames),
+	# а не заливка stylebox: у StyleBoxTexture свойства bg_color нет, и попытка
+	# задать его роняет скрипт в рантайме.
+	if m.has("left"):
+		style.texture_margin_left = int(m["left"])
+		style.texture_margin_top = int(m["top"])
+		style.texture_margin_right = int(m["right"])
+		style.texture_margin_bottom = int(m["bottom"])
+	theme.set_type_variation(name, &"PanelContainer")
+	theme.set_stylebox("panel", name, style)
+
+
+## Имя рамки по пути: `.../panel_frame.png` -> `panel_frame`.
+static func name_of_frame(tex_path: String) -> String:
+	return tex_path.get_file().get_basename()
+
+
+## Поля 9-slice конкретной рамки. Нужны не только `add_frame`, но и
+## `NinePatchRect` в вёрстке: декоративную линейку нельзя растягивать как
+## картинку, иначе орнамент превращается в полосы.
+static func frame_margin_of(tex_path: String) -> Dictionary:
+	var db := _frame_margins()
+	var m = db.get(name_of_frame(tex_path), {})
+	return m if m is Dictionary else {}
+
+
+## Поля 9-slice из `assets/ui/frames/frames_db.json`. Читается один раз и
+## кэшируется: это единственный вход в манифест рамок из кода.
+static func _frame_margins() -> Dictionary:
+	if _frame_db_cache.size() > 0:
+		return _frame_db_cache
+	const DB := "res://assets/ui/frames/frames_db.json"
+	if not ResourceLoader.exists(DB):
+		push_warning("UiKit: нет %s — поля 9-slice беру нулевыми" % DB)
+		return _frame_db_cache
+	var f := FileAccess.open(DB, FileAccess.READ)
+	if f == null:
+		return _frame_db_cache
+	var parsed = JSON.parse_string(f.get_as_text())
+	f.close()
+	if parsed is Dictionary:
+		var frames = (parsed as Dictionary).get("frames", {})
+		if frames is Dictionary:
+			_frame_db_cache = frames
+	return _frame_db_cache
+
+
+static var _frame_db_cache: Dictionary = {}
+
+
 ## Кнопка-вариация из пяти состояний по двум цветам.
 static func add_button(theme: Theme, name: StringName, normal: Color, border: Color,
 		hover: Color, hover_border: Color, radius: int = 6, margin: int = 6) -> void:
@@ -187,7 +259,8 @@ static func add_button(theme: Theme, name: StringName, normal: Color, border: Co
 	theme.set_stylebox("pressed", name,
 		button_style(hover.darkened(0.35), border, 2, radius, margin))
 	theme.set_stylebox("disabled", name,
-		button_style(Color(0.12, 0.11, 0.10, 0.85), border.darkened(0.4), 2, radius, margin))
+		button_style(Color(0.094, 0.086, 0.078, 1.0), border.darkened(0.45),
+			2, radius, margin))
 	theme.set_stylebox("focus", name,
 		button_style(Color(0, 0, 0, 0), Color(1.0, 0.94, 0.42), 3, radius, margin))
 

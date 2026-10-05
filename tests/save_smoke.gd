@@ -210,9 +210,12 @@ func _test_slots_and_backups() -> void:
 	_check(str((b.get("data", {}) as Dictionary).get("hero", {}).get("name", "")) == "Первый",
 		"в .bak лежит ПРЕДЫДУЩАЯ версия, а не текущая")
 
-	# Список слотов для экрана.
+	# Список слотов для экрана. Слотов игрока 6 (с 05.10), а не 3: число
+	# бралось константой и разъехалось с SaveSystem.PLAYER_SLOTS, из-за чего
+	# проверка падала и на чистом master.
 	var lst := SaveSystem.list_slots()
-	_check(lst.size() == 4, "в списке 3 слота + автосейв (%d)" % lst.size())
+	_check(lst.size() == SaveSystem.PLAYER_SLOTS.size() + 1,
+		"в списке слоты игрока + автосейв (%d)" % lst.size())
 	var first: Dictionary = lst[0]
 	_check(first.get("exists") == true, "слот_0 отмечен как существующий")
 	_check(str(first.get("meta", {}).get("hero_name", "")) == "Второй",

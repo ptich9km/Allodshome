@@ -1330,7 +1330,10 @@ func update_ui(p: Player, delta: float = 0.0):
 			lines += "Проход мыши: %s\n" % ("да" if walk_m else "НЕТ")
 			if mc.x >= 0 and mc.y >= 0 and mc.x < alm_map.map_width and mc.y < alm_map.map_height:
 				var t: int = alm_map.cell_type_at(mc.x, mc.y)
-				var names := ["Трава (tile1)", "Горы (tile2 — проходимо, медленно)", "Вода (tile3)", "Дорога (tile4)"]
+				# Горы и вода НЕПРОХОДИМЫ с 05.10 (WalkTable.walkable), раньше
+				# здесь стояло «проходимо, медленно» — отладочный тултип врал.
+				var names := ["Трава (tile1)", "Горы (tile2 — непроходимо)",
+					"Вода (tile3 — непроходимо)", "Дорога (tile4)"]
 				lines += "Тайл мыши: %s\n" % (names[t] if t >= 0 and t < names.size() else str(t))
 				if not walk_m and alm_map.has_method("blocked_reason"):
 					var reason: String = alm_map.call("blocked_reason", mc)

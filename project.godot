@@ -29,6 +29,11 @@ window/size/viewport_height=800
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/PT_Sans-Web-Regular.ttf"
+theme/default_font_size=14
+
 [input]
 
 move_click={

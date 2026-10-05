@@ -1,0 +1,291 @@
+{
+ "_comment": "Переводы интерфейса. Один файл на оба языка, а не два: иначе ключи разъезжаются молча. Схема: ключ -> {ru, en}. Плейсхолдеры — %s/%d, подставляются через Loc.f(). Панели, не переведённые на Loc, читают русский напрямую: это осознанно, полный охват — отдельная задача (см. AGENTS.md §12).",
+ "ui.brand.title": {
+  "ru": "MIROTOKHOME",
+  "en": "MIROTOKHOME"
+ },
+ "ui.brand.subtitle": {
+  "ru": "Песочница и тактический RPG",
+  "en": "A sandbox and tactical RPG"
+ },
+ "ui.lang.title": {
+  "ru": "Язык",
+  "en": "Language"
+ },
+ "ui.lang.ru": {
+  "ru": "Русский",
+  "en": "Русский"
+ },
+ "ui.lang.en": {
+  "ru": "English",
+  "en": "English"
+ },
+ "ui.menu.new_game": {
+  "ru": "Новая игра",
+  "en": "New Game"
+ },
+ "ui.menu.load_game": {
+  "ru": "Загрузить игру",
+  "en": "Load Game"
+ },
+ "ui.menu.mods": {
+  "ru": "Моды и дополнения",
+  "en": "Mods and Add-ons"
+ },
+ "ui.menu.network": {
+  "ru": "Сетевая игра",
+  "en": "Multiplayer"
+ },
+ "ui.menu.about": {
+  "ru": "Об авторах",
+  "en": "About the Authors"
+ },
+ "ui.menu.quit": {
+  "ru": "Выйти",
+  "en": "Quit"
+ },
+ "ui.menu.settings": {
+  "ru": "Настройки",
+  "en": "Settings"
+ },
+ "ui.common.back": {
+  "ru": "Назад",
+  "en": "Back"
+ },
+ "ui.common.yes": {
+  "ru": "Да",
+  "en": "Yes"
+ },
+ "ui.common.no": {
+  "ru": "Нет",
+  "en": "No"
+ },
+ "ui.common.hero": {
+  "ru": "Герой",
+  "en": "Hero"
+ },
+ "ui.quit.title": {
+  "ru": "Выход",
+  "en": "Quit"
+ },
+ "ui.quit.confirm": {
+  "ru": "Выйти из игры?",
+  "en": "Quit the game?"
+ },
+ "ui.load.none": {
+  "ru": "Сохранений нет.\nНачните новую игру.",
+  "en": "No saves yet.\nStart a new game."
+ },
+ "ui.load.slot_filled": {
+  "ru": "Слот %d — %s, день %d",
+  "en": "Slot %d — %s, day %d"
+ },
+ "ui.load.slot_empty": {
+  "ru": "Слот %d — пусто",
+  "en": "Slot %d — empty"
+ },
+ "ui.load.err_newer": {
+  "ru": "Сохранение из более новой версии игры.",
+  "en": "The save is from a newer version of the game."
+ },
+ "ui.load.err_corrupt": {
+  "ru": "Файл сохранения повреждён.",
+  "en": "The save file is corrupted."
+ },
+ "ui.load.err_empty": {
+  "ru": "Слот пуст.",
+  "en": "This slot is empty."
+ },
+ "ui.mods.empty": {
+  "ru": "Моды и дополнения\n\nКаталог mods пуст.\nСюда будут складываться папки модов.",
+  "en": "Mods and Add-ons\n\nThe mods folder is empty.\nMod folders will be placed here."
+ },
+ "ui.mods.found": {
+  "ru": "Моды и дополнения\n\nНайдено папок: %d\n%s\n\nРаспознавание модов появится позже.",
+  "en": "Mods and Add-ons\n\nFolders found: %d\n%s\n\nMod detection will come later."
+ },
+ "ui.network.body": {
+  "ru": "Сетевая игра\n\nСоздание игры — скоро\nПоиск игр для присоединения — скоро",
+  "en": "Multiplayer\n\nHosting — coming soon\nFinding games to join — coming soon"
+ },
+ "ui.network.host": {
+  "ru": "Создать игру",
+  "en": "Host Game"
+ },
+ "ui.network.find": {
+  "ru": "Найти игру",
+  "en": "Find Game"
+ },
+ "ui.about.lore": {
+  "ru": "Мир, где фракции спорят о земле и ресурсах,\nгерой ищет своё место, а за горизонтом\nждут тайны забытых эпох.\n\nМир не ждёт героя — он просто продолжается.",
+  "en": "A world where factions argue over land and resources,\nwhere the hero searches for a place of their own,\nand forgotten ages keep their secrets beyond the horizon.\n\nThe world is not waiting for the hero — it simply goes on."
+ },
+ "ui.about.credits": {
+  "ru": "Версия: %s\nАвтор: %s",
+  "en": "Version: %s\nAuthor: %s"
+ },
+ "ui.footer.build": {
+  "ru": "v%s · %s",
+  "en": "v%s · %s"
+ },
+ "ui.save.title": {
+  "ru": "СОХРАНЕНИЯ",
+  "en": "SAVES"
+ },
+ "ui.save.to_main": {
+  "ru": "В главное меню",
+  "en": "Main Menu"
+ },
+ "ui.save.exit": {
+  "ru": "Выйти из игры",
+  "en": "Quit Game"
+ },
+ "ui.save.slot_n": {
+  "ru": "Слот %d",
+  "en": "Slot %d"
+ },
+ "ui.save.autosave": {
+  "ru": "Автосейв",
+  "en": "Autosave"
+ },
+ "ui.save.newer_suffix": {
+  "ru": " (новее)",
+  "en": " (newer)"
+ },
+ "ui.save.empty_suffix": {
+  "ru": " — пусто",
+  "en": " — empty"
+ },
+ "ui.save.save_short": {
+  "ru": "Сохр.",
+  "en": "Save"
+ },
+ "ui.save.load_short": {
+  "ru": "Загр.",
+  "en": "Load"
+ },
+ "ui.save.delete_short": {
+  "ru": "Удал.",
+  "en": "Del."
+ },
+ "ui.settings.title": {
+  "ru": "НАСТРОЙКИ",
+  "en": "SETTINGS"
+ },
+ "ui.settings.tab_video": {
+  "ru": "Графика",
+  "en": "Graphics"
+ },
+ "ui.settings.tab_audio": {
+  "ru": "Звук",
+  "en": "Audio"
+ },
+ "ui.settings.tab_input": {
+  "ru": "Управление",
+  "en": "Controls"
+ },
+ "ui.settings.fullscreen": {
+  "ru": "Полный экран",
+  "en": "Fullscreen"
+ },
+ "ui.settings.vsync": {
+  "ru": "Вертикальная синхронизация",
+  "en": "Vertical sync"
+ },
+ "ui.settings.ui_scale": {
+  "ru": "Масштаб интерфейса",
+  "en": "Interface scale"
+ },
+ "ui.settings.master_volume": {
+  "ru": "Общая громкость",
+  "en": "Master volume"
+ },
+ "ui.settings.mute": {
+  "ru": "Без звука",
+  "en": "Mute"
+ },
+ "ui.settings.on": {
+  "ru": "Вкл",
+  "en": "On"
+ },
+ "ui.settings.off": {
+  "ru": "Выкл",
+  "en": "Off"
+ },
+ "ui.settings.reset": {
+  "ru": "Сбросить",
+  "en": "Reset to defaults"
+ },
+ "ui.settings.hint_0": {
+  "ru": "Настройки применяются сразу.",
+  "en": "Changes apply immediately."
+ },
+ "ui.settings.hint_1": {
+  "ru": "Отдельные музыка и эффекты появятся вместе с аудио-шинами.",
+  "en": "Separate music and effects buses will come with audio buses."
+ },
+ "ui.settings.hint_2": {
+  "ru": "Нажмите кнопку действия, затем новую клавишу. Esc отменяет.",
+  "en": "Press an action button, then a new key. Esc cancels."
+ },
+ "ui.settings.stub_video": {
+  "ru": "Качество картинки (сглаживание, тени, свечение) — заглушка: переключается только на старте игры.",
+  "en": "Graphics quality (anti-aliasing, shadows, glow) is a stub: it can only change on startup."
+ },
+ "ui.settings.stub_audio": {
+  "ru": "Музыка и отдельная громкость эффектов — заглушка: в проекте одна шина Master.",
+  "en": "Music and a separate effects volume are stubs: the project has a single Master bus."
+ },
+ "ui.settings.press_key": {
+  "ru": "Нажмите новую клавишу…",
+  "en": "Press a new key..."
+ },
+ "ui.settings.listening": {
+  "ru": "слушаем…",
+  "en": "listening..."
+ },
+ "ui.settings.conflict": {
+  "ru": "Занято: «%s»",
+  "en": "Already bound to \"%s\""
+ },
+ "ui.settings.key_set": {
+  "ru": "Назначено: %s",
+  "en": "Bound to %s"
+ },
+ "ui.settings.key_default": {
+  "ru": "по умолчанию",
+  "en": "default"
+ },
+ "ui.settings.reset_done": {
+  "ru": "Настройки сброшены к значениям по умолчанию.",
+  "en": "Settings reset to defaults."
+ },
+ "ui.keys.move_click": {
+  "ru": "Движение (клик)",
+  "en": "Move (click)"
+ },
+ "ui.keys.attack_click": {
+  "ru": "Удар (клик)",
+  "en": "Attack (click)"
+ },
+ "ui.keys.pause": {
+  "ru": "Пауза / меню",
+  "en": "Pause / menu"
+ },
+ "ui.keys.cast_1": {
+  "ru": "Заклинание 1",
+  "en": "Spell 1"
+ },
+ "ui.keys.cast_2": {
+  "ru": "Заклинание 2",
+  "en": "Spell 2"
+ },
+ "ui.keys.cast_3": {
+  "ru": "Заклинание 3",
+  "en": "Spell 3"
+ },
+ "ui.common.close": {
+  "ru": "Закрыть",
+  "en": "Close"
+ }
+}

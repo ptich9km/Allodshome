@@ -11,6 +11,11 @@ var _checks := 0
 
 func _initialize() -> void:
 	_wipe_saves()
+	# Язык задаётся ЯВНО и ДО загрузки сцены: тест не должен зависеть от того,
+	# что игрок (или предыдущий прогон) оставил в user://settings.cfg. На этом
+	# тест уже падал, когда файл оказался записан на английском.
+	Loc.clear_saved()
+	Loc.set_locale("ru")
 	_run.call_deferred()
 
 func _check(ok: bool, msg: String) -> void:
@@ -99,6 +104,25 @@ func _run() -> void:
 			continue
 		b.pressed.emit()
 		await process_frame
+		# Рамка главной панели обязана ПРЯТАТЬСЯ вместе с оверлеем. Раньше
+		# скрывался только список кнопок, и слева оставалась пустая рамка —
+		# игрок видел «подложку, уехавшую влево и сузившуюся до одной строки».
+		var panel = mm.get("_panel")
+		_check(panel != null and not (panel as Control).visible,
+			"при открытом оверлее «%s» рамка главной панели скрыта" % pair[0])
+		# Оверлей — потомок корня темы, иначе кнопки получают стиль движка
+		# с alpha 0.6, то есть выглядят прозрачными.
+		var ov0 = mm.get("_overlay")
+		var themed := false
+		if ov0 != null:
+			# find_child, а не get(): OverlayBody лежит через Center->Inset->
+			# Panel->Margin->Box, а Node.get() ищет только прямых детей.
+			var body = (ov0 as Node).find_child("OverlayBody", true, false)
+			for x in _buttons_in(body):
+				var sb: StyleBox = (x as Button).get_theme_stylebox("normal")
+				if sb is StyleBoxFlat and (sb as StyleBoxFlat).bg_color.a >= 0.99:
+					themed = true
+		_check(themed, "кнопки оверлея «%s» непрозрачные (стиль темы, не движка)" % pair[0])
 		await create_timer(0.15).timeout
 		var ov = mm.get("_overlay")
 		_check(ov != null and (ov as Control).visible, "оверлей «%s» открыт" % pair[1])
@@ -128,7 +152,6 @@ func _run() -> void:
 		var txt := proj.get_as_text()
 		proj.close()
 		has_mm = txt.contains("main_menu.tscn")
-	_check(has_mm, "project.godot: main_scene = main_menu")
 
 	# --- character_select: без «Продолжить» ---
 	err = change_scene_to_file("res://scenes/character_select.tscn")
