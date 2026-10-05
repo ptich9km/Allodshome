@@ -105,7 +105,9 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ##
 ## Теперь при несовпадении версии карта перегенерируется сама. Меняешь
 ## city_gap, плотность Серых или правила разведения — поднимаешь GEN_VERSION.
-const GEN_VERSION := 5
+## 05.10: v6 — диагональный переход не ставится, если кардинальные соседи
+## в этом углу уже режутся к тому же биому (лишняя «заплата» внутри).
+const GEN_VERSION := 6
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -1444,12 +1446,62 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 ## Порядок совпадает с directions.order в terrain_tiles_db.json и с ключами
 ## _sides(): N, NE, E, SE, S, SW, W, NW. Кардинальные берутся раньше
 ## диагональных — так же вела себя оригинальная transition_db.
-func _transition_dir(s: Dictionary, t: int) -> int:
+##
+## 05.10: диагональ пропускается, если шов к типу n уже нарисован у
+## кардинальных соседей этого угла (см. _diag_covered). Иначе клетка 2:2
+## в схеме A B / B B получала лишний NW-срез поверх уже подрезанных 1:2 и 2:1.
+func _transition_dir(s: Dictionary, t: int, x: int, y: int) -> int:
 	for d in _TRANSITION_DIR_ORDER:
 		var n: int = s[d]
-		if n >= 0 and n != t:
-			return _TRANSITION_DIR_ORDER.find(d)
+		if n < 0 or n == t:
+			continue
+		if d == "NE" or d == "SE" or d == "SW" or d == "NW":
+			if _diag_covered(x, y, t, n, d):
+				continue
+		return _TRANSITION_DIR_ORDER.find(d)
 	return -1
+
+## Кардинальные соседи в углу диагонали d (ключи _sides()).
+const _DIAG_CARDINALS := {
+	"NE": ["N", "E"],
+	"SE": ["S", "E"],
+	"SW": ["S", "W"],
+	"NW": ["N", "W"],
+}
+const _CARDINAL_OFFSET := {
+	"N": Vector2i(0, -1),
+	"S": Vector2i(0, 1),
+	"E": Vector2i(1, 0),
+	"W": Vector2i(-1, 0),
+}
+
+## Значение террейна вне карты = -1.
+func _terrain_at(x: int, y: int) -> int:
+	if x < 0 or y < 0 or x >= W or y >= H:
+		return -1
+	return _terrain[y * W + x]
+
+## Диагональ к типу n «покрыта», если кардинальный сосед в этом углу имеет
+## тип t (свой) и у этого кардинального соседа есть кардинальный сосед типа n.
+##
+## ГЕОМЕТРИЯ: у чистой диагонали (оба кардинала == t) диагональный сосед
+## ВСЕГДА кардинален для обоих угловых клеток (NW ячейки = W у N-соседа).
+## Значит чистые диагональные переходы фактически отключаются — по решению
+## игрока (05.10): лишний угловой срез поверх уже подрезанных соседей не нужен.
+## Границу держат кардинальные переходы на клетках, соприкасающихся с n.
+func _diag_covered(x: int, y: int, t: int, n: int, d: String) -> bool:
+	var cards: Array = _DIAG_CARDINALS.get(d, [])
+	for cdir in cards:
+		var off: Vector2i = _CARDINAL_OFFSET[cdir]
+		var cx: int = x + int(off.x)
+		var cy: int = y + int(off.y)
+		if _terrain_at(cx, cy) != t:
+			continue
+		for aoff in _CARDINAL_OFFSET.values():
+			var a: Vector2i = aoff
+			if _terrain_at(cx + int(a.x), cy + int(a.y)) == n:
+				return true
+	return false
 
 ## Переходный тайл A -> B по направлению dir_index. -1, если перехода нет.
 ##
@@ -1458,7 +1510,7 @@ func _transition_dir(s: Dictionary, t: int) -> int:
 ## краям сразу потребовал бы отдельных угловых плиток — это 4 файла на пару
 ## типов, в формате .alm для них нет места.
 func _transition_tile(t: int, s: Dictionary, x: int, y: int) -> int:
-	var dir_index: int = _transition_dir(s, t)
+	var dir_index: int = _transition_dir(s, t, x, y)
 	if dir_index < 0:
 		return -1
 	var b: int = s[_TRANSITION_DIR_ORDER[dir_index]]
