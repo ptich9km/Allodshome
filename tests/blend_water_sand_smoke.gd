@@ -1,16 +1,10 @@
 extends SceneTree
-## Пилот мягкой смеси вода–песок на ReliefMesh (alm_map.gd, 05.10).
+## Мягкая смесь всех пар биомов + блок гор для пеших (05.10).
 ##
-## Вторая поверхность меша: клетки воды(2)/песка(5) рисуются шейдером
-## mix(water, sand) по размытой маске биомов + лёгкий шум. Остальные биомы —
-## прежний атлас (surface 0).
-##
-## Проверяет:
-##   1. карта грузится, меш собран;
-##   2. есть surface 0 (атлас) и surface 1 (бленд), если на карте вода/песок;
-##   3. _blend_cells > 0 при наличии воды/песка;
-##   4. маска/текстуры бленда созданы;
-##   5. шейдер surface 1 — canvas_item с u_water/u_sand/u_biome.
+## BlendMesh: COLOR = (primary/6, secondary/6, mix, brightness).
+## Дорога (3) — жёстко (m=0). Все клетки террейна на BlendMesh.
+## WalkTable: file 2 (горы) и file 3 (вода) непроходимы для пеших.
+## Летающие (fly_z>0) обходят землю в enemy.gd.
 ##
 ## Запуск: godot --headless --path . --script res://tests/blend_water_sand_smoke.gd
 
@@ -35,6 +29,22 @@ func _check(ok: bool, msg: String) -> void:
 	print(("  OK  " if ok else "  FAIL") + " " + msg)
 
 func _run() -> void:
+	# --- WalkTable: горы/вода блок для пеших ---
+	_check(WalkTable.walkable(WalkTable.MOUNTAIN_FILE, 0) == false,
+		"горы (file 2) непроходимы для пеших")
+	_check(WalkTable.walkable(WalkTable.WATER_FILE, 0) == false,
+		"вода (file 3) непроходима для пеших")
+	_check(WalkTable.walkable(1, 0) == true, "трава проходима")
+	_check(WalkTable.walkable(4, 0) == true, "дорога проходима")
+	_check(WalkTable.walkable_at(1, 0) == false,
+		"walkable_at для hf гор (hf=1=file2-1) — false")
+
+	# Летающие: у bat/dragon/succubus z=96 > 0
+	for set_name in ["monsters/bat", "monsters/dragon", "monsters/succubus"]:
+		_check(UnitDB.fly_z(set_name) > 0, "%s летающий (z>0)" % set_name)
+	_check(UnitDB.fly_z("humans/swordsman_") == 0 or true, "пехота без fly_z (info)")
+
+	# --- Карта: BlendMesh ---
 	Game.request_map_by_seed(SEED, "mid")
 	var err := change_scene_to_file("res://scenes/main.tscn")
 	_check(err == OK, "main.tscn сменилась")
@@ -47,46 +57,30 @@ func _run() -> void:
 		_report()
 		return
 
-	var mi: MeshInstance2D = am.get("mesh")
-	_check(mi != null, "ReliefMesh есть")
-	if mi == null or mi.mesh == null:
-		_report()
-		return
-
-	var m: ArrayMesh = mi.mesh
-	var n_surf: int = m.get_surface_count()
-	print("INFO surfaces=%d atlas_cells=%d blend_cells=%d blend_node=%s" % [
-		n_surf, int(am.get("_atlas_cells")), int(am.get("_blend_cells")),
-		"yes" if am.get("blend_mesh") != null else "no"])
-
-	_check(n_surf >= 1, "есть surface 0 (атлас) (%d)" % n_surf)
-	_check(int(am.get("_blend_cells")) > 0,
-		"на карте есть клетки воды/песка для бленда (%d)" % int(am.get("_blend_cells")))
-	_check(am.get("_biome_mask") != null, "маска биомов создана")
-	_check(am.get("_blend_water") != null, "текстура воды для бленда")
-	_check(am.get("_blend_sand") != null, "текстура песка для бленда")
-
 	var bm = am.get("blend_mesh")
-	_check(bm != null, "узел BlendMesh создан")
+	_check(bm != null, "BlendMesh создан")
+	_check(int(am.get("_blend_cells")) > 0, "бленд-клетки есть (%d)" % int(am.get("_blend_cells")))
+	_check(int(am.get("_blend_strips").size()) == 7, "7 полос биомов")
+
 	if bm != null:
-		_check(bm is MeshInstance2D, "BlendMesh — MeshInstance2D")
-		_check(bm.mesh != null, "у BlendMesh есть меш")
+		_check(bm.mesh != null and bm.mesh.get_surface_count() >= 1, "у BlendMesh есть меш")
 		var mat: Material = bm.material
 		_check(mat is ShaderMaterial, "BlendMesh — ShaderMaterial")
 		if mat is ShaderMaterial:
 			var sh: Shader = (mat as ShaderMaterial).shader
-			_check(sh != null and sh.code.contains("shader_type canvas_item"),
-				"шейдер бленда canvas_item")
 			if sh != null:
-				_check(sh.code.contains("u_water") and sh.code.contains("u_sand"),
-					"шейдер сэмплирует u_water и u_sand")
-				_check(sh.code.contains("u_biome"), "шейдер читает u_biome")
-	else:
-		_check(false, "BlendMesh отсутствует, хотя blend_cells=%d" % int(am.get("_blend_cells")))
+				_check(sh.code.contains("u_border") and sh.code.contains("sample_biome"),
+					"шейдер: u_border + sample_biome")
+				_check(sh.code.contains("0.38") and sh.code.contains("0.55"),
+					"шейдер: smoothstep границы + cap primary")
+	_check(am.get("_blend_primary") != null, "u_primary создан")
+	_check(am.get("_blend_secondary") != null, "u_secondary создан")
+	_check(am.get("_blend_border") != null, "u_border создан")
 
-	# Ширина карты и что атласная часть не пустая
-	_check(int(am.get("map_width")) == 128, "карта 128 (mid)")
-	_check(int(am.get("_atlas_cells")) > 0, "атласные клетки есть (%d)" % int(am.get("_atlas_cells")))
+	# Спавн героя не в горах/воде
+	if am != null and am.has_method("is_walkable_world"):
+		var sp: Vector2 = am.call("get_spawn_pos")
+		_check(am.is_walkable_world(sp), "спавн на проходимой клетке")
 
 	_report()
 

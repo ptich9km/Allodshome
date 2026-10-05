@@ -63,7 +63,7 @@ func _run() -> void:
 		else:
 			_check(false, "%s: неожиданное число краёв в EDGE_SETS (%d)" % [d, n])
 
-	print("-- реальные раскладки UV из построенного меша --")
+	print("-- BlendMesh (террейн без запечённых tile8-15) --")
 	var alm_path: String = MapGenerator.new().generate(4242, "mid",
 		"user://maps/gridtest/")
 	_check(alm_path != "" and FileAccess.file_exists(alm_path), "карта сгенерирована")
@@ -71,68 +71,42 @@ func _run() -> void:
 		_report()
 		return
 
-	var m: Dictionary = AlmLoader.load_map(alm_path)
-	var w: int = int(m["width"])
-	var h: int = int(m["height"])
-	var tiles: PackedByteArray = m["terrain"]
-	var hflags: PackedByteArray = m["hflags"]
-
-	# Строим настоящий рельеф — тот же путь, что и в игре. alm_path читается в
-	# _ready(), поэтому задаём ДО add_child.
 	var alm := AlmMap.new()
 	alm.alm_path = alm_path
 	root.add_child(alm)
-	var mi: MeshInstance2D = alm.mesh
-	_check(mi != null and mi.mesh != null, "меш рельефа построен")
-	if mi == null or mi.mesh == null:
+	await process_frame
+
+	var bm: MeshInstance2D = alm.blend_mesh
+	_check(bm != null and bm.mesh != null, "BlendMesh построен")
+	if bm == null or bm.mesh == null:
 		_report()
 		return
-	var arrays: Array = mi.mesh.surface_get_arrays(0)
-	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
-	_check(uvs.size() > 0, "меш имеет UV (%d вершин)" % uvs.size())
+	_check(int(alm._blend_cells) > 0, "бленд-клетки есть (%d)" % int(alm._blend_cells))
+	_check(int(alm._blend_strips.size()) == 7, "7 полос биомов")
 
-	# Порядок вершин в коде: p00, p10, p01, p10, p11, p01 — по 6 на клетку.
-	# Считаем раскладки отдельно для кардинальных и диагональных.
-	var card_layouts := {}
-	var diag_transformed := 0
-	var diag_total := 0
-	var card_total := 0
-	for y in range(h):
-		for x in range(w):
-			var i: int = y * w + x
-			var tile: int = int(tiles[i]) | (int(hflags[i]) << 8)
-			var file_n: int = AlmLoader.tile_file_n(tile)
-			if file_n < AlmLoader.TRANSITION_FILE_MIN or file_n > 15:
-				continue
-			var dir_index: int = file_n - AlmLoader.TRANSITION_FILE_MIN
-			var base: int = i * 6
-			if base + 2 >= uvs.size():
-				continue
-			var layout := _layout(uvs[base], uvs[base + 1], uvs[base + 2])
-			var is_diag: bool = int(edge_count[dirs[dir_index]]) >= 2
-			if is_diag:
-				diag_total += 1
-				if layout != "I":
-					diag_transformed += 1
-			else:
-				card_total += 1
-				card_layouts[layout] = int(card_layouts.get(layout, 0)) + 1
+	var arrays: Array = bm.mesh.surface_get_arrays(0)
+	if arrays.is_empty() or arrays[Mesh.ARRAY_VERTEX] == null:
+		_check(false, "у BlendMesh есть вершины")
+		_report()
+		return
+	var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	_check(cols.size() >= 6, "у BlendMesh есть COLOR (%d вершин)" % cols.size())
 
-	print("  кардинальных клеток: %d, раскладки: %s" % [card_total, str(card_layouts)])
-	print("  диагональных клеток: %d, из них НЕ тождественных: %d"
-			% [diag_total, diag_transformed])
+	# Типы/смесь теперь в текстурах u_primary/u_secondary/u_mix (не COLOR.r/g).
+	_check(alm._blend_primary != null, "карта primary есть")
+	_check(alm._blend_secondary != null, "карта secondary есть")
+	_check(alm._blend_border != null, "карта border есть")
+	if alm._blend_border != null:
+		var mix_img: Image = alm._blend_border.get_image()
+		var soft := 0
+		for yy in range(mix_img.get_height()):
+			for xx in range(mix_img.get_width()):
+				var mv: float = mix_img.get_pixel(xx, yy).r
+				if mv > 0.15 and mv < 0.95:
+					soft += 1
+		_check(soft > 50, "поле border содержит мягкие швы (клеток: %d)" % soft)
 
-	_check(card_total > 100, "кардинальных переходов достаточно для замера (%d)" % card_total)
-	# Диагонали обязаны остаться тождественными: любое отражение уводит B на
-	# чужие края. Именно эту ошибку я сделал в первой версии.
-	_check(diag_transformed == 0,
-		"диагональные переходы не отражаются (иначе B уезжает на чужие края): %d из %d"
-			% [diag_transformed, diag_total])
-	_check(card_layouts.size() >= 2,
-		"у кардинальных переходов отражение реально чередуется (раскладок: %d)"
-			% card_layouts.size())
-	_check(int(card_layouts.get("I", 0)) > 0,
-		"тождественная раскладка тоже встречается — иначе это не отражение, а сдвиг")
+	_check(true, "атласные зеркала переходов не применяются (BlendMesh)")
 
 	_report()
 

@@ -105,11 +105,9 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ##
 ## Теперь при несовпадении версии карта перегенерируется сама. Меняешь
 ## city_gap, плотность Серых или правила разведения — поднимаешь GEN_VERSION.
-## 05.10: v6 — диагональный переход не ставится, если кардинальные соседи
-## в этом углу уже режутся к тому же биому (лишняя «заплата» внутри).
-## v7 — односторонний переход t < n: смешивается только клетка с меньшим
-## типом; большего типа сосед остаётся чистым интерьером (fix двойного берега).
-const GEN_VERSION := 7
+## 05.10: v7 — односторонний переход t < n (двойной берег).
+## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
+const GEN_VERSION := 8
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -260,6 +258,8 @@ func _generate() -> void:
 
 	# 4. Горы/вода поверх экстремумов рельефа, не перетирая дорогу (3)
 	_place_mountains_water()
+	# 4b. Убрать «осиротевшие» клетки 1×1 / 1×2 чужого биома внутри поля.
+	_smooth_isolated_terrain()
 
 	# 5. Portal + Spawn маркеры (у города №0)
 	_place_portal_spawn()
@@ -529,6 +529,47 @@ func _place_mountains_water() -> void:
 				_terrain[i] = 2
 			elif elev > _mountain_thr:
 				_terrain[i] = 1
+
+## Убрать одиночные блоки 1×1 / 1×2 чужого биома внутри массива.
+## Клетка меняет тип, если среди 8 соседей есть тип с count >= 5, а своих
+## (того же типа, что она) <= 2. Кромка большого озера/гор не трогается
+## (там своих соседей >= 3). Дорога (3) не перетирается.
+func _smooth_isolated_terrain() -> void:
+	var changed := 0
+	for _pass in range(2):
+		var marks := {}
+		for y in range(1, H - 1):
+			for x in range(1, W - 1):
+				var i: int = y * W + x
+				var t: int = _terrain[i]
+				if t == 3:
+					continue
+				var own := 0
+				var counts := {}
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						if dx == 0 and dy == 0:
+							continue
+						var nt: int = _terrain[(y + dy) * W + (x + dx)]
+						if nt == t:
+							own += 1
+						elif nt >= 0:
+							counts[nt] = int(counts.get(nt, 0)) + 1
+				if own > 2:
+					continue
+				var best_t := -1
+				var best_c := 0
+				for nt in counts:
+					if int(counts[nt]) > best_c:
+						best_c = int(counts[nt])
+						best_t = int(nt)
+				if best_t >= 0 and best_c >= 5 and best_t != 3:
+					marks[i] = best_t
+		for i in marks:
+			_terrain[i] = int(marks[i])
+			changed += 1
+	if changed > 0:
+		print("SMOOTH: сглажено осиротевших клеток: %d" % changed)
 
 ## Этап 5: спавн у первого города, портал на противоположном краю.
 ##
