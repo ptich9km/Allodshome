@@ -495,7 +495,8 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 - **`map_generator.gd`:** пулы только на эти папки; аллодовские `shop1/inn1/...` **убраны из генерации** (файлы на диске не удалены). `GEN_VERSION=10`.
 - **`game.gd::_structure_kind`:** `hive` → alchemy (страховка, папка уже `druidshop4`).
 - **Габариты:** футпринт **3×3** = `tile_width/height`, `full_height=3`. Дверь — южная клетка; тест: **18/18 дверей проходимы**. Барьер = ровно футпринт.
-- **Тесты:** `alice_buildings_smoke` OK 67 (whole_image, один PNG, клики, двери); `city_layout_smoke`, `spawn_smoke`, `map_seed_integration`, `gen_seeds_smoke` OK; **нет** ошибок `houseb` в логе.
+- **Тесты:** `alice_buildings_smoke` OK 68 (whole_image, один PNG, клики, двери, футпринты непроходимы); новый `building_nav_smoke` (162/162 клеток заблокированы, 18/18 дверей); `city_layout_smoke`, `spawn_smoke`, `map_seed_integration`, `gen_seeds_smoke` OK; **нет** ошибок `houseb` в логе.
+- **Клик по зданию (05.10):** всегда путь к **двери** (южный край). Функциональные (`shop/inn/blacksmith/train/druidshop`) — меню + герой скрыт (`ui._enter_interior`). Декоративные (`house_ogre`, `barracks1`) — только подход, герой видим. Клик по земле сбрасывает pending-вход.
 - **Интерьеры (панели):** JPG — экстерьеры, BG панелям не подключали.
 - **Отложено:** `ChatGPTWarrior1.png` — мужчина-войн, `ChatGPTWarrior_W1.png` — женщина, у обоих **4 ряда × 8 направлений**; `mage_f` уже нарезан. Следующий заход: стоячие спрайты + смерть шейдером (squash/sink + месиво 1–2 с); GUARD_SETS → новые наборы.
 

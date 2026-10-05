@@ -768,16 +768,17 @@ func handle_click(world_position: Vector2):
 		return
 	print("Клик в: ", world_position)
 	_pending_herb = null
+	_pending_building = ""
+	_pending_s = {}
 
-	# Клик по функциональному зданию: магазин / таверна / школа (подход к двери)
+	# Клик по зданию (функциональному или декоративному): всегда к двери.
+	# Функциональное — при подходе меню + герой «внутри»; декоративное — только подход.
 	var cell := Vector2i(int(world_position.x) / 32, int(world_position.y) / 32)
 	if alm_map != null and alm_map.has_method("structure_at"):
 		var s: Dictionary = alm_map.call("structure_at", cell)
 		if not s.is_empty():
-			var kind := _structure_kind(int(s.get("type_id", 0)))
-			if kind != "":
-				_building_click(kind, s)
-				return
+			_building_click(_structure_kind(int(s.get("type_id", 0))), s)
+			return
 	if alm_map != null and alm_map.has_method("herb_at_position"):
 		var herb := alm_map.call("herb_at_position", world_position) as HerbNode
 		if herb != null:
@@ -814,28 +815,36 @@ func _structure_kind(type_id: int) -> String:
 		return "blacksmith"
 	return ""
 
-## Клик по функциональному зданию: если герой далеко — сначала идёт к двери,
-## открыть панель («войти») только при подходе.
+## Клик по зданию: подходим к двери (южный край футпринта).
+## kind != "" — функциональное (магазин/таверна/…): при подходе меню.
+## kind == "" — декоративное: только подход, герой остаётся на карте.
 func _building_click(kind: String, s: Dictionary) -> void:
-	if ui == null:
+	if ui == null or not is_instance_valid(player):
 		return
 	var door := _door_point(s)
-	if player.global_position.distance_to(door) <= 90.0:
+	if kind != "" and player.global_position.distance_to(door) <= 90.0:
 		_pending_building = ""
-		match kind:
-			"shop": ui.open_shop()
-			"alchemy": ui.open_alchemy()
-			"inn": ui.open_inn()
-			"school": ui.open_school()
-			"blacksmith": ui.open_blacksmith()
+		_pending_s = {}
+		_open_building_kind(kind)
 		return
 	_pending_building = kind
 	_pending_s = s
+	player.stop_movement()
 	player_target = door
 	player.state = "move"
 	player.attack_target = null
 	if alm_map != null and alm_map.has_method("find_path"):
 		player.begin_path(alm_map.find_path(player.global_position, door))
+
+func _open_building_kind(kind: String) -> void:
+	if ui == null:
+		return
+	match kind:
+		"shop": ui.open_shop()
+		"alchemy": ui.open_alchemy()
+		"inn": ui.open_inn()
+		"school": ui.open_school()
+		"blacksmith": ui.open_blacksmith()
 
 func _herb_click(herb: HerbNode) -> void:
 	if not is_instance_valid(herb) or not herb.is_available():
@@ -891,21 +900,20 @@ func _door_point(s: Dictionary) -> Vector2:
 					return p
 	return Vector2(x * 32.0 + fw * 16.0, (y + th) * 32.0)
 
-## Когда герой подошёл к двери — «входим»: открываем панель здания.
+## Когда герой подошёл к двери — «входим»: меню (функциональное) или остановка.
 func _process_pending_building() -> void:
-	if _pending_building == "" or not is_instance_valid(player) or not is_instance_valid(ui):
+	if _pending_s.is_empty() or not is_instance_valid(player):
 		return
 	var door := _door_point(_pending_s)
-	if player.global_position.distance_to(door) <= 80.0:
-		var k := _pending_building
-		_pending_building = ""
-		_pending_s = {}
-		match k:
-			"shop": ui.open_shop()
-			"alchemy": ui.open_alchemy()
-			"inn": ui.open_inn()
-			"school": ui.open_school()
-			"blacksmith": ui.open_blacksmith()
+	if player.global_position.distance_to(door) > 80.0:
+		return
+	var k := _pending_building
+	_pending_building = ""
+	_pending_s = {}
+	player.stop_movement()
+	# Декоративное (k==""): герой остаётся видимым у стены, меню нет.
+	if k != "":
+		_open_building_kind(k)
 
 ## Юнит под курсором (враг ИЛИ мирный НПЦ) по видимой области корпуса.
 func _hover_unit() -> Node2D:

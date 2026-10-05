@@ -126,6 +126,21 @@ func _run() -> void:
 	print("INFO двери: проходимо=%d непроходимо=%d" % [walk_ok, walk_bad])
 	_check(walk_ok > 0, "есть проходимые двери у зданий (%d)" % walk_ok)
 
+	# Футпринты зданий НЕ проходимы (герой не ходит «по дому»)
+	var walk_on := 0
+	var blocked_cells := 0
+	if am.has_method("is_walkable_world") and nav.size() > 0:
+		for h in nav:
+			for yy in range(int(h["y0"]), int(h["y1"]) + 1):
+				for xx in range(int(h["x0"]), int(h["x1"]) + 1):
+					var p := Vector2(xx * 32.0 + 16.0, yy * 32.0 + 16.0)
+					if bool(am.is_walkable_world(p)):
+						walk_on += 1
+					else:
+						blocked_cells += 1
+	print("INFO футпринты: blocked=%d walk_on=%d" % [blocked_cells, walk_on])
+	_check(walk_on == 0, "клетки зданий непроходимы (walk_on=%d)" % walk_on)
+
 	_report()
 
 func _report() -> void:
