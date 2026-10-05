@@ -107,7 +107,9 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## city_gap, плотность Серых или правила разведения — поднимаешь GEN_VERSION.
 ## 05.10: v7 — односторонний переход t < n (двойной берег).
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
-const GEN_VERSION := 8
+## v9 — здания городов из арта Alice (structure_id 200..206).
+## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
+const GEN_VERSION := 10
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -366,13 +368,14 @@ const GRAY_ZONE := {
 }
 
 # Здания в городах: функциональные + жильё + декор (folder -> StructureDB).
-const SHOP_FOLDERS := ["shop1", "shop2"]
-const ALCHEMY_FOLDERS := ["druidshop1", "druidshop2", "druidshop3"]
-const INN_FOLDERS := ["inn1", "inn2", "inn3"]
-const TRAIN_FOLDERS := ["train1", "train2", "train3"]
-const BLACKSMITH_FOLDERS := ["blacksmith1", "blacksmith2"]
-const HOUSE_FOLDERS := ["shed1", "shed2", "shed3", "khut1", "khut2", "hut1", "hut4", "hut5", "bighouse1", "bighouse2"]
-const DECOR_FOLDERS := ["well1", "well2", "well3", "campfire", "mill1", "mill2"]
+# 05.10: аллодовские shop1/inn1/... заменены на арт Alice (import/*128х128*.jpg).
+const SHOP_FOLDERS := ["shop3"]
+const ALCHEMY_FOLDERS := ["druidshop4"]
+const INN_FOLDERS := ["inn4"]
+const TRAIN_FOLDERS := ["train4"]
+const BLACKSMITH_FOLDERS := ["blacksmith3"]
+const HOUSE_FOLDERS := ["house_ogre"]
+const DECOR_FOLDERS := ["barracks1"]
 
 ## Зоны, в которых генератор ставит портал.
 ##

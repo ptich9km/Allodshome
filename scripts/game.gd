@@ -802,7 +802,7 @@ func handle_click(world_position: Vector2):
 func _structure_kind(type_id: int) -> String:
 	var def := StructureDB.get_by_id(type_id)
 	var folder := str(def.get("folder", "")).to_lower()
-	if folder.contains("druidshop"):
+	if folder.contains("druidshop") or folder.contains("hive"):
 		return "alchemy"
 	if folder.contains("shop"):
 		return "shop"
