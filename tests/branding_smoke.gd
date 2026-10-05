@@ -30,6 +30,7 @@ const PLAYER_VISIBLE := [
 	["res://project.godot", "config/name"],
 	["res://assets/config/game.cfg", "шапка"],
 	["res://scripts/character_select.gd", "титульный экран"],
+	["res://scripts/main_menu.gd", "главное меню"],
 	["res://scripts/map_editor.gd", "фильтр редактора"],
 ]
 

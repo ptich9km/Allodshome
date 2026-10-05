@@ -1544,6 +1544,7 @@ func open_save_menu() -> void:
 	_save_menu.load_requested.connect(_load_from_slot)
 	_save_menu.delete_requested.connect(_delete_slot)
 	_save_menu.quit_requested.connect(_quit_to_menu)
+	_save_menu.quit_app_requested.connect(_quit_app)
 	_save_menu.closed.connect(func() -> void: _save_menu = null)
 	add_child(_save_menu)
 
@@ -1604,7 +1605,13 @@ func _delete_slot(slot: String) -> void:
 
 func _quit_to_menu() -> void:
 	_save_to_slot(SaveSystem.AUTOSAVE_SLOT)
-	get_tree().change_scene_to_file("res://scenes/character_select.tscn")
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+
+## Полный выход из процесса (кнопка «Выйти из игры» в Esc-меню).
+func _quit_app() -> void:
+	_save_to_slot(SaveSystem.AUTOSAVE_SLOT)
+	get_tree().quit()
 
 
 ## Пересобрать игру из сохранённого состояния. Мир сначала кладём в

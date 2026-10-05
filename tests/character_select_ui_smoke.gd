@@ -12,12 +12,7 @@ const SIZES := [Vector2i(1280, 800), Vector2i(1280, 600)]
 var _fails: Array[String] = []
 
 func _init() -> void:
-	# Проверка идёт ПРИ НАЛИЧИИ сохранения. Раньше она шла без него, и
-	# кнопки «Продолжить» на экране просто не было - то есть тест физически
-	# не мог поймать вылет этой кнопки за окно (проверено мутацией: при
-	# широкой кнопке этот тест оставался зелёным). Сохранение кладём ДО
-	# создания сцены и убираем в _report, чтобы тест был чистым.
-	_seed_save()
+	# «Продолжить» перенесён в главное меню — на character_select его больше нет.
 	var scene: PackedScene = load("res://scenes/character_select.tscn")
 	var cs = scene.instantiate()
 	root.add_child(cs)
@@ -26,7 +21,6 @@ func _init() -> void:
 	await _inspect(cs, Vector2i(1280, 800), "1280x800")
 	await _inspect(cs, Vector2i(1280, 600), "1280x600")
 	_structure(cs)
-	_wipe_save()
 	_report()
 
 ## Временное сохранение, чтобы кнопка «Продолжить» была на экране.

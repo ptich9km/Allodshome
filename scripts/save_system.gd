@@ -19,11 +19,12 @@ extends RefCounted
 
 const DIR := "user://saves/"
 const VERSION := 1
-const SLOT_COUNT := 3
+## Игровых слотов для меню «Загрузить игру» (решение игрока 05.10: 6).
+const SLOT_COUNT := 6
 const AUTOSAVE_SLOT := "autosave"
 
 ## Слоты, которые показываются игроку.
-const PLAYER_SLOTS := ["slot_0", "slot_1", "slot_2"]
+const PLAYER_SLOTS := ["slot_0", "slot_1", "slot_2", "slot_3", "slot_4", "slot_5"]
 
 
 static func ensure_dir() -> void:

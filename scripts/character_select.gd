@@ -356,7 +356,7 @@ func _setup_start_button() -> void:
 	_start_btn.add_theme_font_size_override("font_size", 24)
 	_start_btn.pressed.connect(_start_game)
 	row.add_child(_start_btn)
-	_setup_continue_button(row)
+	# «Продолжить» перенесён в главное меню → «Загрузить игру» (05.10).
 
 
 ## Кнопка «Продолжить» - в СУЩЕСТВУЮЩУЮ строку старта, а не отдельным блоком.
