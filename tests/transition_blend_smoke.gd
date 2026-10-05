@@ -98,13 +98,20 @@ func _test_files() -> void:
 
 const BLEND_MIN_PROGRESS := 0.40
 
+## Зона угла для диагоналей, px. Должна совпадать с DIAGONAL_SPAN
+## в tests/gen_transition_tiles.py: полоса у края диагонали активна
+## только вдоль DIAGONAL_SPAN от угла, иначе замер кромки молча
+## усредняет полосу с чистым A (вне угла) и метрика врёт.
+const DIAGONAL_SPAN := 16
+
 func _test_blend_side() -> void:
 	var ok := 0
 	var skipped := 0
 	var bad: Array[String] = []
 	for dir_index in range(DIRS.size()):
 		var file_n: int = FILE_BASE + dir_index
-		var edges: String = EDGES[DIRS[dir_index]]
+		var direction: String = DIRS[dir_index]
+		var edges: String = EDGES[direction]
 		for a in range(NEIGHBORS):
 			for b in range(NEIGHBORS):
 				if a == b:
@@ -116,9 +123,12 @@ func _test_blend_side() -> void:
 				for v in range(VARIATIONS):
 					var row: int = b * VARIATIONS + v
 					var img: Image = _load_strip(file_n, a)
-					# Чистый A снимаем с противоположного края: бленда там нет.
+					# Чистый A: противоположный край. У диагонали бленд лежит
+					# только на своём углу (top+right для NE и т.д.), поэтому
+					# противоположные края целиком свободны — direction не
+					# передаём, иначе _edge_cell опять возьмёт свой угол.
 					var ref_a: Vector3 = _band_mean(img, OPPOSITE[edges], row * TILE)
-					var near: Vector3 = _band_mean(img, edges, row * TILE)
+					var near: Vector3 = _band_mean(img, edges, row * TILE, direction)
 					var spread: float = (ref_a - ref_b).length()
 					if spread < 0.02:
 						skipped += 1
@@ -146,12 +156,16 @@ func _load_strip(file_n: int, a: int) -> Image:
 ## проверка "y >= TILE-4" выполняется для всего тайла, полоса становится
 ## равной всей плитке, и замер молча теряет смысл (было 465/672 вместо
 ## 663/672 при правильных координатах).
-func _band_mean(img: Image, edges: String, y0: int) -> Vector3:
+##
+## Для диагоналей полоса у края учитывается только в зоне угла
+## (DIAGONAL_SPAN) — иначе среднее по «всему краю» смешивает бленд у угла
+## с чистым A вне угла и прогресс искусственно падает.
+func _band_mean(img: Image, edges: String, y0: int, direction: String = "") -> Vector3:
 	var acc := Vector3.ZERO
 	var n := 0
 	for ly in range(TILE):
 		for x in range(TILE):
-			if not _edge_cell(edges, x, ly):
+			if not _edge_cell(edges, x, ly, direction):
 				continue
 			var c: Color = img.get_pixel(x, y0 + ly)
 			acc += Vector3(c.r, c.g, c.b)
@@ -184,14 +198,28 @@ func _biome_mean(b: int) -> Vector3:
 	return acc / float(n)
 
 ## Клетка (x,y) плитки попадает в полосу у заданных краёв.
-func _edge_cell(edges: String, x: int, y: int) -> bool:
-	if edges.contains("T") and y < 4:
+## Для диагоналей полоса у каждого края обрезана зоной угла
+## (см. DIAGONAL_EDGE_ACTIVE в gen_transition_tiles.py).
+func _edge_cell(edges: String, x: int, y: int, direction: String = "") -> bool:
+	var near_top := y < 4
+	var near_bot := y >= TILE - 4
+	var near_left := x < 4
+	var near_right := x >= TILE - 4
+	if direction == "NE":
+		return (near_top and x >= DIAGONAL_SPAN) or (near_right and y < DIAGONAL_SPAN)
+	if direction == "SE":
+		return (near_bot and x >= DIAGONAL_SPAN) or (near_right and y >= TILE - DIAGONAL_SPAN)
+	if direction == "SW":
+		return (near_bot and x < DIAGONAL_SPAN) or (near_left and y >= TILE - DIAGONAL_SPAN)
+	if direction == "NW":
+		return (near_top and x < DIAGONAL_SPAN) or (near_left and y < DIAGONAL_SPAN)
+	if edges.contains("T") and near_top:
 		return true
-	if edges.contains("B") and y >= TILE - 4:
+	if edges.contains("B") and near_bot:
 		return true
-	if edges.contains("L") and x < 4:
+	if edges.contains("L") and near_left:
 		return true
-	if edges.contains("R") and x >= TILE - 4:
+	if edges.contains("R") and near_right:
 		return true
 	return false
 
@@ -265,9 +293,11 @@ func _test_map() -> void:
 			var owner: int = AlmLoader.terrain_type(hflags[i])
 			if file_n < FILE_BASE:
 				interiors += 1
-				# Если у клетки есть отличающийся кардинальный сосед, а тайл
-				# НЕ переходный — переход где-то не сработал.
-				if _has_differing_cardinal(terrain, hflags, w, h, x, y, owner):
+				# Односторонний переход t < n (05.10): переход ставит только
+				# клетка с МЕНЬШИМ типом. Сосед с большим типом — чистый
+				# интерьер, это норма, а не пропуск. Считаем ошибкой только
+				# «малый тип на кромке без перехода».
+				if _has_smaller_type_cardinal(terrain, hflags, w, h, x, y, owner):
 					boundary_without_transition += 1
 				continue
 			transitions += 1
@@ -285,7 +315,7 @@ func _test_map() -> void:
 	_check(wrong_owner == 0, "у всех переходов валидный биом-владелец (ошибок: %d)" % wrong_owner)
 	_check(wrong_row == 0, "row = сосед*2 + вариация (ошибок: %d)" % wrong_row)
 	_check(boundary_without_transition == 0,
-		"все кромки получили переход (пропущено: %d)" % boundary_without_transition)
+		"у малых типов на кромке есть переход t < n (пропущено: %d)" % boundary_without_transition)
 	_test_seam_metric(m, w, h)
 	_test_transition_keeps_walkability(m, w, h)
 
@@ -319,7 +349,8 @@ func _test_transition_keeps_walkability(m: Dictionary, w: int, h: int) -> void:
 	_check(wrong == 0,
 		"переходный тайл не меняет проходимость биома (расхождений: %d)" % wrong)
 
-func _has_differing_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
+## Есть ли кардинальный сосед с БОЛЬШИМ типом (значит, переход t < n обязателен).
+func _has_smaller_type_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
 		w: int, h: int, x: int, y: int, owner: int) -> bool:
 	if owner < 0:
 		return false
@@ -329,7 +360,7 @@ func _has_differing_cardinal(terrain: PackedByteArray, hflags: PackedByteArray,
 		if nx < 0 or ny < 0 or nx >= w or ny >= h:
 			continue
 		var nt: int = AlmLoader.terrain_type(hflags[ny * w + nx])
-		if nt >= 0 and nt != owner:
+		if nt > owner:
 			return true
 	return false
 

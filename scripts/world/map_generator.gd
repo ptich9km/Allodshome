@@ -105,7 +105,9 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ##
 ## Теперь при несовпадении версии карта перегенерируется сама. Меняешь
 ## city_gap, плотность Серых или правила разведения — поднимаешь GEN_VERSION.
-const GEN_VERSION := 5
+## 05.10: v7 — односторонний переход t < n (двойной берег).
+## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
+const GEN_VERSION := 8
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -256,6 +258,8 @@ func _generate() -> void:
 
 	# 4. Горы/вода поверх экстремумов рельефа, не перетирая дорогу (3)
 	_place_mountains_water()
+	# 4b. Убрать «осиротевшие» клетки 1×1 / 1×2 чужого биома внутри поля.
+	_smooth_isolated_terrain()
 
 	# 5. Portal + Spawn маркеры (у города №0)
 	_place_portal_spawn()
@@ -525,6 +529,47 @@ func _place_mountains_water() -> void:
 				_terrain[i] = 2
 			elif elev > _mountain_thr:
 				_terrain[i] = 1
+
+## Убрать одиночные блоки 1×1 / 1×2 чужого биома внутри массива.
+## Клетка меняет тип, если среди 8 соседей есть тип с count >= 5, а своих
+## (того же типа, что она) <= 2. Кромка большого озера/гор не трогается
+## (там своих соседей >= 3). Дорога (3) не перетирается.
+func _smooth_isolated_terrain() -> void:
+	var changed := 0
+	for _pass in range(2):
+		var marks := {}
+		for y in range(1, H - 1):
+			for x in range(1, W - 1):
+				var i: int = y * W + x
+				var t: int = _terrain[i]
+				if t == 3:
+					continue
+				var own := 0
+				var counts := {}
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						if dx == 0 and dy == 0:
+							continue
+						var nt: int = _terrain[(y + dy) * W + (x + dx)]
+						if nt == t:
+							own += 1
+						elif nt >= 0:
+							counts[nt] = int(counts.get(nt, 0)) + 1
+				if own > 2:
+					continue
+				var best_t := -1
+				var best_c := 0
+				for nt in counts:
+					if int(counts[nt]) > best_c:
+						best_c = int(counts[nt])
+						best_t = int(nt)
+				if best_t >= 0 and best_c >= 5 and best_t != 3:
+					marks[i] = best_t
+		for i in marks:
+			_terrain[i] = int(marks[i])
+			changed += 1
+	if changed > 0:
+		print("SMOOTH: сглажено осиротевших клеток: %d" % changed)
 
 ## Этап 5: спавн у первого города, портал на противоположном краю.
 ##
@@ -1444,12 +1489,70 @@ func _pick_tile(t: int, x: int, y: int) -> int:
 ## Порядок совпадает с directions.order в terrain_tiles_db.json и с ключами
 ## _sides(): N, NE, E, SE, S, SW, W, NW. Кардинальные берутся раньше
 ## диагональных — так же вела себя оригинальная transition_db.
-func _transition_dir(s: Dictionary, t: int) -> int:
+##
+## 05.10 (два правила):
+## 1) Односторонний переход: смешиваем только если t < n (мой тип меньше
+##    типа соседа). Сосед с большим типом остаётся чистым интерьером.
+##    Иначе обе стороны границы режут навстречу: у края A-плитки чистый B,
+##    у края B-плитки чистый A → на шве жёсткий B|A посреди смеси,
+##    «двойной берег» (жалоба игрока, 05.10: вода-песок с двух сторон).
+## 2) Диагональ пропускается, если шов к n уже у кардинальных соседей
+##    угла (_diag_covered). См. комментарий к _diag_covered.
+func _transition_dir(s: Dictionary, t: int, x: int, y: int) -> int:
 	for d in _TRANSITION_DIR_ORDER:
 		var n: int = s[d]
-		if n >= 0 and n != t:
-			return _TRANSITION_DIR_ORDER.find(d)
+		if n < 0 or n == t:
+			continue
+		# Старший тип не смешивается в младший — переход поставит сосед.
+		if t > n:
+			continue
+		if d == "NE" or d == "SE" or d == "SW" or d == "NW":
+			if _diag_covered(x, y, t, n, d):
+				continue
+		return _TRANSITION_DIR_ORDER.find(d)
 	return -1
+
+## Кардинальные соседи в углу диагонали d (ключи _sides()).
+const _DIAG_CARDINALS := {
+	"NE": ["N", "E"],
+	"SE": ["S", "E"],
+	"SW": ["S", "W"],
+	"NW": ["N", "W"],
+}
+const _CARDINAL_OFFSET := {
+	"N": Vector2i(0, -1),
+	"S": Vector2i(0, 1),
+	"E": Vector2i(1, 0),
+	"W": Vector2i(-1, 0),
+}
+
+## Значение террейна вне карты = -1.
+func _terrain_at(x: int, y: int) -> int:
+	if x < 0 or y < 0 or x >= W or y >= H:
+		return -1
+	return _terrain[y * W + x]
+
+## Диагональ к типу n «покрыта», если кардинальный сосед в этом углу имеет
+## тип t (свой) и у этого кардинального соседа есть кардинальный сосед типа n.
+##
+## ГЕОМЕТРИЯ: у чистой диагонали (оба кардинала == t) диагональный сосед
+## ВСЕГДА кардинален для обоих угловых клеток (NW ячейки = W у N-соседа).
+## Значит чистые диагональные переходы фактически отключаются — по решению
+## игрока (05.10): лишний угловой срез поверх уже подрезанных соседей не нужен.
+## Границу держат кардинальные переходы на клетках, соприкасающихся с n.
+func _diag_covered(x: int, y: int, t: int, n: int, d: String) -> bool:
+	var cards: Array = _DIAG_CARDINALS.get(d, [])
+	for cdir in cards:
+		var off: Vector2i = _CARDINAL_OFFSET[cdir]
+		var cx: int = x + int(off.x)
+		var cy: int = y + int(off.y)
+		if _terrain_at(cx, cy) != t:
+			continue
+		for aoff in _CARDINAL_OFFSET.values():
+			var a: Vector2i = aoff
+			if _terrain_at(cx + int(a.x), cy + int(a.y)) == n:
+				return true
+	return false
 
 ## Переходный тайл A -> B по направлению dir_index. -1, если перехода нет.
 ##
@@ -1458,7 +1561,7 @@ func _transition_dir(s: Dictionary, t: int) -> int:
 ## краям сразу потребовал бы отдельных угловых плиток — это 4 файла на пару
 ## типов, в формате .alm для них нет места.
 func _transition_tile(t: int, s: Dictionary, x: int, y: int) -> int:
-	var dir_index: int = _transition_dir(s, t)
+	var dir_index: int = _transition_dir(s, t, x, y)
 	if dir_index < 0:
 		return -1
 	var b: int = s[_TRANSITION_DIR_ORDER[dir_index]]
