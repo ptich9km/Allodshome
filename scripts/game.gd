@@ -232,6 +232,10 @@ static func configure_unit_body(unit: Node2D, radius: float = 12.0) -> void:
 	if not (unit is CharacterBody2D):
 		return
 	var body := unit as CharacterBody2D
+	# Слой 1 = «юниты/препятствия мира». Маска 1 = чувствуем layer 1.
+	# Раньше ставился только mask — layer оставался дефолтом, и в некоторых
+	# сессиях StaticBody2D зданий не резал move_and_slide.
+	body.collision_layer = 1
 	body.collision_mask = 1
 	# motion_mode НЕ трогаем: в top-down интуитивно хочется MOTION_MODE_FLOATING,
 	# но это проверено и отвергнуто — на dev-карте герой застревал в кармане между

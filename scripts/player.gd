@@ -615,13 +615,18 @@ func _height_speed_factor(target_pos: Vector2) -> float:
 ## Можно ли двигаться в точку: проходимость (вода/барьер) + границы карты.
 ## Исключение: выход ИЗ непроходимой клетки (герой «в дереве») разрешён — шаг
 ## внутри своей клетки допускается, чтобы дойти до границы и выйти наружу.
+## Здания: жёсткий запрет входа в футпринт (сетка + StaticBody2D здания).
 func _can_move_to(pos: Vector2) -> bool:
 	if not alm_map:
 		return true
-	if alm_map.is_walkable_world(pos):
-		return alm_map.is_within_bounds(pos)
 	var cur := Vector2i(int(global_position.x) / 32, int(global_position.y) / 32)
 	var nxt := Vector2i(int(pos.x) / 32, int(pos.y) / 32)
+	# Футпринт здания: нельзя входить (даже если is_walkable_world соврал).
+	if nxt != cur and alm_map.has_method("is_structure_cell") \
+			and alm_map.is_structure_cell(nxt):
+		return false
+	if alm_map.is_walkable_world(pos):
+		return alm_map.is_within_bounds(pos)
 	return nxt == cur
 
 # --- Физика движения тела (плавный разгон/торможение, без «льда») ---

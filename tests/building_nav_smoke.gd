@@ -102,6 +102,16 @@ func _run() -> void:
 	print("INFO structure_at: %d/%d" % [hit_ok, structs.size()])
 	_check(hit_ok > 0, "structure_at находит здания")
 
+	# Физика: у StructureNode есть StaticBody2D FootprintBody
+	var bodies := 0
+	var buildings_node: Node2D = am.get("buildings") if "buildings" in am else null
+	if buildings_node != null:
+		for ch in buildings_node.get_children():
+			if ch.has_node("FootprintBody"):
+				bodies += 1
+	print("INFO FootprintBody: %d зданий с физикой" % bodies)
+	_check(bodies > 0, "есть StaticBody2D у зданий (%d)" % bodies)
+
 	_report()
 
 func _report() -> void:

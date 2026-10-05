@@ -309,6 +309,10 @@ func _structure_blocks_cell(cell: Vector2i) -> bool:
 			return true
 	return false
 
+## Публично: клетка внутри футпринта здания (для жёсткого запрета входа).
+func is_structure_cell(cell: Vector2i) -> bool:
+	return _structure_blocks_cell(cell)
+
 ## Публичная блокировка клетки (стены огня/земли на время жизни).
 ## Снимается тем же вызовом с value=false.
 func set_nowalk_cell(cell: Vector2i, value: bool) -> void:
@@ -1040,12 +1044,17 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 			var n := cur + d
 			if seen.has(n) or not _cell_walkable(n):
 				continue
+			# Футпринты зданий — всегда стена для пути (страховка).
+			if _structure_blocks_cell(n):
+				continue
 			# Проверка диагонали: если движемся по диагонали, обе кардинальные
 			# соседи должны быть проходимы (иначе срезаем угол через препятствие)
 			if d.x != 0 and d.y != 0:
 				var side1 := cur + Vector2i(d.x, 0)
 				var side2 := cur + Vector2i(0, d.y)
 				if not _cell_walkable(side1) or not _cell_walkable(side2):
+					continue
+				if _structure_blocks_cell(side1) or _structure_blocks_cell(side2):
 					continue
 			seen[n] = true
 			prev[n] = cur

@@ -60,6 +60,7 @@ func _build() -> void:
 			s.texture = load(path)
 		add_child(s)
 		_tiles.append(s)
+		_add_footprint_body()
 		return
 
 	# --- Сетка тайлов (Allods) ---
@@ -132,6 +133,34 @@ func _build() -> void:
 				add_child(sh)
 				_shadow_tiles.append(sh)
 	_apply_frame()
+	_add_footprint_body()
+
+## Физический барьер по футпринту (корпус th, не крыша).
+## Юниты: CharacterBody2D layer=1 mask=1 (Game.configure_unit_body) —
+## move_and_slide упирается в StaticBody2D, как в стену. Сетка навигации
+## (_structure_nav) остаётся для find_path; физика страхует «впритирк».
+## Узел здания стоит на (x, y-(fh-th)); корпус — клетки y..y+th-1.
+## Центр shape относительно узла: X = fw*TILE/2, Y = (fh - th/2)*TILE.
+func _add_footprint_body() -> void:
+	var old := get_node_or_null("FootprintBody")
+	if old != null:
+		old.queue_free()
+	var body := StaticBody2D.new()
+	body.name = "FootprintBody"
+	body.collision_layer = 1   # юниты с mask=1 упираются
+	body.collision_mask = 0    # зданию не нужно «чувствовать» других
+	var shape_node := CollisionShape2D.new()
+	shape_node.name = "Shape"
+	var rect := RectangleShape2D.new()
+	# +2 px страховка от туннелирования на высоких скоростях
+	rect.size = Vector2(float(fw) * TILE + 2.0, float(th) * TILE + 2.0)
+	shape_node.shape = rect
+	shape_node.position = Vector2(
+		float(fw) * TILE * 0.5,
+		(float(fh) - float(th) * 0.5) * TILE
+	)
+	body.add_child(shape_node)
+	add_child(body)
 
 ## Размер файла кадра house-NNN в байтах (-1, если файла нет).
 func _house_size(frame: int) -> int:

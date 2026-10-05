@@ -497,6 +497,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 - **Габариты:** футпринт **3×3** = `tile_width/height`, `full_height=3`. Дверь — южная клетка; тест: **18/18 дверей проходимы**. Барьер = ровно футпринт.
 - **Тесты:** `alice_buildings_smoke` OK 68 (whole_image, один PNG, клики, двери, футпринты непроходимы); новый `building_nav_smoke` (162/162 клеток заблокированы, 18/18 дверей); `city_layout_smoke`, `spawn_smoke`, `map_seed_integration`, `gen_seeds_smoke` OK; **нет** ошибок `houseb` в логе.
 - **Клик по зданию (05.10):** всегда путь к **двери** (южный край). Функциональные (`shop/inn/blacksmith/train/druidshop`) — меню + герой скрыт (`ui._enter_interior`). Декоративные (`house_ogre`, `barracks1`) — только подход, герой видим. Клик по земле сбрасывает pending-вход.
+- **Обход зданий (проверено игроком):** `StructureNode` + `StaticBody2D` FootprintBody (layer=1, корпус `th`, +2 px); юниты `collision_layer=1`; `player._can_move_to` жёстко запрещает вход в `is_structure_cell`; `find_path` всегда обходит футпринты. Герой **не ходит по текстуре** здания; клик напротив — обход.
 - **Интерьеры (панели):** JPG — экстерьеры, BG панелям не подключали.
 - **Отложено:** `ChatGPTWarrior1.png` — мужчина-войн, `ChatGPTWarrior_W1.png` — женщина, у обоих **4 ряда × 8 направлений**; `mage_f` уже нарезан. Следующий заход: стоячие спрайты + смерть шейдером (squash/sink + месиво 1–2 с); GUARD_SETS → новые наборы.
 
