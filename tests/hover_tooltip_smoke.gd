@@ -40,10 +40,10 @@ func _run() -> void:
 
 	_test_factions(ui)
 	_test_item_card(ui)
-	_test_loot_card(ui)
+	await _test_loot_card(ui)
 	_test_unit_card(ui)
 	_test_building_card(ui)
-	_test_empty_target_no_crash(ui)
+	await _test_empty_target_no_crash(ui)
 	_report()
 
 func _test_factions(ui) -> void:
@@ -72,8 +72,11 @@ func _test_item_card(ui) -> void:
 	_check(text.contains("Вес") and text.contains("Цена"), "карточка показывает вес и цену")
 
 func _test_loot_card(ui) -> void:
-	var lb := LootBag.new()
+	# LootBag удалён (03.10) — на его месте LootDrop с тем же полем items.
+	var lb := LootDrop.new()
 	lb.items = [{"gold": 5}, {"key": "Common iron Long Sword"}]
+	# Дальше от игрока: LootDrop сам подбирает добычу при подходе.
+	lb.position = Vector2(99999.0, 99999.0)
 	root.add_child(lb)
 	await process_frame
 	var lines: Array = ui.call("_loot_tooltip_lines", lb)
