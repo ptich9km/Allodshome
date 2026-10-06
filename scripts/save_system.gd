@@ -235,6 +235,8 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"gender": Game.hero_gender,
 		"name": Game.hero_name,
 		"character_id": Game.hero_character_id,
+		"portrait": Game.hero_portrait,
+		"race": Game.hero_race,
 		"stats": Game.hero_stats.duplicate(true),
 		"start_book": Game.hero_start_book,
 		"max_hp": int(player.max_hp),
@@ -296,7 +298,19 @@ static func apply_payload(d: Dictionary, player) -> void:
 	Game.hero_class = str(h.get("class", Game.hero_class))
 	Game.hero_gender = str(h.get("gender", Game.hero_gender))
 	Game.hero_name = str(h.get("name", Game.hero_name))
-	Game.hero_character_id = str(h.get("character_id", Game.hero_character_id))
+	var cid := str(h.get("character_id", Game.hero_character_id))
+	# Миграция старых Аллодовских id → портреты рас.
+	var legacy := {
+		"mfighter": "human_m_war", "ffighter": "human_f_war",
+		"mmage": "human_m_mage", "fmage": "human_f_mage",
+	}
+	if legacy.has(cid):
+		cid = str(legacy[cid])
+	Game.hero_character_id = cid
+	Game.hero_portrait = str(h.get("portrait", Game.hero_portrait))
+	if Game.hero_portrait == "":
+		Game.hero_portrait = "res://assets/hero_portraits/%s.png" % cid
+	Game.hero_race = str(h.get("race", Game.hero_race))
 	var st: Variant = h.get("stats", null)
 	if st is Dictionary:
 		Game.hero_stats = (st as Dictionary).duplicate(true)

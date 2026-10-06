@@ -1,57 +1,66 @@
 extends Control
 class_name CharacterSelect
-## Старт игры: выбор одного из 4 персонажей (пол x класс), имя героя.
-## Имя можно ввести вручную или взять из списка греческих имён (кнопка «🎲»).
-## Выбор сохраняется в Game.hero_* и сцена переключается на main.tscn.
+## Старт игры: раса + 4 карточки (класс × пол), имя героя.
+## Портреты: assets/hero_portraits/{race}_{gender}_{war|mage}.png
+## У людей два стиля (human / human2) — toggle на все 4 карточки.
+## Старые id mfighter/ffighter/mmage/fmage мигрируются в save_system.
 
-const CHARACTERS := [
+const PORTRAIT_DIR := "res://assets/hero_portraits/"
+
+const RACES := [
+	{"id": "human", "label": "Человек"},
+	{"id": "necro", "label": "Нежить"},
+	{"id": "druid", "label": "Друид"},
+	{"id": "ork", "label": "Орк"},
+]
+
+## Статы пресетов — прежние 4 карточки (пол × класс), без привязки к Аллодовским id.
+const PRESETS := [
 	{
-		"id": "mfighter",
-		"title": "Воин",
-		"gender": "male",
-		"role": "warrior",
-		"desc": "Мужчина-воин. Сила и выносливость, меч и щит.",
-		"image": "res://assets/equipment/mfighter/1.png",
+		"role": "warrior", "gender": "male", "title": "Воин",
+		"desc": "Сила и выносливость, меч и щит.",
 		"stats": {"body": 12, "agility": 11, "mind": 9, "spirit": 8,
 			"blade": 30, "bludgeon": 15, "pike": 10, "fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
 			"weapon": "sword", "shield": true, "armor": "heavy"},
 	},
 	{
-		"id": "ffighter",
-		"title": "Воин",
-		"gender": "female",
-		"role": "warrior",
-		"desc": "Женщина-воин. Быстрая и ловкая, лёгкий клинок.",
-		"image": "res://assets/equipment/ffighter/1.png",
+		"role": "warrior", "gender": "female", "title": "Воин",
+		"desc": "Быстрая и ловкая, лёгкий клинок.",
 		"stats": {"body": 10, "agility": 13, "mind": 9, "spirit": 8,
 			"blade": 30, "bludgeon": 15, "pike": 10, "fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
 			"weapon": "sword", "shield": false, "armor": "heavy"},
 	},
 	{
-		"id": "mmage",
-		"title": "Маг",
-		"gender": "male",
-		"role": "mage",
-		"desc": "Мужчина-маг. Могучий разум, владение школой магии (выберите её).",
-		"image": "res://assets/equipment/mmage/1.png",
+		"role": "mage", "gender": "male", "title": "Маг",
+		"desc": "Могучий разум, школа магии.",
 		"stats": {"body": 8, "agility": 9, "mind": 13, "spirit": 12,
 			"blade": 5, "bludgeon": 5, "pike": 5,
 			"fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
 			"weapon": "staff", "shield": false, "armor": "heavy"},
 	},
 	{
-		"id": "fmage",
-		"title": "Маг",
-		"gender": "female",
-		"role": "mage",
-		"desc": "Женщина-маг. Дух и интуиция, владение школой магии (выберите её).",
-		"image": "res://assets/equipment/fmage/1.png",
+		"role": "mage", "gender": "female", "title": "Маг",
+		"desc": "Дух и интуиция, школа магии.",
 		"stats": {"body": 7, "agility": 10, "mind": 12, "spirit": 13,
 			"blade": 5, "bludgeon": 5, "pike": 5,
 			"fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
 			"weapon": "staff", "shield": false, "armor": "heavy"},
 	},
 ]
+
+## Легаси id из старых сейвов → новые портреты рас.
+const LEGACY_ID := {
+	"mfighter": "human_m_war",
+	"ffighter": "human_f_war",
+	"mmage": "human_m_mage",
+	"fmage": "human_f_mage",
+}
+
+var _race := "human"
+var _style := 1  # 1 | 2 — только у людей
+var _race_buttons: Array = []
+var _style_btn: Button = null
+var CHARACTERS: Array = []  # пересобирается при смене расы/стиля
 
 # Греческие имена (по полу персонажа)
 const MALE_NAMES := [
@@ -104,19 +113,116 @@ const STAT_TITLES := {
 }
 
 func _ready():
+	_rebuild_characters()
 	_apply_theme()
 	_setup_background()
 	_setup_layout()
 	_setup_title()
+	_setup_race_row()
 	_setup_cards()
 	_setup_name_row()
 	_setup_start_button()
 	_setup_editor()
-	# Отложенный выбор: в _ready корень сцены занят, а звук создаёт шину в root
 	_select.call_deferred(0)
-	# Стартовый фокус — на кнопке старта: сцена управляется и с клавиатуры, и с геймпада
 	if is_instance_valid(_start_btn):
 		_start_btn.call_deferred("grab_focus")
+
+
+## Ключ портрета: {race}_{m|f}_{war|mage}, у людей + стиль human/human2.
+func _portrait_key(race: String, gender: String, role: String) -> String:
+	var g := "m" if gender == "male" else "f"
+	var r := "war" if role == "warrior" else "mage"
+	match race:
+		"human":
+			return ("human" if _style <= 1 else "human2") + "_" + g + "_" + r
+		"necro":
+			return "necro_" + g + "_" + r
+		"druid":
+			return "druid_" + g + "_" + r
+		"ork":
+			return "ork_" + g + "_" + r
+	return "human_m_war"
+
+
+func _rebuild_characters() -> void:
+	CHARACTERS.clear()
+	for p in PRESETS:
+		var key := _portrait_key(_race, str(p["gender"]), str(p["role"]))
+		CHARACTERS.append({
+			"id": key,
+			"title": str(p["title"]),
+			"gender": str(p["gender"]),
+			"role": str(p["role"]),
+			"desc": str(p["desc"]),
+			"image": PORTRAIT_DIR + key + ".png",
+			"stats": p["stats"],
+		})
+
+
+func _setup_race_row() -> void:
+	var row := HBoxContainer.new()
+	row.name = "RaceRow"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	_root.add_child(row)
+	_race_buttons.clear()
+	for i in range(RACES.size()):
+		var race: Dictionary = RACES[i]
+		var b := Button.new()
+		b.name = "Race_" + str(race["id"])
+		b.text = str(race["label"])
+		b.custom_minimum_size = Vector2(120, 32)
+		b.toggle_mode = true
+		b.button_pressed = str(race["id"]) == _race
+		b.pressed.connect(_on_race_pressed.bind(str(race["id"])))
+		row.add_child(b)
+		_race_buttons.append(b)
+	_style_btn = Button.new()
+	_style_btn.name = "StyleBtn"
+	_style_btn.custom_minimum_size = Vector2(140, 32)
+	_style_btn.visible = _race == "human"
+	_style_btn.pressed.connect(_on_style_pressed)
+	row.add_child(_style_btn)
+	_refresh_style_btn()
+
+
+func _refresh_style_btn() -> void:
+	if _style_btn == null:
+		return
+	_style_btn.visible = _race == "human"
+	_style_btn.text = "Стиль A" if _style <= 1 else "Стиль B"
+
+
+func _on_race_pressed(race_id: String) -> void:
+	_race = race_id
+	for i in range(_race_buttons.size()):
+		(_race_buttons[i] as Button).button_pressed = str(RACES[i]["id"]) == _race
+	_refresh_style_btn()
+	_rebuild_characters()
+	_refresh_card_images()
+	if selected >= CHARACTERS.size():
+		selected = 0
+	_select(selected)
+	SoundDB.play(1)
+
+
+func _on_style_pressed() -> void:
+	_style = 2 if _style <= 1 else 1
+	_refresh_style_btn()
+	_rebuild_characters()
+	_refresh_card_images()
+	_select(selected)
+	SoundDB.play(1)
+
+
+func _refresh_card_images() -> void:
+	for i in range(_cards.size()):
+		if i >= CHARACTERS.size():
+			continue
+		var card: Control = _cards[i]
+		var img: TextureRect = card.get_node_or_null("Box/Img") as TextureRect
+		if img != null:
+			img.texture = load(str(CHARACTERS[i]["image"]))
 
 ## Единая тема экрана вместо разнобоя локальных override на каждом узле.
 func _apply_theme() -> void:
@@ -252,18 +358,20 @@ func _make_card(c: Dictionary, idx: int) -> Control:
 	# Единственный прямой потомок карточки: контейнер, который НЕ перехватывает
 	# клик (у прямых детей должен быть IGNORE — на этом держится клик по карточке).
 	var box := VBoxContainer.new()
+	box.name = "Box"
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
 
-	# Миниатюра персонажа (полноростовой спрайт)
+	# Миниатюра персонажа (портрет расы)
 	var img := TextureRect.new()
-	img.texture = load(str(c["image"]))
+	img.name = "Img"
+	img.texture = load(str(c["image"])) if ResourceLoader.exists(str(c["image"])) else null
 	img.custom_minimum_size = Vector2(0, CARD_IMAGE_MIN)
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	img.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	img.mouse_filter = Control.MOUSE_FILTER_IGNORE  # не перехватывать клик
+	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(img)
 
 	# Подпись: класс + пол
@@ -590,6 +698,8 @@ func _start_game() -> void:
 		Game.hero_start_book = SpellDB.book_key_for_spell(starter)
 	Game.hero_stats = st
 	Game.hero_character_id = str(c["id"])
+	Game.hero_portrait = str(c["image"])
+	Game.hero_race = _race
 	# Новая игра — новая карта: случайный сид, карта генерируется в user://maps/.
 	# Продолжение сохранения (пакет B) переставит сид ДО этого вызова.
 	# Стартовая зона — "start" (зона новичка): один безопасный город, слабые

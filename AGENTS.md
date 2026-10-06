@@ -4,7 +4,7 @@
 Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
 > Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
-> Последнее обновление: 06.10 — роли субагентов в §10.0 (Сценарист/Архитектор/QA/Explorer); UI-инвентарь и статы проверены игроком, запушен `5c504823`.
+> Последнее обновление: 06.10 — портреты рас (character_select + инвентарь), удалены старые equipment/{m,f}*. **Требуется проверка contact sheet.**
 
 ## Содержание
 
@@ -509,6 +509,31 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 ## 12. Журнал сессий
 
 Хронология изменений. **Ное — сверху.**
+
+### 06.10 — портреты рас (ChatGPTMain*)
+
+**Источники:** `import/ChatGPTMainHuman1/2.png`, `MainDruid1`, `MainNecromant1`, `MainOrk1`. Нежить/орки — **только верхний ряд** (фронт), спины отброшены.
+
+**Нарезка:** `tests/extract_chatgpt_portraits.py` → `assets/hero_portraits/*.png` (20 шт., long side 240, flood-fill от углов, без глобального luma-ключа — он съедал скелет/тёмную кожу). Contact sheet: `assets/hero_portraits/_contact_sheet.png`.
+
+| Раса | Файлы |
+|------|-------|
+| Человек стиль A | `human_{m,f}_{war,mage}` |
+| Человек стиль B | `human2_{m,f}_{war,mage}` |
+| Нежить | `necro_{m,f}_{war,mage}` |
+| Друид | `druid_{m,f}_{war,mage}` |
+| Орк | `ork_{m,f}_{war,mage}` |
+
+**Игра:**
+- `character_select`: вкладки рас + 4 карточки (класс×пол) + toggle стиля у людей.
+- `Game.hero_portrait` / `hero_race` / `hero_portrait_path()`; миграция `mfighter→human_m_war` и др.
+- Save: поля `portrait`, `race`.
+- Инвентарь/лавка: кукла из `hero_portrait_path()`.
+- **Удалены** `assets/equipment/{mfighter,ffighter,mmage,fmage}`.
+
+**Тесты:** `character_select_ui_smoke` (расы+hero_portraits), inventory/shop/equipment/ui_design/test_hero_select/loot_ground — зелёные.
+
+**Требуется глазами:** contact sheet + экран создания (4 расы, стиль A/B у людей, портреты в инвентаре).
 
 ### 06.10 — AGENTS.md: роли субагентов (§10.0)
 

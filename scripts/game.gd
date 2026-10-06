@@ -328,9 +328,24 @@ static func autosave_interval() -> float:
 static var hero_class: String = "warrior"   # warrior | mage
 static var hero_gender: String = "male"     # male | female
 static var hero_name: String = "Герой"
-static var hero_character_id: String = "mfighter"  # id из character_select
+static var hero_character_id: String = "human_m_war"  # id портрета расы
+static var hero_portrait: String = ""       # res:// путь к портрету
+static var hero_race: String = "human"      # human | necro | druid | ork
 static var hero_stats: Dictionary = {}      # стартовые характеристики
 static var hero_start_book: String = ""     # книга простейшего заклинания школы мага
+
+## Путь портрета: явный hero_portrait или сборка из character_id (с легаси-маппингом).
+static func hero_portrait_path() -> String:
+	if hero_portrait != "" and ResourceLoader.exists(hero_portrait):
+		return hero_portrait
+	var cid := hero_character_id
+	var legacy := {
+		"mfighter": "human_m_war", "ffighter": "human_f_war",
+		"mmage": "human_m_mage", "fmage": "human_f_mage",
+	}
+	if legacy.has(cid):
+		cid = str(legacy[cid])
+	return "res://assets/hero_portraits/%s.png" % cid
 
 # --- Выбор карты ---
 ## Явно запрошенный путь к .alm. Не пусто только когда путь задан вручную:

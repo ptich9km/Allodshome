@@ -506,15 +506,13 @@ func _configure_focus(npc_buttons: Array[Button], player_buttons: Array[Button])
 	_close_button.focus_next = _category_buttons[0].get_path()
 
 func _hero_portrait() -> Texture2D:
-	var equipment_path := "res://assets/equipment/%s/1.png" % Game.hero_character_id
-	if ResourceLoader.exists(equipment_path):
-		return load(equipment_path) as Texture2D
+	var path := Game.hero_portrait_path()
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
 	if is_instance_valid(player):
 		var preview := UnitDB.preview_frame(player.anim_set_name())
 		if preview != null:
 			return preview
-	if ResourceLoader.exists("res://assets/sprites/hero.png"):
-		return load("res://assets/sprites/hero.png") as Texture2D
 	return null
 
 func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:

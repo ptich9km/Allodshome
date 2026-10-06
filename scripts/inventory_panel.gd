@@ -302,7 +302,7 @@ func _build_equipment_area(parent: VBoxContainer) -> void:
 	row.add_child(right_col)
 
 	_doll = TextureRect.new()
-	var doll_path := "res://assets/equipment/%s/1.png" % Game.hero_character_id
+	var doll_path := Game.hero_portrait_path()
 	_doll.texture = load(doll_path) if ResourceLoader.exists(doll_path) else null
 	_doll.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_doll.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

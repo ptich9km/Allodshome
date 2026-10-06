@@ -93,6 +93,18 @@ func _structure(cs) -> void:
 	_check(panels == cards.size(), "карточки — PanelContainer (%d из %d)" % [panels, cards.size()])
 	_check(themed == cards.size(), "карточки используют стиль темы (%d из %d)" % [themed, cards.size()])
 
+	# Расы: 4 кнопки + портреты из assets/hero_portraits
+	var races: Array = cs.get("_race_buttons")
+	_check(races.size() == 4, "кнопок рас 4 (получено %d)" % races.size())
+	var imgs_ok := 0
+	for card in cards:
+		var img: TextureRect = (card as Control).get_node_or_null("Box/Img") as TextureRect
+		if img != null and img.texture != null:
+			var tp := (img.texture as Texture2D).resource_path
+			if tp.contains("hero_portraits"):
+				imgs_ok += 1
+	_check(imgs_ok == 4, "карточки используют портреты hero_portraits (%d из 4)" % imgs_ok)
+
 	# Никаких ручных координат: у узлов НЕ должно быть заданных position/size
 	# вне контейнеров (position != Vector2.ZERO означает ручную раскладку).
 	var manual := 0
