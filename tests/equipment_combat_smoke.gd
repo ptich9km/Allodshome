@@ -137,6 +137,7 @@ func _test_weapon_changes_damage() -> void:
 	var bare_min := _hero.get_damage_min()
 	var bare_max := _hero.get_damage_max()
 	var bare_atk := _hero.get_attack()
+	var bare_unarmed_max := _hero.unarmed_damage_max()
 
 	# Ищем в базе оружие с ненулевым уроном. all() — массив словарей.
 	var weapon_key := ""
@@ -152,12 +153,16 @@ func _test_weapon_changes_damage() -> void:
 		return
 	_hero.equipped["weapon"] = weapon_key
 
-	_check(_hero.get_damage_max() == int(weapon_item.get("damage_max", 0)),
-		"урон оружия берётся из базы: %s даёт %d (было %d)"
-			% [weapon_key, _hero.get_damage_max(), bare_max])
-	_check(_hero.get_damage_min() == int(weapon_item.get("damage_min", 0)),
-		"мин. урон оружия берётся из базы: %d (было %d)"
-			% [_hero.get_damage_min(), bare_min])
+	var w_min := int(weapon_item.get("damage_min", 0))
+	var w_max := int(weapon_item.get("damage_max", 0))
+	# С оружием урон НЕ равен голому предмету: база масштабируется навыком/атрибутами.
+	_check(_hero.get_damage_max() >= w_max,
+		"урон с оружием >= базы предмета: %d >= %d (было без оружия %d)"
+			% [_hero.get_damage_max(), w_max, bare_max])
+	_check(_hero.get_damage_min() >= w_min,
+		"мин. урон с оружием >= базы: %d >= %d" % [_hero.get_damage_min(), w_min])
+	_check(_hero.get_damage_max() > bare_unarmed_max,
+		"с оружием сильнее кулака: %d > %d" % [_hero.get_damage_max(), bare_unarmed_max])
 	_check(_hero.get_attack() >= bare_atk + int(weapon_item.get("to_hit", 0)),
 		"to_hit оружия входит в атаку: %d -> %d (to_hit=%d)"
 			% [bare_atk, _hero.get_attack(), int(weapon_item.get("to_hit", 0))])

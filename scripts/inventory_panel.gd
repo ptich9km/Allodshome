@@ -1,36 +1,59 @@
 class_name InventoryPanel
 extends CanvasLayer
-## Модальное окно «Инвентарь и Экипировка»: кукла + 10 слотов + инвентарь + тултипы.
+## Инвентарь, экипировка и характеристики героя.
 ##
-## Паттерн identical ShopPanel/InnPanel: CanvasLayer → dim → DesignRoot → content.
-## Открывается через GameUI.open_inventory_panel(), закрывается по Esc / кнопке.
+## Раскладка 2×2 (решение игрока 06.10):
+##   1×1 — персонаж (кукла + 10 слотов)
+##   1×2 — параметры и характеристики (перенос из HUD StatsPanel)
+##   2×1+2×2 — склад со скроллом вниз
+## Панель по центру, игра видна по краям (SCREEN_INSET). Без портретов Аллодов.
 
 signal closed
 signal inventory_changed
 
-const _DESIGN_SIZE := Vector2(1024, 768)
-const _CLOSE_SIZE := Vector2(170, 44)
-const _CLOSE_POSITION := Vector2(840, 720)
 const EQUIP_SLOT_SIZE := Vector2(54, 54)
+const INV_SLOT := 62
+const INV_GAP := 4
 
 var player: Player
-var _panel_root: Control
+var _root: MarginContainer
+var _panel: PanelContainer
 var _previous_focus: Control
-var _equip_slots := {}          # slot -> {panel: Control, icon: TextureRect}
+var _equip_slots := {}
 var _doll: TextureRect = null
-var _highlight_slot := ""       # пустой слот для подсветки подходящих предметов
-var _inventory_slots: Array = []  # PanelContainer'ы ячеек инвентаря
-var _inventory_items: Array = []  # Dictionary предметов по индексу
+var _hero_name: Label = null
+var _highlight_slot := ""
+var _inventory_slots: Array = []
+var _inventory_items: Array = []
 var _hover_card: PanelContainer = null
 var _gold_label: Label
+var _inventory_grid: GridContainer
+var _inventory_scroll: ScrollContainer
+var _stats_box: VBoxContainer
+var _stats_scroll: ScrollContainer
+var _stats_col: VBoxContainer
+var _stat_labels := {}
+var _hp_label: Label = null
+var _mp_label: Label = null
+var _shield_label: Label = null
+var _stats_refresh_t := 0.0
 var _magic_click_key := ""
 var _magic_click_time := 0.0
 
-## Ключ предмета, на который сейчас наведён курсор ("" = ничего не наведено).
-## Игра читает его, чтобы назначить зелье/свиток на хоткей по Ctrl+цифра.
 var hovered_item_key: String = ""
 
-## true, если это повторный клик по тому же предмету в течение 0.45 с.
+const _LABEL_COLOR := UiTheme.TEXT_MUTED
+const _VALUE_COLOR := UiTheme.TEXT
+const _ACCENT_COLOR := UiTheme.ACCENT
+const _HP_COLOR := Color(0.55, 0.85, 0.55)
+const _MP_COLOR := Color(0.55, 0.7, 1.0)
+const _RESIST_FIRE := Color(1.0, 0.5, 0.35)
+const _RESIST_WATER := Color(0.4, 0.6, 1.0)
+const _RESIST_AIR := Color(0.7, 0.85, 1.0)
+const _RESIST_EARTH := Color(0.7, 0.55, 0.3)
+const _RESIST_ASTRAL := Color(0.8, 0.5, 0.9)
+
+
 func _magic_double_click(item_key: String) -> bool:
 	var now := Time.get_ticks_msec()
 	var hit := _magic_click_key == item_key and now - _magic_click_time < 450
@@ -47,20 +70,27 @@ func setup(p: Player) -> void:
 
 func _ready() -> void:
 	_previous_focus = UiKit.save_focus(self)
-	UiKit.bind_resize(get_viewport(), _update_layout)
 	_refresh()
-	if _equip_slots.has("weapon"):
-		var cell: Dictionary = _equip_slots["weapon"]
-		if cell.has("panel") and is_instance_valid(cell.panel):
-			cell.panel.call_deferred("grab_focus")
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	# Щит/haste живут по времени — обновляем статы, пока окно открыто.
+	_stats_refresh_t += delta
+	if _stats_refresh_t < 0.5:
+		return
+	_stats_refresh_t = 0.0
+	_refresh_stats()
 
 
 func _exit_tree() -> void:
-	if not is_inside_tree():
-		return
-	var viewport := get_viewport()
-	if viewport != null and viewport.size_changed.is_connected(_update_layout):
-		viewport.size_changed.disconnect(_update_layout)
+	pass
+
+
+func close() -> void:
+	UiKit.restore_focus(_previous_focus)
+	closed.emit()
+	queue_free()
 
 
 func _input(event: InputEvent) -> void:
@@ -69,130 +99,215 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func close() -> void:
-	UiKit.animate_out(_panel_root, func():
-		UiKit.restore_focus(_previous_focus)
-		closed.emit()
-		queue_free())
-
-
 func _update_layout() -> void:
-	if is_instance_valid(_panel_root):
-		UiKit.fit_design_root(_panel_root, _DESIGN_SIZE)
+	pass
 
-
-# ─────────────────────── UI build ───────────────────────
 
 func _make_theme() -> Theme:
-	var theme := UiKit.base_theme()
-	UiKit.add_title(theme, &"InvTitle")
-	UiKit.add_gold_label(theme, &"InvGoldLabel")
+	var theme := UiTheme.app_theme()
+	theme.set_stylebox("normal", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("hover", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("pressed", "Button", UiKit.button_style(
+		UiTheme.BG_DEEP, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("focus", "Button", UiKit.button_style(
+		UiTheme.TRANSPARENT, UiTheme.ACCENT,
+		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	UiTheme.add_display_label(theme, &"InvTitle", UiTheme.FONT_SECTION, UiTheme.ACCENT)
+	UiKit.add_label(theme, &"InvGoldLabel", UiTheme.ACCENT, UiTheme.FONT_SUBHEAD)
+	UiKit.add_label(theme, &"InvSection", UiTheme.TEXT_MUTED, UiTheme.FONT_SECTION)
+	UiKit.add_label(theme, &"InvStatLabel", UiTheme.TEXT_MUTED, UiTheme.FONT_MICRO)
+	UiKit.add_label(theme, &"InvStatValue", UiTheme.TEXT, UiTheme.FONT_MICRO)
 	UiKit.add_slot(theme, &"EquipSlot")
 	theme.set_stylebox("panel", &"EquipSlotActive", UiKit.panel_style(
-		Color(0.18, 0.14, 0.10, 0.95), UiKit.DIALOG_BORDER, 4, 3))
+		UiTheme.PANEL_INNER.lightened(0.10), UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_SLOT, UiTheme.BORDER_NORMAL))
 	UiKit.add_slot(theme, &"InvSlot")
 	UiKit.add_button(theme, &"InvClose",
-		Color(0.24, 0.13, 0.07, 0.96), Color(0.70, 0.40, 0.14),
-		Color(0.36, 0.19, 0.08, 0.98), Color(1.0, 0.74, 0.26))
-	UiKit.apply_scrollbar(theme)
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
+		UiTheme.PANEL_INNER.lightened(0.14), UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_PANEL, UiTheme.SPACE_2)
+	UiKit.apply_scrollbar(theme, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
+	UiKit.add_panel(theme, &"InvPanel",
+		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
+	UiKit.add_panel(theme, &"InvSectionPanel",
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.2), UiTheme.RADIUS_PANEL)
+	UiKit.add_hover_card_styles(theme)
 	return theme
 
 
 func _build_ui() -> void:
-	var dim := UiKit.make_dim(0.58)
+	var dim := UiKit.make_dim(0.45)
 	add_child(dim)
 
-	_panel_root = Control.new()
-	_panel_root.name = "DesignRoot"
-	_panel_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.size = _DESIGN_SIZE
-	_panel_root.theme = _make_theme()
-	# Анимация появления: fade-in + scale
-	add_child(_panel_root)
-	UiKit.animate_in(_panel_root)
+	_root = MarginContainer.new()
+	_root.name = "InvRoot"
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiKit.set_margins(_root, UiTheme.SCREEN_INSET, UiTheme.SCREEN_INSET,
+		UiTheme.SCREEN_INSET, UiTheme.SCREEN_INSET)
+	_root.theme = _make_theme()
+	add_child(_root)
 
-	# Заголовок
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(center)
+
+	_panel = PanelContainer.new()
+	_panel.name = "Panel"
+	_panel.theme_type_variation = &"InvPanel"
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Вариант A (06.10): классический paper-doll — кукла слева, узкая таблица статов.
+	_panel.custom_minimum_size = Vector2(960, 640)
+	center.add_child(_panel)
+
+	var margin := MarginContainer.new()
+	margin.name = "Margin"
+	UiKit.set_margins(margin, UiTheme.SPACE_4, UiTheme.SPACE_3,
+		UiTheme.SPACE_4, UiTheme.SPACE_3)
+	_panel.add_child(margin)
+
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	margin.add_child(content)
+
+	var header := HBoxContainer.new()
+	header.name = "Header"
+	header.add_theme_constant_override("separation", UiTheme.SPACE_3)
+	content.add_child(header)
 	var title := Label.new()
+	title.name = "Title"
 	title.theme_type_variation = &"InvTitle"
-	title.text = "ИНВЕНТАРЬ И ЭКИПИРОВКА"
-	title.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	title.offset_top = 12.0
-	title.offset_bottom = 48.0
-	title.offset_left = 300.0
-	title.offset_right = -200.0
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(title)
-
-	# Золото
+	title.text = tr("ИНВЕНТАРЬ")
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
 	_gold_label = Label.new()
+	_gold_label.name = "Gold"
 	_gold_label.theme_type_variation = &"InvGoldLabel"
-	_gold_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_gold_label.offset_left = -220.0
-	_gold_label.offset_top = 16.0
-	_gold_label.offset_right = -30.0
-	_gold_label.offset_bottom = 44.0
-	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_gold_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(_gold_label)
-
-	# Кнопка «Закрыть»
+	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_gold_label)
 	var close_btn := Button.new()
 	close_btn.name = "Close"
-	close_btn.text = "Закрыть"
-	close_btn.custom_minimum_size = _CLOSE_SIZE
-	close_btn.position = _CLOSE_POSITION
-	close_btn.size = _CLOSE_SIZE
+	close_btn.text = tr("Закрыть")
 	close_btn.theme_type_variation = &"InvClose"
+	close_btn.custom_minimum_size = Vector2(120, 32)
 	close_btn.pressed.connect(close)
-	_panel_root.add_child(close_btn)
+	header.add_child(close_btn)
 
-	# Левая половина: кукла + слоты экипировки
-	_build_equipment_area()
+	# Верх: кукла (имя сверху) | статы 2 столбика — по центру, без пустых полей
+	var top := HBoxContainer.new()
+	top.name = "Top"
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_theme_constant_override("separation", UiTheme.SPACE_5)
+	top.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(top)
 
-	# Правая половина: инвентарь
-	_build_inventory_area()
+	var equip_col := VBoxContainer.new()
+	equip_col.name = "EquipCol"
+	equip_col.custom_minimum_size = Vector2(300, 0)
+	equip_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	equip_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	equip_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_child(equip_col)
+	# Имя героя — НАД куклой (вариант A), не в статах.
+	_hero_name = Label.new()
+	_hero_name.name = "HeroName"
+	_hero_name.theme_type_variation = &"InvStatValue"
+	_hero_name.text = Game.hero_name
+	_hero_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hero_name.add_theme_font_size_override("font_size", UiTheme.FONT_SUBHEAD)
+	_hero_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	equip_col.add_child(_hero_name)
+	_build_equipment_area(equip_col)
 
+	# Статы: узкая колонка (~320), НЕ EXPAND — иначе поле растягивается впустую.
+	var stats_col := VBoxContainer.new()
+	stats_col.name = "StatsCol"
+	stats_col.custom_minimum_size = Vector2(320, 0)
+	stats_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	stats_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_stats_col = stats_col
+	top.add_child(stats_col)
+	var stats_title := Label.new()
+	stats_title.theme_type_variation = &"InvSection"
+	stats_title.text = tr("ХАРАКТЕРИСТИКИ")
+	stats_col.add_child(stats_title)
+	var stats_panel := PanelContainer.new()
+	stats_panel.theme_type_variation = &"InvSectionPanel"
+	stats_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stats_col.add_child(stats_panel)
+	var stats_margin := MarginContainer.new()
+	UiKit.set_margins(stats_margin, UiTheme.SPACE_2, UiTheme.SPACE_1,
+		UiTheme.SPACE_2, UiTheme.SPACE_1)
+	stats_panel.add_child(stats_margin)
+	_stats_scroll = ScrollContainer.new()
+	_stats_scroll.name = "StatsScroll"
+	_stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_stats_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_stats_scroll.follow_focus = true
+	_stats_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_stats_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_margin.add_child(_stats_scroll)
+	_stats_box = VBoxContainer.new()
+	_stats_box.name = "StatsBox"
+	_stats_box.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	_stats_box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_stats_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_stats_scroll.add_child(_stats_box)
+	_setup_stats_area()
+	_stats_refresh_t = 0.0
+
+	# Низ: склад на всю ширину
+	var inv_col := VBoxContainer.new()
+	inv_col.name = "InvCol"
+	inv_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(inv_col)
+	_build_inventory_area(inv_col)
+
+	_build_hover_card()
 	_refresh()
 
 
-# ─────────────────────── Экипировка ───────────────────────
+func _build_hover_card() -> void:
+	_hover_card = UiKit.make_hover_card(300.0)
+	_panel.add_child(_hover_card)
 
-func _build_equipment_area() -> void:
-	var container := CenterContainer.new()
-	container.anchor_left = 0.0
-	container.anchor_top = 0.0
-	container.anchor_right = 0.0
-	container.anchor_bottom = 0.0
-	container.offset_left = 20.0
-	container.offset_top = 60.0
-	container.offset_right = 500.0
-	container.offset_bottom = 710.0
-	_panel_root.add_child(container)
 
+# ─────────────────────── Экипировка 1×1 ───────────────────────
+
+func _build_equipment_area(parent: VBoxContainer) -> void:
 	var row := HBoxContainer.new()
+	row.name = "EquipRow"
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	container.add_child(row)
+	row.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(row)
 
 	var left_col := VBoxContainer.new()
-	left_col.add_theme_constant_override("separation", 8)
+	left_col.add_theme_constant_override("separation", UiTheme.SPACE_1)
 	row.add_child(left_col)
 	var mid_col := VBoxContainer.new()
-	mid_col.add_theme_constant_override("separation", 8)
+	mid_col.add_theme_constant_override("separation", UiTheme.SPACE_1)
 	row.add_child(mid_col)
 	var right_col := VBoxContainer.new()
-	right_col.add_theme_constant_override("separation", 8)
+	right_col.add_theme_constant_override("separation", UiTheme.SPACE_1)
 	row.add_child(right_col)
 
-	# Кукла
 	_doll = TextureRect.new()
-	_doll.texture = load("res://assets/equipment/%s/1.png" % Game.hero_character_id) \
-		if ResourceLoader.exists("res://assets/equipment/%s/1.png" % Game.hero_character_id) \
-		else null
+	var doll_path := "res://assets/equipment/%s/1.png" % Game.hero_character_id
+	_doll.texture = load(doll_path) if ResourceLoader.exists(doll_path) else null
 	_doll.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_doll.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_doll.custom_minimum_size = Vector2(130, 200)
+	_doll.custom_minimum_size = Vector2(120, 180)
+	_doll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_doll.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	for slot in ["weapon", "shield", "hands", "cloak"]:
@@ -205,10 +320,7 @@ func _build_equipment_area() -> void:
 
 
 func _make_equip_slot(slot: String) -> Control:
-	var wrapper := VBoxContainer.new()
-	wrapper.alignment = BoxContainer.ALIGNMENT_CENTER
-	wrapper.add_theme_constant_override("separation", 2)
-
+	# Вариант A: без подписи под слотом — только tooltip по наведению/фокусу.
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = &"EquipSlot"
 	panel.custom_minimum_size = EQUIP_SLOT_SIZE
@@ -224,18 +336,7 @@ func _make_equip_slot(slot: String) -> Control:
 	panel.focus_exited.connect(func(): _on_slot_focus(slot, false))
 	_attach_slot_card(panel, slot)
 	_equip_slots[slot] = {"panel": panel, "icon": icon}
-	wrapper.add_child(panel)
-
-	# Подпись слота
-	var label := Label.new()
-	label.text = ItemDB.slot_title(slot)
-	label.add_theme_font_size_override("font_size", 10)
-	label.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrapper.add_child(label)
-
-	return wrapper
+	return panel
 
 
 func _on_slot_input(event: InputEvent, slot: String) -> void:
@@ -262,6 +363,7 @@ func _on_slot_clicked(slot: String) -> void:
 			_set_slot_highlight("")
 			_refresh_inventory_grid()
 			_refresh_equipment()
+			_refresh_stats()
 			inventory_changed.emit()
 		return
 	if _highlight_slot == slot:
@@ -308,59 +410,232 @@ func _refresh_equipment() -> void:
 			icon_rect.queue_redraw()
 
 
-# ─────────────────────── Инвентарь ───────────────────────
+# ─────────────────────── Статы 1×2 (сетка по секциям) ───────────────────────
 
-const INV_SLOT := 62
-const INV_GAP := 4
-const INV_MARGIN := 10
+func _setup_stats_area() -> void:
+	if _stats_box == null:
+		return
+	for ch in _stats_box.get_children():
+		ch.queue_free()
+	_stat_labels.clear()
 
-var _inventory_grid: GridContainer
-var _inventory_scroll: ScrollContainer
+	# Имя — в EquipCol над куклой, не здесь (вариант A).
+	_section_header(tr("АТРИБУТЫ"))
+	_stats_grid(_stats_box, [
+		["Сила:", "body", _VALUE_COLOR],
+		["Жизнь:", "hp", _HP_COLOR],
+		["Ловкость:", "agility", _VALUE_COLOR],
+		["Мана:", "mp", _MP_COLOR],
+		["Разум:", "mind", _VALUE_COLOR],
+		["Дух:", "spirit", _VALUE_COLOR],
+	])
 
-func _build_inventory_area() -> void:
-	var container := VBoxContainer.new()
-	container.anchor_left = 0.0
-	container.anchor_top = 0.0
-	container.anchor_right = 0.0
-	container.anchor_bottom = 0.0
-	container.offset_left = 520.0
-	container.offset_top = 60.0
-	container.offset_right = 1010.0
-	container.offset_bottom = 710.0
-	container.add_theme_constant_override("separation", 6)
-	_panel_root.add_child(container)
+	_section_header(tr("БОЙ"))
+	_stats_grid(_stats_box, [
+		["Урон:", "damage", _VALUE_COLOR],
+		["Броня:", "absorption", _VALUE_COLOR],
+		["Атака:", "attack", _VALUE_COLOR],
+		["Защита:", "defense", _VALUE_COLOR],
+	])
 
-	# Заголовок «Инвентарь»
+	_section_header(tr("НАВЫКИ"))
+	if Game.hero_class == "mage":
+		_stats_grid(_stats_box, [
+			["Магия огня:", "mage_fire", _VALUE_COLOR],
+			["Сопр. огню:", "fire", _RESIST_FIRE],
+			["Магия воды:", "mage_water", _VALUE_COLOR],
+			["Сопр. воде:", "water", _RESIST_WATER],
+			["Магия воздуха:", "mage_air", _VALUE_COLOR],
+			["Сопр. воздуху:", "air", _RESIST_AIR],
+			["Магия земли:", "mage_earth", _VALUE_COLOR],
+			["Сопр. земле:", "earth", _RESIST_EARTH],
+			["Магия астрала:", "mage_astral", _VALUE_COLOR],
+			["Сопр. астралу:", "astral", _RESIST_ASTRAL],
+		])
+	else:
+		_stats_grid(_stats_box, [
+			["Меч:", "blade", _VALUE_COLOR],
+			["Топор:", "axe", _VALUE_COLOR],
+			["Дубина:", "bludgeon", _VALUE_COLOR],
+			["Копьё:", "pike", _VALUE_COLOR],
+			["Стрельба:", "shooting", _VALUE_COLOR],
+		])
+
+	_section_header(tr("ПРОЧЕЕ"))
+	_stats_grid(_stats_box, [
+		["Нагрузка:", "load", _VALUE_COLOR],
+		["Опыт:", "exp", _VALUE_COLOR],
+		["Обзор:", "sight", _VALUE_COLOR],
+		["Скорость:", "speed", _VALUE_COLOR],
+		["Щит:", "shield", _ACCENT_COLOR],
+	])
+	if _shield_label == null and _stats_box != null:
+		# Страховка: строка щита обязана существовать после сборки сетки.
+		for c in _stats_box.get_children():
+			if c is HBoxContainer:
+				for lab in (c as HBoxContainer).get_children():
+					if lab is Label and str((lab as Label).text) == "Щит:":
+						var sib := (c as HBoxContainer).get_children()
+						if sib.size() >= 2 and sib[1] is Label:
+							_shield_label = sib[1] as Label
+	_refresh_stats()
+
+
+## Лёгкий заголовок секции: без «леса» HSeparator, только текст + воздух.
+func _section_header(title: String, value: String = "", title_only: bool = false) -> Label:
+	var hdr := HBoxContainer.new()
+	hdr.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stats_box.add_child(hdr)
+	var t := Label.new()
+	t.text = title
+	t.theme_type_variation = &"InvSection"
+	t.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hdr.add_child(t)
+	if value != "" and title_only:
+		var v := Label.new()
+		v.text = value
+		v.theme_type_variation = &"InvStatValue"
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hdr.add_child(v)
+		return v
+	return t
+
+
+## Сетка 2 столбика: ярлык фикс, значение natural — без разлёта к краю.
+func _stats_grid(parent: VBoxContainer, rows: Array) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", UiTheme.SPACE_3)
+	grid.add_theme_constant_override("v_separation", 0)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(grid)
+	for row in rows:
+		var pair: Array = row
+		_stat_grid_pair(grid, str(pair[0]), str(pair[1]), pair[2] if pair.size() > 2 else _VALUE_COLOR)
+
+
+func _stat_grid_pair(grid: GridContainer, label: String, key: String, color: Color) -> void:
+	# Ячейка Grid = HBox: ярлык 84 px + значение (не EXPAND).
+	var cell := HBoxContainer.new()
+	cell.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.add_child(cell)
+
+	var ll := Label.new()
+	ll.text = label
+	ll.custom_minimum_size = Vector2(84, 0)
+	ll.theme_type_variation = &"InvStatLabel"
+	ll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(ll)
+	var lv := Label.new()
+	lv.theme_type_variation = &"InvStatValue"
+	lv.size_flags_horizontal = Control.SIZE_SHRINK_END
+	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(lv)
+	if key == "hp":
+		_hp_label = lv
+	elif key == "mp":
+		_mp_label = lv
+	elif key == "shield":
+		_shield_label = lv
+	elif key != "":
+		_stat_labels[key] = lv
+	if color != _VALUE_COLOR:
+		lv.add_theme_color_override("font_color", color)
+
+
+func _refresh_stats() -> void:
+	if not is_instance_valid(player):
+		return
+	var p = player
+	if is_instance_valid(_hero_name):
+		_hero_name.text = Game.hero_name
+	_set_stat("body", str(p.body))
+	_set_stat("agility", str(p.agility))
+	_set_stat("mind", str(p.mind))
+	_set_stat("spirit", str(p.spirit))
+	if _hp_label != null:
+		_hp_label.text = "%d / %d" % [p.current_hp, p.max_hp]
+	if _mp_label != null:
+		_mp_label.text = "%d / %d" % [p.current_mana, p.max_mana]
+	_set_stat("damage", "%d-%d" % [p.get_damage_min(), p.get_damage_max()])
+	_set_stat("absorption", str(p.get_absorption()))
+	_set_stat("attack", str(p.get_attack()))
+	_set_stat("defense", str(p.get_defense()))
+	if Game.hero_class == "mage":
+		_set_stat("mage_fire", str(p.fire_skill))
+		_set_stat("mage_water", str(p.water_skill))
+		_set_stat("mage_air", str(p.air_skill))
+		_set_stat("mage_earth", str(p.earth_skill))
+		_set_stat("mage_astral", str(p.astral_skill))
+	else:
+		_set_stat("blade", str(p.blade_skill))
+		_set_stat("axe", str(p.axe_skill))
+		_set_stat("bludgeon", str(p.bludgeon_skill))
+		_set_stat("pike", str(p.pike_skill))
+		_set_stat("shooting", str(p.shooting_skill))
+	_set_stat("fire", str(p.get_protection_fire()))
+	_set_stat("water", str(p.get_protection_water()))
+	_set_stat("air", str(p.get_protection_air()))
+	_set_stat("earth", str(p.get_protection_earth()))
+	_set_stat("astral", str(p.get_protection_astral()))
+	_set_stat("load", "%.1f/%.0f" % [p.get_load(), p.load_capacity()])
+	_set_stat("exp", str(p.total_experience()))
+	_set_stat("sight", str(p.get_sight()))
+	# Скорость ЭФФЕКТИВНАЯ (Haste/Slow), как в бою — не база move_speed.
+	var spd_mult := StatusEffects.speed_mult(p)
+	var spd := int(round(float(p.move_speed) * spd_mult))
+	_set_stat("speed", str(spd))
+	# Щит мага = временная броня (Аллоды): +защита/+поглощение на время.
+	if _shield_label != null:
+		var sh_def := StatusEffects.shield_armor_defense(p)
+		var sh_abs := StatusEffects.shield_armor_absorption(p)
+		var sh_t := StatusEffects.shield_armor_time(p)
+		if sh_def > 0 or sh_abs > 0:
+			_shield_label.text = "+%d/%d · %.0f с" % [sh_def, sh_abs, sh_t]
+		else:
+			_shield_label.text = "—"
+
+
+func _set_stat(key: String, value: String) -> void:
+	if _stat_labels.has(key):
+		_stat_labels[key].text = value
+
+
+# ─────────────────────── Склад 2×1+2×2 ───────────────────────
+
+func _build_inventory_area(parent: VBoxContainer) -> void:
 	var inv_title := Label.new()
-	inv_title.text = "СКЛАД"
-	inv_title.add_theme_font_size_override("font_size", 16)
-	inv_title.add_theme_color_override("font_color", UiKit.TITLE_COLOR)
-	inv_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_child(inv_title)
+	inv_title.theme_type_variation = &"InvSection"
+	inv_title.text = tr("СКЛАД")
+	parent.add_child(inv_title)
 
-	# Сетка инвентаря с прокруткой
 	var scroll := ScrollContainer.new()
+	scroll.name = "InvScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.follow_focus = true
-	container.add_child(scroll)
+	parent.add_child(scroll)
 	_inventory_scroll = scroll
 
 	var grid := GridContainer.new()
-	grid.columns = _inventory_columns()
+	grid.name = "InvGrid"
+	grid.columns = 6
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", INV_GAP)
 	grid.add_theme_constant_override("v_separation", INV_GAP)
 	scroll.add_child(grid)
 	_inventory_grid = grid
 
 
-func _inventory_columns() -> int:
-	var w := 490.0  # ширина доступной области
-	var usable := w - INV_MARGIN * 2.0
-	return maxi(1, int((usable + INV_GAP) / float(INV_SLOT + INV_GAP)))
-
-
 func _refresh_inventory_grid() -> void:
+	if _inventory_grid == null:
+		return
 	for s in _inventory_slots:
 		if is_instance_valid(s):
 			s.queue_free()
@@ -370,15 +645,11 @@ func _refresh_inventory_grid() -> void:
 	if not is_instance_valid(player):
 		return
 
-	# Подсчёт стаков
 	var counts := {}
 	for key in player.inventory:
 		var k := str(key)
 		counts[k] = int(counts.get(k, 0)) + 1
 
-	# Один слот на УНИКАЛЬНЫЙ предмет, количество — в счётчике стака.
-	# Раньше цикл шёл по всему player.inventory, и три одинаковые бутылки
-	# давали три ячейки, в каждой с подписью «3» — выглядело как девять зелий.
 	for key in counts:
 		var item := ItemDB.find(str(key))
 		if item.is_empty():
@@ -387,14 +658,13 @@ func _refresh_inventory_grid() -> void:
 
 	if _inventory_slots.is_empty():
 		var lab := Label.new()
-		lab.text = "Склад пуст"
-		lab.add_theme_font_size_override("font_size", 16)
-		lab.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
+		lab.text = tr("Склад пуст")
+		lab.add_theme_font_size_override("font_size", UiTheme.FONT_SUBHEAD)
+		lab.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 		_inventory_grid.add_child(lab)
 
-	# Обновить золото
 	if _gold_label != null and is_instance_valid(player):
-		_gold_label.text = "Золото: %d" % player.gold
+		_gold_label.text = tr("Золото: %d") % player.gold
 
 
 func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
@@ -411,7 +681,6 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 	_inventory_slots.append(slot)
 	_inventory_items.append(item)
 
-	# Иконка
 	var icon_path := str(item.get("icon", ""))
 	if icon_path != "":
 		var tex = load(icon_path)
@@ -428,12 +697,11 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			slot.add_child(icon_rect)
 
-	# Счётчик стака
 	if count > 1:
 		var cnt := Label.new()
 		cnt.text = str(count)
-		cnt.add_theme_font_size_override("font_size", 12)
-		cnt.add_theme_color_override("font_color", Color(1, 0.9, 0.45))
+		cnt.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+		cnt.add_theme_color_override("font_color", UiTheme.ACCENT)
 		cnt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 		cnt.add_theme_constant_override("outline_size", 4)
 		cnt.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -445,7 +713,6 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(cnt)
 
-	# Клик: экипировать / использовать
 	slot.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_on_item_clicked(item))
@@ -477,13 +744,12 @@ func _on_item_clicked(item: Dictionary) -> void:
 			inventory_changed.emit()
 		return
 	if quality == "Potion":
-		# Единый путь и для клика, и для хоткея (player.use_potion).
 		if player.use_potion(item_key):
 			_refresh_inventory_grid()
+			_refresh_stats()
 			inventory_changed.emit()
 		return
 
-	# Экипировка
 	var slot := str(item.get("slot", ""))
 	if slot == "shield" and player.two_handed:
 		return
@@ -491,6 +757,7 @@ func _on_item_clicked(item: Dictionary) -> void:
 		_set_slot_highlight("")
 		_refresh_inventory_grid()
 		_refresh_equipment()
+		_refresh_stats()
 		inventory_changed.emit()
 	else:
 		_refresh_inventory_grid()
@@ -500,11 +767,21 @@ func _on_item_clicked(item: Dictionary) -> void:
 
 func _ensure_card() -> PanelContainer:
 	var card := UiKit.make_hover_card(300.0)
-	add_child(card)
-	var theme := UiKit.base_theme()
+	_panel.add_child(card)
+	var theme := UiTheme.app_theme()
 	UiKit.add_hover_card_styles(theme)
 	card.theme = theme
 	return card
+
+
+func _hover_bounds() -> Vector2:
+	return _panel.size if is_instance_valid(_panel) else Vector2(1024, 768)
+
+
+func _hover_at(cell: Control) -> Vector2:
+	if not is_instance_valid(_panel) or not is_instance_valid(cell):
+		return Vector2.ZERO
+	return _panel.get_global_transform().affine_inverse() * cell.global_position
 
 
 func _item_card_lines(item: Dictionary) -> Array:
@@ -544,15 +821,13 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		return
 	var icon_path := str(item.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(item.get("quality", "")))
-	# Ключ наведённого предмета: по нему игра назначает расходник на хоткей
-	# (Ctrl+цифра при наведении на ячейку).
 	var hover_key := str(item.get("key", ""))
 	cell.mouse_entered.connect(func():
 		hovered_item_key = hover_key
 		if _hover_card == null:
 			_hover_card = _ensure_card()
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
-			cell.global_position, _DESIGN_SIZE, icon_path, qcolor))
+			_hover_at(cell), _hover_bounds(), icon_path, qcolor))
 	cell.mouse_exited.connect(func():
 		if hovered_item_key == hover_key:
 			hovered_item_key = ""
@@ -566,7 +841,7 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		if _hover_card == null:
 			_hover_card = _ensure_card()
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
-			cell.global_position, _DESIGN_SIZE, icon_path, qcolor))
+			_hover_at(cell), _hover_bounds(), icon_path, qcolor))
 	cell.focus_exited.connect(func():
 		if hovered_item_key == hover_key:
 			hovered_item_key = ""
@@ -602,10 +877,10 @@ func _show_slot_card(cell: Control, slot: String) -> void:
 	if _hover_card == null:
 		_hover_card = _ensure_card()
 	var lines: Array = _item_card_lines(it)
-	lines.append("Слот: %s (клик — снять)" % ItemDB.slot_title(slot))
+	lines.append(tr("Слот: %s (клик — снять)") % ItemDB.slot_title(slot))
 	var icon_path := str(it.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(it.get("quality", "")))
-	UiKit.show_hover_card(_hover_card, lines, cell.global_position, _DESIGN_SIZE, icon_path, qcolor)
+	UiKit.show_hover_card(_hover_card, lines, _hover_at(cell), _hover_bounds(), icon_path, qcolor)
 
 
 func _hide_slot_card() -> void:
@@ -613,8 +888,7 @@ func _hide_slot_card() -> void:
 		UiKit.hide_hover_card(_hover_card)
 
 
-# ─────────────────────── Refresh ───────────────────────
-
 func _refresh() -> void:
 	_refresh_equipment()
 	_refresh_inventory_grid()
+	_refresh_stats()

@@ -1044,8 +1044,10 @@ func _use_hotbar_item(item_key: String) -> void:
 			if player.use_potion(item_key):
 				if ui != null and ui.has_method("refresh_inventory"):
 					ui.refresh_inventory()
-				if ui != null and ui.has_method("_update_stats"):
-					ui._update_stats()
+				if ui != null and ui.has_method("refresh_inventory"):
+					ui.refresh_inventory()
+				if ui != null and ui.has_method("_update_gold") and player != null:
+					ui._update_gold(int(player.gold))
 		"Scroll", "SuperScroll":
 			var spell_name := str(item.get("type", ""))
 			Game.pending_scroll = {"spell": spell_name, "item_key": item_key}

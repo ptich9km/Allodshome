@@ -270,7 +270,12 @@ func _run() -> void:
 
 	# Щит (идёт в meta-щит Game)
 	StatusEffects.apply_spell(hero, SpellDB.get_spell("Shield"), hero)
-	_check(int(hero.get_meta("shield_strength", 0)) > 0, "Shield даёт поглощение")
+	# Щит мага = временная броня (Аллоды), не meta-поглощение HP.
+	var sh_def0 := StatusEffects.shield_armor_defense(hero)
+	var sh_abs0 := StatusEffects.shield_armor_absorption(hero)
+	_check(sh_def0 > 0, "Shield даёт прибавку к Защите (%d)" % sh_def0)
+	_check(sh_abs0 >= 0, "Shield считает поглощение (%d)" % sh_abs0)
+	_check(StatusEffects.shield_armor_time(hero) > 0.0, "Shield живёт по времени")
 
 	# --- 7. Все виды заклинаний срабатывают ------------------------------
 	var kinds := {

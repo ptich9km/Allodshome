@@ -263,28 +263,27 @@ func close() -> void:
 	closed.emit()
 	queue_free()
 
-## Нейтральная «тёплая» палитра интерьера — как у таверны, но без фонового арта.
+## Тема школы — токены UiTheme, тот же тёплый стиль, что и у главного меню.
 func _make_theme() -> Theme:
-	var theme := UiKit.base_theme({
-		"font_size": 15,
-		"font_color": Color(0.96, 0.88, 0.70),
-		"radius": 6, "margin": 6,
-		"normal_bg": Color(0.24, 0.13, 0.07, 0.96),
-		"normal_border": Color(0.70, 0.40, 0.14),
-		"hover_bg": Color(0.36, 0.19, 0.08, 0.98),
-		"hover_border": Color(1.0, 0.74, 0.26),
-		"pressed_bg": Color(0.15, 0.08, 0.04, 1.0),
-		"pressed_border": Color(0.66, 0.36, 0.12),
-		"disabled_bg": Color(0.16, 0.14, 0.13, 0.88),
-		"disabled_border": Color(0.35, 0.30, 0.26),
-		"focus_border": Color(1.0, 0.78, 0.20),
-		"scrollbar": true,
-	})
+	var theme := UiTheme.app_theme()
+	theme.set_stylebox("normal", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("hover", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("pressed", "Button", UiKit.button_style(
+		UiTheme.BG_DEEP, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("focus", "Button", UiKit.button_style(
+		UiTheme.TRANSPARENT, UiTheme.ACCENT,
+		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	UiKit.apply_scrollbar(theme, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
 	UiKit.add_panel(theme, &"SchoolPanel",
-		Color(0.09, 0.07, 0.06, 0.97), UiKit.DIALOG_BORDER, 8)
+		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
 	UiKit.add_panel(theme, &"SchoolRow",
-		Color(0.13, 0.10, 0.08, 0.92), Color(0.46, 0.30, 0.15, 0.90), 6)
-	UiKit.add_title(theme, &"SchoolTitle", UiKit.TITLE_COLOR, 26)
-	UiKit.add_gold_label(theme, &"SchoolGold")
-	UiKit.add_label(theme, &"SchoolColumnTitle", UiKit.SECTION_COLOR, 14)
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.2), UiTheme.RADIUS_SLOT)
+	UiTheme.add_display_label(theme, &"SchoolTitle", UiTheme.FONT_SECTION, UiTheme.ACCENT)
+	UiKit.add_label(theme, &"SchoolGold", UiTheme.ACCENT, UiTheme.FONT_SUBHEAD)
+	UiKit.add_label(theme, &"SchoolColumnTitle", UiTheme.TEXT_MUTED, UiTheme.FONT_BODY)
 	return theme

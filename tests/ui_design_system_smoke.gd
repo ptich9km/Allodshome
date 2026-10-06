@@ -25,7 +25,7 @@ const FRAMES_DIR := "res://assets/ui/frames"
 const DB_PATH := "res://assets/ui/frames/frames_db.json"
 
 ## Панели, уже переведённые на токены. Список растёт по мере миграции:
-## главное меню и Esc — слой 4, интерьеры — следующий заход.
+## главное меню, Esc, HUD-кнопки; интерьеры — следующий заход.
 ##
 ## Guard намеренно НЕ включает все девять панелей сразу. Красный с первого дня
 ## сторож бесполезен: он перестаёт замечать новое, к нему привыкают. Пока
@@ -33,23 +33,28 @@ const DB_PATH := "res://assets/ui/frames/frames_db.json"
 const PANEL_FILES := [
 	"res://scripts/main_menu.gd",
 	"res://scripts/save_menu.gd",
-]
-
-## Панели, где палитра ещё инлайновая. Список СЖИМАЕТСЯ по мере миграции; если
-## панель переехала на токены, её надо убрать отсюда — иначе сторож начнёт
-## врать, что всё в порядке.
-const PANEL_PENDING := [
+	"res://scripts/ui.gd",
+	"res://scripts/settings_panel.gd",
+	"res://scripts/school_panel.gd",
+	"res://scripts/alchemy_panel.gd",
+	"res://scripts/inventory_panel.gd",
 	"res://scripts/shop_panel.gd",
 	"res://scripts/inn_panel.gd",
 	"res://scripts/blacksmith_panel.gd",
-	"res://scripts/alchemy_panel.gd",
-	"res://scripts/school_panel.gd",
-	"res://scripts/inventory_panel.gd",
 ]
 
+## Панели, где палитра ещё инлайновая. Пусто — все интерьеры на токенах.
+const PANEL_PENDING := []
+
 ## Строки, где `Color(` легален даже в панели: собственные оттенки качества,
-## сферы и т.п. Это не «расползание палитры», а смысловые цвета.
-const COLOR_EXEMPT := ["quality_color", "SPHERE_COLORS", "RESIST_COLORS"]
+## сферы, миникарта и смысловые цвета HUD (HP/MP/сопротивления). Это не
+## «расползание палитры», а игровые данные/семантика.
+const COLOR_EXEMPT := [
+	"quality_color", "SPHERE_COLORS", "RESIST_COLORS",
+	"MINIMAP", "sphere_color", "set_pixel", "modulate",
+	"outline_color", "HUD_HD", "HUD_MP", "RESIST_",
+	"_HP_COLOR", "_MP_COLOR", "InvStat",
+]
 
 var _fails: Array[String] = []
 var _checks := 0
@@ -75,9 +80,61 @@ func _run() -> void:
 	# ложно-зелёных тестов (см. AGENTS.md §12).
 	await _check_theme_reaches_control()
 	await _check_dividers_are_nine_patch()
+	await _check_hud_buttons()
 	require_token_usage()
 	_report()
 	quit(0 if _fails.is_empty() else 1)
+
+
+## HUD-кнопки не должны быть системными flat-кнопками движка.
+func _check_hud_buttons() -> void:
+	# Без hero_stats main.tscn уводит в character_select и setup_ui не зовётся.
+	Game.hero_stats = {"body": 12, "agility": 11, "mind": 9, "spirit": 8,
+		"blade": 30, "bludgeon": 15, "pike": 10,
+		"fire": 5, "water": 5, "air": 5, "earth": 5, "astral": 5,
+		"weapon": "sword", "shield": true, "armor": "heavy"}
+	Game.hero_class = "warrior"
+	Game.hero_name = "Тест"
+	Game.hero_character_id = "mfighter"
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		_check(false, "main.tscn грузится")
+		return
+	var game = scene.instantiate()
+	root.add_child(game)
+	await process_frame
+	await create_timer(0.8).timeout
+	var ui = game.get("ui") if "ui" in game else null
+	_check(ui != null, "GameUI в дереве")
+	if ui == null:
+		game.queue_free()
+		await process_frame
+		return
+	# setup_ui уже вызван game.gd при загрузке сцены — не дублируем.
+	var cmd_buttons: Array = ui.get("cmd_buttons") if "cmd_buttons" in ui else []
+	_check(cmd_buttons.size() >= 4, "командные кнопки созданы (%d)" % cmd_buttons.size())
+	_check(ui.get_node_or_null("HudSide") != null, "HudSide у миникарты есть")
+	_check(ui.get_node_or_null("StatsPanel") == null, "StatsPanel удалён (статы в инвентаре)")
+	var themed := 0
+	for b in cmd_buttons:
+		if b is Button:
+			_check(not (b as Button).flat, "командная кнопка не flat")
+			var sb = (b as Button).get_theme_stylebox("normal")
+			_check(sb is StyleBoxFlat, "командная кнопка: стиль из темы (StyleBoxFlat)")
+			if sb is StyleBoxFlat:
+				var got: Color = (sb as StyleBoxFlat).bg_color
+				_check(not (got.r == got.g and got.g == got.b),
+					"фон командной кнопки не серый (%s)" % str(got))
+				_check(got.a >= 0.5, "фон командной кнопки не прозрачный (a=%.2f)" % got.a)
+				themed += 1
+	_check(themed >= 4, "командные кнопки стилизованы (%d из %d)" % [themed, cmd_buttons.size()])
+	var stats_btn = ui.get("_stats_toggle_btn") if "_stats_toggle_btn" in ui else null
+	if stats_btn is Button:
+		_check(not (stats_btn as Button).flat, "кнопка «Статы» не flat")
+		_check((stats_btn as Button).theme_type_variation == &"HudCmd",
+			"кнопка «Статы»: variation HudCmd")
+	game.queue_free()
+	await process_frame
 
 
 # --- 1. Шрифты ---

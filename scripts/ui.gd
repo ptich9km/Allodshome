@@ -5,25 +5,19 @@ class_name GameUI
 @onready var bottom_panel: Control = $BottomPanel
 @onready var spell_panel: Control = $BottomPanel/SpellPanel
 @onready var pause_label: Label = $PauseLabel
-@onready var mini_portrait: TextureRect = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/MiniPortraitBorder/MiniPortrait
-@onready var preview_name: Label = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText/PreviewName
-@onready var preview_sub: Label = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText/PreviewSub
-@onready var preview_detail: Label = $StatsPanel/StatsMargin/StatsCol/PreviewInfo/PreviewText/PreviewDetail
-@onready var stats_area: GridContainer = $StatsPanel/StatsMargin/StatsCol/StatsArea
-@onready var minimap_rect: ColorRect = $MinimapPanel/MinimapMargin/MinimapRect
 @onready var coords_label: Label = $CoordsLabel
+@onready var minimap_rect: ColorRect = $MinimapPanel/MinimapMargin/MinimapRect
+@onready var hud_gold_label: Label = $HudSide/GoldRow/GoldLabel
+@onready var hud_cmd_row: HBoxContainer = $HudSide/HudCmdRow
 
 var show_coords := GameConfig.geti("debug", "show_coords") != 0
-var hero_portrait: Texture2D = null   # дефолтный портрет героя (сброс ховера)
-var _hover_name := ""
 var cmd_buttons: Array = []
 var _stats_toggle_btn: Button = null
 
 var minimap_camera: Camera2D
-var alm_map = null   # CustomMap или AlmMap (группа "alm_map")
+var alm_map = null
 var player: Player
 
-# Для рисования миникарты
 var minimap_image: Image
 var minimap_texture: ImageTexture
 var _minimap_size := Vector2.ZERO
@@ -33,39 +27,23 @@ const MINIMAP_INTERVAL := 0.25
 func setup_ui(p: Player):
 	player = p
 
+	_apply_hud_theme()
 	_setup_spells()
-
-	# Портрет героя
-	var hero_tex = load("res://assets/equipment/%s/1.png" % Game.hero_character_id)
-	if hero_tex:
-		mini_portrait.texture = hero_tex
-		hero_portrait = hero_tex
-	else:
-		var tex = load("res://assets/portraits/goodorc.png")
-		if tex:
-			mini_portrait.texture = tex
-			hero_portrait = tex
-
 	refresh_spell_book()
-	_setup_stats_area()
-	_update_preview_hero()
-	# Иконка монеты в счётчике золота (03.10). Тот же спрайт, что лежит на земле
-	# при убийстве, — игрок видит одинаковую картинку в луте и в панели.
-	var gold_icon := get_node_or_null(
-		"StatsPanel/StatsMargin/StatsCol/GoldRow/GoldIcon") as TextureRect
+
+	var gold_icon := get_node_or_null("HudSide/GoldRow/GoldIcon") as TextureRect
 	if gold_icon != null:
 		var gp := LootIcons.gold_icon()
 		if gp != "":
 			gold_icon.texture = load(gp)
 
-	# Карта для миникарты
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 
 	_setup_minimap()
 	_setup_action_buttons()
 	_layout_panels()
 	get_tree().root.size_changed.connect(_layout_panels)
-	_update_stats()
+	_update_gold(int(player.gold) if player != null else 0)
 	_update_bottom_panel_visibility()
 
 ## Адаптивная раскладка: правая панель закреплена якорями справа в main.tscn,
@@ -143,16 +121,17 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	var charges := player.spell_charges(name)
 	var mana := SpellDB.mana_cost(name)
 	var sphere_color: Color = UiKit.SPHERE_COLORS.get(sphere_name, Color(0.5, 0.5, 0.5))
+	var border_base := UiTheme.PANEL_EDGE.darkened(0.45)
 
 	if not known:
 		# Пустой слот книги: приглушённый border цвета стихии
 		var cell := PanelContainer.new()
 		cell.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.08, 0.07, 0.06, 0.7)
+		style.bg_color = UiTheme.BG_DEEP
 		style.border_color = sphere_color.darkened(0.5)
 		style.set_border_width_all(1)
-		style.set_corner_radius_all(3)
+		style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
 		cell.add_theme_stylebox_override("panel", style)
 		cell.tooltip_text = "%s\nСфера: %s\n(не выучено — выучите Книгой Магии)" % [title, sphere]
 		spell_grid.add_child(cell)
@@ -162,25 +141,25 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
 	b.flat = true
+	b.focus_mode = Control.FOCUS_ALL
 
 	# Стиль ячейки: тёмный фон + цветной border стихии снизу (2px)
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.10, 0.09, 0.08, 0.92)
-	style.border_color = Color(0.2, 0.18, 0.15)
-	style.set_border_width_all(1)
+	style.bg_color = UiTheme.SLOT_BG
+	style.set_border_width_all(UiTheme.BORDER_HAIRLINE)
 	style.set_border_width(SIDE_BOTTOM, 2)
-	style.border_color = sphere_color.lerp(Color(0.2, 0.18, 0.15), 0.4)
-	style.set_corner_radius_all(3)
-	style.set_content_margin_all(2)
+	style.border_color = sphere_color.lerp(border_base, 0.4)
+	style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
+	style.set_content_margin_all(UiTheme.SPACE_1)
 	b.add_theme_stylebox_override("normal", style)
 
 	var hover_style := style.duplicate()
 	hover_style.border_color = sphere_color
-	hover_style.bg_color = Color(0.15, 0.13, 0.11, 0.95)
+	hover_style.bg_color = UiTheme.PANEL_INNER.lightened(0.08)
 	b.add_theme_stylebox_override("hover", hover_style)
 
 	var pressed_style := style.duplicate()
-	pressed_style.bg_color = Color(0.06, 0.05, 0.04, 1.0)
+	pressed_style.bg_color = UiTheme.BG_DEEP
 	b.add_theme_stylebox_override("pressed", pressed_style)
 
 	# Иконка нужной магии из каталога assets/spells
@@ -204,8 +183,8 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	if charges > 0:
 		var lbl := Label.new()
 		lbl.text = str(charges)
-		lbl.add_theme_font_size_override("font_size", 11)
-		lbl.add_theme_color_override("font_color", Color(1, 0.95, 0.5))
+		lbl.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+		lbl.add_theme_color_override("font_color", UiTheme.ACCENT)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 		lbl.add_theme_constant_override("outline_size", 3)
 		lbl.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -229,8 +208,8 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	cd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cd.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cd.add_theme_font_size_override("font_size", 15)
-	cd.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
+	cd.add_theme_font_size_override("font_size", UiTheme.FONT_SUBHEAD)
+	cd.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
 	cd.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	cd.add_theme_constant_override("outline_size", 4)
 	cd.visible = false
@@ -263,12 +242,6 @@ func _set_cooldown_visual(b: Button, left: float, total: float) -> void:
 		if total > 0.0:
 			t = clampf(left / total, 0.0, 1.0)
 		icon_node.modulate = Color(1, 1, 1, 1.0 - 0.65 * t)
-
-var _spellback: Texture2D = null
-func _spellback_tex() -> Texture2D:
-	if _spellback == null:
-		_spellback = load("res://assets/interface/spellback.bmp")
-	return _spellback
 
 
 ## Тултип заклинания. Раньше показывал только имя/сферу/заряды/ману —
@@ -365,7 +338,8 @@ func _finish_spell_targeting() -> void:
 	_cancel_targeting()
 	refresh_spell_book()
 	_update_bottom_panel_visibility()
-	_update_stats()
+	if is_instance_valid(_inventory_panel) and _inventory_panel.has_method("_refresh_stats"):
+		_inventory_panel._refresh_stats()
 
 ## Быстрая клавиша 1..9: вход в прицеливание назначенного заклинания.
 func _quick_cast(spell: String) -> void:
@@ -428,7 +402,8 @@ func _finish_scroll_targeting() -> void:
 	_cancel_targeting()
 	refresh_spell_book()
 	_update_bottom_panel_visibility()
-	_update_stats()
+	if is_instance_valid(_inventory_panel) and _inventory_panel.has_method("_refresh_stats"):
+		_inventory_panel._refresh_stats()
 
 ## Отмена любого прицеливания (свиток/магия): цель НЕ тратится, курсор-прицел
 ## снимается, системный курсор возвращается.
@@ -486,8 +461,9 @@ func _update_targeting_hint(spell: String, on: bool) -> void:
 	if _scroll_hint == null:
 		_scroll_hint = Label.new()
 		_scroll_hint.name = "ScrollHint"
-		_scroll_hint.add_theme_font_size_override("font_size", 16)
-		_scroll_hint.add_theme_color_override("font_color", Color(1, 0.9, 0.35))
+		_scroll_hint.theme_type_variation = &"HudHint"
+		_scroll_hint.add_theme_font_size_override("font_size", UiTheme.FONT_SUBHEAD)
+		_scroll_hint.add_theme_color_override("font_color", UiTheme.ACCENT)
 		_scroll_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 		_scroll_hint.add_theme_constant_override("outline_size", 4)
 		_scroll_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -515,75 +491,106 @@ func _update_targeting_hint(spell: String, on: bool) -> void:
 	_scroll_hint.text = ("Примените «%s» на %s (ПКМ/ESC — отмена; Ctrl+1..9 — быстрая клавиша)"
 		% [str(SpellDB.get_spell(spell).get("ru", spell)), dir_text])
 
+func _apply_hud_theme() -> void:
+	var theme := UiTheme.app_theme()
+	theme.set_stylebox("normal", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.3),
+		UiTheme.BORDER_HAIRLINE, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1))
+	theme.set_stylebox("hover", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.BORDER_HAIRLINE, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1))
+	theme.set_stylebox("pressed", "Button", UiKit.button_style(
+		UiTheme.BG_DEEP, UiTheme.ACCENT_DIM,
+		UiTheme.BORDER_HAIRLINE, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1))
+	theme.set_stylebox("focus", "Button", UiKit.button_style(
+		UiTheme.TRANSPARENT, UiTheme.ACCENT,
+		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1))
+	UiKit.add_button(theme, &"HudCmd",
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.3),
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
+	UiKit.add_button(theme, &"HudCmdActive",
+		UiTheme.PANEL_INNER.lightened(0.16), UiTheme.ACCENT,
+		UiTheme.PANEL_INNER.lightened(0.20), UiTheme.ACCENT,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
+	theme.set_color("font_color", &"HudCmd", UiTheme.TEXT)
+	theme.set_color("font_hover_color", &"HudCmd", UiTheme.ACCENT)
+	theme.set_color("font_pressed_color", &"HudCmd", UiTheme.ACCENT)
+	theme.set_color("font_focus_color", &"HudCmd", UiTheme.ACCENT)
+	theme.set_color("font_color", &"HudCmdActive", UiTheme.BG_DEEP)
+	theme.set_color("font_hover_color", &"HudCmdActive", UiTheme.BG_DEEP)
+	theme.set_color("font_pressed_color", &"HudCmdActive", UiTheme.BG_DEEP)
+	theme.set_color("font_focus_color", &"HudCmdActive", UiTheme.BG_DEEP)
+	theme.set_font_size("font_size", &"HudCmd", UiTheme.FONT_MICRO)
+	theme.set_font_size("font_size", &"HudCmdActive", UiTheme.FONT_MICRO)
+	UiKit.add_label(theme, &"HudHint", UiTheme.ACCENT, UiTheme.FONT_MICRO)
+	if is_instance_valid($HudSide):
+		$HudSide.theme = theme
+	if is_instance_valid(bottom_panel):
+		bottom_panel.theme = theme
+	if is_instance_valid(spell_panel):
+		spell_panel.theme = theme
+
+
 func _setup_action_buttons():
-	var right_col := $StatsPanel/StatsMargin/StatsCol as VBoxContainer
-
-	# Один ряд кнопок: Инвентарь + Характеристики + командные
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 4)
-	if right_col != null:
-		right_col.add_child(row)
-
-	# Кнопка «Инвентарь»
+	if not is_instance_valid(hud_cmd_row):
+		return
+	# Компакт-ряд у миникарты. Статы теперь в инвентаре — кнопки «Статы» нет.
 	var inv_btn := Button.new()
+	inv_btn.name = "InvBtn"
 	inv_btn.text = "Инв."
-	inv_btn.custom_minimum_size = Vector2(38, 32)
+	inv_btn.theme_type_variation = &"HudCmd"
+	inv_btn.custom_minimum_size = Vector2(48, 28)
 	inv_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_btn.focus_mode = Control.FOCUS_ALL
 	inv_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	inv_btn.tooltip_text = "Инвентарь (I)"
 	inv_btn.pressed.connect(open_inventory_panel)
-	row.add_child(inv_btn)
+	hud_cmd_row.add_child(inv_btn)
 
-	# Кнопка «Характеристики» (toggle)
-	_stats_toggle_btn = Button.new()
-	_stats_toggle_btn.text = "Статы"
-	_stats_toggle_btn.custom_minimum_size = Vector2(38, 32)
-	_stats_toggle_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_stats_toggle_btn.toggle_mode = true
-	_stats_toggle_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_stats_toggle_btn.tooltip_text = "Показать/скрыть характеристики"
-	_stats_toggle_btn.pressed.connect(_toggle_stats_view)
-	row.add_child(_stats_toggle_btn)
-
-	# Командные кнопки
 	var cmd_labels := ["След.", "Атак.", "Охр.", "Стоп"]
 	var cmd_modes := ["follow", "attack", "guard", "stop"]
 	for i in range(cmd_labels.size()):
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(38, 32)
+		b.name = "Cmd%d" % i
+		b.text = cmd_labels[i]
+		b.custom_minimum_size = Vector2(48, 28)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.flat = true
+		b.theme_type_variation = &"HudCmd"
+		b.focus_mode = Control.FOCUS_ALL
 		b.tooltip_text = cmd_labels[i]
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		row.add_child(b)
+		hud_cmd_row.add_child(b)
 		cmd_buttons.append(b)
 		b.pressed.connect(func(): _set_action_mode(cmd_modes[i]))
 	coords_label.visible = false
+	_set_action_mode(Game.action_mode if Game.action_mode != "" else "follow")
 
 func _set_action_mode(mode: String):
-	# Сбрасываем подсветку всех командных кнопок
-	for i in range(4):
-		cmd_buttons[i].modulate = Color.WHITE
+	for i in range(cmd_buttons.size()):
+		cmd_buttons[i].theme_type_variation = &"HudCmd"
+		cmd_buttons[i].set_pressed_no_signal(false)
 
+	var active := -1
 	match mode:
 		"follow":
-			cmd_buttons[0].modulate = Color.YELLOW
+			active = 0
 			Game.action_mode = "follow"
 		"attack":
-			cmd_buttons[1].modulate = Color.RED
+			active = 1
 			Game.action_mode = "attack"
 		"guard":
-			cmd_buttons[2].modulate = Color.GREEN
+			active = 2
 			Game.action_mode = "guard"
 		"stop":
 			Game.action_mode = "none"
+	if active >= 0 and active < cmd_buttons.size():
+		cmd_buttons[active].theme_type_variation = &"HudCmdActive"
+		cmd_buttons[active].set_pressed_no_signal(true)
 
 func _toggle_stats_view():
-	stats_area.visible = not stats_area.visible
-	if _stats_toggle_btn != null:
-		_stats_toggle_btn.button_pressed = stats_area.visible
-	coords_label.visible = show_coords
+	# Статы теперь в инвентаре — HUD-toggle не нужен.
+	pass
 
 # --- Карточки наведения (стилизованные, через UiKit.make_hover_card) ---------
 
@@ -640,7 +647,7 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		if _item_card == null:
 			_item_card = _ensure_card("item")
 		UiKit.show_hover_card(_item_card, _item_card_lines(item),
-			cell.global_position, DESIGN_SIZE, icon_path, qcolor))
+			cell.global_position, _world_bounds(), icon_path, qcolor))
 	cell.mouse_exited.connect(func():
 		if _item_card != null:
 			UiKit.hide_hover_card(_item_card))
@@ -648,7 +655,7 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		if _item_card == null:
 			_item_card = _ensure_card("item")
 		UiKit.show_hover_card(_item_card, _item_card_lines(item),
-			cell.global_position, DESIGN_SIZE, icon_path, qcolor))
+			cell.global_position, _world_bounds(), icon_path, qcolor))
 	cell.focus_exited.connect(func():
 		if _item_card != null:
 			UiKit.hide_hover_card(_item_card))
@@ -679,77 +686,169 @@ func _show_slot_card(cell: Control, slot: String) -> void:
 	lines.append("Слот: %s (клик — снять)" % ItemDB.slot_title(slot))
 	var icon_path := str(it.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(it.get("quality", "")))
-	UiKit.show_hover_card(_slot_card, lines, cell.global_position, DESIGN_SIZE, icon_path, qcolor)
+	UiKit.show_hover_card(_slot_card, lines, cell.global_position, _world_bounds(), icon_path, qcolor)
 
 func _hide_slot_card() -> void:
 	if _slot_card != null:
 		UiKit.hide_hover_card(_slot_card)
+# --- Тултипы мира: hover + Alt -----------------------------------------------
+## GDD 06.10: hover 0.6 с → база (имя+фракция / здание / лут);
+## Alt → полная карточка юнита (HP/бой/резисты). Hold ЛКМ не используется.
 
-# --- Задержанные тултипы мира (юнит/здание/лут) ------------------------------
-
-const WORLD_HOVER_DELAY := 0.5
-const DESIGN_SIZE := Vector2(1280, 800)
+const WORLD_HOVER_DELAY := 0.6
 var _world_card: PanelContainer = null
 var _world_hover_key := ""
 var _world_hover_time := 0.0
 var _world_card_shown := false
+var _world_card_alt := false
+var _world_hover_unit: Node2D = null
 
-## Каждый кадр: цель под курсором; после WORLD_HOVER_DELAY неподвижного курсора
-## показываем карточку у мыши (имя/HP/фракция для юнитов, имя для зданий, лут).
+
+func _world_bounds() -> Vector2:
+	var vp := get_viewport()
+	if vp == null:
+		return Vector2(1280, 800)
+	return vp.get_visible_rect().size
+
+
 func _update_world_tooltip(delta: float) -> void:
 	if not is_instance_valid(player):
 		return
+	if is_editor_open():
+		_reset_world_tooltip()
+		return
+
 	var target: Array = _world_hover_target()
 	var key := str(target[0])
+	var alt := Input.is_key_pressed(KEY_ALT)
+
 	if key == "":
-		_world_hover_time = 0.0
-		_world_hover_key = ""
-		_world_card_shown = false
-		if _world_card != null and _world_card.visible:
-			UiKit.hide_hover_card(_world_card)
+		_reset_world_tooltip()
 		return
+
 	if key != _world_hover_key:
 		_world_hover_key = key
 		_world_hover_time = 0.0
 		_world_card_shown = false
+		_world_card_alt = alt
 		if _world_card != null and _world_card.visible:
 			UiKit.hide_hover_card(_world_card)
 		return
+
 	_world_hover_time += delta
 	if _world_hover_time < WORLD_HOVER_DELAY:
 		return
-	if _world_card_shown:
+
+	if _world_card_shown and alt == _world_card_alt:
 		return
+	# Alt переключил режим — пересобрать карточку
+	if _world_card_shown:
+		_world_card_shown = false
+		if _world_card != null:
+			UiKit.hide_hover_card(_world_card)
 	if _world_card == null:
 		_world_card = _ensure_card("world")
-	UiKit.show_hover_card(_world_card, target[1],
-		get_viewport().get_mouse_position(), DESIGN_SIZE)
+
+	var lines: Array = target[1]
+	var is_unit := key.begins_with("u")
+	if is_unit and alt:
+		lines = _unit_tooltip_full(target)
+	_world_card_alt = alt
+	UiKit.show_hover_card(_world_card, lines,
+		get_viewport().get_mouse_position(), _world_bounds())
 	_world_card_shown = true
 
+
+func _reset_world_tooltip() -> void:
+	_world_hover_time = 0.0
+	_world_hover_key = ""
+	_world_card_shown = false
+	_world_card_alt = false
+	if _world_card != null and _world_card.visible:
+		UiKit.hide_hover_card(_world_card)
+
+
+## Полная карточка юнита (Alt): HP, урон, броня, сопротивления.
+func _unit_tooltip_full(target: Array) -> Array:
+	var lines: Array = target[1].duplicate()
+	var e: Node2D = _world_hover_unit
+	if e == null or not is_instance_valid(e):
+		return lines
+	var hp := 0
+	if "max_hp" in e:
+		hp = int(e.max_hp)
+	elif "hp_max" in e:
+		hp = int(e.hp_max)
+	var cur := int(e.current_hp) if "current_hp" in e else hp
+	if hp > 0:
+		lines.append(tr("Здоровье: %d/%d") % [cur, hp])
+	if e.has_method("get_attack"):
+		lines.append(tr("Атака: %d") % int(e.call("get_attack")))
+	if e.has_method("get_defense"):
+		lines.append(tr("Броня: %d") % int(e.call("get_defense")))
+	if e.has_method("get_absorption"):
+		lines.append(tr("Поглощение: %d") % int(e.call("get_absorption")))
+	var set_name := str(e.anim_set) if "anim_set" in e else ""
+	if set_name != "":
+		var res: Array[String] = []
+		for sphere in ["fire", "water", "air", "earth", "astral"]:
+			var r := 0
+			if e.has_method("get_protection_" + sphere):
+				r = int(e.call("get_protection_" + sphere))
+			elif e.has_method("resist_of"):
+				r = int(UnitDB.resist_of(set_name, sphere))
+			if r != 0:
+				res.append("%s %d" % [sphere, r])
+		if not res.is_empty():
+			lines.append(tr("Сопротивление: ") + ", ".join(res))
+	return lines
+
+
 ## Цель под курсором: [ключ, строки]. "" — цели нет.
+## Юнит: ключ "u…", база — имя+фракция. Здание/лут — hover без Alt.
 func _world_hover_target() -> Array:
 	var world := player.get_global_mouse_position()
-	# 1) Юнит (монстр/житель) — хитбокс спрайта, как в _hover_portrait.
+	_world_hover_unit = null
 	for e in Game.enemies + Game.npcs:
-		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(6.0).has_point(world):
+		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(8.0).has_point(world):
+			_world_hover_unit = e
 			return [_unit_hover_key(e), _unit_tooltip_lines(e)]
-	# 2) Здание под курсором.
 	if alm_map and alm_map.map_width > 0:
-		var ts: int = alm_map.tile_size
+		var ts: int = 32
+		if "tile_size" in alm_map:
+			ts = maxi(1, int(alm_map.tile_size))
 		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
-		if alm_map.has_method("structure_at"):
-			var h: Dictionary = alm_map.structure_at(cell)
-			if not h.is_empty():
-				return ["b%d" % int(h.get("type_id", -1)), _building_tooltip_lines(h)]
-	# 3) Лут на земле.
+		var h := _structure_at_world(cell, world, ts)
+		if not h.is_empty():
+			return ["b%d" % int(h.get("type_id", -1)), _building_tooltip_lines(h)]
 	for lb in get_tree().get_nodes_in_group("loot"):
 		if is_instance_valid(lb) and lb is LootDrop \
-				and lb.global_position.distance_to(world) < 22.0:
+				and lb.global_position.distance_to(world) < 28.0:
 			return ["l%d" % lb.get_instance_id(), _loot_tooltip_lines(lb)]
 	return ["", []]
 
+
+## Здание: structure_at по клетке + соседние (футпринт 3×3 не всегда покрывает
+## точку клика, если хитбокс шире одной клетки).
+func _structure_at_world(cell: Vector2i, world: Vector2, ts: int) -> Dictionary:
+	if alm_map == null or not alm_map.has_method("structure_at"):
+		return {}
+	var direct: Dictionary = alm_map.structure_at(cell)
+	if not direct.is_empty():
+		return direct
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var h: Dictionary = alm_map.structure_at(cell + Vector2i(dx, dy))
+			if not h.is_empty():
+				return h
+	return {}
+
+
 func _unit_hover_key(e: Node2D) -> String:
 	return "u%d" % e.get_instance_id()
+
 
 func _unit_tooltip_lines(e: Node2D) -> Array:
 	var lines: Array = []
@@ -759,18 +858,8 @@ func _unit_tooltip_lines(e: Node2D) -> Array:
 	if name == "":
 		name = set_name.get_slice("/", 1) if "/" in set_name else set_name
 	lines.append(name if name != "" else "Существо")
-	var hp := 0
-	if "max_hp" in e:
-		hp = int(e.max_hp)
-	elif "hp_max" in e:
-		hp = int(e.hp_max)
-	var cur := int(e.current_hp) if "current_hp" in e else hp
-	lines.append("Здоровье: %d/%d" % [cur, hp])
-	if "current_mana" in e:
-		lines.append("Мана: %d/%d" % [int(e.current_mana), int(e.max_mana)])
-	lines.append("Фракция: %s" % _faction_of_set(set_name))
+	lines.append(tr("Фракция: %s") % _faction_of_set(set_name))
 	return lines
-
 func _building_tooltip_lines(h: Dictionary) -> Array:
 	var lines: Array = []
 	var sid := int(h.get("type_id", -1))
@@ -814,152 +903,12 @@ func _faction_of_set(set_name: String) -> String:
 		return "Круг Друидов"
 	return "Серые"
 
-## Портрет под курсором: враг-юнит (UnitDB picture) или здание (structures Picture).
-## Если нет — портрет героя. Под портретем — текстовая информация о цели.
-var _portrait_cache := {}
-var _hovered_unit: Node2D = null  # юнит под курсором (для обновления HP)
-func _hover_portrait() -> void:
-	if not is_instance_valid(player):
-		return
-	var world := player.get_global_mouse_position()
-	var pic := ""
-	var hover_set := ""
-	_hovered_unit = null
-
-	# 1) Юнит под курсором (монстр или житель): хит-бокс спрайта
-	for e in Game.enemies + Game.npcs:
-		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(6.0).has_point(world):
-			if e is Enemy or e is Npc:
-				hover_set = str(e.anim_set)
-			if hover_set != "":
-				pic = str(UnitDB.get_set(hover_set).get("picture", ""))
-			_hovered_unit = e
-			break
-
-	# 2) Иначе здание под курсором
-	if pic == "" and alm_map and alm_map.map_width > 0:
-		var ts: int = alm_map.tile_size
-		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
-		if alm_map.has_method("structure_at"):
-			var h: Dictionary = alm_map.structure_at(cell)
-			if not h.is_empty():
-				pic = str(h.get("picture", ""))
-
-	if pic == "":
-		if _hover_name != "":
-			_hover_name = ""
-			mini_portrait.texture = hero_portrait
-			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			_update_preview_hero()
-		return
-
-	var lower := pic.to_lower()
-	if lower == _hover_name:
-		# Обновляем HP если юнит жив (HP меняется)
-		if _hovered_unit != null and is_instance_valid(_hovered_unit):
-			_update_preview_unit(_hovered_unit)
-		return
-	_hover_name = lower
-	var tex: Texture2D = _portrait_cache.get(lower)
-	if tex == null:
-		var path := "res://assets/portraits/%s.png" % lower
-		if not ResourceLoader.exists(path):
-			if hover_set != "":
-				tex = UnitDB.preview_frame(hover_set)
-				if tex != null:
-					_portrait_cache[lower] = tex
-			if tex == null:
-				_hover_name = ""
-				mini_portrait.texture = hero_portrait
-				mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				_update_preview_hero()
-				return
-			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		else:
-			tex = load(path)
-			if tex != null:
-				_portrait_cache[lower] = tex
-			mini_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	if tex != null:
-		mini_portrait.texture = tex
-	else:
-		mini_portrait.texture = hero_portrait
-
-	# Обновить текстовую информацию
-	if _hovered_unit != null and is_instance_valid(_hovered_unit):
-		_update_preview_unit(_hovered_unit)
-	else:
-		_update_preview_building(lower)
-
-
-func _update_preview_unit(e: Node2D) -> void:
-	if preview_name == null:
-		return
-	var set_name := str(e.anim_set) if "anim_set" in e else ""
-	var set_data := UnitDB.get_set(set_name)
-	var name := str(set_data.get("desc", ""))
-	if name == "":
-		name = set_name.get_slice("/", 1) if "/" in set_name else set_name
-	preview_name.text = name if name != "" else "Существо"
-	preview_sub.text = _faction_of_set(set_name)
-	var hp := 0
-	if "max_hp" in e:
-		hp = int(e.max_hp)
-	elif "hp_max" in e:
-		hp = int(e.hp_max)
-	var cur := int(e.current_hp) if "current_hp" in e else hp
-	preview_detail.text = "HP: %d/%d" % [cur, hp]
-
-
-func _update_preview_building(pic_name: String) -> void:
-	if preview_name == null:
-		return
-	var world := player.get_global_mouse_position()
-	if alm_map and alm_map.map_width > 0:
-		var ts: int = alm_map.tile_size
-		var cell := Vector2i(int(world.x) / ts, int(world.y) / ts)
-		if alm_map.has_method("structure_at"):
-			var h: Dictionary = alm_map.structure_at(cell)
-			if not h.is_empty():
-				var sid := int(h.get("type_id", -1))
-				var display := StructureDB.display_name_by_id(sid) if sid >= 0 else ""
-				preview_name.text = display if display != "" else "Здание"
-				preview_sub.text = ""
-				preview_detail.text = ""
-				return
-	preview_name.text = "Здание"
-	preview_sub.text = ""
-	preview_detail.text = ""
-
-
-func _update_preview_hero() -> void:
-	if preview_name == null or not is_instance_valid(player):
-		return
-	var cls := "Маг" if Game.hero_class == "mage" else "Воин"
-	var gnd := "Жен." if Game.hero_gender == "female" else "Муж."
-	preview_name.text = Game.hero_name
-	preview_sub.text = "%s · %s" % [cls, gnd]
-	var weapon := str(player.equipped.get("weapon", ""))
-	var shield := str(player.equipped.get("shield", ""))
-	var body := str(player.equipped.get("body", ""))
-	var lines: Array = []
-	if weapon != "":
-		var it := ItemDB.find(weapon)
-		lines.append(str(it.get("name_ru", weapon)) if not it.is_empty() else weapon)
-	if shield != "":
-		var it := ItemDB.find(shield)
-		lines.append(str(it.get("name_ru", shield)) if not it.is_empty() else shield)
-	if body != "":
-		var it := ItemDB.find(body)
-		lines.append(str(it.get("name_ru", body)) if not it.is_empty() else body)
-	preview_detail.text = "\n".join(lines) if not lines.is_empty() else ""
-
 func _setup_minimap():
 	# Защита от повторного вызова: раньше setup_ui вызывал это дважды
 	# (напрямую и через _setup_spells) — создавался дубликат узла MinimapTex.
 	if minimap_rect.get_node_or_null("MinimapTex") != null:
 		return
-	minimap_rect.color = Color(0, 0, 0, 0)
+	minimap_rect.color = Color(0, 0, 0, 0)  # MINIMAP transparent
 	# TextureRect для миникарты: размер задаётся под рамку при отрисовке
 	# (см. _draw_minimap), чтобы картинка не вылезала за MinimapRect.
 	var tex_rect = TextureRect.new()
@@ -1013,7 +962,7 @@ func _draw_minimap():
 	var scale_x := float(w) / float(mw)
 	var scale_y := float(h) / float(mh)
 
-	minimap_image.fill(Color(0.03, 0.03, 0.04, 1.0))
+	minimap_image.fill(MINIMAP_BG)
 
 	# Вся карта: цвета по типу клетки (CustomMap) или terrain (.alm)
 	for ty in range(mh):
@@ -1036,7 +985,7 @@ func _draw_minimap():
 		for dx in range(-1, 2):
 			var xx := px + dx; var yy := py + dy
 			if xx >= 0 and xx < w and yy >= 0 and yy < h:
-				minimap_image.set_pixel(xx, yy, Color(1, 1, 1, 1))
+				minimap_image.set_pixel(xx, yy, MINIMAP_HERO)
 
 	# Враги (красные точки)
 	for enemy in Game.enemies:
@@ -1045,7 +994,7 @@ func _draw_minimap():
 			var ety: int = int(enemy.global_position.y) / alm_map.tile_size
 			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
 			if exx >= 0 and exx < w and eyy >= 0 and eyy < h:
-				minimap_image.set_pixel(exx, eyy, Color(1.0, 0.2, 0.2, 1.0))
+				minimap_image.set_pixel(exx, eyy, MINIMAP_ENEMY)
 
 	# NPC (жёлтые = нейтральные, зелёные = союзники/стражи)
 	for npc in Game.npcs:
@@ -1054,11 +1003,9 @@ func _draw_minimap():
 			var nty: int = int(npc.global_position.y) / alm_map.tile_size
 			var nxx := int(ntx * scale_x); var nyy := int(nty * scale_y)
 			if nxx >= 0 and nxx < w and nyy >= 0 and nyy < h:
-				var nc: Color
+				var nc: Color = MINIMAP_NPC_CIV
 				if "role" in npc and str(npc.role) == "guard":
-					nc = Color(0.2, 0.8, 0.2, 1.0)  # страж = зелёный
-				else:
-					nc = Color(1.0, 0.85, 0.2, 1.0)  # житель = жёлтый
+					nc = MINIMAP_NPC_GUARD
 				minimap_image.set_pixel(nxx, nyy, nc)
 
 	# Здания (серые квадраты 2×2)
@@ -1073,242 +1020,56 @@ func _draw_minimap():
 						for dx in range(0, 2):
 							var xx := sx + dx; var yy := sy + dy
 							if xx >= 0 and xx < w and yy >= 0 and yy < h:
-								minimap_image.set_pixel(xx, yy, Color(0.5, 0.45, 0.4, 1.0))
+								minimap_image.set_pixel(xx, yy, MINIMAP_BUILDING)
 
 	minimap_texture.update(minimap_image)
 	var tex_rect2 := minimap_rect.get_node_or_null("MinimapTex")
 	if tex_rect2:
 		tex_rect2.texture = minimap_texture
 
+# Цвета миникарты: игровые данные (биомы/юниты), не палитра UI-панелей.
+const MINIMAP_NPC_GUARD := Color(0.2, 0.8, 0.2, 1.0)
+const MINIMAP_NPC_CIV := Color(1.0, 0.85, 0.2, 1.0)
+const MINIMAP_ENEMY := Color(1.0, 0.2, 0.2, 1.0)
+const MINIMAP_BUILDING := Color(0.5, 0.45, 0.4, 1.0)
+const MINIMAP_HERO := Color(1, 1, 1, 1)
+const MINIMAP_BG := Color(0.03, 0.03, 0.04, 1.0)
+const MINIMAP_CUSTOM := {  # MINIMAP biome colors
+	1: Color(0.55, 0.35, 0.15, 1.0),    # MINIMAP soil
+	2: Color(0.85, 0.80, 0.50, 1.0),    # MINIMAP sand
+	3: Color(0.15, 0.35, 0.75, 1.0),    # MINIMAP water
+	4: Color(0.45, 0.42, 0.40, 1.0),    # MINIMAP mountains
+	5: Color(0.60, 0.50, 0.35, 1.0),    # MINIMAP road
+	6: Color(0.30, 0.22, 0.12, 1.0),    # MINIMAP mud
+	7: Color(0.45, 0.3, 0.2, 1.0),      # MINIMAP building
+	8: Color(1.0, 0.85, 0.2, 1.0),      # MINIMAP spawn
+	0: Color(0.25, 0.55, 0.25, 1.0),    # MINIMAP grass
+}
+const MINIMAP_ALM := {  # MINIMAP biome colors
+	2: Color(0.15, 0.35, 0.75, 1.0),    # MINIMAP water
+	1: Color(0.52, 0.48, 0.42, 1.0),    # MINIMAP mountains
+	3: Color(0.7, 0.65, 0.55, 1.0),     # MINIMAP road
+	4: Color(0.50, 0.35, 0.18, 1.0),    # MINIMAP soil
+	5: Color(0.85, 0.70, 0.22, 1.0),    # MINIMAP sand
+	6: Color(0.22, 0.15, 0.08, 1.0),    # MINIMAP mud
+	0: Color(0.25, 0.55, 0.25, 1.0),    # MINIMAP grass
+}
+
 # Цвет клетки для миникарты: CustomMap -> тип (0-8), .alm -> terrain_type
 func _minimap_color_at(tx: int, ty: int) -> Color:
 	if alm_map is CustomMap:
 		var t: int = alm_map.tile_id_at(Vector2i(tx, ty))
-		match t:
-			1: return Color(0.55, 0.35, 0.15, 1.0)    # почва
-			2: return Color(0.85, 0.80, 0.50, 1.0)    # песок
-			3: return Color(0.15, 0.35, 0.75, 1.0)    # вода
-			4: return Color(0.45, 0.42, 0.40, 1.0)    # горы
-			5: return Color(0.60, 0.50, 0.35, 1.0)    # дорога
-			6: return Color(0.30, 0.22, 0.12, 1.0)    # грязь
-			7: return Color(0.45, 0.3, 0.2, 1.0)      # строение
-			8: return Color(1.0, 0.85, 0.2, 1.0)      # спавн
-			0: return Color(0.25, 0.55, 0.25, 1.0)    # трава
-			_: return Color(0, 0, 0, 0)                # пусто
+		if MINIMAP_CUSTOM.has(t):
+			return MINIMAP_CUSTOM[t]
+		return Color(0, 0, 0, 0)  # MINIMAP empty
 	var t2: int = alm_map.cell_type_at(tx, ty)
-	match t2:
-		2:
-			return Color(0.15, 0.35, 0.75, 1.0)  # вода (tile3)
-		1:
-			return Color(0.52, 0.48, 0.42, 1.0)   # горы/холмы — серые скалы
-		3:
-			return Color(0.7, 0.65, 0.55, 1.0)   # дорога (tile4)
-		4:
-			return Color(0.50, 0.35, 0.18, 1.0)  # почва (tile5) — тёмно-коричневая
-		5:
-			return Color(0.85, 0.70, 0.22, 1.0)  # песок — яркий жёлтый
-		6:
-			return Color(0.22, 0.15, 0.08, 1.0)  # грязь — тёмно-коричневая
-		_:
-			return Color(0.25, 0.55, 0.25, 1.0)  # трава (tile1)
-
-# --- Блок статов: текстовые строки с HSeparator между секциями --------
-
-var _hp_label: Label = null
-var _mp_label: Label = null
-var _stat_labels := {}   # key -> Label
-
-# Цвета секций
-const _LABEL_COLOR := Color(0.75, 0.70, 0.60)
-const _VALUE_COLOR := Color(0.92, 0.88, 0.80)
-const _HP_COLOR := Color(0.55, 0.85, 0.55)
-const _MP_COLOR := Color(0.55, 0.7, 1.0)
-const _SECTION_COLOR := Color(0.60, 0.55, 0.50)
-const _SKILL_COLOR := Color(0.82, 0.75, 0.55)
-const _RESIST_FIRE := Color(1.0, 0.5, 0.35)
-const _RESIST_WATER := Color(0.4, 0.6, 1.0)
-const _RESIST_AIR := Color(0.7, 0.85, 1.0)
-const _RESIST_EARTH := Color(0.7, 0.55, 0.3)
-const _RESIST_ASTRAL := Color(0.8, 0.5, 0.9)
-
-func _setup_stats_area() -> void:
-	if not is_instance_valid(stats_area):
-		return
-	for ch in stats_area.get_children():
-		ch.queue_free()
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 0)
-	stats_area.add_child(vbox)
-
-	# Row 1: Имя (мерж — одна строка на всю ширину)
-	_stat_labels["name_label"] = _center_row(vbox, Game.hero_name, 13)
-
-	# Row 2: Сила + Жизнь:
-	_two_col_row_grid(vbox, "Сила:", "body", "Жизнь:", "")
-	# Row 3: Ловкость + hp значение
-	_hp_label = _two_col_row_grid(vbox, "Ловкость:", "agility", "", "")
-	# Row 4: Разум + Мана:
-	_two_col_row_grid(vbox, "Разум:", "mind", "Мана:", "")
-	# Row 5: Дух + mp значение
-	_mp_label = _two_col_row_grid(vbox, "Дух:", "spirit", "", "")
-
-	# Row 6-7: Урон / Атака + Броня / Защита
-	_two_col_row_grid(vbox, "Урон:", "damage", "Броня:", "absorption")
-	_two_col_row_grid(vbox, "Атака:", "attack", "Защита:", "defense")
-
-	# Row 8: Заголовок (мерж)
-	_center_row(vbox, "НАВЫКИ  |  СОПРОТИВЛЕНИЕ", 10)
-
-	# Rows 9-13: Навыки + Сопротивления
-	if Game.hero_class == "mage":
-		_two_col_row_grid(vbox, "Огонь:", "mage_fire", "Огонь:", "fire", _RESIST_FIRE)
-		_two_col_row_grid(vbox, "Вода:", "mage_water", "Вода:", "water", _RESIST_WATER)
-		_two_col_row_grid(vbox, "Воздух:", "mage_air", "Воздух:", "air", _RESIST_AIR)
-		_two_col_row_grid(vbox, "Земля:", "mage_earth", "Земля:", "earth", _RESIST_EARTH)
-		_two_col_row_grid(vbox, "Астрал:", "mage_astral", "Астрал:", "astral", _RESIST_ASTRAL)
-	else:
-		_two_col_row_grid(vbox, "Меч:", "blade", "Огонь:", "fire", _RESIST_FIRE)
-		_two_col_row_grid(vbox, "Топор:", "axe", "Вода:", "water", _RESIST_WATER)
-		_two_col_row_grid(vbox, "Дубина:", "bludgeon", "Воздух:", "air", _RESIST_AIR)
-		_two_col_row_grid(vbox, "Копьё:", "pike", "Земля:", "earth", _RESIST_EARTH)
-		_two_col_row_grid(vbox, "Стрельба:", "shooting", "Астрал:", "astral", _RESIST_ASTRAL)
-
-	# Rows 14-17: Одиночные (мерж)
-	_stat_labels["load"] = _center_row(vbox, "", 12)
-	_stat_labels["exp"] = _center_row(vbox, "", 12)
-	_stat_labels["sight"] = _center_row(vbox, "", 12)
-	_stat_labels["speed"] = _center_row(vbox, "", 12)
-
-
-## Строка по центру (мерж — одна метка на всю ширину).
-func _center_row(parent: VBoxContainer, text: String, font_size: int) -> Label:
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", font_size)
-	lbl.add_theme_color_override("font_color", _SECTION_COLOR)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(lbl)
-	return lbl
-
-
-## Две колонки: левая (метка+значение), правая (метка+значение).
-func _two_col_row_grid(parent: VBoxContainer,
-		l_label: String, l_key: String,
-		r_label: String, r_key: String,
-		r_color: Color = _VALUE_COLOR) -> Label:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	parent.add_child(row)
-
-	# Левая колонка
-	var ll := Label.new()
-	ll.text = l_label
-	ll.add_theme_font_size_override("font_size", 11)
-	ll.add_theme_color_override("font_color", _LABEL_COLOR)
-	ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(ll)
-
-	var lv := Label.new()
-	lv.add_theme_font_size_override("font_size", 12)
-	lv.add_theme_color_override("font_color", _VALUE_COLOR)
-	row.add_child(lv)
-	if l_key != "":
-		_stat_labels[l_key] = lv
-
-	# Правая колонка
-	var rl := Label.new()
-	rl.text = r_label
-	rl.add_theme_font_size_override("font_size", 11)
-	rl.add_theme_color_override("font_color", _LABEL_COLOR)
-	rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(rl)
-
-	var rv := Label.new()
-	rv.add_theme_font_size_override("font_size", 12)
-	rv.add_theme_color_override("font_color", r_color)
-	row.add_child(rv)
-	if r_key != "":
-		_stat_labels[r_key] = rv
-
-	return rv
-
-
-## Обновить счётчик золота в панели справа. Отдельный метод, чтобы его можно
-## было дёрнуть и из подбора лута, не пересчитывая всю статистику.
-func _update_gold(amount: int) -> void:
-	var lbl := get_node_or_null("StatsPanel/StatsMargin/StatsCol/GoldRow/GoldLabel") as Label
-	if lbl != null:
-		lbl.text = str(amount)
-
-
-func _update_stats():
-	if not is_instance_valid(player):
-		return
-	var p = player
-
-	# Имя
-	if _stat_labels.has("name_label"):
-		_stat_labels["name_label"].text = Game.hero_name
-
-	# Атрибуты + HP/Mana
-	_set_stat("body", str(p.body))
-	_set_stat("agility", str(p.agility))
-	_set_stat("mind", str(p.mind))
-	_set_stat("spirit", str(p.spirit))
-	if _hp_label != null:
-		_hp_label.text = "%d / %d" % [p.current_hp, p.max_hp]
-	if _mp_label != null:
-		_mp_label.text = "%d / %d" % [p.current_mana, p.max_mana]
-
-	# Золото (03.10). Замер: player.gold есть, но в HUD он не показывался НИГДЕ —
-	# только в таверне и магазине. Игрок брал мешок, видел нарисованный слиток и
-	# не находил его в инвентаре, потому что это было золото, а не предмет.
-	_update_gold(int(p.get("gold") if "gold" in p else 0))
-
-	# Боевые статы
-	_set_stat("damage", "%d-%d" % [p.get_damage_min(), p.get_damage_max()])
-	_set_stat("absorption", str(p.get_absorption()))
-	_set_stat("attack", str(p.get_attack()))
-	_set_stat("defense", str(p.get_defense()))
-
-	# Навыки (левая колонка)
-	if Game.hero_class == "mage":
-		_set_stat("mage_fire", str(p.fire_skill))
-		_set_stat("mage_water", str(p.water_skill))
-		_set_stat("mage_air", str(p.air_skill))
-		_set_stat("mage_earth", str(p.earth_skill))
-		_set_stat("mage_astral", str(p.astral_skill))
-	else:
-		_set_stat("blade", str(p.blade_skill))
-		_set_stat("axe", str(p.axe_skill))
-		_set_stat("bludgeon", str(p.bludgeon_skill))
-		_set_stat("pike", str(p.pike_skill))
-		_set_stat("shooting", str(p.shooting_skill))
-
-	# Сопротивления (правая колонка)
-	_set_stat("fire", str(p.get_protection_fire()))
-	_set_stat("water", str(p.get_protection_water()))
-	_set_stat("air", str(p.get_protection_air()))
-	_set_stat("earth", str(p.get_protection_earth()))
-	_set_stat("astral", str(p.get_protection_astral()))
-
-	# Одиночные
-	_set_stat("load", "%.1f/%.0f" % [p.get_load(), p.load_capacity()])
-	_set_stat("exp", str(p.total_experience()))
-	_set_stat("sight", str(p.get_sight()))
-	_set_stat("speed", str(int(p.move_speed)))
-
-
-func _set_stat(key: String, value: String) -> void:
-	if _stat_labels.has(key):
-		_stat_labels[key].text = value
+	if MINIMAP_ALM.has(t2):
+		return MINIMAP_ALM[t2]
+	return MINIMAP_ALM[0]
 
 func update_ui(p: Player, delta: float = 0.0):
 	if not is_instance_valid(p):
 		return
-	_hover_portrait()
 	_update_world_tooltip(delta)
 
 	# Отладочные координаты: позиция героя, курсора, клетки, тайл и проходимость.
@@ -1456,7 +1217,7 @@ var _in_interior := false
 ## Узлы HUD, которые прячем на время интерьера. Раньше они оставались видимыми:
 ## вокруг модального окна было видно «воду» и объекты мира, а кнопка «Закрыть»
 ## интерьера попадала в полосу склада.
-const _HUD_NODES := ["BottomPanel", "MinimapPanel", "StatsPanel", "CoordsLabel", "PauseLabel"]
+const _HUD_NODES := ["BottomPanel", "MinimapPanel", "HudSide", "CoordsLabel", "PauseLabel"]
 
 ## Вход в здание: герой «уходит внутрь» (скрыт на карте), выходит при закрытии.
 func _enter_interior() -> void:
@@ -1514,7 +1275,6 @@ func _on_panel_closed() -> void:
 	_blacksmith = null
 	_inventory_panel = null
 	_exit_interior()
-	_update_preview_hero()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
@@ -1605,14 +1365,21 @@ func open_inventory_panel() -> void:
 	_inventory_panel.inventory_changed.connect(_on_inventory_changed)
 	add_child(_inventory_panel)
 
+func _update_gold(amount: int) -> void:
+	if is_instance_valid(hud_gold_label):
+		hud_gold_label.text = str(amount)
+
+
 func _on_inventory_changed() -> void:
-	_update_stats()
-	_update_preview_hero()
+	if is_instance_valid(_inventory_panel) and _inventory_panel.has_method("_refresh_stats"):
+		_inventory_panel._refresh_stats()
+	_update_gold(int(player.gold) if player != null else 0)
 
 func refresh_inventory() -> void:
 	if is_instance_valid(_inventory_panel):
-		_inventory_panel._refresh_inventory_grid()
-	# Золото тоже могло измениться (подбор лута), а панель инвентаря открыта
-	# не всегда — поэтому обновляем счётчик здесь, а не только в _update_stats.
+		if _inventory_panel.has_method("_refresh_inventory_grid"):
+			_inventory_panel._refresh_inventory_grid()
+		if _inventory_panel.has_method("_refresh_stats"):
+			_inventory_panel._refresh_stats()
 	if is_instance_valid(player):
 		_update_gold(int(player.get("gold") if "gold" in player else 0))

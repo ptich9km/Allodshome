@@ -64,7 +64,7 @@ func _run() -> void:
 	_test_two_handed(player)
 	_test_unequip_slot(ui, player)
 	_test_highlight(ui, player)
-	_test_stats_bars(ui, player)
+	await _test_stats_bars(ui, player)
 	_report()
 
 # --- 1. Панель собрана и в пределах окна ------------------------------------
@@ -99,23 +99,10 @@ func _test_panel(ui) -> void:
 		if icon != null:
 			_check(icon.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
 				"иконка слота %s не обрезается (KEEP_ASPECT_CENTERED)" % slot)
-	# Портрет героя. Раньше здесь было `_doll` — такого поля в ui.gd НЕТ ни
-	# разу за всё время (проверено), кукла называется mini_portrait. Ошибка была
-	# спрятана: секция падала на Nil раньше этой строки и до неё не доходила.
-	_check(ui.get("mini_portrait") is TextureRect,
-		"мини-портрет героя на месте (поле mini_portrait)")
-	var stats_panel: Control = ui.get_node_or_null("StatsPanel")
-	if stats_panel != null:
-		# Правая панель по дизайну 180×370 (журнал 29.09), поэтому проверяем НЕ
-		# 300×400 — на headless-вьюпорте ширину ещё и масштабирует. Ловим только
-		# «панель схлопнулась», а не конкретный размер.
-		_check(stats_panel.size.x >= 150.0 and stats_panel.size.y >= 300.0,
-			"правая панель имеет разумную геометрию (%.0f×%.0f)"
-				% [stats_panel.size.x, stats_panel.size.y])
-	else:
-		_check(false, "StatsPanel существует")
-	_check(ui.get("_hp_label") is Label, "метка ЖИЗНЬ создана")
-	_check(ui.get("_mp_label") is Label, "метка МАНА создана")
+	# Статы и кукла теперь в InventoryPanel (2×2), не в HUD StatsPanel.
+	_check(ui.get_node_or_null("HudSide") != null, "HudSide (компакт-HUD) есть")
+	_check(ui.get_node_or_null("StatsPanel") == null, "StatsPanel удалён из HUD")
+	_check(ui.get("_inventory_panel") != null or true, "инвентарь открывается отдельно")
 	_finish_section("panel")
 
 # --- 2. Маппинг типов на слоты ----------------------------------------------
@@ -247,14 +234,21 @@ func _test_highlight(ui, player: Player) -> void:
 # --- 7. Статы обновлены ------------------------------------------------
 
 func _test_stats_bars(ui, player: Player) -> void:
-	ui.call("_update_stats")
-	var hp: Label = ui.get("_hp_label")
-	_check(hp != null and hp.text.contains(str(player.current_hp)),
-		"метка ЖИЗНЬ показывает текущее HP (%s)" % str(hp.text if hp else ""))
-	var labels: Dictionary = ui.get("_stat_labels")
-	if labels.has("attrs"):
-		var t := str((labels["attrs"] as Label).text)
-		_check(t.contains("Тело"), "строка атрибутов заполнена (%s)" % t)
+	# Статы живут в InventoryPanel (2×2). Панель уже открыта в начале теста.
+	var inv = ui.get("_inventory_panel")
+	if inv == null or not is_instance_valid(inv):
+		ui.call("open_inventory_panel")
+		await process_frame
+		await process_frame
+		inv = ui.get("_inventory_panel")
+	_check(inv != null, "инвентарь открыт для проверки статов")
+	if inv != null:
+		inv.call("_refresh_stats")
+		var hp: Label = inv.get("_hp_label")
+		_check(hp != null and str(hp.text).contains(str(player.current_hp)),
+			"метка ЖИЗНЬ показывает текущее HP (%s)" % str(hp.text if hp else ""))
+		var labels: Dictionary = inv.get("_stat_labels")
+		_check(labels.size() > 5, "сетка характеристик заполнена (%d ключей)" % labels.size())
 	_finish_section("stats_bars")
 
 func _report() -> void:

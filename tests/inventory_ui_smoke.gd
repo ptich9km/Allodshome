@@ -67,17 +67,20 @@ func _run() -> void:
 	var grid = inv.get("_inventory_grid")
 	var scroll = inv.get("_inventory_scroll")
 	var slots: Array = inv.get("_inventory_slots")
-	var design_root: Control = inv.get("_panel_root")
+	# Тема висит на корневом MarginContainer (_root), а не на DesignRoot —
+	# DesignRoot убран 06.10 (контейнерный паттерн как у shop/inn).
+	var theme_root: Control = inv.get("_root")
+	if theme_root == null:
+		theme_root = inv.get("_panel_root")
 
 	# 1. Панель — не картинка.
 	_check(not (panel is TextureRect), "панель склада не TextureRect (была картинка invframe.bmp)")
 	_check(panel is PanelContainer, "панель склада — PanelContainer")
-	# Тема висит на DesignRoot (панель строит _panel_root.theme = _make_theme()),
-	# а не на самой PanelContainer - тема наследуется вниз по дереву.
-	_check(design_root != null and design_root.theme != null,
+	_check(theme_root != null and theme_root.theme != null,
 		"на панели висит единая тема UiKit")
 	var sb: StyleBox = panel.get_theme_stylebox(&"panel")
 	_check(sb != null, "у панели есть StyleBox из темы")
+	_check(inv.get("_panel_root") == null, "DesignRoot 1024×768 убран")
 
 	# 2. Сетка: несколько колонок + вертикальная прокрутка.
 	_check(grid.columns > 1, "сетка многоколоночная (columns=%d, был 1 ряд на 100)" % grid.columns)
@@ -89,6 +92,37 @@ func _run() -> void:
 	_check(scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED,
 		"горизонтальная прокрутка отключена (mode=%d)" % scroll.horizontal_scroll_mode)
 	_check(scroll.follow_focus, "прокрутка следует за фокусом")
+
+	# 2×2 вариант A: имя над куклой, статы секциями, без name_label в статах
+	_check(inv.get("_stats_box") != null, "блок характеристик в инвентаре")
+	_check(inv.get("_equip_slots") is Dictionary and (inv.get("_equip_slots") as Dictionary).size() >= 8,
+		"слоты экипировки на месте")
+	_check(inv.get("_hero_name") is Label and str((inv.get("_hero_name") as Label).text) != "",
+		"имя героя над куклой")
+	_check(inv.get("_stat_labels") is Dictionary and not (inv.get("_stat_labels") as Dictionary).has("name_label"),
+		"имя не в статах (вариант A)")
+	var stats_scroll = inv.get("_stats_scroll")
+	_check(stats_scroll is ScrollContainer, "статы со скроллом")
+	var sec_titles := 0
+	var sbox = inv.get("_stats_box")
+	if sbox != null:
+		for c in (sbox as Node).get_children():
+			if c is HBoxContainer:
+				for lab in (c as HBoxContainer).get_children():
+					if lab is Label and str((lab as Label).text).to_upper() in [
+						"АТРИБУТЫ", "БОЙ", "НАВЫКИ", "ПРОЧЕЕ"]:
+						sec_titles += 1
+	_check(sec_titles >= 3, "в статах есть секции (найдено заголовков: %d)" % sec_titles)
+	var shield_lab = inv.get("_shield_label")
+	_check(shield_lab is Label, "строка «Щит» в характеристиках")
+	var stats_col = inv.get("_stats_col")
+	if stats_col == null and panel is Control:
+		stats_col = (panel as Control).find_child("StatsCol", true, false)
+	_check(stats_col != null, "колонка статов существует")
+	if stats_col is Control:
+		# Колонка не должна тянуться на пол-окна (EXPAND_FILL).
+		_check(not ((stats_col as Control).size_flags_horizontal & Control.SIZE_EXPAND_FILL),
+			"StatsCol без EXPAND_FILL (узкая колонка)")
 
 	# 3. Ячейки — PanelContainer, без фоновой картинки слота.
 	_check(slots.size() > 0, "склад наполнен (ячеек: %d)" % slots.size())

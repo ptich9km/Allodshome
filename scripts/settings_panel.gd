@@ -183,7 +183,9 @@ func _apply_theme() -> void:
 		Color(0, 0, 0, 0), UiTheme.ACCENT,
 		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
 
-	UiKit.add_frame(theme, &"SetPanel", MainMenu.FRAME_WINDOW)
+	# Без 9-slice: window_frame при растяжении давал толстые золотые полосы.
+	UiKit.add_panel(theme, &"SetPanel",
+		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
 	UiTheme.add_display_label(theme, &"SetTitle", UiTheme.FONT_TITLE, UiTheme.ACCENT)
 	UiKit.add_label(theme, &"SetHint", UiTheme.TEXT_MUTED, UiTheme.FONT_MICRO)
 	UiKit.add_label(theme, &"SetRowLabel", UiTheme.TEXT, UiTheme.FONT_BODY)

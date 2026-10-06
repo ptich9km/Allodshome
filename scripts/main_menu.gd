@@ -97,9 +97,13 @@ func _apply_theme() -> void:
 		Color(0, 0, 0, 0), UiTheme.ACCENT,
 		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
 
-	# Рамки 9-slice: главная панель и окно оверлея.
-	UiKit.add_frame(theme, &"MmPanel", FRAME_PANEL)
-	UiKit.add_frame(theme, &"MmOverlay", FRAME_WINDOW)
+	# Панель без 9-slice: рамка panel_frame при растяжении давала толстые
+	# золотые полосы по краям (полосы margins 28 px тянулись на всю высоту).
+	# Орнамент-линейка (divider) остаётся отдельным NinePatchRect.
+	UiKit.add_panel(theme, &"MmPanel",
+		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
+	UiKit.add_panel(theme, &"MmOverlay",
+		UiTheme.PANEL_BG, UiTheme.ACCENT_DIM, UiTheme.RADIUS_FRAME)
 
 	# Заголовок экрана — антиква крупным кеглем. Фирменное имя не переводится.
 	UiTheme.add_display_label(theme, &"MmTitle", UiTheme.FONT_SCREEN, UiTheme.ACCENT)
@@ -294,6 +298,8 @@ func _setup_menu() -> void:
 		_menu_box.add_child(b)
 		_menu_buttons.append(b)
 	UiKit.wire_grid_focus(_menu_buttons, 1)
+	# Нижняя линейка — зеркало верхней (линия + ромбы по краям).
+	_menu_box.add_child(_make_divider(UiTheme.SPACE_3))
 
 
 ## Кнопка главного меню по ключу перевода. Именно так, а не по имени узла:

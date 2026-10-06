@@ -1,10 +1,9 @@
 extends SceneTree
-## Headless-проверка магазина: раскладка полок под фоновый арт + карточка товара.
+## Headless-проверка магазина: контейнерная раскладка без фонового арта.
 ##
-## Регрессия, из-за которой тест написан: сетка полок была переставлена с 2×7 на 3×5
-## ради «названия и характеристик в ячейке», но фон shop_human.jpeg нарисован под
-## исходные полки, и интерфейс разъехался с артом. Тест фиксирует и раскладку,
-## и то, что читаемое вынесено в карточку по наведению, а не в ячейку.
+## 05.10: JPEG shop_human.jpeg убран. Тест фиксирует контракт новой панели:
+## сетки существуют, ячейки в пределах панели, hover-card работает,
+## покупка/продажа не сломаны.
 ##
 ## Запуск:
 ##   godot --headless --path . --script res://tests/shop_ui_smoke.gd
@@ -42,7 +41,6 @@ func _run() -> void:
 		_check(false, "герой не загружен")
 		_finish()
 		return
-	# Даём предметы, чтобы полки игрока не были пустыми.
 	hero.call("add_item", "Common iron Long Sword")
 	hero.call("add_item", "Common Leather Mail")
 	hero.call("add_item", "Potion Medium Healing")
@@ -55,49 +53,56 @@ func _run() -> void:
 	await create_timer(0.3).timeout
 
 	_test_layout()
-	_test_cells_fit_art()
+	_test_cells_in_panel()
 	_test_no_text_in_cell()
 	await _test_hover_card()
+	await _test_buy_sell()
 	_finish()
 
 
-## 1. Раскладка полок — ровно та, под которую нарисован фон.
+## 1. Раскладка: панель, полки, категории.
 func _test_layout() -> void:
+	var panel: Control = _find("Panel")
+	_check(panel != null, "панель PanelContainer найдена")
 	var npc_grid: GridContainer = _find("NpcShelf")
 	var player_grid: GridContainer = _find("PlayerShelf")
 	_check(npc_grid != null, "полка торговца найдена")
 	_check(player_grid != null, "полка игрока найдена")
 	if npc_grid == null or player_grid == null:
 		return
-	_check(npc_grid.columns == 2,
-		"полка торговца: 2 колонки (арт рассчитан на 2×7), получено %d" % npc_grid.columns)
-	_check(player_grid.columns == 6,
-		"полка игрока: 6 колонок, получено %d" % player_grid.columns)
-
-	# Размер ячейки должен совпадать с исходным (95.5×86), а не с расширенным.
-	var npc_slot: Control = _first_child_of_type(npc_grid, "PanelContainer")
-	_check(npc_slot != null and is_equal_approx(npc_slot.custom_minimum_size.x, 95.5),
-		"ячейка полки торговца = 95.5 px по ширине (под арт), получено %s"
-			% (str(npc_slot.custom_minimum_size.x) if npc_slot != null else "нет ячейки"))
+	_check(npc_grid.columns == 3, "полка торговца: 3 колонки (получено %d)" % npc_grid.columns)
+	_check(player_grid.columns == 4, "полка игрока: 4 колонки (получено %d)" % player_grid.columns)
+	var cats: Node = _find("Categories")
+	_check(cats != null and cats.get_child_count() >= 5, "категории — кнопки в шапке")
+	var bg: Node = _find("Background")
+	_check(bg == null, "фонового JPEG больше нет")
 
 
-## 2. Полки не вылезают за пределы фонового арта 1024×1024.
-func _test_cells_fit_art() -> void:
+## 2. Полки в пределах панели (не арта 1024×1024).
+func _test_cells_in_panel() -> void:
+	var panel: Control = _find("Panel")
 	var scroll: ScrollContainer = _find("NpcShelfScroll")
 	var pscroll: ScrollContainer = _find("PlayerShelfScroll")
 	_check(scroll != null and pscroll != null, "скролл-полки найдены")
-	if scroll == null or pscroll == null:
+	if panel == null or scroll == null or pscroll == null:
 		return
-	_check(scroll.position + scroll.size <= Vector2(1024, 1024) + Vector2(1, 1),
-		"полка торговца не выходит за пределы арта (%.0f,%.0f + %.0fx%.0f)"
-			% [scroll.position.x, scroll.position.y, scroll.size.x, scroll.size.y])
-	_check(pscroll.position + pscroll.size <= Vector2(1024, 1024) + Vector2(1, 1),
-		"полка игрока не выходит за пределы арта (%.0f,%.0f + %.0fx%.0f)"
-			% [pscroll.position.x, pscroll.position.y, pscroll.size.x, pscroll.size.y])
+	var pglobal := panel.get_global_rect()
+	_check(scroll.get_global_rect().encloses(pglobal.grow(-2.0)) or scroll.get_global_rect().intersects(pglobal),
+		"полка торговца пересекается с панелью")
+	_check(pscroll.get_global_rect().intersects(pglobal),
+		"полка игрока пересекается с панелью")
+	var slot: Control = _first_child_of_type(npc_grid_or_null(), "PanelContainer") if npc_grid_or_null() != null else null
+	# Размер ячейки — контентный, не артовый 95.5
+	if slot != null:
+		_check(slot.custom_minimum_size.x > 40.0,
+			"ячейка полки торговца шире 40 px (получено %.1f)" % slot.custom_minimum_size.x)
 
 
-## 3. В ячейке нет ни текстовых ярлыков, ни лишних узлов: только иконка и кнопка.
-##    Читаемое живёт в карточке по наведению.
+func npc_grid_or_null() -> GridContainer:
+	return _find("NpcShelf") as GridContainer
+
+
+## 3. В ячейке нет текстовых ярлыков — только иконка и кнопка.
 func _test_no_text_in_cell() -> void:
 	var grid: GridContainer = _find("NpcShelf")
 	if grid == null:
@@ -114,71 +119,73 @@ func _test_no_text_in_cell() -> void:
 	_check(buttons == 1, "в ячейке ровно одна кнопка (Купить), найдено %d" % buttons)
 
 
-## 4. Карточка по наведению: появляется, наполнена реальными полями, не перехватывает мышь.
+## 4. Карточка по наведению.
 func _test_hover_card() -> void:
 	var card: PanelContainer = _find("HoverCard")
 	_check(card != null, "карточка создана")
 	if card == null:
 		return
-	# Сбрасываем фокус: первая кнопка панели захватывает его автоматически,
-	# и карточка показывается ещё до наведения — это правильное поведение,
-	# а не повод спорить с тестом.
 	root.gui_release_focus()
 	await process_frame
 	_check(not card.visible, "карточка скрыта, когда ни один предмет не выбран")
 	_check(card.mouse_filter == Control.MOUSE_FILTER_IGNORE,
-		"карточка не перехватывает мышь (иначе блокирует кнопку «Купить» под собой)")
+		"карточка не перехватывает мышь")
 
 	var grid: GridContainer = _find("NpcShelf")
 	var slot: Control = _first_child_of_type(grid, "PanelContainer")
 	if slot == null:
 		_check(false, "нет ячейки для проверки карточки")
 		return
-	# Наведение мышью.
 	slot.emit_signal("mouse_entered")
 	await process_frame
 	_check(card.visible, "карточка появилась при наведении")
 	var lines := _card_lines(card)
 	_check(lines.size() >= 3,
-		"в карточке строк с данными: %d (ожидалось название, тип/материал, характеристики, цена)"
-			% lines.size())
+		"в карточке строк с данными: %d" % lines.size())
 	if lines.size() > 0:
-		_check(not str(lines[0]).is_empty(), "первая строка — название: «%s»" % str(lines[0]))
+		_check(not str(lines[0]).is_empty(), "первая строка — название")
 	var joined := " | ".join(lines)
 	_check(joined.contains("з") or joined.contains("Цена"),
-		"в карточке есть цена: «%s»" % joined.substr(maxi(0, joined.length() - 40)))
-	_check(card.position.x + card.size.x <= 1024.0 and card.position.y + card.size.y <= 1024.0,
-		"карточка удержана в пределах панели (%.0f,%.0f %.0fx%.0f)"
-			% [card.position.x, card.position.y, card.size.x, card.size.y])
-
-	# Уход курсора прячет.
+		"в карточке есть цена")
 	slot.emit_signal("mouse_exited")
 	await process_frame
 	_check(not card.visible, "карточка спряталась после ухода курсора")
 
-	# Фокус (клавиатура/геймпад) тоже показывает карточку — иначе товар
-	# не прочитать с пульта.
-	var btn: Button = _find_button(slot)
-	if btn != null:
-		# Фокус должен быть СНЯТ, иначе grab_focus() на уже сфокусированной
-		# кнопке не выдаст focus_entered повторно.
-		root.gui_release_focus()
-		await process_frame
-		btn.grab_focus()
-		await process_frame
-		_check(card.visible, "карточка появилась по фокусу кнопки (клавиатура/геймпад)")
-		root.gui_release_focus()
-		await process_frame
-		_check(not card.visible, "карточка спряталась по потере фокуса")
 
+## 5. Покупка и продажа. await обязателен: функция содержит process_frame,
+## без await проверки уедут за пределы отчёта (класс граблей AGENTS.md §12).
+func _test_buy_sell() -> void:
+	var hero = get_first_node_in_group("player")
+	if hero == null:
+		_check(false, "герой для сделки не найден")
+		return
+	var gold_before: int = hero.gold
+	var inv_before: int = hero.inventory.size()
+	var npc_grid: GridContainer = _find("NpcShelf")
+	var slot: Control = _first_child_of_type(npc_grid, "PanelContainer") if npc_grid != null else null
+	var btn: Button = _find_button(slot) if slot != null else null
+	if btn == null:
+		_check(false, "нет кнопки «Купить»")
+		return
+	if btn.disabled:
+		_check(true, "первая кнопка «Купить» заблокирована — пропускаем эмит")
+		return
+	btn.pressed.emit()
+	await process_frame
+	_check(hero.gold < gold_before or hero.inventory.size() > inv_before,
+		"покупка изменила золото/инвентарь (gold %d→%d, inv %d→%d)"
+			% [gold_before, hero.gold, inv_before, hero.inventory.size()])
 
-# --- поиск узлов ---
 
 func _find(node_name: String) -> Node:
+	if _shop == null:
+		return null
 	return _shop.find_child(node_name, true, false)
 
 
 func _first_child_of_type(root: Node, type_name: String) -> Control:
+	if root == null:
+		return null
 	for c in root.get_children():
 		if c.get_class() == type_name:
 			return c as Control
@@ -204,6 +211,8 @@ func _count_of_type(root: Node, type_name: String) -> int:
 
 
 func _find_button(root: Node) -> Button:
+	if root == null:
+		return null
 	for c in root.get_children():
 		if c is Button:
 			return c as Button

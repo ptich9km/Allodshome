@@ -432,24 +432,49 @@ func _calc_speed() -> float:
 	speed *= _load_penalty()
 	return speed
 
+## Навык, которым герой бьёт текущим оружием (blade для меча и т.д.).
+func _weapon_skill_for_damage() -> int:
+	match weapon:
+		"axe": return axe_skill
+		"bludgeon": return bludgeon_skill
+		"pike": return pike_skill
+		"shooting": return shooting_skill
+		"staff", "magic": return fire_skill
+		_: return blade_skill
+
+
 func get_damage_min() -> int:
-	# Оружие задаёт СВОЙ урон (min/max из item_db), а не прибавляется к «body/2».
-	# Иначе герой с мечом на 3-7 и герой с кулаками били бы одинаково, а клинок
-	# за 500 золотых ничего не значил.
+	# Оружие: база предмета МАСШТABIРУЕТСЯ навыком и атрибутами — не копия
+	# damage_min из item_db. Кулак всегда слабее любого оружия.
 	var w := _equipped_item("weapon")
 	if not w.is_empty():
 		var dmin := int(w.get("damage_min", 0))
 		if dmin > 0:
-			return dmin
-	return body / 2 + blade_skill / 10     # Body + навык меча -> урон
+			var sk := _weapon_skill_for_damage()
+			var mult := 1.0 + float(sk) / 40.0 + float(agility) / 80.0
+			return maxi(1, int(round(float(dmin) * mult)))
+	return unarmed_damage_min()
+
 
 func get_damage_max() -> int:
 	var w := _equipped_item("weapon")
 	if not w.is_empty():
 		var dmax := int(w.get("damage_max", 0))
 		if dmax > 0:
-			return dmax
-	return body + blade_skill / 5 + 5
+			var sk := _weapon_skill_for_damage()
+			var mult := 1.0 + float(sk) / 40.0 + float(body) / 60.0
+			return maxi(1, int(round(float(dmax) * mult)))
+	return unarmed_damage_max()
+
+
+## Кулак / без оружия: строго ниже любого экипируемого клинка.
+func unarmed_damage_min() -> int:
+	var sk := _weapon_skill_for_damage()
+	return maxi(1, body / 6 + sk / 20)
+
+
+func unarmed_damage_max() -> int:
+	return unarmed_damage_min() + maxi(1, body / 10)
 
 func get_attack() -> int:
 	# to_hit оружия идёт в атаку (шанс попадания), а не выбрасывается.
@@ -464,6 +489,8 @@ func get_defense() -> int:
 	var bonus := 0
 	for it in _equipped_items():
 		bonus += int(it.get("defence", 0))
+	# Щит мага (Shield) = временная броня по астралу, не поглощение HP.
+	bonus += StatusEffects.shield_armor_defense(self)
 	return int(round((base + bonus + StatusEffects.stat_flat(self, "defense")) \
 		* StatusEffects.defense_mult(self)))
 
@@ -472,6 +499,7 @@ func get_absorption() -> int:
 	var a := body / 4
 	for it in _equipped_items():
 		a += int(it.get("absorption", 0))
+	a += StatusEffects.shield_armor_absorption(self)
 	return a
 
 ## Предмет в слоте (пустой словарь, если слот пуст или предмета нет в базе).

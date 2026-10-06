@@ -155,11 +155,11 @@ func _run() -> void:
 		_report()
 		return
 
-	var lbl := ui.get_node_or_null("StatsPanel/StatsMargin/StatsCol/GoldRow/GoldLabel") as Label
+	var lbl := ui.get_node_or_null("HudSide/GoldRow/GoldLabel") as Label
 	_check(lbl != null, "счётчик золота есть в панели справа")
 	if lbl != null:
 		player.gold = 1234
-		ui.call("_update_stats")
+		ui.call("_update_gold", 1234)
 		await process_frame
 		_check(lbl.text == "1234", "счётчик показывает золото игрока (%s)" % lbl.text)
 		# подбор лута должен обновлять счётчик даже без открытия склада
@@ -169,7 +169,7 @@ func _run() -> void:
 		_check(lbl.text == "1300", "счётчик обновился после подбора (%s)" % lbl.text)
 
 	var icon := ui.get_node_or_null(
-		"StatsPanel/StatsMargin/StatsCol/GoldRow/GoldIcon") as TextureRect
+		"HudSide/GoldRow/GoldIcon") as TextureRect
 	_check(icon != null and icon.texture != null, "у счётчика золота есть иконка монеты")
 	if icon != null and icon.texture != null:
 		_check(icon.texture.resource_path.ends_with("gold_coin.png"),

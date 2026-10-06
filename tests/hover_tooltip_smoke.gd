@@ -5,7 +5,7 @@ extends SceneTree
 ##  1. фракции по наборам юнитов (Альянс/Орды/Пожинатели/Круг/Серые);
 ##  2. строки карточки предмета: имя, урон, вес/цена;
 ##  3. строки карточки лута: золото и имена предметов;
-##  4. строки карточки юнита: здоровье + фракция;
+##  4. строки карточки юнита: hover-база — название+фракция; Alt — HP/бой;
 ##  5. строки карточки здания (имя из StructureDB);
 ##  6. _update_world_tooltip не падает и создаёт карточку при цели под курсором.
 ##
@@ -95,10 +95,24 @@ func _test_unit_card(ui) -> void:
 	_check(unit != null, "на карте есть юнит для проверки")
 	if unit == null:
 		return
+	# База (hover): название + фракция, без HP.
 	var lines: Array = ui.call("_unit_tooltip_lines", unit)
 	var text := "\n".join(PackedStringArray(lines))
-	_check(text.contains("Здоровье:"), "карточка юнита показывает здоровье (%s)" % text)
-	_check(text.contains("Фракция:"), "карточка юнита показывает фракцию")
+	_check(not text.contains("Здоровье:"), "база без HP (он в полной карточке Alt)")
+	_check(text.contains("Фракция:"), "база показывает фракцию (%s)" % text)
+	# Полная (Alt): добавляет HP и боевые статы.
+	ui.set("_world_hover_unit", unit)
+	var full: Array = ui.call("_unit_tooltip_full", ["u0", lines])
+	var ftext := "\n".join(PackedStringArray(full))
+	_check(ftext.contains("Здоровье:") or ftext.contains("Атака:"),
+		"полная карточка содержит бой/HP (%s)" % ftext)
+	# _update_world_tooltip с фейковой целью: не падает, bounds = viewport.
+	ui.set("_world_hover_key", "u0")
+	ui.set("_world_hover_time", 1.0)
+	ui.set("_world_card_shown", false)
+	ui.set("_world_card_alt", false)
+	ui.call("_update_world_tooltip", 0.05)
+	_check(true, "_update_world_tooltip отработал с целью без ошибок")
 
 func _test_building_card(ui) -> void:
 	# Первое известное здание из структуры карты (если есть).

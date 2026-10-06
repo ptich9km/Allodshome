@@ -211,7 +211,9 @@ func _effect_still_active() -> bool:
 	if not is_instance_valid(unit):
 		return false
 	if kind == "shield":
-		return int(unit.get_meta("shield_strength", 0)) > 0 \
+		# Щит мага = броня (shield_armor); враги могут держать absorb-meta.
+		return StatusEffects.shield_armor_time(unit) > 0.0 \
+			or int(unit.get_meta("shield_strength", 0)) > 0 \
 			and float(unit.get_meta("shield_time", 0.0)) > 0.0
 	if kind == "resist":
 		# Именно СВОЯ стихия: active_types() возвращает типы без сфер, поэтому

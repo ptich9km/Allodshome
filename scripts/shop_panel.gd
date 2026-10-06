@@ -4,12 +4,14 @@ extends CanvasLayer
 signal closed
 signal inventory_changed
 
+## Категории — toggle-кнопки в шапке, не зоны фонового арта.
+## 05.10: JPEG shop_human.jpeg убран; раскладка контейнерная, референс 1280×800.
 const CATEGORIES := [
-	{"id": "armor", "label": "Броня", "rect": Rect2(60, 40, 120, 160)},
-	{"id": "robe", "label": "Магическая броня", "rect": Rect2(850, 40, 130, 160)},
-	{"id": "weapon", "label": "Оружие", "rect": Rect2(30, 850, 150, 140)},
-	{"id": "potions", "label": "Зелья", "rect": Rect2(642, 842, 359, 156)},
-	{"id": "books", "label": "Книги и свитки", "rect": Rect2(819, 473, 178, 370)},
+	{"id": "armor", "label": "Броня"},
+	{"id": "robe", "label": "Магическая броня"},
+	{"id": "weapon", "label": "Оружие"},
+	{"id": "potions", "label": "Зелья"},
+	{"id": "books", "label": "Книги и свитки"},
 ]
 const MERCHANT_LINES := [
 	"Снаряжение дорожает с каждой новой стражей у ворот.",
@@ -17,33 +19,12 @@ const MERCHANT_LINES := [
 	"Магические книги есть только у тех, кто действительно читает магию.",
 	"Не торопись: хорошая броня окупается после второй вылазки.",
 ]
-const _BG_PATH := "res://assets/shop/shop_human.jpeg"
-const _DESIGN_SIZE := Vector2(1024, 1024)
-## Полка торговца. Координаты и размер ячейки подобраны ПОД ФОНОВЫЙ АРТ:
-## shop_human.jpeg нарисован под 2×7 полок, и в CATEGORIES пять интерактивных
-## зон, привязанных к полкам на картинке (броня 60,40; роба 850,40; оружие
-## 30,850; зелья 642,842; книги 819,473).
-## Менять эту раскладку нельзя: сетка 3×5, которую ставили ради «названия и
-## характеристик в ячейке», разъехалась с артом и полки перестали на него
-## попадать. Всё читаемое вынесено в карточку по наведению (см. _attach_hover).
-const _NPC_ORIGIN := Vector2(26, 231)
-const _NPC_CELL_SIZE := Vector2(95.5, 86.0)
-const _NPC_COLUMNS := 2
-const _NPC_ROWS := 7
-## Полка игрока — под основной частью прилавка, 6×3.
-const _PLAYER_ORIGIN := Vector2(250, 578)
-const _PLAYER_CELL_SIZE := Vector2(90, 85.67)
-const _PLAYER_COLUMNS := 6
-const _PLAYER_ROWS := 3
-const _PLAYER_TAB_ORIGIN := Vector2(216, 899)
-const _PLAYER_TAB_CELL_SIZE := Vector2(100, 91)
-const _MERCHANT_PANEL_POSITION := Vector2(350, 486)
-const _MERCHANT_PANEL_SIZE := Vector2(350, 78)
-const _CLOSE_SIZE := Vector2(150, 42)
-const _CLOSE_POSITION := Vector2(742, 18)
+const _CELL_BUY := Vector2(96, 100)
+const _CELL_SELL := Vector2(90, 92)
 
 var player: Player
-var _panel_root: Control
+var _root: MarginContainer
+var _panel: PanelContainer
 var _npc_scroll: ScrollContainer
 var _player_scroll: ScrollContainer
 var _npc_grid: GridContainer
@@ -57,7 +38,6 @@ var _close_button: Button
 var _category_buttons: Array[Button] = []
 var _category_group: ButtonGroup
 var _previous_focus: Control
-## Карточка описания товара у курсора (одна на панель, переиспользуется).
 var _hover_card: PanelContainer = null
 var _category_index := 0
 
@@ -72,80 +52,180 @@ func setup(p: Player) -> void:
 
 func _ready() -> void:
 	_previous_focus = UiKit.save_focus(self)
-	UiKit.bind_resize(get_viewport(), _update_layout)
 	_configure_category_focus()
 	_refresh()
 
 func _exit_tree() -> void:
-	if not is_inside_tree():
-		return
-	var viewport := get_viewport()
-	if viewport.size_changed.is_connected(_update_layout):
-		viewport.size_changed.disconnect(_update_layout)
+	pass
 
 func _build_ui() -> void:
 	var dim := UiKit.make_dim(0.58)
 	add_child(dim)
 
-	_panel_root = Control.new()
-	_panel_root.name = "DesignRoot"
-	_panel_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.size = _DESIGN_SIZE
-	_panel_root.theme = _make_theme()
-	add_child(_panel_root)
+	_root = MarginContainer.new()
+	_root.name = "ShopRoot"
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiKit.set_margins(_root, UiTheme.SCREEN_INSET, UiTheme.SCREEN_INSET,
+		UiTheme.SCREEN_INSET, UiTheme.SCREEN_INSET)
+	_root.theme = _make_theme()
+	add_child(_root)
 
-	var background := TextureRect.new()
-	background.name = "Background"
-	if ResourceLoader.exists(_BG_PATH):
-		background.texture = load(_BG_PATH)
-	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	background.position = Vector2.ZERO
-	background.size = _DESIGN_SIZE
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(background)
+	var center := HBoxContainer.new()
+	center.name = "Center"
+	center.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Промежуточный контейнер не должен съедать клики — иначе «прозрачная
+	# рамка» вокруг панели блокирует и мир, и саму панель.
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(center)
+	var side := Control.new()
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	side.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(side)
 
+	_panel = PanelContainer.new()
+	_panel.name = "Panel"
+	_panel.theme_type_variation = &"ShopPanel"
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	center.add_child(_panel)
+
+	var margin := MarginContainer.new()
+	margin.name = "Margin"
+	UiKit.set_margins(margin, UiTheme.SPACE_4, UiTheme.SPACE_3,
+		UiTheme.SPACE_4, UiTheme.SPACE_3)
+	_panel.add_child(margin)
+
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	margin.add_child(content)
+
+	# Header: title + gold + close
+	var header := HBoxContainer.new()
+	header.name = "Header"
+	header.add_theme_constant_override("separation", UiTheme.SPACE_3)
+	content.add_child(header)
 	var title := Label.new()
+	title.name = "Title"
 	title.theme_type_variation = &"ShopTitle"
 	title.text = tr("МАГАЗИН")
-	title.position = Vector2(300, 18)
-	title.size = Vector2(250, 46)
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(title)
-
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
 	_gold_label = Label.new()
+	_gold_label.name = "Gold"
 	_gold_label.theme_type_variation = &"ShopGoldLabel"
-	_gold_label.position = Vector2(545, 24)
-	_gold_label.size = Vector2(180, 36)
-	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_gold_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(_gold_label)
-
+	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_gold_label)
 	_close_button = Button.new()
 	_close_button.name = "Close"
 	_close_button.text = tr("Закрыть")
-	_close_button.custom_minimum_size = _CLOSE_SIZE
-	_close_button.position = _CLOSE_POSITION
-	_close_button.size = _CLOSE_SIZE
+	_close_button.theme_type_variation = &"ShopClose"
+	_close_button.custom_minimum_size = Vector2(120, 32)
 	_close_button.pressed.connect(close)
-	_panel_root.add_child(_close_button)
+	header.add_child(_close_button)
 
-	_build_category_buttons()
-	_build_hover_card()
-	_build_shelves()
-	_build_player_tabs()
-	_build_merchant_panel()
+	# Categories as tabs
+	var cat_row := HBoxContainer.new()
+	cat_row.name = "Categories"
+	cat_row.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	content.add_child(cat_row)
+	_build_category_buttons(cat_row)
+
+	# Shelves: merchant | player
+	var body := HBoxContainer.new()
+	body.name = "Body"
+	body.add_theme_constant_override("separation", UiTheme.SPACE_3)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(body)
+
+	var buy_col := VBoxContainer.new()
+	buy_col.name = "BuyCol"
+	buy_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buy_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(buy_col)
+	var buy_title := Label.new()
+	buy_title.theme_type_variation = &"ShopSection"
+	buy_title.text = tr("У торговца")
+	buy_col.add_child(buy_title)
+	_npc_scroll = ScrollContainer.new()
+	_npc_scroll.name = "NpcShelfScroll"
+	_npc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_npc_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_npc_scroll.follow_focus = true
+	_npc_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_npc_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buy_col.add_child(_npc_scroll)
+	_npc_grid = GridContainer.new()
+	_npc_grid.name = "NpcShelf"
+	_npc_grid.columns = 3
+	_npc_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_npc_grid.add_theme_constant_override("h_separation", UiTheme.SPACE_1)
+	_npc_grid.add_theme_constant_override("v_separation", UiTheme.SPACE_1)
+	_npc_scroll.add_child(_npc_grid)
+
+	var sell_col := VBoxContainer.new()
+	sell_col.name = "SellCol"
+	sell_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sell_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(sell_col)
+	var sell_title := Label.new()
+	sell_title.theme_type_variation = &"ShopSection"
+	sell_title.text = tr("Ваш склад")
+	sell_col.add_child(sell_title)
+	_player_scroll = ScrollContainer.new()
+	_player_scroll.name = "PlayerShelfScroll"
+	_player_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_player_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_player_scroll.follow_focus = true
+	_player_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_player_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sell_col.add_child(_player_scroll)
+	_player_grid = GridContainer.new()
+	_player_grid.name = "PlayerShelf"
+	_player_grid.columns = 4
+	_player_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_player_grid.add_theme_constant_override("h_separation", UiTheme.SPACE_1)
+	_player_grid.add_theme_constant_override("v_separation", UiTheme.SPACE_1)
+	_player_scroll.add_child(_player_grid)
+
+	# Merchant strip
+	var merchant := PanelContainer.new()
+	merchant.name = "MerchantPanel"
+	merchant.theme_type_variation = &"ShopDialogPanel"
+	content.add_child(merchant)
+	var mmargin := MarginContainer.new()
+	UiKit.set_margins(mmargin, UiTheme.SPACE_3, UiTheme.SPACE_2,
+		UiTheme.SPACE_3, UiTheme.SPACE_2)
+	merchant.add_child(mmargin)
+	var mrow := HBoxContainer.new()
+	mrow.add_theme_constant_override("separation", UiTheme.SPACE_3)
+	mmargin.add_child(mrow)
+	_merchant_label = Label.new()
+	_merchant_label.name = "MerchantText"
+	_merchant_label.text = tr("Торговец предлагает снаряжение и зелья.")
+	_merchant_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_merchant_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_merchant_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mrow.add_child(_merchant_label)
+	_merchant_button = Button.new()
+	_merchant_button.name = "Talk"
+	_merchant_button.text = tr("Поговорить")
+	_merchant_button.theme_type_variation = &"ShopPrimary"
+	_merchant_button.custom_minimum_size = Vector2(140, 32)
+	_merchant_button.pressed.connect(_talk)
+	mrow.add_child(_merchant_button)
 
 	_hint_label = Label.new()
 	_hint_label.name = "TradeHint"
 	_hint_label.theme_type_variation = &"ShopHintLabel"
-	_hint_label.position = Vector2(270, 544)
-	_hint_label.size = Vector2(500, 30)
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel_root.add_child(_hint_label)
+	content.add_child(_hint_label)
 
-func _build_category_buttons() -> void:
+	_build_hover_card()
+
+func _build_category_buttons(parent: Node) -> void:
 	_category_group = ButtonGroup.new()
 	for index in range(CATEGORIES.size()):
 		var category: Dictionary = CATEGORIES[index]
@@ -157,11 +237,9 @@ func _build_category_buttons() -> void:
 		button.toggle_mode = true
 		button.button_group = _category_group
 		button.button_pressed = index == _category_index
-		button.position = category["rect"].position
-		button.size = category["rect"].size
 		button.focus_mode = Control.FOCUS_ALL
 		button.pressed.connect(_set_category.bind(index))
-		_panel_root.add_child(button)
+		parent.add_child(button)
 		_category_buttons.append(button)
 
 func _configure_category_focus() -> void:
@@ -172,33 +250,28 @@ func _configure_category_focus() -> void:
 
 func _build_hover_card() -> void:
 	_hover_card = UiKit.make_hover_card(300.0)
-	_panel_root.add_child(_hover_card)
-
+	_panel.add_child(_hover_card)
 
 ## Показать описание товара у курсора. Работает и по наведению мышью, и по
-## фокусу с клавиатуры/геймпада — иначе с пульта товар не прочитать.
-## Координаты переводятся в систему панели: карточка — дочерний узел
-## design_root, который масштабируется вместе с интерьером.
+## фокусу с клавиатуры/геймпада.
 func _attach_hover(slot: Control, item: Dictionary, buying: bool, count: int) -> void:
 	if _hover_card == null or item.is_empty():
 		return
 	var show_at := func() -> void:
-		if not is_instance_valid(slot):
+		if not is_instance_valid(slot) or not is_instance_valid(_panel):
 			return
+		# Карточка — дочерний узел _panel; координаты нужны локальные, не глобальные.
+		var local: Vector2 = _panel.get_global_transform().affine_inverse() * slot.global_position
 		UiKit.show_hover_card(_hover_card, _hover_lines(item, buying, count),
-			slot.global_position, _DESIGN_SIZE)
+			local, _panel.size)
 	slot.mouse_entered.connect(show_at)
 	slot.mouse_exited.connect(func() -> void: UiKit.hide_hover_card(_hover_card))
-	# Фокус: панель уже навигируется кнопками, но ячейка сама по себе не
-	# фокусируема — повесим на родительскую кнопку, если она есть.
 	var focus_target: Control = slot
-	if slot.get_node_or_null("Margin") == null:
-		var btn := _find_trade_button(slot)
-		if btn != null:
-			focus_target = btn
+	var btn := _find_trade_button(slot)
+	if btn != null:
+		focus_target = btn
 	focus_target.focus_entered.connect(show_at)
 	focus_target.focus_exited.connect(func() -> void: UiKit.hide_hover_card(_hover_card))
-
 
 func _find_trade_button(node: Node) -> Button:
 	for child in node.get_children():
@@ -209,8 +282,6 @@ func _find_trade_button(node: Node) -> Button:
 			return found
 	return null
 
-
-## Строки описания из РЕАЛЬНЫХ полей item_db: те же цифры, что участвуют в бою.
 func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
 	var key := str(item.get("key", ""))
 	var lines: Array = [str(item.get("name_ru", key))]
@@ -242,133 +313,19 @@ func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
 		lines.append(tr("Продать за: %d з") % _sell_price(price))
 	return lines
 
-
-## Цена продажи: цена из базы, делённая на [economy] sell_price_div.
-## Раньше делитель был зашит в четырёх местах этого файла.
 func _sell_price(price: int) -> int:
 	return maxi(1, price / maxi(1, GameConfig.geti("economy", "sell_price_div")))
 
-
-func _build_shelves() -> void:
-	_npc_scroll = ScrollContainer.new()
-	_npc_scroll.name = "NpcShelfScroll"
-	_npc_scroll.position = _NPC_ORIGIN
-	_npc_scroll.size = Vector2(_NPC_CELL_SIZE.x * _NPC_COLUMNS, _NPC_CELL_SIZE.y * _NPC_ROWS)
-	_npc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_npc_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_npc_scroll.follow_focus = true
-	_npc_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	_panel_root.add_child(_npc_scroll)
-
-	_npc_grid = GridContainer.new()
-	_npc_grid.name = "NpcShelf"
-	_npc_grid.columns = _NPC_COLUMNS
-	_npc_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_npc_grid.add_theme_constant_override("h_separation", 0)
-	_npc_grid.add_theme_constant_override("v_separation", 0)
-	_npc_scroll.add_child(_npc_grid)
-
-	_player_scroll = ScrollContainer.new()
-	_player_scroll.name = "PlayerShelfScroll"
-	_player_scroll.position = _PLAYER_ORIGIN
-	_player_scroll.size = Vector2(_PLAYER_CELL_SIZE.x * _PLAYER_COLUMNS, _PLAYER_CELL_SIZE.y * _PLAYER_ROWS)
-	_player_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_player_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_player_scroll.follow_focus = true
-	_player_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	_panel_root.add_child(_player_scroll)
-
-	_player_grid = GridContainer.new()
-	_player_grid.name = "PlayerShelf"
-	_player_grid.columns = _PLAYER_COLUMNS
-	_player_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_player_grid.add_theme_constant_override("h_separation", 0)
-	_player_grid.add_theme_constant_override("v_separation", 0)
-	_player_scroll.add_child(_player_grid)
-
-func _build_player_tabs() -> void:
-	_player_tabs = GridContainer.new()
-	_player_tabs.name = "PlayerTab"
-	_player_tabs.columns = 4
-	_player_tabs.position = _PLAYER_TAB_ORIGIN
-	_player_tabs.size = Vector2(_PLAYER_TAB_CELL_SIZE.x * 4, _PLAYER_TAB_CELL_SIZE.y)
-	_player_tabs.add_theme_constant_override("h_separation", 0)
-	_player_tabs.add_theme_constant_override("v_separation", 0)
-	_panel_root.add_child(_player_tabs)
-	for index in range(4):
-		_player_tabs.add_child(_make_player_tab(index == 0))
-
-func _make_player_tab(active: bool) -> PanelContainer:
-	var tab := PanelContainer.new()
-	tab.theme_type_variation = &"ShopPlayerTab"
-	tab.custom_minimum_size = _PLAYER_TAB_CELL_SIZE
-	var margin := MarginContainer.new()
-	_set_margins(margin, 5, 4, 5, 4)
-	tab.add_child(margin)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 1)
-	margin.add_child(content)
-	if active:
-		var portrait := TextureRect.new()
-		portrait.name = "HeroPortrait"
-		portrait.texture = _hero_portrait()
-		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		portrait.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		content.add_child(portrait)
-		var label := Label.new()
-		label.text = tr("Герой")
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		content.add_child(label)
-	else:
-		var empty := Label.new()
-		empty.theme_type_variation = &"ShopEmptyTabLabel"
-		empty.text = tr("Пусто")
-		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		empty.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		content.add_child(empty)
-	return tab
-
-func _build_merchant_panel() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "MerchantPanel"
-	panel.theme_type_variation = &"ShopDialogPanel"
-	panel.position = _MERCHANT_PANEL_POSITION
-	panel.size = _MERCHANT_PANEL_SIZE
-	_panel_root.add_child(panel)
-	var margin := MarginContainer.new()
-	_set_margins(margin, 12, 8, 12, 8)
-	panel.add_child(margin)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	margin.add_child(row)
-	_merchant_label = Label.new()
-	_merchant_label.name = "MerchantText"
-	_merchant_label.text = tr("Торговец предлагает снаряжение и зелья.")
-	_merchant_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_merchant_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_merchant_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	row.add_child(_merchant_label)
-	_merchant_button = Button.new()
-	_merchant_button.name = "Talk"
-	_merchant_button.text = tr("Поговорить")
-	_merchant_button.custom_minimum_size = Vector2(150, 38)
-	_merchant_button.pressed.connect(_talk)
-	row.add_child(_merchant_button)
-
 func _update_layout() -> void:
-	UiKit.fit_design_root(_panel_root, _DESIGN_SIZE)
+	pass
 
 func _refresh() -> void:
 	if not is_instance_valid(player):
 		return
+	if _hover_card != null:
+		UiKit.hide_hover_card(_hover_card)
 	_gold_label.text = tr("Золото: %d") % player.gold
-	_hint_label.text = tr("Сверху покупка · снизу продажа · заблокированное не хватает золота")
+	_hint_label.text = tr("Слева покупка · справа продажа · заблокированное не хватает золота")
 	for index in range(_category_buttons.size()):
 		_category_buttons[index].button_pressed = index == _category_index
 	var npc_buttons := _build_buy_shelf(_category_index)
@@ -431,9 +388,9 @@ func _build_sell_list() -> Array[Button]:
 func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContainer:
 	var slot := PanelContainer.new()
 	slot.theme_type_variation = &"ShopItemSlot"
-	slot.custom_minimum_size = _NPC_CELL_SIZE if buying else _PLAYER_CELL_SIZE
+	slot.custom_minimum_size = _CELL_BUY if buying else _CELL_SELL
 	var margin := MarginContainer.new()
-	_set_margins(margin, 2, 2, 2, 2)
+	_set_margins(margin, UiTheme.SPACE_1, UiTheme.SPACE_1, UiTheme.SPACE_1, UiTheme.SPACE_1)
 	slot.add_child(margin)
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 1)
@@ -449,14 +406,11 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 		icon.texture = load(icon_path)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = Vector2(0, 52 if buying else 42)
+	icon.custom_minimum_size = Vector2(0, 48)
 	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(icon)
-	# В ячейке только иконка и кнопка — как было. Название и характеристики
-	# показываются карточкой у курсора при наведении: в ячейку 95 px они не
-	# влезали, и вариант «вывести в ячейку» разъехался с фоновым артом.
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 1)
 	content.add_child(actions)
@@ -477,14 +431,9 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 	button.focus_mode = Control.FOCUS_ALL
 	button.pressed.connect(_buy_item.bind(key, price) if buying else _sell_item.bind(key, _sell_price(price)))
 	actions.add_child(button)
-	# Карточку цепляем ПОСЛЕ создания кнопки: по фокусу показывать описание
-	# должна именно кнопка, а её на момент конца функции уже нет в дереве.
 	_attach_hover(slot, item, buying, count)
 	return slot
 
-## Характеристики предмета одной строкой. Поля берём те же, что реально
-## участвуют в бою (item_db.json: damage_min/max, to_hit, defence, absorption,
-## magcap, level) — иначе игрок видит цифры, которых в бою нет.
 func _item_stats(item: Dictionary) -> String:
 	var parts: Array[String] = []
 	var dmin := int(item.get("damage_min", 0))
@@ -537,8 +486,8 @@ func _category_items(category_index: int) -> Array[Dictionary]:
 	return pool
 
 func _configure_focus(npc_buttons: Array[Button], player_buttons: Array[Button]) -> void:
-	_wire_grid_focus(npc_buttons, _NPC_COLUMNS)
-	_wire_grid_focus(player_buttons, _PLAYER_COLUMNS)
+	UiKit.wire_grid_focus(npc_buttons, _npc_grid.columns)
+	UiKit.wire_grid_focus(player_buttons, _player_grid.columns)
 	var first_target: Control = _category_buttons[_category_index]
 	if not npc_buttons.is_empty():
 		first_target = npc_buttons[0]
@@ -556,9 +505,6 @@ func _configure_focus(npc_buttons: Array[Button], player_buttons: Array[Button])
 	_close_button.focus_previous = _merchant_button.get_path()
 	_close_button.focus_next = _category_buttons[0].get_path()
 
-func _wire_grid_focus(buttons: Array[Button], columns: int) -> void:
-	UiKit.wire_grid_focus(buttons, columns)
-
 func _hero_portrait() -> Texture2D:
 	var equipment_path := "res://assets/equipment/%s/1.png" % Game.hero_character_id
 	if ResourceLoader.exists(equipment_path):
@@ -575,44 +521,46 @@ func _set_margins(container: MarginContainer, left: int, top: int, right: int, b
 	UiKit.set_margins(container, left, top, right, bottom)
 
 func _make_theme() -> Theme:
-	var theme := UiKit.base_theme({
-		"font_size": 14,
-		"font_color": Color(0.96, 0.90, 0.76),
-		"radius": 5, "margin": 4,
-		"normal_bg": Color(0.23, 0.13, 0.07, 0.96),
-		"normal_border": Color(0.70, 0.40, 0.14),
-		"hover_bg": Color(0.36, 0.19, 0.08, 0.98),
-		"hover_border": Color(1.0, 0.74, 0.26),
-		"pressed_bg": Color(0.15, 0.08, 0.04, 1.0),
-		"pressed_border": Color(0.66, 0.36, 0.12),
-		"disabled_bg": Color(0.15, 0.13, 0.12, 0.90),
-		"disabled_border": Color(0.34, 0.29, 0.25),
-		"focus_border": Color(1.0, 0.78, 0.20),
-		"scrollbar": true,
-	})
-	UiKit.add_title(theme, &"ShopTitle")
-	UiKit.add_gold_label(theme, &"ShopGoldLabel")
-	UiKit.add_label(theme, &"ShopHintLabel", UiKit.HINT_COLOR, UiKit.HINT_SIZE)
+	var theme := UiTheme.app_theme()
+	theme.set_stylebox("normal", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("hover", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("pressed", "Button", UiKit.button_style(
+		UiTheme.BG_DEEP, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("focus", "Button", UiKit.button_style(
+		UiTheme.TRANSPARENT, UiTheme.ACCENT,
+		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	UiKit.apply_scrollbar(theme, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
+	UiKit.add_panel(theme, &"ShopPanel",
+		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
+	UiTheme.add_display_label(theme, &"ShopTitle", UiTheme.FONT_TITLE, UiTheme.ACCENT)
+	UiKit.add_label(theme, &"ShopGoldLabel", UiTheme.ACCENT, UiTheme.FONT_SUBHEAD)
+	UiKit.add_label(theme, &"ShopHintLabel", UiTheme.TEXT_MUTED, UiTheme.FONT_MICRO)
+	UiKit.add_label(theme, &"ShopSection", UiTheme.TEXT_MUTED, UiTheme.FONT_SECTION)
 	UiKit.add_slot(theme, &"ShopItemSlot")
 	UiKit.add_panel(theme, &"ShopPlayerTab",
-		Color(0.09, 0.10, 0.15, 0.86), Color(0.48, 0.42, 0.24, 0.96), 4)
+		UiTheme.SLOT_BG, UiTheme.SLOT_EDGE, UiTheme.RADIUS_SLOT)
 	UiKit.add_panel(theme, &"ShopDialogPanel",
-		Color(0.10, 0.08, 0.07, 0.88), UiKit.DIALOG_BORDER, 4)
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE, UiTheme.RADIUS_PANEL)
 	UiKit.add_hover_card_styles(theme)
-	UiKit.add_label(theme, &"ShopEmptyTabLabel", Color(0.54, 0.50, 0.43), 15)
-	UiKit.add_label(theme, &"ShopCountLabel", Color(1.0, 0.88, 0.58), 12)
-	# Категория — прозрачная кнопка-чип: в покое без заливки и рамки.
-	theme.set_type_variation(&"ShopCategoryButton", &"Button")
-	theme.set_color("font_color", &"ShopCategoryButton", Color(1.0, 0.82, 0.48))
-	theme.set_font_size("font_size", &"ShopCategoryButton", 16)
-	theme.set_stylebox("normal", &"ShopCategoryButton",
-		UiKit.ghost_button_style(Color(0, 0, 0, 0), 0, 5, 4))
-	theme.set_stylebox("hover", &"ShopCategoryButton",
-		UiKit.button_style(Color(0.12, 0.06, 0.02, 0.18), Color(1.0, 0.78, 0.26, 0.60), 2, 5, 4))
-	theme.set_stylebox("pressed", &"ShopCategoryButton",
-		UiKit.button_style(Color(0.14, 0.07, 0.02, 0.30), Color(0.96, 0.66, 0.20, 0.95), 2, 5, 4))
-	theme.set_stylebox("focus", &"ShopCategoryButton",
-		UiKit.button_style(Color(0, 0, 0, 0), Color(1.0, 0.82, 0.28, 0.95), 3, 5, 4))
+	UiKit.add_label(theme, &"ShopEmptyTabLabel", UiTheme.TEXT_OFF, UiTheme.FONT_BODY)
+	UiKit.add_label(theme, &"ShopCountLabel", UiTheme.ACCENT, UiTheme.FONT_MICRO)
+	UiKit.add_button(theme, &"ShopCategoryButton",
+		UiTheme.TRANSPARENT, UiTheme.TRANSPARENT,
+		UiTheme.PANEL_INNER, UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
+	UiKit.add_button(theme, &"ShopPrimary",
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
+		UiTheme.PANEL_INNER.lightened(0.14), UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_PANEL, UiTheme.SPACE_2)
+	UiKit.add_button(theme, &"ShopClose",
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.25),
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_2)
 	return theme
 
 func _clear_grid(grid: GridContainer) -> void:

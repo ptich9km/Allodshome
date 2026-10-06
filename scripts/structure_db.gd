@@ -137,7 +137,8 @@ static func anim_frames(name: String, phases: int) -> Array:
 static func display_name(name: String) -> String:
 	return str(get_structure(name).get("desc", ""))
 
-## Портрет здания (Picture) — файл assets/portraits/<picture>.png (lowercase).
+## Имя картинки здания (поле Picture в БД). Файлы assets/portraits удалены
+## 06.10 — имя остаётся как идентификатор, с диска не грузится.
 static func picture(name: String) -> String:
 	return str(get_structure(name).get("picture", ""))
 

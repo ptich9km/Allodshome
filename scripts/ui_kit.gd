@@ -395,34 +395,51 @@ static func animate_out(node: Control, callback: Callable) -> void:
 # --- Карточка предмета у курсора (наведение) ---
 
 ## Панель-карточка, которая показывается рядом с курсором при наведении на ячейку.
-## Заменяет попытку запихнуть название и характеристики в ячейку: в ячейке магазина
-## 95 px по ширине, туда не влезает ничего, а расширять сетку нельзя — она
-## привязана к фоновому арту. Карточка одна на панель, переиспользуется.
+## Тултипы — один из главных информационных элементов UI: они обязаны быть
+## компактными и НЕ перехватывать клики.
 ##
-## mouse_filter = IGNORE обязателен: карточка лежит поверх ячеек и не должна
-## перехватывать клик по кнопке «Купить» под ней.
+## Ловушка 06.10: PanelContainer-ребёнок PanelContainer растягивается на весь
+## родитель, а MarginContainer/VBox внутри — по умолчанию MOUSE_FILTER_STOP.
+## Карточка «расползалась на всё окно» и съедала клики по кнопкам магазина.
+## Поэтому: top_level + SHRINK + IGNORE на всём поддереве.
 static func make_hover_card(width: float = 300.0) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.name = "HoverCard"
 	card.visible = false
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.top_level = true
 	card.z_index = 60
+	card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	card.grow_horizontal = Control.GROW_DIRECTION_END
+	card.grow_vertical = Control.GROW_DIRECTION_END
 	card.custom_minimum_size = Vector2(width, 0)
 	card.add_theme_stylebox_override("panel",
 		panel_style(Color(0.06, 0.05, 0.07, 0.97), Color(0.78, 0.60, 0.26, 0.98), 4, 2))
 	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_margins(margin, 10, 8, 10, 8)
 	card.add_child(margin)
 	var box := VBoxContainer.new()
 	box.name = "Box"
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 3)
 	margin.add_child(box)
+	_ignore_mouse_recursive(card)
 	return card
 
 
-## Заполнить карточку строками и показать у точки экрана (координаты панели).
-## icon_path — необязательный путь к иконке предмета (32×32 слева).
-## quality_color — необязательный цвет рамки по качеству предмета.
+## Рекурсивно снять перехват мыши: любой STOP-контейнер внутри карточки
+## превращал тултип в «мёртвую зону» поверх панели.
+static func _ignore_mouse_recursive(node: Node) -> void:
+	var c := node as Control
+	if c != null:
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_ignore_mouse_recursive(child)
+
+
+## Заполнить карточку строками и показать у точки (локальные координаты parent).
 static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 		bounds: Vector2, icon_path: String = "", quality_color: Color = Color(-1, -1, -1, -1)) -> void:
 	if card == null or not is_instance_valid(card):
@@ -432,17 +449,16 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 		return
 	clear(box)
 
-	# Обновить цвет рамки по качеству (Color(-1) = не задан, не трогаем)
 	if quality_color.r >= 0.0:
 		var style: StyleBoxFlat = card.get_theme_stylebox("panel").duplicate()
 		style.border_color = quality_color
 		card.add_theme_stylebox_override("panel", style)
 
-	# Иконка + текст (если есть иконка)
 	if icon_path != "":
 		var icon_tex: Texture2D = load(icon_path) if ResourceLoader.exists(icon_path) else null
 		if icon_tex != null:
 			var icon_row := HBoxContainer.new()
+			icon_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			icon_row.add_theme_constant_override("separation", 8)
 			box.add_child(icon_row)
 			var icon_rect := TextureRect.new()
@@ -452,8 +468,8 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			icon_row.add_child(icon_rect)
-			# Первые строки текста справа от иконки
 			var text_box := VBoxContainer.new()
+			text_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			text_box.add_theme_constant_override("separation", 2)
 			icon_row.add_child(text_box)
 			var first := true
@@ -464,7 +480,7 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 				var label := Label.new()
 				label.text = line
 				label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				label.custom_minimum_size = Vector2(card.custom_minimum_size.x - 52.0, 0)
+				label.custom_minimum_size = Vector2(maxf(80.0, card.custom_minimum_size.x - 52.0), 0)
 				if first:
 					label.theme_type_variation = &"HoverCardTitle"
 					first = false
@@ -473,7 +489,6 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 				label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				text_box.add_child(label)
 	else:
-		# Без иконки — просто строки
 		var first := true
 		for raw in lines:
 			var line := str(raw)
@@ -482,7 +497,7 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 			var label := Label.new()
 			label.text = line
 			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			label.custom_minimum_size = Vector2(card.custom_minimum_size.x - 20.0, 0)
+			label.custom_minimum_size = Vector2(maxf(80.0, card.custom_minimum_size.x - 20.0), 0)
 			if first:
 				label.theme_type_variation = &"HoverCardTitle"
 				first = false
@@ -491,7 +506,6 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 			label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			(box as VBoxContainer).add_child(label)
 
-	# Проверка что есть содержимое
 	var has_content := false
 	for child in box.get_children():
 		if child.get_child_count() > 0 or (child is Label and child.text != ""):
@@ -500,9 +514,15 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 	if not has_content:
 		hide_hover_card(card)
 		return
+
+	# Сжать до содержимого: без reset_size карточка могла унаследовать
+	# «весь родитель» от прошлого показа/раскладки контейнера.
+	card.reset_size()
+	_ignore_mouse_recursive(card)
 	card.visible = true
-	# Прижать к краю окна
 	var size := card.size
+	if size.x < 40.0 or size.y < 20.0:
+		size = card.get_combined_minimum_size()
 	var pos := at + Vector2(18, 10)
 	if pos.x + size.x > bounds.x - 8.0:
 		pos.x = maxf(8.0, at.x - size.x - 18.0)

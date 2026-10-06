@@ -141,7 +141,9 @@ func _apply_theme() -> void:
 		"radius": UiTheme.RADIUS_SLOT,
 		"scrollbar": true,
 	})
-	UiKit.add_frame(theme, &"SavePanel", FRAME_WINDOW)
+	# Без 9-slice: window_frame при растяжении давал толстые золотые полосы.
+	UiKit.add_panel(theme, &"SavePanel",
+		UiTheme.PANEL_BG, UiTheme.ACCENT_DIM, UiTheme.RADIUS_FRAME)
 	UiKit.add_slot(theme, &"SaveSlotRow")
 	UiTheme.add_display_label(theme, &"SaveTitle", UiTheme.FONT_SECTION, UiTheme.ACCENT)
 	UiKit.add_label(theme, &"SaveSlotName", UiTheme.TEXT, UiTheme.FONT_MICRO)

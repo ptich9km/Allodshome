@@ -20,7 +20,7 @@ const MAX_DOT_STACKS := 3
 ## Типы эффектов, полезных противнику (их накладывают на врага).
 const HOSTILE := ["slow", "curse", "vision", "dot", "root"]
 ## Типы эффектов, полезных союзнику (накладывают на героя/наёмника/НПЦ).
-const FRIENDLY := ["shield", "resist", "bless", "haste", "invisibility", "vampirism"]
+const FRIENDLY := ["shield", "shield_armor", "resist", "bless", "haste", "invisibility", "vampirism"]
 
 
 static func _all(unit: Node2D) -> Array:
@@ -124,8 +124,32 @@ static func _apply_one(unit: Node2D, effect: Dictionary, caster: Node2D) -> bool
 		if dots >= MAX_DOT_STACKS:
 			return false
 
-	# Щит идёт в существующий meta-щит Game (он уже тикается в Game.tick_shields).
+	# Щит мага = ВРЕМЕННАЯ БРОНЯ (Аллоды): прибавка к защите/поглощению,
+	# величина и время — от навыка Астрала. У героя НЕ поглощает HP meta.
+	# Враги/NPC: прежний absorb-meta (Game.apply_shield), чтобы не ломать бой.
 	if type == "shield":
+		if _is_hero_unit(unit):
+			var armor := shield_armor_values(caster, effect)
+			var entry := {
+				"type": "shield_armor",
+				"defense": armor["defense"],
+				"absorption": armor["absorption"],
+				"time_left": armor["duration"],
+				"caster": caster,
+				"target": unit,
+			}
+			var list2 := _all(unit)
+			var idx := find_index(unit, "shield_armor")
+			if idx < 0:
+				list2.append(entry)
+			else:
+				var old: Dictionary = list2[idx]
+				entry["defense"] = maxi(int(old.get("defense", 0)), int(entry["defense"]))
+				entry["absorption"] = maxi(int(old.get("absorption", 0)), int(entry["absorption"]))
+				entry["time_left"] = maxf(float(old.get("time_left", 0.0)), float(entry["time_left"]))
+				list2[idx] = entry
+			_store(unit, list2)
+			return true
 		Game.apply_shield(unit, int(effect.get("amount", 0)), float(effect.get("duration", 30.0)))
 		return true
 
@@ -166,7 +190,72 @@ static func _apply_one(unit: Node2D, effect: Dictionary, caster: Node2D) -> bool
 
 
 static func _is_numeric(key: String) -> bool:
-	return key in ["amount", "mult", "defense", "attack", "ratio", "dps", "duration"]
+	return key in ["amount", "mult", "defense", "attack", "ratio", "dps", "duration",
+		"absorption", "time_left"]
+
+
+static func _is_hero_unit(unit: Node2D) -> bool:
+	return unit != null and (unit == Game.hero or unit is Player)
+
+
+## Значения брони щита мага: от астрала кастера + сила заклинания.
+## defense ≈ 10 + astral*0.6 + spell_power*0.4
+## absorption ≈ body/8 + astral*0.3
+## duration ≈ 30 + astral*2 (секунды)
+static func shield_armor_values(caster: Node2D, effect: Dictionary) -> Dictionary:
+	var astral := 0
+	var body := 0
+	if caster != null and "astral_skill" in caster:
+		astral = int(caster.get("astral_skill"))
+	if caster != null and "body" in caster:
+		body = int(caster.get("body"))
+	var power := 0.0
+	if caster != null:
+		power = Game.spell_power(caster, "Astral")
+	var def := int(10 + astral * 0.6 + power * 0.4)
+	var ab := int(body / 8 + astral * 0.3)
+	var duration := 30.0 + float(astral) * 2.0
+	# База из БД (amount/duration) — не ниже формулы, если задана явно.
+	var db_amount := int(effect.get("amount", 0))
+	if db_amount > 0:
+		def = maxi(def, db_amount + astral / 2)
+	var db_dur := float(effect.get("duration", 0.0))
+	if db_dur > 0.0:
+		duration = maxf(duration, db_dur)
+	return {"defense": def, "absorption": ab, "duration": duration}
+
+
+## Прибавка к Защите от щита-брони (пока эффект жив).
+static func shield_armor_defense(unit: Node2D) -> int:
+	if unit == null or not is_instance_valid(unit):
+		return 0
+	var v := 0
+	for e in _all(unit):
+		if str((e as Dictionary).get("type", "")) == "shield_armor":
+			v += int((e as Dictionary).get("defense", 0))
+	return v
+
+
+## Прибавка к Поглощению от щита-брони.
+static func shield_armor_absorption(unit: Node2D) -> int:
+	if unit == null or not is_instance_valid(unit):
+		return 0
+	var v := 0
+	for e in _all(unit):
+		if str((e as Dictionary).get("type", "")) == "shield_armor":
+			v += int((e as Dictionary).get("absorption", 0))
+	return v
+
+
+## Остаток времени щита-брони, сек (0 — не активен).
+static func shield_armor_time(unit: Node2D) -> float:
+	if unit == null or not is_instance_valid(unit):
+		return 0.0
+	var t := 0.0
+	for e in _all(unit):
+		if str((e as Dictionary).get("type", "")) == "shield_armor":
+			t = maxf(t, float((e as Dictionary).get("time_left", 0.0)))
+	return t
 
 
 ## Доля от сопротивления стихии: 100 % резиста обнуляет длительность яда.
@@ -175,6 +264,10 @@ static func _resist_factor(unit: Node2D, sphere: String) -> float:
 		return 1.0
 	var prot := Game.unit_protection(unit, sphere)
 	return clampf(1.0 - float(prot) / 100.0, 0.0, 1.0)
+
+
+static func is_hero_unit(unit: Node2D) -> bool:
+	return _is_hero_unit(unit)
 
 
 static func _stronger(key: String, a: Variant, b: Variant) -> Variant:

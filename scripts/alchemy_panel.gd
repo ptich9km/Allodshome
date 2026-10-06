@@ -326,71 +326,44 @@ func _set_margins(container: MarginContainer, left: int, top: int, right: int, b
 	UiKit.set_margins(container, left, top, right, bottom)
 
 func _make_theme() -> Theme:
-	# Зелёная палитра алхимии. Значения оставлены один в один — UiKit даёт
-	# только фабрики и базовую кнопку, цветовые константы свои.
-	var theme := UiKit.base_theme({
-		"font_size": 15,
-		"font_color": Color(0.90, 0.94, 0.84),
-		"font_hover_color": Color(0.92, 1.0, 0.72),
-		"font_pressed_color": Color(1.0, 1.0, 0.88),
-		"font_focus_color": Color(0.94, 1.0, 0.72),
-		"font_disabled_color": Color(0.52, 0.56, 0.48),
-		"radius": 6, "margin": 6,
-		"normal_bg": Color(0.10, 0.20, 0.14, 0.96),
-		"normal_border": Color(0.36, 0.58, 0.30),
-		"hover_bg": Color(0.18, 0.34, 0.20, 0.98),
-		"hover_border": Color(0.78, 0.90, 0.38),
-		"pressed_bg": Color(0.07, 0.14, 0.10, 1.0),
-		"pressed_border": Color(0.55, 0.72, 0.30),
-		"disabled_bg": Color(0.10, 0.13, 0.11, 0.90),
-		"disabled_border": Color(0.28, 0.31, 0.26),
-		"focus_border": Color(0.92, 0.96, 0.42),
-		"scrollbar": true,
-	})
+	# Единый тёплый стиль интерьера (UiTheme). Зелёный оттенок убран: «по стилю»
+	# означает один источник правды, а не отдельную палитру алхимии.
+	var theme := UiTheme.app_theme()
+	theme.set_stylebox("normal", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("hover", "Button", UiKit.button_style(
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("pressed", "Button", UiKit.button_style(
+		UiTheme.BG_DEEP, UiTheme.PANEL_EDGE,
+		UiTheme.BORDER_NORMAL, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	theme.set_stylebox("focus", "Button", UiKit.button_style(
+		UiTheme.TRANSPARENT, UiTheme.ACCENT,
+		UiTheme.BORDER_FOCUS, UiTheme.RADIUS_PANEL, UiTheme.SPACE_2))
+	UiKit.apply_scrollbar(theme, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
 	UiKit.add_panel(theme, &"AlchemyPanel",
-		Color(0.055, 0.10, 0.075, 0.98), Color(0.42, 0.62, 0.28), 8)
+		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
 	UiKit.add_panel(theme, &"AlchemySection",
-		Color(0.075, 0.14, 0.10, 0.94), Color(0.28, 0.45, 0.24), 8)
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.2), UiTheme.RADIUS_PANEL)
 	UiKit.add_panel(theme, &"AlchemyIngredientSlot",
-		Color(0.10, 0.18, 0.13, 0.92), Color(0.30, 0.44, 0.26), 8)
-	UiKit.add_label(theme, &"AlchemyTitle", Color(0.86, 0.96, 0.52), 30)
-	UiKit.add_label(theme, &"AlchemySectionTitle", Color(0.72, 0.88, 0.48), 18)
-	UiKit.add_label(theme, &"AlchemyRecipeTitle", Color(1.0, 0.92, 0.58), 22)
-	UiKit.add_label(theme, &"AlchemyResultLabel", Color(0.82, 0.90, 0.72), 16)
-	UiKit.add_label(theme, &"AlchemyHint", Color(0.70, 0.78, 0.64), 14)
-	UiKit.add_label(theme, &"AlchemyIngredientOk", Color(0.62, 0.90, 0.48))
-	UiKit.add_label(theme, &"AlchemyIngredientMissing", Color(1.0, 0.56, 0.42))
-	_add_button_variation(theme, &"AlchemyRecipeButton",
-		Color(0.09, 0.17, 0.12, 0.94), Color(0.25, 0.38, 0.22),
-		Color(0.16, 0.30, 0.18, 0.98), Color(0.68, 0.84, 0.32),
-		Color(0.07, 0.13, 0.09, 1.0), Color(0.52, 0.68, 0.28),
-		Color(0.08, 0.11, 0.09, 0.90), Color(0.24, 0.28, 0.22),
-		Color(0.92, 0.96, 0.42))
-	_add_button_variation(theme, &"AlchemySelectedRecipeButton",
-		Color(0.17, 0.31, 0.18, 0.98), Color(0.76, 0.88, 0.34),
-		Color(0.22, 0.39, 0.23, 0.98), Color(0.92, 0.96, 0.42),
-		Color(0.10, 0.20, 0.12, 1.0), Color(0.62, 0.78, 0.28),
-		Color(0, 0, 0, 0), Color(0, 0, 0, 0),
-		Color(1.0, 0.94, 0.42))
+		UiTheme.SLOT_BG, UiTheme.SLOT_EDGE, UiTheme.RADIUS_SLOT)
+	UiTheme.add_display_label(theme, &"AlchemyTitle", UiTheme.FONT_TITLE, UiTheme.ACCENT)
+	UiKit.add_label(theme, &"AlchemySectionTitle", UiTheme.TEXT_MUTED, UiTheme.FONT_SECTION)
+	UiKit.add_label(theme, &"AlchemyRecipeTitle", UiTheme.TEXT, UiTheme.FONT_SUBHEAD)
+	UiKit.add_label(theme, &"AlchemyResultLabel", UiTheme.TEXT, UiTheme.FONT_BODY)
+	UiKit.add_label(theme, &"AlchemyHint", UiTheme.TEXT_MUTED, UiTheme.FONT_BODY)
+	UiKit.add_label(theme, &"AlchemyIngredientOk", UiTheme.SUCCESS, UiTheme.FONT_BODY)
+	UiKit.add_label(theme, &"AlchemyIngredientMissing", UiTheme.DANGER, UiTheme.FONT_BODY)
+	UiKit.add_button(theme, &"AlchemyRecipeButton",
+		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE.darkened(0.25),
+		UiTheme.PANEL_INNER.lightened(0.12), UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_2)
+	UiKit.add_button(theme, &"AlchemySelectedRecipeButton",
+		UiTheme.PANEL_INNER.lightened(0.16), UiTheme.ACCENT,
+		UiTheme.PANEL_INNER.lightened(0.20), UiTheme.ACCENT,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_2)
 	return theme
-
-
-## Кнопка-вариация из пяти состояний. Цвета передаются явно, чтобы не
-## «выводить» pressed/disabled затемнением и не менять вид панели.
-func _add_button_variation(theme: Theme, name: StringName,
-		normal_bg: Color, normal_border: Color,
-		hover_bg: Color, hover_border: Color,
-		pressed_bg: Color, pressed_border: Color,
-		disabled_bg: Color, disabled_border: Color,
-		focus_border: Color) -> void:
-	theme.set_type_variation(name, &"Button")
-	theme.set_stylebox("normal", name, UiKit.button_style(normal_bg, normal_border))
-	theme.set_stylebox("hover", name, UiKit.button_style(hover_bg, hover_border))
-	theme.set_stylebox("pressed", name, UiKit.button_style(pressed_bg, pressed_border))
-	if disabled_bg.a > 0.0:
-		theme.set_stylebox("disabled", name, UiKit.button_style(disabled_bg, disabled_border))
-	theme.set_stylebox("focus", name,
-		UiKit.button_style(Color(0, 0, 0, 0), focus_border, 3))
 
 
 func _input(event: InputEvent) -> void:
