@@ -1,847 +1,384 @@
 {
   "source": "tests/extract_chatgpt_portraits.py",
-  "target_long_side": 240,
-  "bg_tol": 85,
-  "files": {
-    "human_m_mage.png": {
+  "target_height": 240,
+  "key_lo": 22.0,
+  "key_hi": 52.0,
+  "merge_x_px": 8,
+  "atlases": [
+    {
       "source": "ChatGPTMainHuman1.png",
-      "layout": "2x2",
-      "cell_box": [
-        0,
-        0,
-        512,
-        768
-      ],
-      "bgs": [
-        [
-          37,
-          36,
-          34
-        ],
-        [
-          34,
-          33,
-          32
-        ],
-        [
-          36,
-          34,
-          34
-        ],
-        [
-          34,
-          34,
-          33
-        ]
-      ],
-      "bbox_in_cell": [
-        116,
-        5,
-        367,
-        759
-      ],
+      "mode": "colorkey(bg=(35, 35, 34), 22..52)",
       "size": [
-        80,
-        240
-      ]
-    },
-    "human_f_mage.png": {
-      "source": "ChatGPTMainHuman1.png",
-      "layout": "2x2",
-      "cell_box": [
-        512,
-        0,
-        1024,
-        768
-      ],
-      "bgs": [
-        [
-          35,
-          34,
-          33
-        ],
-        [
-          34,
-          33,
-          33
-        ],
-        [
-          34,
-          33,
-          33
-        ],
-        [
-          34,
-          33,
-          33
-        ]
-      ],
-      "bbox_in_cell": [
-        112,
-        36,
-        348,
-        768
-      ],
-      "size": [
-        77,
-        240
-      ]
-    },
-    "human_m_war.png": {
-      "source": "ChatGPTMainHuman1.png",
-      "layout": "2x2",
-      "cell_box": [
-        0,
-        768,
-        512,
-        1536
-      ],
-      "bgs": [
-        [
-          38,
-          36,
-          36
-        ],
-        [
-          34,
-          34,
-          33
-        ],
-        [
-          40,
-          40,
-          40
-        ],
-        [
-          39,
-          37,
-          36
-        ]
-      ],
-      "bbox_in_cell": [
-        106,
-        15,
-        394,
-        739
-      ],
-      "size": [
-        95,
-        240
-      ]
-    },
-    "human_f_war.png": {
-      "source": "ChatGPTMainHuman1.png",
-      "layout": "2x2",
-      "cell_box": [
-        512,
-        768,
         1024,
         1536
       ],
-      "bgs": [
-        [
-          34,
-          33,
-          32
-        ],
-        [
-          32,
-          32,
-          31
-        ],
-        [
-          37,
-          36,
-          36
-        ],
-        [
-          39,
-          38,
-          38
-        ]
+      "grid": [
+        2,
+        2
       ],
-      "bbox_in_cell": [
-        114,
-        32,
-        372,
-        753
-      ],
-      "size": [
-        86,
-        240
-      ]
+      "figures_found": 4,
+      "files": {
+        "human_m_mage.png": {
+          "bbox": [
+            119,
+            6,
+            363,
+            757
+          ],
+          "size": [
+            78,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "human_f_mage.png": {
+          "bbox": [
+            628,
+            39,
+            856,
+            772
+          ],
+          "size": [
+            75,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "human_m_war.png": {
+          "bbox": [
+            109,
+            764,
+            391,
+            1505
+          ],
+          "size": [
+            91,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "human_f_war.png": {
+          "bbox": [
+            630,
+            764,
+            881,
+            1523
+          ],
+          "size": [
+            79,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        }
+      }
     },
-    "human2_m_mage.png": {
+    {
       "source": "ChatGPTMainHuman2.png",
-      "layout": "2x2",
-      "cell_box": [
-        0,
-        0,
-        512,
-        768
-      ],
-      "bgs": [
-        [
-          26,
-          25,
-          22
-        ],
-        [
-          26,
-          26,
-          25
-        ],
-        [
-          26,
-          26,
-          25
-        ],
-        [
-          24,
-          24,
-          24
-        ]
-      ],
-      "bbox_in_cell": [
-        116,
-        6,
-        374,
-        766
-      ],
+      "mode": "colorkey(bg=(26, 26, 25), 22..52)",
       "size": [
-        81,
-        240
-      ]
-    },
-    "human2_f_mage.png": {
-      "source": "ChatGPTMainHuman2.png",
-      "layout": "2x2",
-      "cell_box": [
-        512,
-        0,
-        1024,
-        768
-      ],
-      "bgs": [
-        [
-          28,
-          27,
-          26
-        ],
-        [
-          28,
-          27,
-          27
-        ],
-        [
-          25,
-          24,
-          23
-        ],
-        [
-          26,
-          26,
-          25
-        ]
-      ],
-      "bbox_in_cell": [
-        117,
-        18,
-        357,
-        768
-      ],
-      "size": [
-        77,
-        240
-      ]
-    },
-    "human2_m_war.png": {
-      "source": "ChatGPTMainHuman2.png",
-      "layout": "2x2",
-      "cell_box": [
-        0,
-        768,
-        512,
-        1536
-      ],
-      "bgs": [
-        [
-          26,
-          25,
-          25
-        ],
-        [
-          24,
-          24,
-          23
-        ],
-        [
-          34,
-          32,
-          30
-        ],
-        [
-          29,
-          28,
-          26
-        ]
-      ],
-      "bbox_in_cell": [
-        119,
-        6,
-        411,
-        740
-      ],
-      "size": [
-        95,
-        240
-      ]
-    },
-    "human2_f_war.png": {
-      "source": "ChatGPTMainHuman2.png",
-      "layout": "2x2",
-      "cell_box": [
-        512,
-        768,
         1024,
         1536
       ],
-      "bgs": [
-        [
-          22,
-          21,
-          20
-        ],
-        [
-          25,
-          25,
-          24
-        ],
-        [
-          29,
-          28,
-          27
-        ],
-        [
-          32,
-          31,
-          30
-        ]
+      "grid": [
+        2,
+        2
       ],
-      "bbox_in_cell": [
-        122,
-        7,
-        361,
-        757
-      ],
-      "size": [
-        76,
-        240
-      ]
+      "figures_found": 4,
+      "files": {
+        "human2_m_mage.png": {
+          "bbox": [
+            119,
+            7,
+            370,
+            769
+          ],
+          "size": [
+            79,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "human2_f_mage.png": {
+          "bbox": [
+            633,
+            20,
+            865,
+            771
+          ],
+          "size": [
+            74,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "human2_m_war.png": {
+          "bbox": [
+            121,
+            773,
+            407,
+            1507
+          ],
+          "size": [
+            94,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "human2_f_war.png": {
+          "bbox": [
+            637,
+            776,
+            869,
+            1530
+          ],
+          "size": [
+            74,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        }
+      }
     },
-    "druid_m_war.png": {
+    {
       "source": "ChatGPTMainDruid1.png",
-      "layout": "2x2",
-      "cell_box": [
-        0,
-        0,
-        512,
-        768
-      ],
-      "bgs": [
-        [
-          0,
-          0,
-          0
-        ],
-        [
-          4,
-          3,
-          0
-        ],
-        [
-          12,
-          9,
-          6
-        ],
-        [
-          46,
-          34,
-          26
-        ]
-      ],
-      "bbox_in_cell": [
-        137,
-        12,
-        434,
-        768
-      ],
+      "mode": "alpha",
       "size": [
-        94,
-        240
-      ]
-    },
-    "druid_f_war.png": {
-      "source": "ChatGPTMainDruid1.png",
-      "layout": "2x2",
-      "cell_box": [
-        512,
-        0,
-        1024,
-        768
-      ],
-      "bgs": [
-        [
-          6,
-          4,
-          0
-        ],
-        [
-          1,
-          1,
-          1
-        ],
-        [
-          36,
-          27,
-          20
-        ],
-        [
-          4,
-          4,
-          2
-        ]
-      ],
-      "bbox_in_cell": [
-        92,
-        33,
-        383,
-        768
-      ],
-      "size": [
-        95,
-        240
-      ]
-    },
-    "druid_m_mage.png": {
-      "source": "ChatGPTMainDruid1.png",
-      "layout": "2x2",
-      "cell_box": [
-        0,
-        768,
-        512,
-        1536
-      ],
-      "bgs": [
-        [
-          6,
-          4,
-          3
-        ],
-        [
-          36,
-          27,
-          23
-        ],
-        [
-          1,
-          1,
-          1
-        ],
-        [
-          19,
-          16,
-          19
-        ]
-      ],
-      "bbox_in_cell": [
-        134,
-        0,
-        427,
-        759
-      ],
-      "size": [
-        93,
-        240
-      ]
-    },
-    "druid_f_mage.png": {
-      "source": "ChatGPTMainDruid1.png",
-      "layout": "2x2",
-      "cell_box": [
-        512,
-        768,
         1024,
         1536
       ],
-      "bgs": [
-        [
-          28,
-          21,
-          15
-        ],
-        [
-          4,
-          2,
-          1
-        ],
-        [
-          16,
-          14,
-          22
-        ],
-        [
-          4,
-          5,
-          16
-        ]
+      "grid": [
+        2,
+        2
       ],
-      "bbox_in_cell": [
-        88,
-        0,
-        403,
-        768
-      ],
-      "size": [
-        98,
-        240
-      ]
+      "figures_found": 4,
+      "files": {
+        "druid_m_war.png": {
+          "bbox": [
+            144,
+            7,
+            422,
+            764
+          ],
+          "size": [
+            88,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "druid_f_war.png": {
+          "bbox": [
+            634,
+            36,
+            867,
+            770
+          ],
+          "size": [
+            76,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "druid_m_mage.png": {
+          "bbox": [
+            136,
+            770,
+            425,
+            1528
+          ],
+          "size": [
+            92,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "druid_f_mage.png": {
+          "bbox": [
+            621,
+            791,
+            906,
+            1529
+          ],
+          "size": [
+            93,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        }
+      }
     },
-    "necro_m_mage.png": {
+    {
       "source": "ChatGPTMainNecromant1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        0,
-        0,
-        384,
-        512
-      ],
-      "bgs": [
-        [
-          20,
-          18,
-          18
-        ],
-        [
-          18,
-          17,
-          17
-        ],
-        [
-          25,
-          22,
-          23
-        ],
-        [
-          22,
-          19,
-          20
-        ]
-      ],
-      "bbox_in_cell": [
-        50,
-        0,
-        309,
-        512
-      ],
+      "mode": "alpha",
       "size": [
-        121,
-        240
-      ]
-    },
-    "necro_f_mage.png": {
-      "source": "ChatGPTMainNecromant1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        384,
-        0,
-        768,
-        512
-      ],
-      "bgs": [
-        [
-          19,
-          18,
-          18
-        ],
-        [
-          22,
-          21,
-          19
-        ],
-        [
-          24,
-          21,
-          24
-        ],
-        [
-          34,
-          30,
-          29
-        ]
-      ],
-      "bbox_in_cell": [
-        86,
-        0,
-        291,
-        512
-      ],
-      "size": [
-        96,
-        240
-      ]
-    },
-    "necro_m_war.png": {
-      "source": "ChatGPTMainNecromant1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        768,
-        0,
-        1152,
-        512
-      ],
-      "bgs": [
-        [
-          23,
-          22,
-          19
-        ],
-        [
-          20,
-          18,
-          16
-        ],
-        [
-          39,
-          35,
-          32
-        ],
-        [
-          41,
-          37,
-          34
-        ]
-      ],
-      "bbox_in_cell": [
-        67,
-        0,
-        318,
-        512
-      ],
-      "size": [
-        118,
-        240
-      ]
-    },
-    "necro_f_war.png": {
-      "source": "ChatGPTMainNecromant1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        1152,
-        0,
         1536,
-        512
+        1024
       ],
-      "bgs": [
-        [
-          16,
-          14,
-          12
-        ],
-        [
-          15,
-          14,
-          14
-        ],
-        [
-          37,
-          33,
-          31
-        ],
-        [
-          38,
-          35,
-          33
-        ]
-      ],
-      "bbox_in_cell": [
-        97,
-        9,
-        310,
-        512
-      ],
-      "size": [
-        102,
-        240
-      ]
-    },
-    "ork_m_war.png": {
-      "source": "ChatGPTMainOrk1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        0,
-        0,
-        384,
-        512
-      ],
-      "bgs": [
-        [
-          35,
-          33,
-          9
-        ],
-        [
-          16,
-          15,
-          2
-        ],
-        [
-          54,
-          52,
-          21
-        ],
-        [
-          36,
-          34,
-          13
-        ]
-      ],
-      "bbox_in_cell": [
-        52,
-        22,
-        287,
-        512
-      ],
-      "size": [
-        115,
-        240
-      ]
-    },
-    "ork_f_war.png": {
-      "source": "ChatGPTMainOrk1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        384,
-        0,
-        768,
-        512
-      ],
-      "bgs": [
-        [
-          15,
-          14,
-          1
-        ],
-        [
-          14,
-          14,
-          3
-        ],
-        [
-          35,
-          34,
-          13
-        ],
-        [
-          33,
-          30,
-          13
-        ]
-      ],
-      "bbox_in_cell": [
-        85,
-        11,
-        301,
-        512
-      ],
-      "size": [
-        103,
-        240
-      ]
-    },
-    "ork_m_mage.png": {
-      "source": "ChatGPTMainOrk1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        768,
-        0,
-        1152,
-        512
-      ],
-      "bgs": [
-        [
-          13,
-          12,
-          4
-        ],
-        [
-          10,
-          9,
-          5
-        ],
-        [
-          30,
-          25,
-          12
-        ],
-        [
-          22,
-          18,
-          10
-        ]
-      ],
-      "bbox_in_cell": [
-        86,
+      "grid": [
         4,
-        315,
-        512
+        2
       ],
-      "size": [
-        108,
-        240
-      ]
+      "figures_found": 8,
+      "files": {
+        "necro_m_mage.png": {
+          "bbox": [
+            61,
+            7,
+            300,
+            533
+          ],
+          "size": [
+            109,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "necro_f_mage.png": {
+          "bbox": [
+            473,
+            7,
+            664,
+            530
+          ],
+          "size": [
+            88,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "necro_m_war.png": {
+          "bbox": [
+            853,
+            5,
+            1067,
+            528
+          ],
+          "size": [
+            98,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "necro_f_war.png": {
+          "bbox": [
+            1257,
+            6,
+            1451,
+            530
+          ],
+          "size": [
+            89,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        }
+      }
     },
-    "ork_f_mage.png": {
+    {
       "source": "ChatGPTMainOrk1.png",
-      "layout": "row1x4",
-      "cell_box": [
-        1152,
-        0,
-        1536,
-        512
-      ],
-      "bgs": [
-        [
-          6,
-          4,
-          0
-        ],
-        [
-          8,
-          5,
-          4
-        ],
-        [
-          19,
-          14,
-          12
-        ],
-        [
-          25,
-          17,
-          19
-        ]
-      ],
-      "bbox_in_cell": [
-        113,
-        17,
-        317,
-        512
-      ],
+      "mode": "alpha",
       "size": [
-        99,
-        240
-      ]
+        1536,
+        1024
+      ],
+      "grid": [
+        4,
+        2
+      ],
+      "figures_found": 8,
+      "files": {
+        "ork_m_war.png": {
+          "bbox": [
+            45,
+            6,
+            288,
+            515
+          ],
+          "size": [
+            115,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "ork_f_war.png": {
+          "bbox": [
+            471,
+            4,
+            672,
+            515
+          ],
+          "size": [
+            94,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "ork_m_mage.png": {
+          "bbox": [
+            834,
+            10,
+            1085,
+            516
+          ],
+          "size": [
+            119,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        },
+        "ork_f_mage.png": {
+          "bbox": [
+            1248,
+            13,
+            1470,
+            517
+          ],
+          "size": [
+            106,
+            240
+          ],
+          "enclosed_background": 0,
+          "touches_canvas_bottom": false,
+          "problems": []
+        }
+      }
     }
-  }
+  ]
 }
