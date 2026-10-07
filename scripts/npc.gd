@@ -60,6 +60,10 @@ func _physics_process(delta: float) -> void:
 	# Житель умер (его ударили монстры/герой): падение, разложение, исчезновение
 	if state == "dying" or state == "decay" or state == "corpse":
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+		# Первый кадр смерти: снимаем коллизию, иначе труп блокирует героя.
+		if state == "dying" and collision_layer != 0:
+			collision_layer = 0
+			collision_mask = 0
 		match state:
 			"dying":
 				_anim.play(UnitAnim.Anim.DYING)

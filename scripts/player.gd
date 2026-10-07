@@ -27,6 +27,7 @@ var attack_target: Node2D = null
 var attack_cooldown: float = 0.0
 var _impact_timer := -1.0            # отсчёт до кадра удара (замах); <0 = нет удара в полёте
 var _pending_attack_damage := 0      # урон текущего замаха (применяется в момент удара)
+var _swing_target: Node2D = null     # цель замаха (снапшот); impact бьёт ЕЁ, а не live-цель
 var move_speed: float = 120.0
 var _path: Array = []        # маршрут (мировые точки — центры клеток), без «льда»
 var _pending_cast: Dictionary = {}   # текущая подготовка заклинания (cast_time)
@@ -1049,6 +1050,7 @@ func attack_enemy(delta):
 		if Game.units_range(self, attack_target) > Game.ATTACK_RANGE + 12.0:
 			state = "chase"
 			_impact_timer = -1.0
+			_swing_target = null
 			return
 		# Цель мертва (труп/разложение) — прекращаем махать по трупу
 		if not Game.enemies.has(attack_target):
@@ -1056,6 +1058,7 @@ func attack_enemy(delta):
 			state = "idle"
 			velocity = Vector2.ZERO
 			_impact_timer = -1.0
+			_swing_target = null
 			return
 		if attack_cooldown <= 0.0 and _impact_timer < 0.0:
 			var damage = get_damage_min() + randi() % (get_damage_max() - get_damage_min() + 1)
@@ -1083,27 +1086,37 @@ func attack_enemy(delta):
 				_play_sphere_sound(sphere)
 				_apply_spell_experience(sphere)
 				return
-			# Старт замаха: урон и звук — в момент удара (_impact_timer),
-			# чтобы контакт ощущался по анимации, а не в начале движения.
+			# Старт замаха: урон и цель фиксируются ЗДЕСЬ.
+			# Impact бьёт _swing_target, а не live attack_target — иначе
+			# _process_action_mode может переключить цель между кадрами.
 			print("Атакуем! Урон: ", damage)
 			_pending_attack_damage = damage
+			_swing_target = attack_target
 			_impact_timer = UnitDB.attack_delay(anim_set_name())
 			attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 		elif _impact_timer >= 0.0:
 			_impact_timer -= delta
 			if _impact_timer < 0.0:
 				_impact_timer = -1.0
+				var victim: Node2D = _swing_target if is_instance_valid(_swing_target) else attack_target
+				_swing_target = null
+				if victim == null or not Game.enemies.has(victim):
+					return
+				# Повторная проверка дистанции на кадре удара: цель могла убежать.
+				if Game.units_range(self, victim) > Game.ATTACK_RANGE + 16.0:
+					return
 				# Единая точка: промах по hit_chance(атака, защита), далее Game.deal_damage
 				# (поглощение бронёй → take_damage → щит → HP).
-				if Game.is_miss(self, attack_target):
-					print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(attack_target)))
+				if Game.is_miss(self, victim):
+					print("Промах! Шанс был %d%%." % Game.hit_chance(Game.unit_attack(self), Game.unit_defense(victim)))
 				else:
-					Game.deal_damage(attack_target, _pending_attack_damage, "physical", "", self)
+					Game.deal_damage(victim, _pending_attack_damage, "physical", "", self)
 					_sound_weapon_attack()
-				_apply_attack_experience(attack_target, _pending_attack_damage)
+				_apply_attack_experience(victim, _pending_attack_damage)
 	else:
 		state = "idle"
 		_impact_timer = -1.0
+		_swing_target = null
 
 ## Звук удара оружием героя (Sfx100-160: units\sword|axe|club|bow|cbow|pike|sling).
 func _sound_weapon_attack() -> void:

@@ -1351,8 +1351,14 @@ func cancel_targeting() -> void:
 	if ui != null and ui.has_method("_cancel_targeting"):
 		ui._cancel_targeting()
 
-## Хит-бокс юнита в мире: по sel_box спрайта — кликабельная ВИДИМАЯ область
-## (раньше цель считалась в точке пола — «враг был ниже, чем его видно»).
+## Хит-бокс юнита в мире.
+##
+## Раньше строился из units_db w/h (почти всегда 128) + sel_box. У heroes/*
+## sel_box отсутствовал → заглушка 96×96 → melee «долетал» на 4–5 клеток
+## (жалоба игрока 07.10: «меч, а НПЦ в 5 шагах умирает»).
+##
+## Теперь: если sel_box «настоящий» (не дефолт 96×96 при w=128) — берём его.
+## Иначе — визуальный бокс по tile_size / UnitAnim.visual_height (как кольцо).
 static func unit_hit_rect(u: Node2D) -> Rect2:
 	if not is_instance_valid(u):
 		return Rect2()
@@ -1361,15 +1367,24 @@ static func unit_hit_rect(u: Node2D) -> Rect2:
 		set_name = str(u.get("anim_set"))
 	if set_name == "" and u is Player:
 		set_name = (u as Player).anim_set_name()
-	var w := 128
-	var h := 128
-	var sel := Rect2i(16, 16, 96, 96)
+	var o := {}
 	if set_name != "":
-		var o := UnitDB.get_set(set_name)
-		w = int(o.get("w", 128))
-		h = int(o.get("h", 128))
-		sel = UnitDB.sel_box(set_name)
-	var base := u.global_position + Vector2(-w / 2.0, -h)
+		o = UnitDB.get_set(set_name)
+	var w := int(o.get("w", 128))
+	var sel := UnitDB.sel_box(set_name) if set_name != "" else Rect2i(16, 16, 96, 96)
+	var ts := maxi(1, UnitDB.tile_size(set_name)) if set_name != "" else 1
+	# Дефолт sel_box (96×96) при легаси-канвасе 128 = данные отсутствуют.
+	var sel_missing := w >= 128 and sel.size.x >= 90 and sel.size.y >= 90
+	if sel_missing:
+		# Визуальный корпус: ширина ~24 px на тайл, высота — реальный спрайт.
+		var vw := 24.0 * float(ts)
+		var vh := 40.0 * float(ts)
+		if u.has_node("UnitAnim"):
+			var anim = u.get_node("UnitAnim")
+			if anim != null and anim.has_method("visual_height"):
+				vh = maxf(28.0, float(anim.call("visual_height")) * 0.92)
+		return Rect2(u.global_position + Vector2(-vw * 0.5, -vh), Vector2(vw, vh))
+	var base := u.global_position + Vector2(-w / 2.0, -float(o.get("h", 128)))
 	return Rect2(base + Vector2(sel.position.x, sel.position.y), Vector2(sel.size.x, sel.size.y))
 
 ## Расстояние между КОРПУСАМИ юнитов (хит-бокс к хит-боксу; 0 при пересечении).

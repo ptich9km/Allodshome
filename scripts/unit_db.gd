@@ -166,6 +166,11 @@ static func info_picture(name: String) -> String:
 static func tile_size(name: String) -> int:
 	return int(get_set(name).get("tile_size", 1))
 
+## Семейство для лута: beast | insect | humanoid | undead | monstrous.
+## Читает enemy.gd из assets/config/loot_tables.json. Пусто = default.
+static func loot_family(name: String) -> String:
+	return str(get_set(name).get("loot_family", ""))
+
 ## Зеркалить ли спрайт юнита (Flip=1 — тролли, дракон, летающие).
 static func flip(name: String) -> bool:
 	return int(get_set(name).get("flip", 0)) != 0

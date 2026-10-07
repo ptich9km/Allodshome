@@ -1,0 +1,45 @@
+{
+  "comment": "Лут по семействам юнитов. Читает enemy.gd:_make_loot. Шансы в %, gold_mult множитель к формуле 4+hp/5. gear=0 — звери/насекомые не роняют оружие.",
+  "beast": {
+    "gold_mult": 0.45,
+    "gear_chance": 0,
+    "potion_chance": 12,
+    "herb_chance": 40,
+    "herbs": ["Herb Green Leaf", "Herb Mint", "Herb Tall Grass", "Herb White Flower"]
+  },
+  "insect": {
+    "gold_mult": 0.25,
+    "gear_chance": 0,
+    "potion_chance": 8,
+    "herb_chance": 35,
+    "herbs": ["Herb Green Leaf", "Herb Mint", "Herb Dandelion"]
+  },
+  "humanoid": {
+    "gold_mult": 1.0,
+    "gear_chance": 35,
+    "potion_chance": 45,
+    "herb_chance": 0,
+    "herbs": []
+  },
+  "undead": {
+    "gold_mult": 0.7,
+    "gear_chance": 18,
+    "potion_chance": 8,
+    "herb_chance": 0,
+    "herbs": []
+  },
+  "monstrous": {
+    "gold_mult": 1.15,
+    "gear_chance": 40,
+    "potion_chance": 28,
+    "herb_chance": 5,
+    "herbs": ["Herb Red Berry"]
+  },
+  "default": {
+    "gold_mult": 0.6,
+    "gear_chance": 10,
+    "potion_chance": 20,
+    "herb_chance": 15,
+    "herbs": ["Herb Green Leaf"]
+  }
+}

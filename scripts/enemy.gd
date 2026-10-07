@@ -339,6 +339,10 @@ func take_damage(dmg: int, attacker) -> int:
 		state = "dying"
 		attack_target = null
 		velocity = Vector2.ZERO
+		# Труп не блокирует движение (жалоба: «спотыкаюсь о лут» — это труп
+		# держал collision_layer=1 ещё 5–8 секунд).
+		collision_layer = 0
+		collision_mask = 0
 		if health_bar:
 			health_bar.visible = false  # труп не показывает шкалу
 	else:
@@ -379,19 +383,49 @@ func _relief_here() -> float:
 		return float(map_node.call("relief_at_world", global_position))
 	return 0.0
 
-## Добыча: золото по силе врага + шанс зелья и снаряжения (как «надето на нём»).
+## Добыча по семейству юнита (loot_tables.json + units_db.loot_family).
+## Звери/насекомые: золото + трава, БЕЗ оружия/брони (решение игрока 07.10).
 func _make_loot() -> Array:
+	var family := UnitDB.loot_family(anim_set)
+	if family == "":
+		family = "default"
+	var table := _loot_table(family)
 	var pool: Array = []
+	var gold_mult := float(table.get("gold_mult", 0.6)) * GameConfig.getf("economy", "loot_gold_multiplier")
 	var gold_base := 4 + max_hp / 5
-	var gold_mult := GameConfig.getf("economy", "loot_gold_multiplier")
-	pool.append({"gold": int(round(float(gold_base + randi() % gold_base) * gold_mult))})
-	if randi() % 100 < GameConfig.geti("loot", "enemy_potion_chance"):
+	var gold := int(round(float(gold_base + randi() % gold_base) * gold_mult))
+	if gold > 0:
+		pool.append({"gold": gold})
+	if randi() % 100 < int(table.get("potion_chance", 20)):
 		pool.append({"key": "Potion Medium Healing" if randi() % 2 == 0 else "Potion Mana Regeneration"})
-	if randi() % 100 < GameConfig.geti("loot", "enemy_gear_chance"):
+	if randi() % 100 < int(table.get("gear_chance", 10)):
 		var item := _random_gear()
 		if not item.is_empty():
 			pool.append(item)
+	if randi() % 100 < int(table.get("herb_chance", 0)):
+		var herbs: Array = table.get("herbs", [])
+		if herbs.size() > 0:
+			pool.append({"key": str(herbs[randi() % herbs.size()])})
 	return pool
+
+
+## Таблица лута из assets/config/loot_tables.json (кэш на процесс).
+static var _loot_tables_cache: Dictionary = {}
+static var _loot_tables_loaded: bool = false
+
+
+static func _loot_table(family: String) -> Dictionary:
+	if not _loot_tables_loaded:
+		_loot_tables_loaded = true
+		var path := "res://assets/config/loot_tables.json"
+		if ResourceLoader.exists(path):
+			var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+			if parsed is Dictionary:
+				_loot_tables_cache = parsed as Dictionary
+	var t: Dictionary = _loot_tables_cache.get(family, {})
+	if t.is_empty():
+		t = _loot_tables_cache.get("default", {})
+	return t
 
 ## Случайное снаряжение «по силе врага» (бюджет = HP × 12), из настоящей базы.
 func _random_gear() -> Dictionary:

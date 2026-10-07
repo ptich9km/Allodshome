@@ -244,6 +244,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "humanoid",
   "ids": [
    64
   ],
@@ -341,6 +342,7 @@
   "tile": null,
   "projectile": 3,
   "palette": 5,
+   "loot_family": "humanoid",
   "ids": [
    65
   ],
@@ -433,6 +435,7 @@
   "tile": 2,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "humanoid",
   "ids": [
    68
   ],
@@ -516,6 +519,7 @@
   "tile": 1,
   "projectile": 7,
   "palette": 5,
+   "loot_family": "beast",
   "ids": [
    70
   ],
@@ -701,6 +705,7 @@
   "tile": 1,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "insect",
   "ids": [
    73
   ],
@@ -975,6 +980,7 @@
   "tile": 2,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "humanoid",
   "ids": [
    66
   ],
@@ -1421,6 +1427,7 @@
   "tile": 3,
   "projectile": 12,
   "palette": 5,
+   "loot_family": "monstrous",
   "ids": [
    71
   ],
@@ -1523,6 +1530,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "beast",
   "ids": [
    74
   ],
@@ -1605,6 +1613,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "undead",
   "ids": [
    69
   ],
@@ -2415,6 +2424,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "humanoid",
   "ids": [
    80
   ],
@@ -2508,6 +2518,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "humanoid",
   "ids": [
    81
   ],
@@ -4550,6 +4561,7 @@
   "tile": null,
   "projectile": 3,
   "palette": 1,
+   "loot_family": "humanoid",
   "ids": [
    101
   ],
@@ -4642,6 +4654,7 @@
   "tile": 2,
   "projectile": -1,
   "palette": 4,
+   "loot_family": "humanoid",
   "ids": [
    102
   ],
@@ -4846,6 +4859,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "beast",
   "ids": [
    103
   ],
@@ -4923,6 +4937,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "insect",
   "ids": [
    104
   ],
@@ -5018,6 +5033,7 @@
   "tile": null,
   "projectile": -1,
   "palette": 5,
+   "loot_family": "monstrous",
   "ids": [
    106
   ],
