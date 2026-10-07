@@ -19,7 +19,7 @@ from __future__ import annotations
 import os
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 SOURCE = os.path.join("import", "ChatGPT_OrkMage3.png")
 OUT_ROOT = os.path.join("assets", "units", "ork_mage_a52")
@@ -32,6 +32,10 @@ CANVAS = 64
 FOOT_Y = 62
 TARGET_H = 52
 BG_MAX = 190
+
+# Брак атласа Mage3: колонка В (dir index 6) — тело «на запад», посох как у востока.
+# Лечение: В = H-flip корректного западного профиля З (index 2). Проверено игроком 07.10.
+DIR_MIRROR_FROM = {6: 2}
 
 ROW_BANDS = [(47, 252), (285, 500), (520, 739), (760, 989)]
 COL_BANDS = [
@@ -81,9 +85,17 @@ def try_font(size: int):
 def cut_rows(src: Image.Image, row_bands, col_bands, bg_max: int):
     tiles = {}
     for tier, (y0, y1) in enumerate(row_bands):
+        raw = {}
         for d, (x0, x1) in enumerate(col_bands):
             cell = src.crop((x0, y0, x1 + 1, y1 + 1))
-            tiles[(tier, d)] = fit_cell(cell, bg_max)
+            raw[d] = fit_cell(cell, bg_max)
+        for d, im in raw.items():
+            if d in DIR_MIRROR_FROM:
+                src_d = DIR_MIRROR_FROM[d]
+                tiles[(tier, d)] = ImageOps.mirror(raw[src_d])
+                print("dir %d = flip(%d) tier t%d" % (d, src_d, tier))
+            else:
+                tiles[(tier, d)] = im
         print("tier t%d done" % tier)
     return tiles
 
