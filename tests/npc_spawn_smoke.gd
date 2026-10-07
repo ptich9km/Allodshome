@@ -166,28 +166,30 @@ func _run() -> void:
 
 ## Читает POI_KINDS прямо из исходника генератора: тест должен проверять
 ## ИМЕННО то, что напишет игрок в коде, а не свою копию списка.
+## 07.10: ENCOUNTER_KINDS (боевые ульи/логова) — ОТДЕЛЬНАЯ система, не POI.
+## POI — статичные точки без боя; их список по-прежнему пуст.
 func _code_poi_sets() -> Dictionary:
 	var out := {}
 	if not FileAccess.file_exists("res://scripts/world/map_generator.gd"):
 		return out
 	var text := FileAccess.get_file_as_string("res://scripts/world/map_generator.gd")
-	for line in text.split("\n"):
+	# Берём только блок POI_KINDS := [...], не ENCOUNTER_KINDS
+	var poi_start := text.find("POI_KINDS")
+	if poi_start < 0:
+		return out
+	var poi_end := text.find("\n]", poi_start)
+	if poi_end < 0:
+		poi_end = poi_start + 400
+	var block := text.substr(poi_start, poi_end - poi_start)
+	if block.find("[]") >= 0 or block.find("{ }") >= 0:
+		return out
+	for line in block.split("\n"):
 		if not line.contains("\"kind\":"):
 			continue
 		var kind := _extract(line, "\"kind\": \"", "\"")
 		if kind == "":
 			continue
-		var sets: Array = []
-		var sets_part := ""
-		var idx := text.find("\"sets\": [", text.find("\"kind\": \"" + kind + "\""))
-		if idx < 0:
-			continue
-		sets_part = text.substr(idx, 200)
-		for piece in sets_part.substr(sets_part.find("[") + 1).split("]")[0].split(","):
-			var nm := piece.strip_edges().replace("\"", "")
-			if nm != "":
-				sets.append(nm)
-		out[kind] = sets
+		out[kind] = ["(poi)"]
 	return out
 
 
