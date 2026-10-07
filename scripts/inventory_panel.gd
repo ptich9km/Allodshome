@@ -356,9 +356,8 @@ func _on_slot_clicked(slot: String) -> void:
 		return
 	var key := str(player.equipped.get(slot, ""))
 	if key != "":
+		# unequip_slot сам возвращает ключ в склад (модель A, player.gd).
 		if player.unequip_slot(slot):
-			if not player.has_item(key):
-				player.add_item(key)
 			SoundDB.play(6)
 			_set_slot_highlight("")
 			_refresh_inventory_grid()

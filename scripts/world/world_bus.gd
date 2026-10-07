@@ -14,6 +14,9 @@ extends Node
 var state   # WorldState  — слой-1 ДАННЫЕ (RefCounted)
 var sim     # WorldSim    — слой-2 СИМ (RefCounted)
 
+## Аккумулятор тика великого мага (реальное время, сек).
+var _archmage_acc := 0.0
+
 
 func _ready() -> void:
 	var st_script: GDScript = load("res://scripts/world/world_state.gd")
@@ -24,8 +27,9 @@ func _ready() -> void:
 
 
 func reseed() -> void:
-	var f_h: Dictionary = state.new_faction("Люди")
-	var f_e: Dictionary = state.new_faction("Орки")
+	# race = Game.hero_race (human|ork|necro|druid); archmage создаётся в new_faction.
+	var f_h: Dictionary = state.new_faction("Люди", "human")
+	var f_e: Dictionary = state.new_faction("Орки", "ork")
 	var r: Dictionary = state.new_region("Черноземье")
 	var c_h: Dictionary = state.new_city("Речной Пост", f_h.id, r.id)
 	var c_e: Dictionary = state.new_city("Кровавый Бор", f_e.id, r.id)
@@ -50,3 +54,33 @@ func snapshot() -> Dictionary:
 		"cities": state.cities.size(), "armies": state.armies.size(),
 		"units": state.units.size(), "journal": state.journal.size(),
 	}
+
+
+func _process(delta: float) -> void:
+	archmage_tick(delta)
+
+
+## Тик могущества великих магов по реальному времени.
+## Сим-мир НЕ тикает (решение игрока) — только маги.
+## Возвращает, сколько тиков прошло.
+func archmage_tick(delta: float) -> int:
+	if state == null or sim == null:
+		return 0
+	var interval := 20.0
+	var cfg: GDScript = load("res://scripts/game_config.gd")
+	if cfg != null:
+		interval = cfg.getf("archmage", "sim_interval")
+	if interval <= 0.0:
+		return 0
+	_archmage_acc += delta
+	var n := 0
+	while _archmage_acc >= interval:
+		_archmage_acc -= interval
+		sim.tick_archmages()
+		n += 1
+	return n
+
+
+## Сброс аккумулятора (тесты, reload мира).
+func reset_archmage_timer() -> void:
+	_archmage_acc = 0.0

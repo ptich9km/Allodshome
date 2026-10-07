@@ -5,9 +5,8 @@ signal closed
 
 const MAX_PARTY := 4
 const CANDIDATES := [
-	"humans/swordsman", "humans/axeman", "humans/clubman", "humans/pikeman_",
-	"humans/archer", "humans/xbowman", "humans/swordsman2", "humans/cavalrysword",
-	"humans/mage_st", "monsters/orc_good",
+	"ork_mage/t0", "ork_mage/t1", "ork_mage/t2", "ork_mage/t3",
+	"monsters/orc_good",
 ]
 const TALK_LINES := [
 	"Говорят, на севере всё больше диких зверей... Охрана у ворот не справляется.",

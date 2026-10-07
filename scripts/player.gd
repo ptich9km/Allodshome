@@ -519,8 +519,9 @@ func _equipped_items() -> Array:
 			out.append(it)
 	return out
 
-## Надеть предмет: запоминаем ключ в слоте и обновляем набор анимации.
-## Кольцо надевается в первый свободный слот ring1/ring2.
+## Надеть предмет: ключ уходит из склада в слот (модель A — надетое живёт
+## только в equipped). Свап в том же слоте возвращает старый ключ в склад.
+## Двуручник снимает щит — щит тоже возвращается в склад.
 ## true, если предмет экипирован.
 func equip_item(item: Dictionary) -> bool:
 	if not ItemDB.is_equippable(item):
@@ -532,7 +533,9 @@ func equip_item(item: Dictionary) -> bool:
 		slot = "ring1" if str(equipped.get("ring1", "")) == "" else "ring2"
 	if slot == "shield" and two_handed:
 		return false
-	equipped[slot] = str(item.get("key", ""))
+	var key := str(item.get("key", ""))
+	var old := str(equipped.get(slot, ""))
+	equipped[slot] = key
 	match slot:
 		"body":
 			armor_kind = ItemDB.armor_kind(item)
@@ -541,20 +544,28 @@ func equip_item(item: Dictionary) -> bool:
 			two_handed = ItemDB.is_two_handed(item)
 			if two_handed:
 				has_shield = false
+				var shield_key := str(equipped.get("shield", ""))
 				equipped.erase("shield")
+				if shield_key != "" and shield_key != key:
+					add_item(shield_key)
 		"shield":
 			has_shield = true
+	if old != "" and old != key:
+		add_item(old)
+	remove_item(key)
 	refresh_animation()
 	return true
 
-## Снять предмет со слота: ключ возвращается в инвентарь UI-слоем (add_item),
-## здесь — только очистка слота и пересчёт набора анимации. true — был надет.
+## Снять предмет со слота: ключ возвращается в склад (модель A).
+## true — был надет.
 func unequip_slot(slot: String) -> bool:
 	if slot not in ItemDB.EQUIP_SLOTS:
 		return false
-	if str(equipped.get(slot, "")) == "":
+	var key := str(equipped.get(slot, ""))
+	if key == "":
 		return false
 	equipped.erase(slot)
+	add_item(key)
 	match slot:
 		"weapon":
 			weapon = "unarmed"

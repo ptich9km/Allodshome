@@ -153,7 +153,7 @@ const DEFAULTS := {
 		"mid.citizen_hp": 30,
 		"mid.citizen_count_min": 6,    "mid.citizen_count_max": 10,
 		"mid.captain_hp": 120,         "mid.captain_damage": 12,
-		"mid.interest_points": 3,
+		"mid.interest_points": 0,
 		"mid.poi_hp": 60,             "mid.poi_damage": 6,
 		"mid.tree_density": 0.08,
 
@@ -166,7 +166,7 @@ const DEFAULTS := {
 		"hard.citizen_hp": 30,
 		"hard.citizen_count_min": 6,   "hard.citizen_count_max": 10,
 		"hard.captain_hp": 120,        "hard.captain_damage": 12,
-		"hard.interest_points": 4,
+		"hard.interest_points": 0,
 		"hard.poi_hp": 60,            "hard.poi_damage": 6,
 		"hard.tree_density": 0.10,
 
@@ -179,7 +179,7 @@ const DEFAULTS := {
 		"faction.citizen_hp": 30,
 		"faction.citizen_count_min": 6, "faction.citizen_count_max": 10,
 		"faction.captain_hp": 120,     "faction.captain_damage": 12,
-		"faction.interest_points": 3,
+		"faction.interest_points": 0,
 		"faction.poi_hp": 60,         "faction.poi_damage": 6,
 		"faction.tree_density": 0.09,
 	},

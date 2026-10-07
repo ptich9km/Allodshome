@@ -109,7 +109,7 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 10
+const GEN_VERSION := 11
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -387,9 +387,11 @@ const DECOR_FOLDERS := ["barracks1"]
 const ZONES_WITH_PORTAL := ["start", "mid"]
 
 # НПЦ городов.
-const GUARD_SETS := ["humans/swordsman", "humans/archer", "humans/pikeman_"]
-const CITIZEN_SETS := ["humans/unarmed", "humans/clubman", "humans/axeman", "humans/mage_st"]
-const CAPTAIN_SET := "humans/cavalrysword"
+## Городские NPC — орк-маги (assets/wip/characters/ork_mage → assets/units/ork_mage).
+## Аллодовские humans/* из городского спавна убраны (07.10). Ступени t0..t3.
+const GUARD_SETS := ["ork_mage/t1", "ork_mage/t2"]
+const CITIZEN_SETS := ["ork_mage/t0", "ork_mage/t1"]
+const CAPTAIN_SET := "ork_mage/t3"
 
 # Объекты по биому: подходящие ID из alm_objects.json.
 const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]
@@ -845,12 +847,8 @@ func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool, hp: 
 ## Выключено по умолчанию: interest_points = 0 во всех зонах ([zone]).
 ## Пока игрок не поднимет число, поведение игры не отличается от прежнего.
 const POI_KINDS := [
-	# kind -> наборы NPC. Наборы проверены по assets/units/units_db.json:
-	# humans/militia из заметок §8.2 В БАЗЕ НЕТ, militia не существует —
-	# поставил реальные. Ошибку поймал тест npc_spawn_smoke, не ревью.
-	{"kind": "camp",   "sets": ["humans/clubman", "humans/axeman"], "label": "Стоянка"},
-	{"kind": "ruins",  "sets": ["humans/archer", "humans/xbowman"], "label": "Руины"},
-	{"kind": "shrine", "sets": ["humans/swordsman_", "humans/pikeman_"], "label": "Святилище"},
+	# Аллодовские humans/* убраны (07.10). Пока арта мало — точки выключены
+	# (interest_points=0). Под ork_mage вернём, когда будет достаточно ступеней.
 ]
 
 ## Минимальные дистанции POI (клетки). Отдельны от трав: точка интереса

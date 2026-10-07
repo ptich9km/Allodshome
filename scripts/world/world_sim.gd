@@ -53,6 +53,90 @@ func TickFactions() -> void:
 			f["mood"] = "_calm"
 
 
+## Спад могущества великого мага за ОДИН тик (реальное время, не sim-day).
+## Возвращает НОВОЕ power (0..power_max), а не величину спада.
+## Числа: [archmage] в game.cfg — проверены tests/sim_archmage_stakes.py.
+func TickArchmage(power: float, threat: float) -> float:
+	var max_power := 100.0
+	var cfg = load("res://scripts/game_config.gd")
+	if cfg != null:
+		max_power = cfg.getf("archmage", "power_max")
+	var d := _archmage_decay(threat)
+	return clampf(power - d, 0.0, max_power)
+
+
+func _archmage_decay(threat: float) -> float:
+	var base := 0.0005
+	var per_threat := 0.0015
+	var cfg = load("res://scripts/game_config.gd")
+	if cfg != null:
+		base = cfg.getf("archmage", "decay_base")
+		per_threat = cfg.getf("archmage", "decay_threat")
+	return base + per_threat * threat
+
+
+## Тик всех великих магов: спад + смена ступени (ровно одна запись в журнал).
+## Вызывается ТОЛЬКО из WorldBus.archmage_tick — не из sim.tick().
+func tick_archmages() -> void:
+	_tick_archmages()
+
+
+func _tick_archmages() -> void:
+	if state == null:
+		return
+	for fid: String in state.factions:
+		var f: Dictionary = state.factions[fid]
+		var am: Variant = f.get("archmage", null)
+		if not (am is Dictionary):
+			continue
+		var a: Dictionary = am
+		if a.is_empty():
+			continue
+		var old_power := float(a.get("power", 0.0))
+		var old_tier := int(a.get("tier", 1))
+		var new_power := TickArchmage(old_power, state.global_threat)
+		var new_tier := _archmage_tier(new_power)
+		var new_stance := _archmage_stance(new_power)
+		a["power"] = new_power
+		a["tier"] = new_tier
+		a["stance"] = new_stance
+		f["archmage"] = a
+		if new_tier != old_tier:
+			var city := str(a.get("city", f.get("name", fid)))
+			var mname := str(a.get("name", "маг"))
+			if new_tier > old_tier:
+				_log("archmage", "%s: %s крепче (ступень %d)" % [city, mname, new_tier])
+			else:
+				_log("archmage", "%s: %s слабеет (ступень %d)" % [city, mname, new_tier])
+
+
+func _archmage_tier(power: float) -> int:
+	var cfg = load("res://scripts/game_config.gd")
+	if cfg == null:
+		if power >= 90.0:
+			return 3
+		if power >= 65.0:
+			return 2
+		if power >= 35.0:
+			return 1
+		return 0
+	if power >= cfg.getf("archmage", "tier_3"):
+		return 3
+	if power >= cfg.getf("archmage", "tier_2"):
+		return 2
+	if power >= cfg.getf("archmage", "tier_1"):
+		return 1
+	return 0
+
+
+func _archmage_stance(power: float) -> String:
+	var thr := 35.0
+	var cfg = load("res://scripts/game_config.gd")
+	if cfg != null:
+		thr = cfg.getf("archmage", "tier_1")
+	return "offensive" if power >= thr else "defensive"
+
+
 # --- 3. Армии ------------------------------------------------------------------
 func TickArmies() -> void:
 	var killed: Array[String] = []

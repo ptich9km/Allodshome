@@ -11,6 +11,10 @@ class_name AlmMap
 const TILE := 32
 # Высота меша на 1 единицу высоты карты (оригинал рисует 1:1)
 const HEIGHT_SCALE := 1.0
+## Потолок BFS в find_path. 192×192 = 36864 клеток на клик — кадр убивает.
+## При превышении путь обрывается (пустой массив), герой идёт напрямую.
+## Как понадобится качество путей — A* вытеснит BFS (замена одной функции).
+const BFS_MAX_CELLS := 12000
 
 var map_width: int = 0
 var map_height: int = 0
@@ -1036,8 +1040,14 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 	var prev := {}
 	var queue: Array = [start]
 	var seen := {start: true}
+	var expanded := 0
 	while not queue.is_empty():
+		if expanded >= BFS_MAX_CELLS:
+			# Лимит: цель далеко/в лабиринте — не морозим кадр.
+			# Пустой путь = движение напрямую в move_to_target.
+			return []
 		var cur: Vector2i = queue.pop_front()
+		expanded += 1
 		if cur == goal:
 			break
 		for d in _DIRS_8:

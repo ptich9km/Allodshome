@@ -161,7 +161,57 @@ func _run() -> void:
 		var sz: Vector2 = first.custom_minimum_size
 		_check(sz.x >= 56 and sz.y >= 56, "ячейка не мелкая (%.0fx%.0f)" % [sz.x, sz.y])
 
+	# 6. Модель A: надетое не дублируется в складе.
+	await _model_a_equip_hides_from_storage(player, inv)
+
 	_report()
+
+
+## Склад: 2 одинаковых предмета → надели 1 → в inventory остался 1.
+func _model_a_equip_hides_from_storage(player, inv: Node) -> void:
+	var sword_key := ""
+	for raw in ItemDB.all():
+		var it: Dictionary = raw
+		if ItemDB.slot_of(it) == "weapon" and ItemDB.is_equippable(it):
+			sword_key = str(it.get("key", ""))
+			break
+	if sword_key == "":
+		_check(false, "в базе есть оружие для model A")
+		return
+	player.inventory.append(sword_key)
+	player.inventory.append(sword_key)
+	player.equipped.erase("weapon")
+	inv.call("_refresh_inventory_grid")
+	await _frame()
+	var inv_before: int = player.inventory.count(sword_key)
+	_check(inv_before == 2, "до экипировки в inventory 2 шт (=%d)" % inv_before)
+	var slots_now: Array = inv.get("_inventory_slots")
+	_check(slots_now.size() > 0, "ячейки склада пересобраны")
+	var ok: bool = player.equip_item(ItemDB.find(sword_key))
+	_check(ok, "оружие надевается")
+	inv.call("_refresh_inventory_grid")
+	await _frame()
+	var inv_after: int = player.inventory.count(sword_key)
+	_check(inv_after == 1,
+		"после экипировки в inventory 1 шт, не дубль (=%d)" % inv_after)
+	_check(str(player.equipped.get("weapon", "")) == sword_key, "оружие в слоте")
+	# В сетке склада не должно быть ВТОРОЙ ячейки с тем же ключом
+	var key_cells := 0
+	var items_now: Array = inv.get("_inventory_items")
+	for it in items_now:
+		if str((it as Dictionary).get("key", "")) == sword_key:
+			key_cells += 1
+	_check(key_cells == 1, "в сетке склада 1 ячейка с этим ключом (=%d)" % key_cells)
+	if player.unequip_slot("weapon"):
+		inv.call("_refresh_inventory_grid")
+		await _frame()
+		var inv_back: int = player.inventory.count(sword_key)
+		_check(inv_back == 2, "после снятия в inventory снова 2 (=%d)" % inv_back)
+
+
+func _frame() -> void:
+	await process_frame
+	await process_frame
 
 ## Несколько реальных ключей из item_db.
 ## Первый узел дерева node, совпадающий с именем класса. Нужно, потому что

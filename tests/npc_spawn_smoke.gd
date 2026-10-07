@@ -57,23 +57,16 @@ func _run() -> void:
 	var units := _unit_names()
 	_check(units.size() > 0, "units_db читается (%d наборов)" % units.size())
 
-	# POI_KINDS продублирован здесь намеренно: тест должен видеть СВОЙ список,
-	# а не тот же объект, что и код. Иначе правка кода тихо починит тест.
-	var kinds := {
-		"camp": ["humans/clubman", "humans/axeman"],
-		"ruins": ["humans/archer", "humans/xbowman"],
-		"shrine": ["humans/swordsman_", "humans/pikeman_"],
-	}
-	# и сверяем с кодом, чтобы расхождение тоже было ошибкой
-	var code_kinds := _code_poi_sets()
-	_check(code_kinds.size() == kinds.size(),
-		"в коде столько же видов точек, сколько в тесте (%d)" % code_kinds.size())
+	for key in ["ork_mage/t0", "ork_mage/t1", "ork_mage/t2", "ork_mage/t3"]:
+		_check(units.has(key), "набор %s есть в units_db" % key)
 
-	for kind in kinds:
-		for set_name in kinds[kind]:
-			_check(units.has(set_name), "набор %s для точки '%s' существует" % [set_name, kind])
-			_check(code_kinds.get(kind, []).has(set_name),
-				"код использует %s для '%s' (тест и код совпадают)" % [set_name, kind])
+	# POI выключены (решение игрока 07.10: арта мало, interest_points=0).
+	var kinds := {}
+	var code_kinds := _code_poi_sets()
+	_check(code_kinds.is_empty(),
+		"POI_KINDS в коде пуст (аллодовские humans/* убраны, POI off)")
+	_check(kinds.size() == code_kinds.size(),
+		"тест и код согласованы по POI (0 == 0)")
 
 	print("-- выключено по умолчанию --")
 	var cfg := ConfigFile.new()
@@ -84,23 +77,19 @@ func _run() -> void:
 		return
 	_check(true, "game.cfg грузится")
 
-	## Сколько точек интереса в каждой зоне (решение игрока 03.10: минимум 3-4,
-	## далеко от города; зона новичка остаётся тихой).
-	var want_poi := {"start": 0, "mid": 3, "hard": 4, "faction": 3}
+	# Все зоны: interest_points = 0 (пока арта мало).
+	var want_poi := {"start": 0, "mid": 0, "hard": 0, "faction": 0}
 
 	for zone in ZONES:
 		var n := int(cfg.get_value("zone", "%s.interest_points" % zone, -999))
-		# Контракт поменян 03.10: точки интереса ВКЛЮЧЕНЫ в mid/hard/faction,
-		# а зона новичка осталась тихой. Раньше здесь стояло «interest_points == 0
-		# во всех зонах», то есть тест сторожил ОТКЛЮЧЁННУЮ функцию.
 		_check(n == int(want_poi.get(zone, 0)),
-			"точки интереса в зоне %s = %d (ожидалось %d)" % [zone, n, int(want_poi.get(zone, 0))])
+			"interest_points в зоне %s = %d (ожидалось 0)" % [zone, n])
 		_check(int(cfg.get_value("zone", "%s.poi_hp" % zone, 0)) > 0,
 			"у зоны %s заданы статы NPC точки (poi_hp)" % zone)
 		_check(int(cfg.get_value("zone", "%s.poi_damage" % zone, -1)) >= 0,
 			"у зоны %s задан урон NPC точки (poi_damage)" % zone)
 
-	print("-- точки интереса появились на карте --")
+	print("-- городские NPC — ork_mage, без humans --")
 	if not FileAccess.file_exists(MAP_NPCS):
 		print("  (карта %s отсутствует — проверка пропущена)" % MAP_NPCS)
 	else:
@@ -109,25 +98,34 @@ func _run() -> void:
 		if parsed is Dictionary:
 			npcs = (parsed as Dictionary).get("npcs", [])
 		var poi := 0
-		var poi_cells := {}
-		for n in npcs:
-			var d: Dictionary = n
-			if not d.has("poi"):
-				continue
-			poi += 1
-			# ровно один NPC на клетке точки: в кластере не должно быть
-			# наложений (такой же баг был с Серыми)
-			poi_cells["%s:%d,%d" % [str(d["poi"]), int(d.get("x", 0)), int(d.get("y", 0))]] = true
-		_check(poi > 0, "в закоммиченной карте точки интереса есть (найдено NPC: %d)" % poi)
-		var poi_kinds := {}
-		for n2 in npcs:
-			var d2: Dictionary = n2
-			if d2.has("poi"):
-				poi_kinds[str(d2["poi"])] = true
-		_check(poi_kinds.size() >= 2, "точки интереса разных видов (видов: %d)" % poi_kinds.size())
-		# все NPC одной точки должны быть рядом друг с другом (это кластер)
-		_check(poi_cells.size() == poi,
-			"на каждой клетке точки ровно один NPC (клеток: %d, NPC: %d)" % [poi_cells.size(), poi])
+		var city_sets := {}
+		var humans_left := 0
+		var guards := 0
+		var citizens := 0
+		for n3 in npcs:
+			var d3: Dictionary = n3
+			if d3.has("poi"):
+				poi += 1
+			var role := str(d3.get("role", ""))
+			var setn := str(d3.get("set", ""))
+			if role == "guard" or role == "citizen":
+				city_sets[setn] = true
+				if role == "guard":
+					guards += 1
+				else:
+					citizens += 1
+				if setn.begins_with("humans/"):
+					humans_left += 1
+		_check(poi == 0, "на карте нет POI (найдено: %d)" % poi)
+		_check(city_sets.size() > 0, "городские NPC на карте есть (наборов: %d)" % city_sets.size())
+		_check(humans_left == 0,
+			"аллодовские humans/* в городе не спавнятся (найдено: %d)" % humans_left)
+		for setn2 in city_sets:
+			_check(str(setn2).begins_with("ork_mage/"),
+				"городской набор %s — ork_mage" % setn2)
+			_check(units.has(str(setn2)), "набор %s существует в units_db" % setn2)
+		_check(guards > 0, "на карте есть стражи (%d)" % guards)
+		_check(citizens > 0, "на карте есть жители (%d)" % citizens)
 
 	print("-- Серые разведены по карте --")
 	# Жалоба игрока 03.10: «1 Серый на карте». Замер показал 15 Серых на 6

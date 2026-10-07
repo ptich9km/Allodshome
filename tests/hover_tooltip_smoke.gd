@@ -53,6 +53,8 @@ func _test_factions(ui) -> void:
 		"monsters/skeleton": "Пожинатели",
 		"monsters/zombie": "Пожинатели",
 		"humans/swordsman": "Альянс Света",
+		"ork_mage/t1": "Орды Огня",
+		"ork_mage/t3": "Орды Огня",
 		"monsters/bat": "Серые",
 		"monsters/druid": "Круг Друидов",
 	}

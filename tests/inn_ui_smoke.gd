@@ -7,7 +7,7 @@ extends SceneTree
 ## Запуск: godot --headless --path . --script res://tests/inn_ui_smoke.gd
 
 const SIZES := [Vector2i(1280, 800), Vector2i(1280, 600)]
-const EXPECTED_CANDIDATES := 10
+const EXPECTED_CANDIDATES := 5
 const CELL_COLUMNS := 4
 
 var _fails: Array[String] = []

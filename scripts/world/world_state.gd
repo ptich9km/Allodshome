@@ -79,10 +79,176 @@ func new_city(name: String, faction_id: String = "", region_id: String = "") -> 
 	}
 	return cities[id]
 
-func new_faction(name: String) -> Dictionary:
+func new_faction(name: String, race: String = "") -> Dictionary:
 	var id := _id("f")
-	factions[id] = { "id": id, "name": name, "color": Color(1,1,1), "relations": {} }
-	return factions[id]
+	var f: Dictionary = {
+		"id": id, "name": name, "color": Color(1, 1, 1),
+		"relations": {}, "race": race,
+	}
+	f["archmage"] = _seed_archmage(race)
+	factions[id] = f
+	return f
+
+
+## Великий маг фракции. Данные — из Lore + GameConfig через load-by-path:
+## world_state без class_name (headless-canon), ссылки по имени класса запрещены.
+static func _seed_archmage(race: String) -> Dictionary:
+	var seed_d: Dictionary = {}
+	var lore = load("res://scripts/lore.gd")
+	if lore != null and race != "":
+		seed_d = lore.archmage_seed(race) as Dictionary
+	var power := 60.0
+	var tier := 1
+	var stance := "offensive"
+	var cfg = load("res://scripts/game_config.gd")
+	if cfg != null:
+		power = cfg.getf("archmage", "power_start")
+		tier = _tier_of_loaded(power, cfg)
+		stance = _stance_of_loaded(power, cfg)
+	var out: Dictionary = {
+		"name": str(seed_d.get("name", "")),
+		"race": race,
+		"city": str(seed_d.get("city", "")),
+		"power": power,
+		"tier": tier,
+		"stance": stance,
+		"speak_to": str(seed_d.get("speak_to", race)),
+	}
+	return out
+
+
+static func _cfg() -> Variant:
+	return load("res://scripts/game_config.gd")
+
+
+static func _tier_of_loaded(power: float, cfg: Variant) -> int:
+	if cfg == null:
+		if power >= 90.0:
+			return 3
+		if power >= 65.0:
+			return 2
+		if power >= 35.0:
+			return 1
+		return 0
+	if power >= cfg.getf("archmage", "tier_3"):
+		return 3
+	if power >= cfg.getf("archmage", "tier_2"):
+		return 2
+	if power >= cfg.getf("archmage", "tier_1"):
+		return 1
+	return 0
+
+
+static func _stance_of_loaded(power: float, cfg: Variant) -> String:
+	var thr := 35.0
+	if cfg != null:
+		thr = cfg.getf("archmage", "tier_1")
+	return "offensive" if power >= thr else "defensive"
+
+
+## Ступень по power (0..3). Пороги из [archmage], дефолты как в GDD.
+static func archmage_tier(power: float) -> int:
+	return _tier_of_loaded(power, _cfg())
+
+
+static func archmage_stance(power: float) -> String:
+	return _stance_of_loaded(power, _cfg())
+
+
+## Ставка платы из [archmage]. kind: ingot | gold | potion.
+## Литералы ключей обязаны быть в коде — сторож config_dead_keys_smoke.
+const ARCHMAGE_STAKE_KEYS := {
+	"ingot": "stake_ingot",
+	"gold": "stake_gold",
+	"potion": "stake_potion",
+}
+
+
+static func archmage_stake(kind: String) -> float:
+	var key := str(ARCHMAGE_STAKE_KEYS.get(kind, ""))
+	if key == "":
+		return 0.0
+	var cfg = _cfg()
+	if cfg == null:
+		return 0.0
+	return cfg.getf("archmage", key)
+
+
+## Сколько золота даёт одна единица платы (100 = 1.0 от золота).
+static func archmage_gold_per_stake() -> int:
+	var cfg = _cfg()
+	if cfg == null:
+		return 100
+	return cfg.geti("archmage", "gold_per_stake")
+
+
+## Маг фракции по id фракции ИЛИ по Game.hero_race (human/ork/necro/druid).
+## Старый сейв без archmage -> {} (без падения).
+func get_archmage(faction_or_race: String) -> Dictionary:
+	if faction_or_race == "":
+		return {}
+	if factions.has(faction_or_race):
+		var f0: Dictionary = factions[faction_or_race]
+		return f0.get("archmage", {}) as Dictionary
+	var want := faction_or_race
+	# human -> humans (ключ world.json), если ищем по расе героя
+	var lore = load("res://scripts/lore.gd")
+	if lore != null:
+		want = lore.hero_race_to_faction(faction_or_race) as String
+	for fid in factions:
+		var f: Dictionary = factions[fid]
+		if str(f.get("race", "")) == faction_or_race:
+			return f.get("archmage", {}) as Dictionary
+		if str(f.get("race", "")) == want:
+			return f.get("archmage", {}) as Dictionary
+		var am0: Dictionary = f.get("archmage", {}) as Dictionary
+		if str(am0.get("speak_to", "")) == want or str(am0.get("speak_to", "")) == faction_or_race:
+			return am0
+	return {}
+
+
+## Сдать ресурс: power += amount. Возвращает сколько tier'ов изменилось
+## (может быть отрицательным, если сдача мала и power не пересекает порог —
+## прирост всегда >= 0, знак нужен для журнала).
+func add_archmage_power(faction_or_race: String, amount: float) -> int:
+	var f := _faction_for_archmage(faction_or_race)
+	if f.is_empty():
+		return 0
+	var am: Dictionary = f.get("archmage", {}) as Dictionary
+	if am.is_empty():
+		return 0
+	var cfg = _cfg()
+	var power_max := 100.0
+	if cfg != null:
+		power_max = cfg.getf("archmage", "power_max")
+	var old_power := float(am.get("power", 0.0))
+	var old_tier := int(am.get("tier", archmage_tier(old_power)))
+	var new_power := clampf(old_power + amount, 0.0, power_max)
+	var new_tier := archmage_tier(new_power)
+	am["power"] = new_power
+	am["tier"] = new_tier
+	am["stance"] = archmage_stance(new_power)
+	f["archmage"] = am
+	return new_tier - old_tier
+
+
+func _faction_for_archmage(faction_or_race: String) -> Dictionary:
+	if factions.has(faction_or_race):
+		return factions[faction_or_race]
+	var want := faction_or_race
+	var lore = load("res://scripts/lore.gd")
+	if lore != null:
+		want = lore.hero_race_to_faction(faction_or_race) as String
+	for fid in factions:
+		var f: Dictionary = factions[fid]
+		if str(f.get("race", "")) == faction_or_race:
+			return f
+		if str(f.get("race", "")) == want:
+			return f
+		var am: Dictionary = f.get("archmage", {}) as Dictionary
+		if str(am.get("speak_to", "")) == want:
+			return f
+	return {}
 
 func new_army(faction_id: String, pos: Vector2 = Vector2.ZERO) -> Dictionary:
 	var id := _id("a")

@@ -219,7 +219,7 @@ func _test_select_ring() -> void:
 	# w/h в units_db.json НЕТ — там есть tile_size. Проверяем на наборе,
 	# где размер реально отличается, чтобы заглушка 128 не прошла случайно.
 	var sizes: Array = []
-	for set_name in ["humans/militia", "monsters/orc", "monsters/troll"]:
+	for set_name in ["ork_mage/t0", "monsters/orc", "monsters/troll"]:
 		var ts := UnitDB.tile_size(set_name)
 		sizes.append(ts)
 	_check(sizes.size() == 3, "tile_size читается для трёх наборов: %s" % str(sizes))

@@ -4,7 +4,7 @@
 Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
 > Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
-> Последнее обновление: 06.10 — портреты рас: нарезка переписана, 2 инварианта с мутациями. **Проверено игроком.**
+> Последнее обновление: 07.10 — инвентарь модель A + город на ork_mage. **Проверено игроком: склад ок, рост NPC ок. Коммит не делал.**
 
 ## Содержание
 
@@ -347,14 +347,25 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 
 ### 10.0 Роли и субагенты (обязательно для нетривиальных задач)
 
-Роли описаны в `.agents/` (шаблоны ответов). Агент **сам** отыгрывает роли по этим файлам; при необходимости — `Task` → `explore` для исследования кода. Полные GDD/TDD/QA — отдельными блоками в ответе, не «в голове».
+Роли описаны в **`.opencode/agent/`** — каталог субагентов opencode, закоммичен в репо. У каждого `mode: subagent` и permission-ограничения в frontmatter (кто что может править/запускать). Агент **сам** отыгрывает роль по этим шаблонам в ответе **или** вызывает субагента через `Task`; при необходимости — `Task` → `explore` для исследования кода. Полные GDD/TDD/QA — отдельными блоками, не «в голове».
 
-| Роль | Файл | Когда | Артефакт |
-|------|------|-------|----------|
-| **Сценарист** | `.agents/narrative.md` | Новая фича, UX, баланс, «что видит игрок» | **GDD**: Feature Pitch, Player Experience, Rules & Numbers, Edge Cases, Acceptance Criteria |
-| **Архитектор** | `.agents/architect.md` | После GDD или уточнённого ТЗ | **TDD**: Assumptions, System Overview, Components, Data Flow, Interfaces, Risks |
-| **QA** | `.agents/qa.md` | После реализации (и в чек-листе до кода) | **Verified / Broken / Partial** + `file:line`; smoke + ручной чек-лист |
-| **Explorer** | built-in `Task`/`explore` | **Не для каждой задачи** — только когда нужен разбор чужого/сложного кода | Краткий отчёт: что где лежит, file:line, риски |
+⚠️ Скилы §11 лежат в **`.agents/skills/`** (в `.gitignore`, в репо не идут) — это другой каталог, с ролями не путать.
+
+| Роль | Файл | Когда | Артефакт | Permission (frontmatter) |
+|------|------|-------|----------|--------------------------|
+| **Сценарист** | `.opencode/agent/narrative.md` | Новая фича, UX, лор, баланс, «что видит игрок» | **GDD**: Feature Pitch, Player Experience, Rules & Numbers, Edge Cases, Acceptance Criteria | `edit` только `assets/lore/**` + `docs/lore/**`; `bash`/`web` deny |
+| **Архитектор** | `.opencode/agent/architect.md` | После GDD или уточнённого ТЗ | **TDD**: Assumptions, System Overview, Components, Data Flow, Interfaces, Risks | `edit` deny; `bash`/`web` allow |
+| **QA** | `.opencode/agent/qa.md` | После реализации (и в чек-листе до кода) | **Verified / Broken / Partial** + `file:line`; smoke + ручной чек-лист | `edit` deny; `bash` allow; `web` deny |
+| **X4-моды** | `.opencode/agent/x4-mods.md` | Исследование чужой мод-среды X4 и что переносимо | Отчёт-текст: идея → переносимость → цена; файлов не создаёт | `edit`/`bash` deny; `web` allow |
+| **Explorer** | built-in `Task`/`explore` | **Не для каждой задачи** — только когда нужен разбор чужого/сложного кода | Краткий отчёт: что где лежит, file:line, риски | — |
+
+**Как вызывать:**
+
+- **Самому по шаблону роли** — нормально, если артефакт и границы роли соблюдены. Это не нарушение «надо Task».
+- **Субагент-сценарист** — когда нужен **файл** в `assets/lore/` или `docs/lore/` (он физически не может править `.gd`).
+- **Субагент-архитектор / QA** — когда нужен чистый TDD или баг-репорт без смешения с реализацией; QA не чинит код.
+- **`x4-mods`** — только research по X4; ответ текстом, правок нет.
+- **Explorer** — разбор незнакомого/сложного кода; не тратить на косметику и известный контракт.
 
 **Когда НЕ нужен explorer:** правка одного файла по известному контракту, косметика UI, уже исследованная механика. Не трать контекст на «прочитай всё».
 
@@ -509,6 +520,85 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 ## 12. Журнал сессий
 
 Хронология изменений. **Ное — сверху.**
+
+### 07.10 (день) — инвентарь модель A + город на ork_mage
+
+Skills: `rpg`, `godot-ui-control`, `create-game-assets`, `procedural-gen`.  
+Ветка: `feature/agent-night`. **Проверено игроком: склад — «все хорошо»; размер NPC — «всё стало адекватно».** Коммит не делал (ждём явной команды).
+
+**A. Инвентарь — надетое не дублируется в складе.**
+
+Жалоба: «одел вещь — она осталась в складе, непонятно, откуда 2 предмета».  
+Причина: `equip_item()` писал ключ в `equipped`, но **не убирал** из `player.inventory`; UI склада строил ячейки по всему inventory. Модель данных была «надетое лежит в обоих местах» (тест это сторожил), игрок видел дубль.
+
+Решение — **модель A**: вещь живёт либо в `inventory`, либо в `equipped`.
+
+| Файл | Правка |
+|------|--------|
+| `player.gd` | `equip_item`: `remove_item(key)`; свап слота — старый ключ `add_item`; `two_handed` — щит `add_item`. `unequip_slot`: всегда `add_item(key)` |
+| `inventory_panel.gd` | снятие слота без `if not has_item` (данные уже возвращают) |
+| магазин | без правок: полка продажи читает `inventory` — надетое туда не попадает |
+
+**Тесты:** `equipment_combat` (старт: надетое **не** в складе), `equipment_ui` (снятие возвращает), `inventory_ui` (2 меча → надел 1 → в inventory 1, после снятия 2), `shop_ui`, `save_smoke`.
+
+**B. Город — орк-маги, Аллоды-люди убраны из спавна.**
+
+Жалоба: «в городе до сих пор аллодовские персонажи». Причина: `GUARD_SETS`/`CITIZEN_SETS`/`CAPTAIN_SET` в `map_generator.gd` жёстко указывали на `humans/*`; вчерашние раскладки `assets/wip/characters/ork_mage/` никуда не были подключены.
+
+| Шаг | Что |
+|-----|-----|
+| B1 | `assets/units/ork_mage/t0..t3/sprites-001..008.png` — 32 idle-кадра (8 направлений × 4 ступени) |
+| B2 | `units_db.json`: 4 набора `ork_mage/t0..t3` (`dirs=8`, `frames=8`, `move=1`, `attack=0`, `palette=0`, **не** `monsters/` — мирные) |
+| B3 | `map_generator.gd`: citizens t0/t1, guards t1/t2, captain t3; `POI_KINDS` = `[]`; **`GEN_VERSION` 10→11** |
+| B4 | `game.cfg` + `GameConfig`: `interest_points = 0` во всех зонах (арта мало) |
+| B5 | `npc.gd`/`mercenary.gd` дефолты, `inn_panel.CANDIDATES` — `ork_mage/t0..t3` + `monsters/orc_good` (**без `humans/*`**), `ui._faction_of_set` → `ork_mage/` = «Орды Огня» |
+| B6 | `gen_smart_01.*` перегенерирован: стражи 15, жители 23, **humans 0**, `gen_version=11` |
+
+**Ограничение арта:** у ork_mage только idle. Смерть/атака без фаз — юнит стоит/ходит; урон стражей считается, анимации удара нет. Осознанно, пока нет move/attack-раскладок.
+
+**Тесты:** `npc_spawn_smoke` OK 36, `spawn_smoke` OK, `inn_ui_smoke` OK (5 кандидатов), `hover_tooltip_smoke`, `unit_physics_smoke`, `zone_travel_smoke` OK 30, `gen_seeds_smoke` OK, `city_layout_smoke`, `config_dead_keys`, `shop_ui`, `inventory_ui`, `--quit` чистый.
+
+**Не сделано:** удаление `assets/units/humans/*` с диска (отдельный шаг после твоей проверки).  
+**Требуется ручная проверка:** (1) склад — надел/снял, нет «2 предметов»; (2) город — орки-маги t0–t3, капитан сильнее; (3) таверна — кандидаты ork_mage, без людей.
+
+**Размер спрайтов ork_mage (после правки).**  
+Замер: канвас ork_mage был **80×80** (content ~80 px), а у героев/NPC **32–48** (content ~33–41), у зданий **96×96**. `tile_size=1` → масштаб 1.0 → NPC читались как здание.  
+**Стандарт проекта (де-факто):** 1 клетка = 32 px; фигура юнита ~33–40 px (1–1.25 клетки); крупные юниты (тролль/дракон) — `tile_size` 2–3.  
+Правка: `tests/resize_ork_mage_units.py` → 32 кадра **80→40**; `units_db` w/h=40, cy=38, sel_box обновлены. Content height теперь ~40 px — в диапазоне героев.  
+**Проверено игроком: «всё стало адекватно».**  
+`spawn_smoke` после этого иногда FAIL по `gray_damaged=false` при живом `guard_combat=true` — шанс промаха в коротком прогоне, не регресс размера (бой идёт).
+
+### 07.10 — пакет 3.0 «Великий маг»: шаги TDD 2–5
+
+Skills: `godot-gdscript`, `godot-signals-groups`, `rpg`.  
+Ветка: `feature/agent-night`. **Коммит не делал — нужна твоя проверка.**
+
+| Шаг TDD | Что | Статус |
+|---------|-----|--------|
+| 1 | `game.cfg` + `GameConfig` `[archmage]` | ✅ (было с ночи) |
+| 2 | `scripts/lore.gd` (`class_name Lore`) | ✅ |
+| 3 | `WorldSim.TickArchmage` + `tick_archmages` | ✅ |
+| 4 | `WorldState.get_archmage` / `add_archmage_power` + `WorldBus.archmage_tick` | ✅ |
+| 5 | Лимит BFS `BFS_MAX_CELLS=12000` в `alm_map.gd` | ✅ |
+| 6 | Карта 128→192 | ⬜ ждёт |
+| 7 | `ArchmagePanel` + клик | ⬜ ждёт |
+| 8 | Визуальный гейт 1280×800/600 | ⬜ |
+
+**Сделано:**
+- `Lore` — ленивый JSON (`world.json`/`npcs.json`), маппинг `human↔humans`, seed архмага.
+- `new_faction(name, race)` кладёт `archmage` из Lore+GameConfig (load-by-path, headless-canon).
+- `TickArchmage(power, threat) -> float` — **новое** power; числа из `[archmage]`, сходимость с `sim_archmage_stakes.py`.
+- `WorldBus.archmage_tick(delta)` — аккумулятор, тик раз в `sim_interval`; **сим-мир не тикает** (по решению игрока).
+- Ставки `stake_ingot/gold/potion` + `gold_per_stake` читаются через `WorldState.archmage_stake()` (ключи не мёртвые).
+- Лимит BFS: при превышении `find_path` возвращает `[]` → герой идёт напрямую.
+
+**Расхождение ключей:** раса героя `human`, ключ лора `humans` — маппинг в `Lore.hero_race_to_faction()`; `get_archmage` принимает оба.
+
+**Тесты:** `archmage_smoke` OK 65; `game_config_smoke` OK 41; `config_dead_keys_smoke` OK; `save_smoke` OK; `fuzz_edge` 0 застреваний; `spawn_smoke` OK; `sim_runner` 100 дней; `--quit` чистый.
+
+**Требуется ручная проверка:** (1) новая игра → в центре города стоит маг Маша/Леша по расе; (2) через ~20 с power чуть падает (журнал при смене ступени); (3) панель сдачи — **не реализована** (шаг 7).
+
+**Дальше по TDD:** шаг 6 (192×192 + `gen_seeds_smoke`) и шаг 7 (панель) — после твоего «ок» на 2–5.
 
 ### 06.10 (ПРАВКА) — портреты рас: переписана нарезка, 4 класса дефектов
 

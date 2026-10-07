@@ -74,9 +74,11 @@ func _test_starter_equipped() -> void:
 	_check(_hero.equipped.has("weapon"), "надето оружие")
 	_check(_hero.equipped.has("shield"), "надет щит (слот shield)")
 	_check(not _hero.equipped.has("body"), "стартовой брони нет (слот body пуст)")
+	# Модель A: надетое живёт ТОЛЬКО в equipped, из склада ушло.
 	for slot in _hero.equipped.keys():
-		_check(_hero.inventory.has(str(_hero.equipped[slot])),
-			"надетое %s (%s) реально есть в инвентаре" % [slot, str(_hero.equipped[slot])])
+		var ek := str(_hero.equipped[slot])
+		_check(not _hero.inventory.has(ek),
+			"надетое %s (%s) НЕ в складе (модель A)" % [slot, ek])
 
 
 # --- 2. Броня меняет защиту -----------------------------------------------
