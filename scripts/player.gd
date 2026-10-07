@@ -193,24 +193,77 @@ var _anim: UnitAnim = null
 
 func _ready():
 	_apply_hero_choice()
-	# Экономика (P0): стартовое золото и склад владений.
-	# Стартовое золото лежит в GameConfig [economy] start_gold. ТУТ БЫЛО 20 -
-	# при стартовой цене оружия 150-600 игрок не мог купить своё же оружие.
-	gold = GameConfig.geti("economy", "start_gold")
-	inventory.clear()
-	_grant_starter_set()
+	var from_save := not Game.hero_save.is_empty()
+	if from_save:
+		_apply_hero_save()
+	else:
+		# Экономика (P0): стартовое золото и склад владений.
+		# Стартовое золото лежит в GameConfig [economy] start_gold. ТУТ БЫЛО 20 -
+		# при стартовой цене оружия 150-600 игрок не мог купить своё же оружие.
+		gold = GameConfig.geti("economy", "start_gold")
+		inventory.clear()
+		_grant_starter_set()
 	# Только маги имеют ману и читают книги магии; воины — свитки (заряды).
 	has_mana = Game.hero_class == "mage"
-	max_hp = _calc_max_hp()
-	max_mana = _calc_max_mana()
-	current_hp = max_hp
-	current_mana = max_mana
+	if from_save and int(Game.hero_save.get("max_hp", 0)) > 0:
+		max_hp = int(Game.hero_save["max_hp"])
+	else:
+		max_hp = _calc_max_hp()
+	if from_save and int(Game.hero_save.get("max_mana", 0)) > 0:
+		max_mana = int(Game.hero_save["max_mana"])
+	else:
+		max_mana = _calc_max_mana()
+	if from_save:
+		current_hp = int(Game.hero_save.get("current_hp", max_hp))
+		current_mana = int(Game.hero_save.get("current_mana", max_mana))
+	else:
+		current_hp = max_hp
+		current_mana = max_mana
 	move_speed = _calc_speed()
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	Game.configure_unit_body(self)
 	_ensure_sprite()
 	_create_health_bar()
-	_init_experience()
+	if from_save and not experience.is_empty():
+		pass  # опыт уже из сейва
+	else:
+		_init_experience()
+
+
+## Применить Game.hero_save (загрузка сейва) вместо стартового набора.
+func _apply_hero_save() -> void:
+	var hs: Dictionary = Game.hero_save
+	gold = int(hs.get("gold", 0))
+	inventory = []
+	var inv: Variant = hs.get("inventory", [])
+	if inv is Array:
+		for k in inv:
+			inventory.append(str(k))
+	equipped = {}
+	var eq: Variant = hs.get("equipped", {})
+	if eq is Dictionary:
+		equipped = (eq as Dictionary).duplicate(true)
+	known_spells = {}
+	var ks: Variant = hs.get("known_spells", {})
+	if ks is Dictionary:
+		known_spells = (ks as Dictionary).duplicate(true)
+	sphere_books = {}
+	var sb: Variant = hs.get("sphere_books", {})
+	if sb is Dictionary:
+		sphere_books = (sb as Dictionary).duplicate(true)
+	experience = {}
+	var exp: Variant = hs.get("experience", {})
+	if exp is Dictionary:
+		experience = (exp as Dictionary).duplicate(true)
+	# Пересобрать визуал/атаку по экипировке из сейва (не стартовой).
+	if equipped.has("weapon"):
+		var wkey := str(equipped["weapon"])
+		var wit := ItemDB.find(wkey)
+		if not wit.is_empty():
+			weapon = str(wit.get("type", weapon))
+			two_handed = ItemDB.is_two_handed(wit)
+	if equipped.has("shield"):
+		has_shield = true
 
 ## Начальный опыт из стартовых навыков (skill -> exp, как у разработчиков:
 ## exp = (1.1^skill - 1) * 1000). Дальше навык растёт от получаемого опыта.

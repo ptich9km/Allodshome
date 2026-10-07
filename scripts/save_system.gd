@@ -324,6 +324,21 @@ static func apply_payload(d: Dictionary, player) -> void:
 		Game.load_position_valid = true
 	else:
 		Game.clear_load_position()
+	# Runtime-состояние для нового Player после change_scene: золото/склад/
+	# экипировка/HP/навыки. Без этого _ready игрока снова выдавал стартовый
+	# набор, и сейв «терял» инвентарь, хотя файл был цел.
+	Game.hero_save = {
+		"max_hp": int(h.get("max_hp", 100)),
+		"max_mana": int(h.get("max_mana", 50)),
+		"current_hp": int(h.get("current_hp", int(h.get("max_hp", 100)))),
+		"current_mana": int(h.get("current_mana", int(h.get("max_mana", 50)))),
+		"gold": int(h.get("gold", 0)),
+		"inventory": _str_array(h.get("inventory", [])),
+		"equipped": _dict(h.get("equipped", {})),
+		"experience": _dict(h.get("experience", {})),
+		"known_spells": _dict(h.get("known_spells", {})),
+		"sphere_books": _dict(h.get("sphere_books", {})),
+	}
 	if player == null:
 		return
 	player.max_hp = int(h.get("max_hp", 100))

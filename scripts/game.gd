@@ -383,9 +383,19 @@ static var hero_start_book: String = ""     # книга простейшего 
 static var load_position: Vector2 = Vector2.ZERO
 static var load_position_valid: bool = false
 
+## Runtime-состояние героя из сейва (gold/inventory/equipped/HP/spells/...).
+## change_scene пересоздаёт Player, и _ready выдавал стартовый набор —
+## золото и инвентарь «терялись», хотя лежали в файле. Пустой словарь =
+## новая игра (стартовый gold/starter set).
+static var hero_save: Dictionary = {}
+
 static func clear_load_position() -> void:
 	load_position = Vector2.ZERO
 	load_position_valid = false
+
+
+static func clear_hero_save() -> void:
+	hero_save = {}
 
 ## Путь портрета: явный hero_portrait или сборка из character_id (с легаси-маппингом).
 static func hero_portrait_path() -> String:
@@ -417,6 +427,7 @@ static func new_random_map(zone: String = "mid") -> void:
 	map_zone = zone
 	pending_map_path = ""
 	clear_load_position()
+	clear_hero_save()
 
 ## Конкретная карта по сиду (загрузка сохранения, тесты).
 static func request_map_by_seed(seed_value: int, zone: String = "mid") -> void:
@@ -424,12 +435,14 @@ static func request_map_by_seed(seed_value: int, zone: String = "mid") -> void:
 	map_zone = zone
 	pending_map_path = ""
 	clear_load_position()
+	clear_hero_save()
 
 ## Явно заданный файл карты (редактор, отладочные сцены).
 static func request_map_by_path(path: String) -> void:
 	pending_map_path = path
 	map_seed = 0
 	clear_load_position()
+	clear_hero_save()
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0

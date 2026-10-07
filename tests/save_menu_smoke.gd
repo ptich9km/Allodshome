@@ -184,6 +184,11 @@ func _test_reload_restores(game) -> void:
 	_check(Game.load_position_valid, "Game.load_position_valid выставлен")
 	_check(Game.load_position.distance_to(Vector2(512, 384)) < 0.01,
 		"Game.load_position = %s" % str(Game.load_position))
+	_check(not Game.hero_save.is_empty(), "Game.hero_save заполнен")
+	_check(int(Game.hero_save.get("gold", -1)) == 4321,
+		"hero_save.gold = %s" % str(Game.hero_save.get("gold")))
+	_check((Game.hero_save.get("inventory", []) as Array).size() == 2,
+		"hero_save.inventory = 2")
 	var pos: Variant = player.global_position
 	_check(pos is Vector2 and pos.distance_to(Vector2(512, 384)) < 0.01,
 		"позиция игрока восстановлена apply_payload (%s)" % str(pos))
@@ -202,13 +207,20 @@ func _test_reload_restores(game) -> void:
 ## для _spawn_player_on_walkable после change_scene.
 func _test_load_position_without_player() -> void:
 	Game.clear_load_position()
+	Game.clear_hero_save()
 	var res := SaveSystem.load_slot(SLOT)
 	SaveSystem.apply_payload(res.get("data", {}), null)
 	_check(Game.load_position_valid, "без игрока load_position_valid=true")
 	_check(Game.load_position.distance_to(Vector2(512, 384)) < 0.01,
 		"без игрока load_position в Game (%s)" % str(Game.load_position))
+	_check(not Game.hero_save.is_empty(), "без игрока hero_save заполнен")
+	_check(int(Game.hero_save.get("gold", -1)) == 4321,
+		"без игрока hero_save.gold (%s)" % str(Game.hero_save.get("gold")))
+	_check((Game.hero_save.get("inventory", []) as Array).size() == 2,
+		"без игрока hero_save.inventory")
 	_check(int(Game.map_seed) == 4242, "без игрока map_seed восстановлен")
 	Game.clear_load_position()
+	Game.clear_hero_save()
 	_sections_done += 1
 
 
