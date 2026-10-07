@@ -110,6 +110,8 @@ func refresh_spell_book() -> void:
 		var ch := player.spell_charges(name)
 		var known: bool = (player.has_mana and ch == -1) or (not player.has_mana and ch > 0)
 		_make_spell_cell(name, str(s["icon"]), known)
+	_ensure_auto_status_label()
+	_refresh_auto_status()
 
 ## Ячейка книги: StyleBoxFlat с цветной полосой стихии снизу; выучено — иконка;
 ## не выучено — приглушённый border. Вместо spellback.bmp — кастомный стиль.
@@ -197,10 +199,22 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 		b.add_child(lbl)
 
 	b.pressed.connect(func(sn: String = name): _cast_spell_button(sn))
+	# ПКМ: сделать заклинание «по умолчанию» для авто-каста мага (пакет C).
+	b.gui_input.connect(func(event: InputEvent, sn: String = name):
+		if event is InputEventMouseButton and event.pressed \
+				and event.button_index == MOUSE_BUTTON_RIGHT:
+			if event is InputEventWithModifiers and event.alt_pressed:
+				_cycle_auto_buff_tier()
+			else:
+				_toggle_auto_spell(sn)
+			b.accept_event()
+	)
 	spell_grid.add_child(b)
 	spell_buttons.append(b)
 	_spell_buttons_filled.append(b)
 	_spell_button_names.append(name)
+	if Game.auto_spell == name:
+		_mark_auto_spell_cell(b, name)
 	# Метка обратного отсчёта кулдауна.
 	var cd := Label.new()
 	cd.name = "Cooldown"
@@ -307,6 +321,130 @@ func _cast_spell_button(name: String) -> void:
 	if not is_instance_valid(player):
 		return
 	_begin_spell_targeting(name)
+
+
+## ПКМ по заклинанию: авто-каст по умолчанию (обычно Heal).
+## Повторный ПКМ по тому же — снять. Ячейка подсвечивается рамкой ACCENT.
+func _toggle_auto_spell(name: String) -> void:
+	if Game.auto_spell == name:
+		Game.auto_spell = ""
+	else:
+		Game.auto_spell = name
+	# Подсветка всех ячеек книги
+	for i in range(_spell_buttons_filled.size()):
+		var b = _spell_buttons_filled[i] as Button
+		if b == null or i >= _spell_button_names.size():
+			continue
+		var sn := str(_spell_button_names[i])
+		if Game.auto_spell == sn:
+			_mark_auto_spell_cell(b, sn)
+		else:
+			_clear_auto_spell_mark(b)
+	# Цикл цели лечения: party → ally → neutral → party
+	if Game.auto_spell != "" and SpellDB.kind_of(Game.auto_spell) == "heal":
+		match Game.auto_heal_targets:
+			"party":
+				Game.auto_heal_targets = "ally"
+			"ally":
+				Game.auto_heal_targets = "neutral"
+			_:
+				Game.auto_heal_targets = "party"
+	# Бафф-ветка: Alt+ПКМ циклом, либо 1..3 не трогаем — добавим хоткей ниже
+	_refresh_auto_status()
+
+
+func _mark_auto_spell_cell(b: Button, name: String) -> void:
+	if not is_instance_valid(b):
+		return
+	var title := str(SpellDB.get_spell(name).get("ru", name))
+	var st := StyleBoxFlat.new()
+	st.bg_color = UiTheme.SLOT_BG
+	st.set_border_width_all(2)
+	st.border_color = UiTheme.ACCENT
+	st.set_corner_radius_all(UiTheme.RADIUS_SLOT)
+	st.set_content_margin_all(UiTheme.SPACE_1)
+	b.add_theme_stylebox_override("normal", st)
+	b.set_meta("auto_spell", name)
+	var badge := b.get_node_or_null("AutoBadge") as Label
+	if badge == null:
+		badge = Label.new()
+		badge.name = "AutoBadge"
+		badge.text = "АВТО"
+		badge.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+		badge.add_theme_color_override("font_color", UiTheme.ACCENT)
+		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+		badge.add_theme_constant_override("outline_size", 3)
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.offset_left = 2.0
+		badge.offset_top = 1.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(badge)
+	badge.visible = true
+	b.tooltip_text = "%s\nАВТО-КАСТ: ЛКМ — прицел, ПКМ — снять авто" % title
+
+
+func _clear_auto_spell_mark(b: Button) -> void:
+	if not is_instance_valid(b):
+		return
+	if b.has_meta("auto_spell"):
+		b.remove_meta("auto_spell")
+	var badge := b.get_node_or_null("AutoBadge")
+	if badge != null:
+		badge.visible = false
+
+
+## Alt+ПКМ по книге: цикл авто-баффов none → light → medium → advanced → none.
+func _cycle_auto_buff_tier() -> void:
+	match Game.auto_buff_tier:
+		"none":
+			Game.auto_buff_tier = "light"
+		"light":
+			Game.auto_buff_tier = "medium"
+		"medium":
+			Game.auto_buff_tier = "advanced"
+		_:
+			Game.auto_buff_tier = "none"
+	# Цель баффов: party по умолчанию; цикл при смене ветки
+	if Game.auto_buff_tier != "none":
+		match Game.auto_buff_targets:
+			"party":
+				Game.auto_buff_targets = "ally"
+			"ally":
+				Game.auto_buff_targets = "neutral"
+			_:
+				Game.auto_buff_targets = "party"
+	_refresh_auto_status()
+
+
+func _ensure_auto_status_label() -> void:
+	if spell_panel == null:
+		return
+	if spell_panel.get_node_or_null("SpellAutoStatus") != null:
+		return
+	var lab := Label.new()
+	lab.name = "SpellAutoStatus"
+	lab.theme_type_variation = &"HudLabel"
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+	lab.add_theme_color_override("font_color", UiTheme.ACCENT_DIM)
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lab.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	lab.offset_top = -18.0
+	lab.offset_bottom = -2.0
+	spell_panel.add_child(lab)
+
+
+func _refresh_auto_status() -> void:
+	_ensure_auto_status_label()
+	var lab := get_node_or_null("BottomPanel/SpellPanel/SpellAutoStatus") as Label
+	if lab == null:
+		return
+	var parts: Array = []
+	if Game.auto_spell != "":
+		parts.append("каст: %s → %s" % [Game.auto_spell, Game.auto_heal_targets])
+	if Game.auto_buff_tier != "none":
+		parts.append("бафф: %s → %s" % [Game.auto_buff_tier, Game.auto_buff_targets])
+	lab.text = "Авто: " + (" · ".join(parts) if parts.size() > 0 else "нет (ПКМ по заклинанию)")
 
 # --- Прицеливание (свиток МАГА или заклинание книги): курсор cast/ ---
 

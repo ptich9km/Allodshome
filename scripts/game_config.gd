@@ -46,6 +46,8 @@ const DEFAULTS := {
 		"chain_min_targets": 4,
 		"chain_max_targets": 6,
 		"chain_radius": 160.0,
+		"auto_heal_ratio": 0.45,    # авто-лечение, когда HP/макс ниже порога
+		"auto_buff_interval": 2.0,  # сек между проверками авто-баффов
 	},
 	"economy": {
 		"start_gold": 20,           # ТУТ БЫЛО 20. Этап 2 поднимет до 400:

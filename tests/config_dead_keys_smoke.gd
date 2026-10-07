@@ -30,6 +30,8 @@ const ALLOWED_DEAD := {
 	"mob_tier.hp_multiplier": "тиров мобов ещё нет, место заведено заранее",
 	"metal.absorption_min": "ссылается только тест game_config_smoke",
 	"metal.absorption_max": "ссылается только тест game_config_smoke",
+	"loot.enemy_potion_chance": "шансы зверей/гуманоидов в loot_tables.json (пакет A)",
+	"loot.enemy_gear_chance": "шансы зверей/гуманоидов в loot_tables.json (пакет A)",
 }
 
 const SKIP_DIRS := ["addons/", ".godot/", ".git/"]

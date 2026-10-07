@@ -793,6 +793,9 @@ func _physics_process(delta):
 	if health_bar:
 		health_bar.update_bars(current_hp, current_mana)
 
+	# Авто-каст мага (пакет C): лечение и баффы без ручного прицеливания.
+	_tick_auto_cast(delta)
+
 	match state:
 		"idle":
 			velocity = Vector2.ZERO
@@ -1797,6 +1800,153 @@ func _create_lightning_effect(from: Vector2, to: Vector2):
 		if is_instance_valid(line): line.queue_free()
 		if is_instance_valid(flash): flash.queue_free()
 	)
+
+## Авто-каст мага: лечение при падении HP + авто-баффы по ветке.
+## Не прерывает ручной прицел (pending_spell) и не работает в casting.
+var _auto_buff_accum := 0.0
+
+
+func _tick_auto_cast(delta: float) -> void:
+	if state == "casting" or state == "dead" or not Game.pending_spell.is_empty():
+		return
+	if not Game.pending_scroll.is_empty():
+		return
+	var ratio := GameConfig.getf("magic", "auto_heal_ratio")
+	if ratio <= 0.0:
+		ratio = 0.45
+	# 1) Лечение: auto_spell — заклинание kind=heal (обычно Heal)
+	if Game.auto_spell != "" and SpellDB.kind_of(Game.auto_spell) == "heal":
+		_auto_try_heal(Game.auto_spell, ratio)
+	# 2) Баффы по ветке
+	if Game.auto_buff_tier != "none":
+		_auto_buff_accum += delta
+		var interval := GameConfig.getf("magic", "auto_buff_interval")
+		if interval <= 0.0:
+			interval = 2.0
+		if _auto_buff_accum >= interval:
+			_auto_buff_accum = 0.0
+			_auto_try_buffs()
+
+
+func _auto_heal_candidates() -> Array:
+	var out: Array = []
+	var mode := Game.auto_heal_targets
+	match mode:
+		"party":
+			for m in Game.party:
+				if is_instance_valid(m):
+					out.append(m)
+		"ally":
+			if is_instance_valid(Game.hero) and Game.hero != self:
+				out.append(Game.hero)
+			for m in Game.party:
+				if is_instance_valid(m):
+					out.append(m)
+		"neutral":
+			if is_instance_valid(Game.hero) and Game.hero != self:
+				out.append(Game.hero)
+			for m in Game.party:
+				if is_instance_valid(m):
+					out.append(m)
+			for n in Game.npcs:
+				if is_instance_valid(n) and "role" in n and str(n.role) == "guard":
+					out.append(n)
+	return out
+
+
+func _auto_try_heal(spell_name: String, ratio: float) -> void:
+	if not can_cast(spell_name):
+		return
+	var rng := SpellDB.range_of(spell_name)
+	var best: Node2D = null
+	var best_hp := 1.0
+	for u in _auto_heal_candidates():
+		if not is_instance_valid(u) or not ("current_hp" in u) or not ("max_hp" in u):
+			continue
+		var mx := int(u.get("max_hp"))
+		if mx <= 0:
+			continue
+		var cur := int(u.get("current_hp"))
+		if cur >= mx:
+			continue
+		var r := float(cur) / float(mx)
+		if r >= ratio:
+			continue
+		if rng > 0.0 and Game.units_range(self, u) > rng:
+			continue
+		if r < best_hp:
+			best_hp = r
+			best = u
+	if best == null:
+		return
+	cast_spell(spell_name, best.global_position, best)
+
+
+func _auto_buff_spells_for_tier() -> Array:
+	match Game.auto_buff_tier:
+		"light":
+			return ["Haste"]
+		"medium":
+			return ["Haste", "Bless", "Protection_from_Fire", "Protection_from_Water",
+				"Protection_from_Air", "Protection_from_Earth"]
+		"advanced":
+			return ["Haste", "Bless", "Protection_from_Fire", "Protection_from_Water",
+				"Protection_from_Air", "Protection_from_Earth", "Invisibility"]
+	return []
+
+
+func _auto_try_buffs() -> void:
+	var spells := _auto_buff_spells_for_tier()
+	if spells.is_empty():
+		return
+	var candidates: Array = []
+	match Game.auto_buff_targets:
+		"party":
+			for m in Game.party:
+				if is_instance_valid(m):
+					candidates.append(m)
+		"ally":
+			if is_instance_valid(Game.hero) and Game.hero != self:
+				candidates.append(Game.hero)
+			for m in Game.party:
+				if is_instance_valid(m):
+					candidates.append(m)
+		"neutral":
+			if is_instance_valid(Game.hero) and Game.hero != self:
+				candidates.append(Game.hero)
+			for m in Game.party:
+				if is_instance_valid(m):
+					candidates.append(m)
+	for sn in spells:
+		if not can_cast(sn):
+			continue
+		var kind := SpellDB.kind_of(sn)
+		var tkind := SpellDB.target_of(sn)
+		var rng := SpellDB.range_of(sn)
+		for u in candidates:
+			if not is_instance_valid(u):
+				continue
+			# Уже под баффом? Проверяем первый эффект
+			var effs := SpellDB.effects_of(sn)
+			var need := true
+			if not effs.is_empty():
+				var e0: Dictionary = effs[0]
+				var et := str(e0.get("type", ""))
+				if et != "" and StatusEffects.has_effect(u, et, SpellDB.sphere_of(sn)):
+					need = false
+			if not need:
+				continue
+			# Невидимость на себя — только если цель == self (щит/мана мага)
+			if sn == "Invisibility" and u != self and rng <= 0.0:
+				continue
+			if rng > 0.0 and Game.units_range(self, u) > rng:
+				continue
+			# Protection range 0: только self (или касание — units_range==0)
+			if rng <= 0.0 and u != self and Game.units_range(self, u) > 1.0:
+				continue
+			cast_spell(sn, u.global_position, u)
+			return  # один бафф за тик — не выжигаем ману
+
 
 func take_damage(damage: int, _attacker: Node2D) -> int:
 	# Мёртвый герой больше не получает урон

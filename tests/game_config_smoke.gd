@@ -28,6 +28,8 @@ const RANGES := {
 	"magic.staff_mana_cost": [0, 999],
 	"magic.chain_min_targets": [1, 30],
 	"magic.chain_max_targets": [1, 30],
+	"magic.auto_heal_ratio": [0.05, 1.0],
+	"magic.auto_buff_interval": [0.2, 30.0],
 	"economy.start_gold": [0, 1000000],
 	"economy.sell_price_div": [1, 100],
 	"loot.enemy_potion_chance": [0, 100],

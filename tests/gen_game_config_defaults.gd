@@ -31,6 +31,8 @@ const NOTES := {
 	"combat.enemy_absorption_div": "поглощение врага = max_hp / это",
 	"combat.protection_max": "потолок сопротивления стихии, %",
 	"magic.sp_offset": "SP = навык + разум - это",
+	"magic.auto_heal_ratio": "авто-лечение при HP/макс ниже порога",
+	"magic.auto_buff_interval": "сек между проверками авто-баффов",
 	"economy.start_gold": "СТАРТОВОЕ ЗОЛОТО. Сейчас 20, а оружие стоит 150-600.",
 	"economy.sell_price_div": "продажа в магазине = цена / это",
 	"spawn.tree_density": "плотность деревьев на карте",

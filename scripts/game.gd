@@ -31,6 +31,14 @@ static var action_target: Node2D = null
 static var pending_scroll: Dictionary = {}   # прицеливание свитка: {"spell","item_key"}
 static var pending_spell: Dictionary = {}    # выбор заклинания из книги: {"name"}
 static var hotbar: Dictionary = {}           # быстрый вызов: слот 0..8 (клавиши 1..9) -> имя заклинания
+## Авто-каст мага (пакет C, 07.10): ПКМ по заклинанию в книге.
+## auto_spell — имя заклинания по умолчанию (обычно Heal).
+## auto_heal_targets: ally | party | neutral.
+## auto_buff_tier: none | light (Haste) | medium (Haste+Bless+резисты) | advanced (+Invis).
+static var auto_spell: String = ""
+static var auto_heal_targets: String = "party"
+static var auto_buff_tier: String = "none"
+static var auto_buff_targets: String = "party"
 static var _spell_targeting_frame: int = -1  # кадр, когда начато прицеливание (защита от двойного каста)
 ## Отладочные переключатели. Источник правды — game.cfg [debug], чтобы не
 ## править код ради каждой отладки. Значение читается ОДИН раз при старте;
@@ -590,6 +598,7 @@ func _ready():  # Инициализация мира и боя
 	pending_scroll = {}
 	pending_spell = {}
 	_spell_targeting_frame = -1
+	# Авто-каст НЕ сбрасываем: игрок задал его в книге и ждёт, что маг лечит.
 
 	# Страховка: если main.tscn запущен напрямую (F6, отладка) без выбора
 	# персонажа на старте — уходим на экран выбора героя.
