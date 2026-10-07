@@ -315,6 +315,15 @@ static func apply_payload(d: Dictionary, player) -> void:
 	if st is Dictionary:
 		Game.hero_stats = (st as Dictionary).duplicate(true)
 	Game.hero_start_book = str(h.get("start_book", ""))
+	# Позиция героя: всегда кладём в Game (для player==null и для apply до
+	# пересборки сцены). Раньше поле писалось в файл, но не применялось —
+	# герой после «Продолжить» всегда вставал на спавн.
+	var pos_v: Variant = h.get("position", null)
+	if pos_v is Vector2:
+		Game.load_position = pos_v as Vector2
+		Game.load_position_valid = true
+	else:
+		Game.clear_load_position()
 	if player == null:
 		return
 	player.max_hp = int(h.get("max_hp", 100))
@@ -328,6 +337,10 @@ static func apply_payload(d: Dictionary, player) -> void:
 	player.known_spells = _dict(h.get("known_spells", {}))
 	player.sphere_books = _dict(h.get("sphere_books", {}))
 	player._recall_speed()
+	if Game.load_position_valid:
+		player.global_position = Game.load_position
+		if player.has_method("reset_physics_interpolation"):
+			player.reset_physics_interpolation()
 
 
 static func _str_array(v: Variant) -> Array:

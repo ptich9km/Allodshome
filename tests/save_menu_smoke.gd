@@ -20,7 +20,7 @@ var _checks := 0
 ## (уже ломалась: 38 против 40), а молчаливо выпавшая корутина всегда
 ## отнимает целую секцию.
 var _sections_done := 0
-const SECTIONS_TOTAL := 4
+const SECTIONS_TOTAL := 5
 
 
 func _initialize() -> void:
@@ -40,6 +40,7 @@ func _run() -> void:
 	await _test_menu_opens(game)
 	await _test_save_from_live_hero(game)
 	await _test_reload_restores(game)
+	await _test_load_position_without_player()
 	await _test_version_rejected(game)
 	_wipe()
 	_report()
@@ -167,8 +168,10 @@ func _test_reload_restores(game) -> void:
 	player.gold = 1
 	player.inventory = []
 	player.current_hp = 2
+	player.global_position = Vector2(16, 16)  # мутация: не совпадает со слотом
 	Game.map_seed = 999999
 	Game.hero_name = "Сломан"
+	Game.clear_load_position()
 	# Слот переживает пересборку сцены: он на диске, а не в памяти узла.
 	var res := SaveSystem.load_slot(SLOT)
 	SaveSystem.apply_payload(res.get("data", {}), player)
@@ -178,9 +181,12 @@ func _test_reload_restores(game) -> void:
 	_check(int(Game.map_seed) == 4242, "сид карты восстановлен (%d)" % int(Game.map_seed))
 	_check(str(Game.hero_name) == "Тестер", "имя героя восстановлено")
 	_check(Game.hero_class == "warrior", "класс героя восстановлен")
+	_check(Game.load_position_valid, "Game.load_position_valid выставлен")
+	_check(Game.load_position.distance_to(Vector2(512, 384)) < 0.01,
+		"Game.load_position = %s" % str(Game.load_position))
 	var pos: Variant = player.global_position
 	_check(pos is Vector2 and pos.distance_to(Vector2(512, 384)) < 0.01,
-		"позиция восстановлена как Vector2 (%s)" % str(pos))
+		"позиция игрока восстановлена apply_payload (%s)" % str(pos))
 	# Состояние мира кладём так же, как это делает _restart_scene.
 	var world_text := JsonSafe.dump(res.get("data", {}).get("world", {}))
 	var ws_script: GDScript = load("res://scripts/world/world_state.gd")
@@ -189,6 +195,20 @@ func _test_reload_restores(game) -> void:
 	if restored != null:
 		_check(int(restored.day) == int(res.get("data", {}).get("world", {}).get("day", -1)),
 			"день мира восстановлен, а не обнулён")
+	_sections_done += 1
+
+
+## Путь main_menu: apply_payload(data, null) — позиция должна остаться в Game
+## для _spawn_player_on_walkable после change_scene.
+func _test_load_position_without_player() -> void:
+	Game.clear_load_position()
+	var res := SaveSystem.load_slot(SLOT)
+	SaveSystem.apply_payload(res.get("data", {}), null)
+	_check(Game.load_position_valid, "без игрока load_position_valid=true")
+	_check(Game.load_position.distance_to(Vector2(512, 384)) < 0.01,
+		"без игрока load_position в Game (%s)" % str(Game.load_position))
+	_check(int(Game.map_seed) == 4242, "без игрока map_seed восстановлен")
+	Game.clear_load_position()
 	_sections_done += 1
 
 

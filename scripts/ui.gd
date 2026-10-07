@@ -1250,6 +1250,14 @@ func _exit_interior() -> void:
 		# Точка выхода: исходная позиция, но на ПРОХОДИМОЙ клетке (не «в здании»)
 		player.global_position = _clamp_to_walkable(_interior_pos)
 		player.reset_physics_interpolation()
+	# Автосейв после выхода из здания: игрок мог провести в лавке минуты.
+	_request_autosave()
+
+
+func _request_autosave() -> void:
+	var scene := get_tree().current_scene
+	if scene != null and scene.has_method("autosave_now"):
+		scene.call("autosave_now")
 
 ## Ближайшая проходимая точка рядом с запрошенной (спираль по клеткам).
 func _clamp_to_walkable(from: Vector2) -> Vector2:

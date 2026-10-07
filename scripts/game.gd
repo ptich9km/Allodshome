@@ -378,6 +378,15 @@ static var hero_race: String = "human"      # human | necro | druid | ork
 static var hero_stats: Dictionary = {}      # стартовые характеристики
 static var hero_start_book: String = ""     # книга простейшего заклинания школы мага
 
+## Позиция героя из сохранения. Кладёт SaveSystem.apply_payload; применяет
+## _spawn_player_on_walkable после пересборки сцены (иначе герой всегда на спавне).
+static var load_position: Vector2 = Vector2.ZERO
+static var load_position_valid: bool = false
+
+static func clear_load_position() -> void:
+	load_position = Vector2.ZERO
+	load_position_valid = false
+
 ## Путь портрета: явный hero_portrait или сборка из character_id (с легаси-маппингом).
 static func hero_portrait_path() -> String:
 	if hero_portrait != "" and ResourceLoader.exists(hero_portrait):
@@ -407,17 +416,20 @@ static func new_random_map(zone: String = "mid") -> void:
 	map_seed = rng.randi()
 	map_zone = zone
 	pending_map_path = ""
+	clear_load_position()
 
 ## Конкретная карта по сиду (загрузка сохранения, тесты).
 static func request_map_by_seed(seed_value: int, zone: String = "mid") -> void:
 	map_seed = seed_value
 	map_zone = zone
 	pending_map_path = ""
+	clear_load_position()
 
 ## Явно заданный файл карты (редактор, отладочные сцены).
 static func request_map_by_path(path: String) -> void:
 	pending_map_path = path
 	map_seed = 0
+	clear_load_position()
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
@@ -617,6 +629,15 @@ func _spawn_player_on_walkable():
 	var mh: int = int(alm_map.get("map_height"))
 	if not alm_map or mw == 0:
 		return
+	# 0) Позиция из сохранения (одноразово): герой встаёт туда, где сохранился.
+	if load_position_valid:
+		var lp: Vector2 = load_position
+		if alm_map.call("is_walkable_world", lp):
+			player.global_position = lp
+			player.reset_physics_interpolation()
+			clear_load_position()
+			return
+		clear_load_position()
 	# 1) Точка спавна, заданная в карте (тип «Спавн»)
 	var spawn_pos: Vector2 = alm_map.call("get_spawn_pos")
 	if alm_map.call("is_walkable_world", spawn_pos):
@@ -1436,6 +1457,8 @@ func _on_portal_enter() -> void:
 	if next_zone == "":
 		print("Портал из зоны '%s' ведёт в никуда — конец маршрута" % Game.map_zone)
 		return
+	# Автосейв ДО смены зоны: иначе после телепортации точка «до портала» потеряна.
+	autosave_now()
 	travel_to_zone(next_zone)
 
 
@@ -1755,6 +1778,17 @@ func _restart_scene(slot: String) -> void:
 func _set_menu_status(text: String) -> void:
 	if _save_menu != null and is_instance_valid(_save_menu):
 		_save_menu.set_status(text)
+
+
+## Разовый автосейв (портал, выход из интерьера). Тот же слот, что и таймер.
+func autosave_now() -> void:
+	if not is_instance_valid(player):
+		return
+	if _save_menu != null and is_instance_valid(_save_menu):
+		return
+	var err := SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _build_save_payload())
+	if err != "":
+		push_error("SaveSystem autosave: " + err)
 
 
 ## Автосейв по таймеру. Пропускаем, если открыто меню сохранений (иначе
