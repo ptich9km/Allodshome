@@ -230,6 +230,17 @@ const DEFAULTS := {
 		"tier_2": 65.0,
 		"tier_3": 90.0,
 	},
+	"stress": {
+		# Стресс-тест движка (игрок 07.10): 1000×1000, ×100 деревьев/НПЦ.
+		# enabled=1 только для прогона; в проде 0.
+		"enabled": 0,
+		"map_size": 1000,
+		"tree_count": 83700,
+		"gray_count": 7500,
+		"city_guard_count": 2000,
+		"city_citizen_count": 1800,
+		"gen_version": 99,
+	},
 }
 
 static var _cfg: ConfigFile = null

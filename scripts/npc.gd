@@ -14,6 +14,7 @@ class_name Npc
 @export var is_patrol: bool = false          # патруль вокруг поста (стражи)
 @export var damage: int = 0                  # урон стражи (граждане не бьют)
 @export var aggro_radius: float = 190.0      # радиус агро стражи на Серых
+@export var is_archmage: bool = false        # капитан = великий маг (клик → панель)
 
 var current_hp: int
 var state: String = "idle"                   # idle | move | dying | decay | corpse
@@ -34,6 +35,14 @@ var _repath := 0.0
 func _ready() -> void:
 	add_to_group("npcs")
 	Game.configure_unit_body(self)
+	_repath = randf() * 1.2
+	# Мирные NPC не блокируют путь героя (слой 2). Иначе толпа жителей
+	# в центре города превращает ходьбу в рывки: mask=1 у героя и layer=1
+	# у NPC делали их физическими стенами.
+	if role == "citizen" or is_archmage:
+		var body := self as CharacterBody2D
+		if body != null:
+			body.collision_layer = 2
 	current_hp = max_hp
 	alm_map = get_tree().get_first_node_in_group("alm_map")
 	_anim = UnitAnim.new()
@@ -93,7 +102,7 @@ func _physics_process(delta: float) -> void:
 		if _path.is_empty():
 			_repath -= delta
 			if _repath <= 0.0:
-				_repath = 0.6
+				_repath = 1.5 + randf() * 1.0
 				if alm_map != null and alm_map.has_method("find_path"):
 					_path = alm_map.find_path(global_position, _target)
 		if not _path.is_empty():
@@ -195,14 +204,15 @@ func _nearest_enemy() -> Node2D:
 			best = e
 	return best
 
-## Погоня с обходом препятствий (перепланировка пути раз в 0.6 с).
+## Погоня за Серыми. Перепланировка ~1.2 с + случайный старт (не в одном кадре).
 func _chase_move(delta: float, target: Node2D) -> void:
 	var tpos: Vector2 = target.global_position
-	if _path.is_empty():
+	var dist := global_position.distance_to(tpos)
+	if _path.is_empty() or dist > 400.0:
 		_repath -= delta
 		if _repath <= 0.0:
-			_repath = 0.6
-			if alm_map != null and alm_map.has_method("find_path"):
+			_repath = 1.2 + randf() * 0.6
+			if alm_map != null and alm_map.has_method("find_path") and dist < 500.0:
 				_path = alm_map.find_path(global_position, tpos)
 	if _path.size() > 0:
 		var wp: Vector2 = _path[0]
@@ -215,10 +225,15 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			_anim.set_direction_vec(velocity)
 			_anim.advance(delta)
 		else:
-			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
-			_anim.play(UnitAnim.Anim.IDLE)
+			_move_checked(Game.safe_dir(global_position, tpos), walk_speed, delta)
+			_anim.play(UnitAnim.Anim.MOVE)
+			_anim.set_direction_vec(velocity)
+			_anim.advance(delta)
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+		_move_checked(Game.safe_dir(global_position, tpos), walk_speed, delta)
+		_anim.play(UnitAnim.Anim.MOVE)
+		_anim.set_direction_vec(velocity)
+		_anim.advance(delta)
 
 ## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
 func _unit_sound_at(idx: int) -> int:

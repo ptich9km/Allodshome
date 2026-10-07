@@ -118,24 +118,23 @@ func _nearest_enemy(radius: float) -> Node2D:
 	return best
 
 func _move_toward(p: Vector2, delta: float) -> void:
-	if _path.is_empty():
+	var dist := global_position.distance_to(p)
+	if _path.is_empty() or dist > 400.0:
 		_repath -= delta
 		if _repath <= 0.0:
-			_repath = 0.6
+			_repath = 1.2 + randf() * 0.6
 			var map_node := get_tree().get_first_node_in_group("alm_map")
-			if map_node != null and map_node.has_method("find_path"):
+			if map_node != null and map_node.has_method("find_path") and dist < 500.0:
 				_path = map_node.find_path(global_position, p)
-	if _path.is_empty():
-		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
-		return
-	var waypoint: Vector2 = _path[0]
-	if global_position.distance_to(waypoint) <= 8.0:
-		_path.pop_front()
-		if _path.is_empty():
-			velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
-			return
-		waypoint = _path[0]
-	var direction := Game.movement_direction(self, Game.safe_dir(global_position, waypoint))
+	var target := p
+	if _path.size() > 0:
+		var waypoint: Vector2 = _path[0]
+		if global_position.distance_to(waypoint) <= 8.0:
+			_path.pop_front()
+		if _path.size() > 0:
+			waypoint = _path[0]
+		target = waypoint
+	var direction := Game.movement_direction(self, Game.safe_dir(global_position, target))
 	var wanted := direction * (move_speed * StatusEffects.speed_mult(self))
 	velocity = velocity.move_toward(wanted, 1100.0 * delta)
 

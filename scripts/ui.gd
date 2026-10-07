@@ -1212,6 +1212,7 @@ var _shop: ShopPanel = null
 var _alchemy: AlchemyPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
+var _archmage: ArchmagePanel = null
 var _blacksmith: BlacksmithPanel = null
 var _inventory_panel: InventoryPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
@@ -1276,11 +1277,12 @@ func _on_panel_closed() -> void:
 	_inn = null
 	_blacksmith = null
 	_inventory_panel = null
+	_archmage = null
 	_exit_interior()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith) or is_instance_valid(_inventory_panel)
+	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1344,6 +1346,17 @@ func open_inn() -> void:
 	_inn.setup(player)
 	_inn.closed.connect(_on_panel_closed)
 	add_child(_inn)
+
+## Великий маг (капитан): военная плата (клик по магу в центре города).
+func open_archmage() -> void:
+	if _archmage != null and is_instance_valid(_archmage):
+		return
+	_enter_interior()
+	_archmage = ArchmagePanel.new()
+	_archmage.setup(player)
+	_archmage.closed.connect(_on_panel_closed)
+	_archmage.inventory_changed.connect(_on_inventory_changed)
+	add_child(_archmage)
 
 ## Кузница: переплавка оружия/брони в слитки (клик по Blacksmith).
 func open_blacksmith() -> void:

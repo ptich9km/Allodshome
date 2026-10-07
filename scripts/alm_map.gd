@@ -11,10 +11,9 @@ class_name AlmMap
 const TILE := 32
 # Высота меша на 1 единицу высоты карты (оригинал рисует 1:1)
 const HEIGHT_SCALE := 1.0
-## Потолок BFS в find_path. 192×192 = 36864 клеток на клик — кадр убивает.
-## При превышении путь обрывается (пустой массив), герой идёт напрямую.
-## Как понадобится качество путей — A* вытеснит BFS (замена одной функции).
-const BFS_MAX_CELLS := 12000
+## Потолок раскрытий поиска пути. Жадный best-first на открытой местности
+## обычно ~O(длина пути); лимит — страховка от лабиринтов.
+const BFS_MAX_CELLS := 4000
 
 var map_width: int = 0
 var map_height: int = 0
@@ -1036,29 +1035,50 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 		else:
 			goal = best
 
-	# BFS по 8 соседям (с проверкой диагоналей — нельзя срезать угол)
+	# Жадный best-first по эвристике Чебышёва (целые «ведёрки» — O(1) извлечение).
+	# BFS мерился 360+ мс; линейный минимум по open — ещё ~50 мс. Вёдра срезают
+	# выборку до O(1) и держат длинный клик в единицах мс.
 	var prev := {}
-	var queue: Array = [start]
-	var seen := {start: true}
+	var g_cost := {start: 0.0}
+	var h0 := _heuristic(start, goal)
+	var buckets: Array = []
+	_ensure_bucket(buckets, int(h0))
+	(buckets[int(h0)] as Array).append(start)
+	var min_h := int(h0)
+	var closed := {}
 	var expanded := 0
-	while not queue.is_empty():
-		if expanded >= BFS_MAX_CELLS:
-			# Лимит: цель далеко/в лабиринте — не морозим кадр.
-			# Пустой путь = движение напрямую в move_to_target.
-			return []
-		var cur: Vector2i = queue.pop_front()
-		expanded += 1
-		if cur == goal:
+	var best := Vector2i(-1, -1)
+	var best_h := 1.0e18
+	var hit_limit := false
+	while true:
+		# Ближайшая непустая ведро
+		while min_h < buckets.size() and (buckets[min_h] as Array).is_empty():
+			min_h += 1
+		if min_h >= buckets.size():
 			break
+		if expanded >= BFS_MAX_CELLS:
+			hit_limit = true
+			break
+		var bucket: Array = buckets[min_h]
+		var cur: Vector2i = bucket.pop_back()
+		if closed.has(cur):
+			continue
+		closed[cur] = true
+		expanded += 1
+		var h_cur := _heuristic(cur, goal)
+		if h_cur < best_h:
+			best_h = h_cur
+			best = cur
+		if cur == goal:
+			best = cur
+			break
+		var g_cur: float = float(g_cost.get(cur, 1.0e18))
 		for d in _DIRS_8:
 			var n := cur + d
-			if seen.has(n) or not _cell_walkable(n):
+			if closed.has(n) or not _cell_walkable(n):
 				continue
-			# Футпринты зданий — всегда стена для пути (страховка).
 			if _structure_blocks_cell(n):
 				continue
-			# Проверка диагонали: если движемся по диагонали, обе кардинальные
-			# соседи должны быть проходимы (иначе срезаем угол через препятствие)
 			if d.x != 0 and d.y != 0:
 				var side1 := cur + Vector2i(d.x, 0)
 				var side2 := cur + Vector2i(0, d.y)
@@ -1066,23 +1086,52 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 					continue
 				if _structure_blocks_cell(side1) or _structure_blocks_cell(side2):
 					continue
-			seen[n] = true
+			var step := 1.4142 if (d.x != 0 and d.y != 0) else 1.0
+			var ng := g_cur + step
+			if ng >= float(g_cost.get(n, 1.0e18)):
+				continue
+			g_cost[n] = ng
 			prev[n] = cur
-			queue.append(n)
-	if not seen.has(goal):
+			var hn := int(_heuristic(n, goal))
+			_ensure_bucket(buckets, hn)
+			(buckets[hn] as Array).append(n)
+			if hn < min_h:
+				min_h = hn
+	if best.x < 0:
 		return []
+	var end_cell: Vector2i = goal
+	if hit_limit or not closed.has(goal):
+		if best.x < 0:
+			return []
+		end_cell = best
 
 	# Восстановить путь и перевести в мировые точки (центры клеток)
 	var cells: Array = []
-	var c := goal
-	while c != start:
+	var c := end_cell
+	var guard := 0
+	while c != start and guard < expanded + 8:
 		cells.append(c)
+		if not prev.has(c):
+			break
 		c = prev[c]
+		guard += 1
 	cells.reverse()
+	if cells.is_empty():
+		return []
 	var out: Array = []
 	for cell in cells:
 		out.append(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
 	return out
+
+
+func _ensure_bucket(buckets: Array, h: int) -> void:
+	while buckets.size() <= h:
+		buckets.append([])
+
+
+## Эвристика: Чебышёв (допустима при 8-связности).
+func _heuristic(a: Vector2i, b: Vector2i) -> float:
+	return float(maxi(absi(a.x - b.x), absi(a.y - b.y)))
 
 func _cell_walkable(cell: Vector2i) -> bool:
 	return is_walkable_world(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))

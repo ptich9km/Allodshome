@@ -24,6 +24,8 @@ var _anim: UnitAnim = null
 func _ready():
 	add_to_group("enemy")
 	Game.configure_unit_body(self)
+	# Стартовый разброс репаса: иначе все враги зовут find_path в одном кадре.
+	_repath = randf() * 1.2
 	current_hp = max_hp
 	home_position = global_position
 	_create_sprite()
@@ -241,15 +243,18 @@ func _combat_target() -> Node2D:
 			best = n
 	return best
 
-## Погоня с обходом препятствий (как у героя): перепланировка пути раз в 0.7 с.
+## Погоня с обходом препятствий. Перепланировка раз в ~1.2 с + случайный
+## старт, чтобы 75 врагов не звали find_path в одном кадре (тормоза).
 func _chase_move(delta: float, target: Node2D) -> void:
 	var tpos: Vector2 = target.global_position
-	if _path.is_empty():
+	var dist := global_position.distance_to(tpos)
+	# Дальняя цель — напрямую; путь только когда реально есть препятствия.
+	if _path.is_empty() or dist > 400.0:
 		_repath -= delta
 		if _repath <= 0.0:
-			_repath = 0.7
+			_repath = 1.2 + randf() * 0.6
 			var map_node = get_tree().get_first_node_in_group("alm_map")
-			if map_node != null and map_node.has_method("find_path"):
+			if map_node != null and map_node.has_method("find_path") and dist < 500.0:
 				_path = map_node.find_path(global_position, tpos)
 	if _path.size() > 0:
 		var wp: Vector2 = _path[0]
@@ -259,9 +264,10 @@ func _chase_move(delta: float, target: Node2D) -> void:
 			wp = _path[0]
 			_move_checked(Game.safe_dir(global_position, wp), effective_speed(), delta)
 		else:
-			velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
+			# Путь кончился — идём напрямую к цели (не замираем).
+			_move_checked(Game.safe_dir(global_position, tpos), effective_speed(), delta)
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
+		_move_checked(Game.safe_dir(global_position, tpos), effective_speed(), delta)
 
 ## --- Производные характеристики (по данным монстра, как у героя) ---
 ## Применяются через Game.unit_*: атака->точность, защита->уклонение,

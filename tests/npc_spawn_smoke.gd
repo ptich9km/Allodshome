@@ -152,8 +152,8 @@ func _run() -> void:
 			gray_n += 1
 			gray_cells["%d,%d" % [int(d.get("x", 0)), int(d.get("y", 0))]] = true
 			# сетка 3x3 — та же, что у генератора при разведении
-			gray_regions["%d,%d" % [int(d.get("x", 0)) * 3 / 128,
-				int(d.get("y", 0)) * 3 / 128]] = true
+			gray_regions["%d,%d" % [int(d.get("x", 0)) * 3 / 192,
+				int(d.get("y", 0)) * 3 / 192]] = true
 		_check(gray_n > 0, "Серые на карте есть (%d)" % gray_n)
 		_check(gray_cells.size() == gray_n,
 			"на каждой клетке ровно один Серый (клеток: %d, Серых: %d) — было 6 клеток на 15"

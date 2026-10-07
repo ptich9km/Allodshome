@@ -13,8 +13,8 @@ const DIR := "user://maps/"
 const DIR_DET := "user://maps/_det_check/"
 const SEED_A := 1001
 const SEED_B := 2002
-const W := 128
-const H := 128
+const W := 192
+const H := 192
 const ALM_MAGIC := 0x0052374D
 ## Sidecar-ы карты. Портал - исключение: он есть ТОЛЬКО в зоне новичка
 ## ("start"), это её выход в "mid". В остальных зонах маркера нет вовсе

@@ -197,28 +197,44 @@ func _is_phase_broken(block: int, grid: int) -> bool:
 ## Применить текущую фазу ко всем тайлам.
 ## _phase — индекс в _valid_blocks, а НЕ номер блока: битые фазы вычеркнуты,
 ## и анимация идёт только по пригодным (у mill2 пропускается фаза 3).
+## Текстуры кэшируются: load() на каждый кадр анимации зданий даёт рывки.
+static var _tex_cache: Dictionary = {}
+
+static func _load_cached(path: String) -> Texture2D:
+	if _tex_cache.has(path):
+		return _tex_cache[path]
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_tex_cache[path] = tex
+	return tex
+
 func _apply_frame() -> void:
 	if whole_image:
 		if _tiles.is_empty():
 			return
 		var path := "res://assets/structures/%s/house-001.png" % folder
-		if ResourceLoader.exists(path):
-			(_tiles[0] as Sprite2D).texture = load(path)
+		var tex := _load_cached(path)
+		if tex != null:
+			(_tiles[0] as Sprite2D).texture = tex
 		return
 	var grid := fw * fh
 	var block: int = _current_block()
 	for i in range(_tiles.size()):
 		var frame := block * grid + i + 1
 		var path := "res://assets/structures/%s/house-%03d.png" % [folder, frame]
-		if not ResourceLoader.exists(path):
+		var tex := _load_cached(path)
+		if tex == null:
 			path = "res://assets/structures/%s/house-%03d.png" % [folder, i + 1]
-		if ResourceLoader.exists(path):
-			(_tiles[i] as Sprite2D).texture = load(path)
+			tex = _load_cached(path)
+		if tex != null:
+			(_tiles[i] as Sprite2D).texture = tex
 	for i in range(_shadow_tiles.size()):
 		var sh := _shadow_tiles[i] as Sprite2D
 		var spath := "res://assets/structures/%s/houseb-%03d.png" % [folder, i + 1]
-		if ResourceLoader.exists(spath):
-			sh.texture = load(spath)
+		var stex := _load_cached(spath)
+		if stex != null:
+			sh.texture = stex
 			sh.visible = true
 		else:
 			sh.visible = false

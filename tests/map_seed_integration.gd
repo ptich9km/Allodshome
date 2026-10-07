@@ -34,7 +34,7 @@ func _run() -> void:
 	var a: Dictionary = await _load_world()
 	_check(a.get("loaded", false), "[A] мир загрузился по сиду %d" % SEED_A)
 	_check(str(a.get("path", "")).begins_with("user://maps/"), "[A] путь ведёт в user://maps/ (%s)" % str(a.get("path", "")))
-	_check(a.get("width", 0) == 128 and a.get("height", 0) == 128, "[A] размер 128x128")
+	_check(a.get("width", 0) == 192 and a.get("height", 0) == 192, "[A] размер 192x192")
 	_check(int(a.get("units", 0)) > 0, "[A] на карте есть юниты (%d)" % int(a.get("units", 0)))
 	_check(int(a.get("structures", 0)) > 0, "[A] на карте есть здания (%d)" % int(a.get("structures", 0)))
 	var path_a: String = str(a.get("path", ""))

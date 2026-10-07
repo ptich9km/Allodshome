@@ -23,7 +23,20 @@ var _tex_w := 32
 var _tex_h := 32
 var _frames_dir := ""       # каталог кадров
 
+## Кэш текстур: load() в _apply_frame на КАЖДЫЙ кадр анимации у сотен деревьев
+## роняет кадр на любом железе. Ключ — путь, значение — Texture2D.
+static var _tex_cache: Dictionary = {}
+
 const FRAME_TIME := 0.5     # секунд на кадр (как у ObjectDB.DEFAULT_FRAME_TIME)
+
+static func _load_cached(path: String) -> Texture2D:
+	if _tex_cache.has(path):
+		return _tex_cache[path]
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_tex_cache[path] = tex
+	return tex
 
 func setup(obs_folder: String, n_frames: int, w: int, h: int, a_cx: int, a_cy: int, index: int = 0) -> void:
 	folder = obs_folder
@@ -63,7 +76,7 @@ func _setup_shadow() -> void:
 		_shadow.z_index = -1   # под самим объектом (но над землёй)
 		add_child(_shadow)
 	var idx: int = _pick_frame()
-	var tex: Variant = load("%s/spritesb-%03d.png" % [_frames_dir, idx + 1])
+	var tex: Variant = _load_cached("%s/spritesb-%03d.png" % [_frames_dir, idx + 1])
 	if tex == null:
 		_shadow.visible = false
 		return
@@ -90,7 +103,7 @@ func _apply_frame() -> void:
 		visible = false
 		return
 	var idx: int = _pick_frame()
-	var tex: Variant = load("%s/sprites-%03d.png" % [_frames_dir, idx + 1])
+	var tex: Variant = _load_cached("%s/sprites-%03d.png" % [_frames_dir, idx + 1])
 	if tex == null:
 		visible = false
 		return

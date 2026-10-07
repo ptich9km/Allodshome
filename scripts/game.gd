@@ -232,9 +232,9 @@ static func configure_unit_body(unit: Node2D, radius: float = 12.0) -> void:
 	if not (unit is CharacterBody2D):
 		return
 	var body := unit as CharacterBody2D
-	# Слой 1 = «юниты/препятствия мира». Маска 1 = чувствуем layer 1.
-	# Раньше ставился только mask — layer оставался дефолтом, и в некоторых
-	# сессиях StaticBody2D зданий не резал move_and_slide.
+	# Слой 1 = стены/здания/боевые юниты. Маска 1 = чувствуем layer 1.
+	# Мирные NPC (жители, маг города) после этого вызова переезжают на слой 2 —
+	# герой через них ходит, иначе в городе 30+ NPC «упираются» в толпу.
 	body.collision_layer = 1
 	body.collision_mask = 1
 	# motion_mode НЕ трогаем: в top-down интуитивно хочется MOTION_MODE_FLOATING,
@@ -258,25 +258,66 @@ static func configure_unit_body(unit: Node2D, radius: float = 12.0) -> void:
 		shape.radius = radius
 		shape_node.shape = shape
 
+## Разделение юнитов, чтобы не слипались. Раньше здесь каждый кадр
+## аллоцировал Array из ВСЕХ юнитов и мерил дистанцию до каждого —
+## на 75 врагах это O(n²) в физике. Теперь: буфер без аллокации,
+## ранний выход, мирные NPC (слой 2) не толкают друг друга.
+const SEP_DIST := 24.0
+const SEP_DIST_SQ := SEP_DIST * SEP_DIST
+const SEP_SKIP_SQ := 40.0 * 40.0
+static var _sep_acc := Vector2.ZERO
+
 static func movement_direction(unit: Node2D, desired: Vector2) -> Vector2:
 	if desired.length_squared() <= 0.0001:
 		return Vector2.ZERO
-	var units: Array = [Game.hero]
-	units.append_array(Game.enemies)
-	units.append_array(Game.npcs)
-	units.append_array(Game.party)
-	var separation := Vector2.ZERO
-	for other in units:
-		if other == unit or other == null or not is_instance_valid(other):
-			continue
-		if not (other is Node2D):
-			continue
-		var delta := unit.global_position - (other as Node2D).global_position
-		var distance := delta.length()
-		if distance > 0.1 and distance < 24.0:
-			separation += delta / distance * (24.0 - distance) / 24.0
+	_sep_acc = Vector2.ZERO
+	var my_pos: Vector2 = unit.global_position
+	var my_layer: int = 1
+	if unit is CollisionObject2D:
+		my_layer = (unit as CollisionObject2D).collision_layer
+	var found := 0
+	if is_instance_valid(Game.hero) and Game.hero != unit:
+		found += _sep_push(my_pos, my_layer, Game.hero)
+	for other in Game.enemies:
+		if found >= 6:
+			break
+		if other != unit:
+			found += _sep_push(my_pos, my_layer, other)
+	for other in Game.npcs:
+		if found >= 6:
+			break
+		if other != unit:
+			found += _sep_push(my_pos, my_layer, other)
+	for other in Game.party:
+		if found >= 6:
+			break
+		if other != unit:
+			found += _sep_push(my_pos, my_layer, other)
+	var separation := _sep_acc
 	var result := desired.normalized() + separation * 1.5
 	return result.normalized() if result.length_squared() > 0.0001 else desired.normalized()
+
+
+## Один юнит: если рядом — добавить вклад в _sep_acc. Возвращает 0/1.
+static func _sep_push(my_pos: Vector2, my_layer: int, other: Node) -> int:
+	if other == null or not is_instance_valid(other) or not (other is Node2D):
+		return 0
+	if other is CollisionObject2D and my_layer == 2 \
+			and (other as CollisionObject2D).collision_layer == 2:
+		return 0
+	var opos: Vector2 = (other as Node2D).global_position
+	var dx := my_pos.x - opos.x
+	var dy := my_pos.y - opos.y
+	var dist_sq := dx * dx + dy * dy
+	if dist_sq > SEP_SKIP_SQ or dist_sq < 0.01:
+		return 0
+	var distance := sqrt(dist_sq)
+	if distance >= SEP_DIST:
+		return 0
+	var w := (SEP_DIST - distance) / SEP_DIST
+	_sep_acc.x += dx / distance * w
+	_sep_acc.y += dy / distance * w
+	return 1
 
 
 ## Лучшее скольжение, когда полный шаг заблокирован.
@@ -310,6 +351,7 @@ var _select_ring: SelectRing = null       # подсветка цели (хов�
 var _pending_building := ""               # здание, к которому герой подходит («вход»)
 var _pending_s: Dictionary = {}           # структура-цель ожидающего входа
 var _pending_herb: HerbNode = null
+var _pending_archmage: Node2D = null      # капитан-маг, к которому подходим
 var _save_menu: SaveMenu = null
 var _autosave_accum: float = 0.0
 ## Интервал автосейва. 60 с - компромисс: чаще - лишний ввод-вывод, реже -
@@ -645,6 +687,7 @@ func _spawn_npc(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var role := str(rec.get("role", "citizen"))
 	n.role = role
 	n.is_patrol = bool(rec.get("patrol", false))
+	n.is_archmage = bool(rec.get("archmage", false))
 	var post: Array = rec.get("post", [])
 	if post.size() >= 2:
 		var post_cell := Vector2i(int(post[0]), int(post[1]))
@@ -789,6 +832,7 @@ func handle_click(world_position: Vector2):
 	_pending_herb = null
 	_pending_building = ""
 	_pending_s = {}
+	_pending_archmage = null
 
 	# Клик по зданию (функциональному или декоративному): всегда к двери.
 	# Функциональное — при подходе меню + герой «внутри»; декоративное — только подход.
@@ -803,6 +847,11 @@ func handle_click(world_position: Vector2):
 		if herb != null:
 			_herb_click(herb)
 			return
+	# Клик по великому магу (капитан): подходим / открываем панель.
+	var mage = _archmage_at_position(world_position)
+	if mage != null:
+		_archmage_click(mage)
+		return
 
 	var enemy = get_enemy_at_position(world_position)
 	if enemy:
@@ -898,6 +947,44 @@ func _harvest_herb(herb: HerbNode) -> void:
 		ui.refresh_inventory()
 	SoundDB.play(1)
 	print("Собрана трава: %s" % herb.item_key)
+
+## Великий маг города (капитан) под курсором.
+func _archmage_at_position(click_pos: Vector2) -> Node2D:
+	for n in npcs:
+		if not is_instance_valid(n):
+			continue
+		if not ("is_archmage" in n) or not bool(n.is_archmage):
+			continue
+		if unit_hit_rect(n).grow(8.0).has_point(click_pos):
+			return n
+	return null
+
+## Клик по магу: если рядом — панель, иначе подходим.
+func _archmage_click(mage: Node2D) -> void:
+	if ui == null or not is_instance_valid(player) or not is_instance_valid(mage):
+		return
+	_pending_building = ""
+	_pending_s = {}
+	_pending_herb = null
+	player.attack_target = null
+	if player.global_position.distance_to(mage.global_position) <= 90.0:
+		ui.open_archmage()
+		return
+	_pending_archmage = mage
+	player_target = mage.global_position
+	player.state = "move"
+	if alm_map != null and alm_map.has_method("find_path"):
+		player.begin_path(alm_map.find_path(player.global_position, mage.global_position))
+
+func _process_pending_archmage() -> void:
+	if _pending_archmage == null:
+		return
+	if not is_instance_valid(_pending_archmage) or ui == null:
+		_pending_archmage = null
+		return
+	if player.global_position.distance_to(_pending_archmage.global_position) <= 90.0:
+		_pending_archmage = null
+		ui.open_archmage()
 
 ## Точка входа (дверь): проходимая клетка под южным краем корпуса здания.
 func _door_point(s: Dictionary) -> Vector2:
@@ -1266,14 +1353,12 @@ static func units_range(a: Node2D, b: Node2D) -> float:
 static func camera_trauma(amount: float) -> void:
 	_trauma = clampf(_trauma + amount, 0.0, 1.0)
 
-func _process(delta):
-	if is_paused:
-		return
-	_gray_respawn_tick(delta)
+func _physics_process(delta):
+	# Камера в том же тике, что и герой: иначе на high-refresh
+	# lerp в _process «дёргает» картинку относительно physics-interpolated
+	# позиции юнита (жалоба игрока 07.10).
 	if is_instance_valid(player) and camera:
-		_autosave_tick(delta)
-		camera.position = camera.position.lerp(player.camera_focus(), 5.0 * delta)
-		# Camera shake (trauma-based)
+		camera.position = camera.position.lerp(player.camera_focus(), 8.0 * delta)
 		if _trauma > 0.0:
 			_trauma = maxf(_trauma - 1.2 * delta, 0.0)
 			var shake := _trauma * _trauma
@@ -1284,6 +1369,15 @@ func _process(delta):
 			)
 		else:
 			camera.offset = Vector2.ZERO
+
+
+func _process(delta):
+	if is_paused:
+		return
+	_gray_respawn_tick(delta)
+	if is_instance_valid(player) and camera:
+		_autosave_tick(delta)
+		# Камера уже в _physics_process — здесь только UI/реген/таймеры.
 	if is_instance_valid(ui) and is_instance_valid(player):
 		ui.update_ui(player, delta)
 	
@@ -1296,6 +1390,7 @@ func _process(delta):
 	_update_target_ring()
 	_process_pending_building()
 	_process_pending_herb()
+	_process_pending_archmage()
 	Game.tick_shields(delta)
 	StatusEffects.tick(delta)
 	_check_portal()

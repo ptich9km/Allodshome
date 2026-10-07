@@ -900,15 +900,20 @@ func cast_origin() -> Vector2:
 func move_to_target(delta):
 	if _path.size() > 0:
 		_follow_path(delta)
-		if _path.is_empty():
-			# Маршрут пройден — цель достигнута (не скользим дальше)
+	if _path.size() > 0:
+		return
+	# Пустой путь (BFS-лимит / частичный маршрут до «ближайшей к цели» клетки):
+	# идём НАПРЯМУЮ к player_target, а не встаем (иначе на 192×192 — рывки).
+	var dist := Game.player_target.distance_to(global_position)
+	if dist > 8.0:
+		var dir := Game.safe_dir(global_position, Game.player_target)
+		var speed_factor := _height_speed_factor(Game.player_target)
+		_move_checked(dir, move_speed * speed_factor, delta)
+		if velocity.length_squared() < 1.0:
+			# Упёрся / цель недостижима — останавливаемся, не дёргаемся.
 			state = "idle"
 			velocity = Vector2.ZERO
-		return
-	if Game.player_target.distance_to(global_position) > 5.0:
-		state = "idle"
-		velocity = Vector2.ZERO
-		Game.player_target = global_position
+			Game.player_target = global_position
 	else:
 		state = "idle"
 		velocity = Vector2.ZERO
@@ -962,11 +967,11 @@ func chase_target(delta):
 			state = "attack"
 			velocity = Vector2.ZERO
 			return
-		# Путь к врагу (обход препятствий), перепланировка раз в 0.6 с
+		# Путь к врагу: перепланировка ~1.2 с + случайный старт
 		if _path.is_empty():
 			_repath_timer -= delta
 			if _repath_timer <= 0.0:
-				_repath_timer = 0.6
+				_repath_timer = 1.2 + randf() * 0.5
 				if alm_map != null and alm_map.has_method("find_path"):
 					begin_path(alm_map.find_path(global_position, attack_target.global_position))
 		if _path.size() > 0:

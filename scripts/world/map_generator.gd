@@ -15,8 +15,10 @@ const DB_PATH := "res://assets/maps/transition_db.json"
 const SHAPES_PATH := "res://assets/maps/shapes_db.json"
 ## Каталог генерируемых карт в user:// — res:// в экспортированной игре только для чтения.
 const MAPS_DIR := "user://maps/"
-const W := 128
-const H := 128
+## Размер карты по умолчанию. В стресс-режиме ([stress] enabled=1)
+## перекрывается stress.map_size (игрок 07.10: 1000×1000).
+var W := 192
+var H := 192
 ## Сид, которым вызывался генератор до появления параметризации. Служит опорой для
 ## смещений потоков и эталоном для регрессионной проверки идентичности карты.
 const BASE_SEED := 4242
@@ -109,7 +111,7 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 11
+const GEN_VERSION := 12
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -157,10 +159,31 @@ func generate(seed_value: int, zone: String = "mid", dir: String = "res://assets
 	_map_name = map_name_override
 	if _map_name == "":
 		_map_name = _basename
+	_apply_stress_overrides()
 	_load_db()
 	_generate()
 	_save()
 	return _out_dir + _basename + ".alm"
+
+
+## Стресс-режим движка: размер карты и счётчики контента из [stress].
+## В обычной игре enabled=0 — поведение не меняется.
+func _apply_stress_overrides() -> void:
+	var enabled := GameConfig.geti("stress", "enabled") != 0
+	if not enabled:
+		W = 192
+		H = 192
+		return
+	var size := GameConfig.geti("stress", "map_size")
+	W = clampi(size, 64, 2000)
+	H = W
+	print("STRESS: карта %dx%d, деревья=%d, Серые=%d, стражи=%d, жители=%d" % [
+		W, H,
+		GameConfig.geti("stress", "tree_count"),
+		GameConfig.geti("stress", "gray_count"),
+		GameConfig.geti("stress", "city_guard_count"),
+		GameConfig.geti("stress", "city_citizen_count"),
+	])
 
 func _load_db() -> void:
 	var f := FileAccess.open(DB_PATH, FileAccess.READ)
@@ -776,6 +799,8 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 	]
 	var guards_n := rng.randi_range(
 		GameConfig.zonei(_zone, "guard_count_min"), GameConfig.zonei(_zone, "guard_count_max"))
+	if GameConfig.geti("stress", "enabled") != 0:
+		guards_n = GameConfig.geti("stress", "city_guard_count")
 	for i in range(guards_n):
 		var post := _post_cell(center, guard_offsets, posts_taken)
 		if post.x < 0:
@@ -788,14 +813,18 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 		var dmg := rng.randi_range(
 			GameConfig.zonei(_zone, "guard_damage_min"), GameConfig.zonei(_zone, "guard_damage_max"))
 		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg))
-	# Капитан у площади
+	# Капитан у площади — он же ВЕЛИКИЙ МАГ города (решение игрока 07.10).
 	var cap := _post_cell(center, [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)], posts_taken)
 	if cap.x >= 0:
-		_npcs_out.append(_npc_rec(cap, CAPTAIN_SET, "guard", false,
-			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage")))
+		var cap_rec := _npc_rec(cap, CAPTAIN_SET, "guard", false,
+			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage"))
+		cap_rec["archmage"] = true
+		_npcs_out.append(cap_rec)
 	# Жители (стоят, не патрулируют) — кольца 3–4
 	var cit_n := rng.randi_range(
 		GameConfig.zonei(_zone, "citizen_count_min"), GameConfig.zonei(_zone, "citizen_count_max"))
+	if GameConfig.geti("stress", "enabled") != 0:
+		cit_n = GameConfig.geti("stress", "city_citizen_count")
 	for i in range(cit_n):
 		var post := _post_cell(center, citizens_offsets, posts_taken)
 		if post.x < 0:
@@ -963,6 +992,39 @@ func _place_objects(rng: RandomNumberGenerator) -> void:
 				continue
 			if _obj_noise.get_noise_2d(x, y) > 0.12 and rng.randf() < density:
 				_obstacles[y * W + x] = _tree_id(rng, t)
+	# Стресс: добиваем деревья до абсолютного счётчика [stress] tree_count.
+	if GameConfig.geti("stress", "enabled") != 0:
+		_fill_stress_trees(rng)
+
+
+func _fill_stress_trees(rng: RandomNumberGenerator) -> void:
+	var want := GameConfig.geti("stress", "tree_count")
+	if want <= 0:
+		return
+	var placed := 0
+	for i in range(W * H):
+		if _obstacles[i] != 0:
+			placed += 1
+	var tries := 0
+	var max_tries := want * 6
+	while placed < want and tries < max_tries:
+		tries += 1
+		var x := rng.randi_range(2, W - 3)
+		var y := rng.randi_range(2, H - 3)
+		var idx := y * W + x
+		if _obstacles[idx] != 0:
+			continue
+		var t := _terrain[idx]
+		if t != 0 and t != 4 and t != 5 and t != 6:
+			continue
+		var cell := Vector2i(x, y)
+		if _reserved.has(cell) or _near_road(cell) or _near_city(cell, 4):
+			continue
+		if _near_point(cell, _spawn_pos, 2) or _near_point(cell, _portal_pos, 2):
+			continue
+		_obstacles[idx] = _tree_id(rng, t)
+		placed += 1
+	print("STRESS trees: %d (tries=%d)" % [placed, tries])
 
 ## Сосед-дорога рядом? (клиренс: дерево не примыкает к дороге)
 func _near_road(cell: Vector2i) -> bool:
@@ -1070,6 +1132,8 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 	var cfg: Dictionary = GRAY_ZONE.get(_zone, GRAY_ZONE["mid"])
 	var count: int = rng.randi_range(
 		GameConfig.zonei(_zone, "gray_count_min"), GameConfig.zonei(_zone, "gray_count_max"))
+	if GameConfig.geti("stress", "enabled") != 0:
+		count = GameConfig.geti("stress", "gray_count")
 	var placed := 0
 
 	# Список регионов в перемешанном порядке — чтобы зоны «раньше» не выбирались

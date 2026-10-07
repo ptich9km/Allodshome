@@ -63,7 +63,7 @@ func _run() -> void:
 	var regions := {}
 	for k in gray_cells:
 		var p := str(k).split(",")
-		regions["%d,%d" % [int(p[0]) * 3 / 128, int(p[1]) * 3 / 128]] = true
+		regions["%d,%d" % [int(p[0]) * 3 / 192, int(p[1]) * 3 / 192]] = true
 	_check(regions.size() == 9, "Серые разведены по ВСЕМ 9 регионам (было 2) — сейчас %d"
 			% regions.size())
 
