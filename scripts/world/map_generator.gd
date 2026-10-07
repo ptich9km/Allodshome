@@ -111,7 +111,7 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 13
+const GEN_VERSION := 14
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -431,14 +431,14 @@ const HERB_ITEMS := [
 	{"item": "Herb Dandelion", "icon": "res://assets/professions/herbalism/dandelion.png"},
 	{"item": "Herb Broad Leaf", "icon": "res://assets/professions/herbalism/broad_leaf.png"},
 ]
-const HERB_TARGET_COUNTS := {"start": 20, "mid": 26, "hard": 30, "faction": 28}
+const HERB_TARGET_COUNTS := {"start": 70, "mid": 90, "hard": 110, "faction": 100}
 const HERB_REGION_GRID := 4
-const HERB_MIN_DISTANCE := 6
+const HERB_MIN_DISTANCE := 4
 
 ## Разведение Серых по карте (03.10). GRAY_MIN_DISTANCE — минимальная
 ## дистанция между любыми двумя Серыми, иначе кластеры жмутся в угол.
 ## GRAY_REGION_GRID — на сколько частей делим карту для отчёта о покрытии.
-const GRAY_MIN_DISTANCE := 7
+const GRAY_MIN_DISTANCE := 4
 const GRAY_REGION_GRID := 3
 const GRAY_MIN_SPAWN_DISTANCE := 14   # не тыкать зверя прямо в лицо новичку
 
@@ -990,7 +990,7 @@ func _place_objects(rng: RandomNumberGenerator) -> void:
 				continue
 			if _near_point(cell, _spawn_pos, 3) or _near_point(cell, _portal_pos, 3):
 				continue
-			if _obj_noise.get_noise_2d(x, y) > 0.12 and rng.randf() < density:
+			if _obj_noise.get_noise_2d(x, y) > 0.0 and rng.randf() < density:
 				_obstacles[y * W + x] = _tree_id(rng, t)
 	# Стресс: добиваем деревья до абсолютного счётчика [stress] tree_count.
 	if GameConfig.geti("stress", "enabled") != 0:
