@@ -111,7 +111,7 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 14
+const GEN_VERSION := 15
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -441,6 +441,27 @@ const HERB_MIN_DISTANCE := 4
 const GRAY_MIN_DISTANCE := 4
 const GRAY_REGION_GRID := 3
 const GRAY_MIN_SPAWN_DISTANCE := 14   # не тыкать зверя прямо в лицо новичку
+
+## Тематические встречи (пакет D, 07.10): улей, логово, стая — как в Аллодах.
+## hp_mult — множитель HP относительно зоны; members — сколько особей.
+const ENCOUNTER_KINDS := [
+	{"kind": "bee_hive", "sets": ["monsters/bee"], "members": [4, 6],
+		"hp_mult": 1.15, "dmg_mult": 1.0, "near": "forest", "label": "Улей"},
+	{"kind": "wolf_pack", "sets": ["monsters/wolf"], "members": [3, 4],
+		"hp_mult": 1.0, "dmg_mult": 1.0, "near": "forest", "label": "Волчья стая"},
+	{"kind": "spider_den", "sets": ["monsters/spider"], "members": [2, 3],
+		"hp_mult": 1.1, "dmg_mult": 1.05, "near": "forest", "label": "Логово пауков"},
+	{"kind": "squirrel_herd", "sets": ["monsters/squirrel"], "members": [3, 5],
+		"hp_mult": 0.9, "dmg_mult": 0.9, "near": "forest", "label": "Стая белок"},
+	{"kind": "orc_camp", "sets": ["monsters/orc", "monsters/goblin"], "members": [4, 6],
+		"hp_mult": 1.15, "dmg_mult": 1.1, "near": "road", "label": "Орочий лагерь"},
+	{"kind": "ogre_lair", "sets": ["monsters/ogre"], "members": [1, 2],
+		"hp_mult": 1.5, "dmg_mult": 1.25, "near": "any", "label": "Логово людоеда"},
+	{"kind": "troll_lair", "sets": ["monsters/troll"], "members": [1, 2],
+		"hp_mult": 1.4, "dmg_mult": 1.2, "near": "any", "label": "Логово троллей"},
+	{"kind": "bat_swarm", "sets": ["monsters/bat"], "members": [3, 5],
+		"hp_mult": 1.0, "dmg_mult": 1.0, "near": "any", "label": "Рой летучих мышей"},
+]
 
 var _spawn_pos: Vector2i = Vector2i(-1, -1)
 var _portal_pos: Vector2i = Vector2i(-1, -1)
@@ -1135,6 +1156,7 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 	if GameConfig.geti("stress", "enabled") != 0:
 		count = GameConfig.geti("stress", "gray_count")
 	var placed := 0
+	var encounter_seq := 0
 
 	# Список регионов в перемешанном порядке — чтобы зоны «раньше» не выбирались
 	# всегда одинаково и карта не была предсказуемой.
@@ -1143,6 +1165,22 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 		for rx in range(GRAY_REGION_GRID):
 			regions.append(Vector2i(rx, ry))
 	_shuffle(rng, regions)
+
+	# Пакет D: сначала тематические встречи (улей/логово/стая), ~35% квоты.
+	var encounter_budget := int(ceil(float(count) * 0.35))
+	var kinds: Array = ENCOUNTER_KINDS.duplicate()
+	_shuffle(rng, kinds)
+	var kinds_used := 0
+	var tries_e := 0
+	while placed < encounter_budget and kinds_used < kinds.size() and tries_e < 200:
+		tries_e += 1
+		var ed: Dictionary = kinds[kinds_used % kinds.size()]
+		kinds_used += 1
+		var anchor := _encounter_anchor(rng, str(ed.get("near", "any")))
+		if anchor.x < 0:
+			continue
+		placed += _spawn_encounter(rng, anchor, ed, encounter_seq)
+		encounter_seq += 1
 
 	for reg in regions:
 		if placed >= count:
@@ -1326,6 +1364,66 @@ func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary
 			"x": int(cc.x), "y": int(cc.y), "set": set_name,
 			"hp_max": hp, "damage": dmg,
 		})
+	return cells.size()
+
+
+## Якорь тематической встречи: forest/road/any.
+func _encounter_anchor(rng: RandomNumberGenerator, near: String) -> Vector2i:
+	match near:
+		"forest":
+			var f := _forest_anchor(rng)
+			if f.x >= 0 and _gray_anchor_ok(f):
+				return f
+			return Vector2i(-1, -1)
+		"road":
+			var road := _road_anchor(rng)
+			if road.x >= 0:
+				var c := _side_road_cell(rng, road)
+				if c.x >= 0 and _gray_anchor_ok(c):
+					return c
+			return Vector2i(-1, -1)
+		_:
+			for attempt in range(20):
+				var c := Vector2i(rng.randi_range(4, W - 5), rng.randi_range(4, H - 5))
+				if _gray_cell_ok(c) and _gray_anchor_ok(c):
+					return c
+			return Vector2i(-1, -1)
+
+
+## Поставить встречу: 1 «ядро» (сильнее) + members-1 обычных вокруг.
+func _spawn_encounter(rng: RandomNumberGenerator, anchor: Vector2i, ed: Dictionary, eid: int) -> int:
+	var sets: Array = ed.get("sets", ["monsters/orc"])
+	var members: Array = ed.get("members", [2, 3])
+	var n := rng.randi_range(int(members[0]), int(members[1]))
+	var hp_mult := float(ed.get("hp_mult", 1.0))
+	var dmg_mult := float(ed.get("dmg_mult", 1.0))
+	var kind := str(ed.get("kind", "wild"))
+	var cells: Array = [anchor]
+	for i in range(1, n):
+		var c := _near_gray_cell(rng, anchor, cells)
+		if c.x < 0:
+			break
+		cells.append(c)
+	for i in range(cells.size()):
+		var cc: Vector2i = cells[i]
+		_gray_cells["%d,%d" % [cc.x, cc.y]] = true
+		var set_name: String = str(sets[i % sets.size()])
+		var is_core := i == 0
+		var hp := int(round(float(rng.randi_range(
+			GameConfig.zonei(_zone, "gray_hp_min"), GameConfig.zonei(_zone, "gray_hp_max"))) * hp_mult * (1.25 if is_core else 1.0)))
+		var dmg := int(round(float(rng.randi_range(
+			GameConfig.zonei(_zone, "gray_damage_min"), GameConfig.zonei(_zone, "gray_damage_max"))) * dmg_mult))
+		var rec := {
+			"x": int(cc.x), "y": int(cc.y), "set": set_name,
+			"hp_max": hp, "damage": dmg,
+			"encounter_kind": kind,
+			"encounter_id": eid,
+			"home_x": int(anchor.x), "home_y": int(anchor.y),
+		}
+		if is_core:
+			rec["encounter_core"] = true
+		_npcs_out.append(rec)
+	print("ENCOUNTER %s id=%d members=%d core=%s" % [kind, eid, cells.size(), str(ed.get("label", ""))])
 	return cells.size()
 
 ## Соседняя клетка для кластера. ВАЖНО: массив `taken` здесь ТОЛЬКО читается.
