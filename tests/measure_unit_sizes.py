@@ -26,6 +26,10 @@ def main() -> int:
         db = json.load(f)
 
     samples = [
+        "ork_mage_a52/t0",
+        "ork_mage_a52/t1",
+        "ork_mage_a52/t2",
+        "ork_mage_a52/t3",
         "ork_mage/t0",
         "ork_mage/t1",
         "ork_mage/t2",
@@ -79,7 +83,7 @@ def main() -> int:
 
     # how many pixels tall are ork vs human content
     print("\n--- content height comparison ---")
-    for key in ["ork_mage/t0", "humans/unarmed", "humans/swordsman", "heroes/swordsman", "monsters/orc"]:
+    for key in ["ork_mage_a52/t0", "ork_mage/t0", "humans/unarmed", "humans/swordsman", "heroes/swordsman", "monsters/orc"]:
         o = db.get(key, {})
         folder = o.get("folder", key)
         prefix = o.get("prefix", "sprites")
@@ -88,7 +92,7 @@ def main() -> int:
             continue
         size, bbox = content_bbox(path)
         h = bbox[3] - bbox[1] if bbox else 0
-        print(f"{key:25} content_h={h:3} canvas={size[0]}x{size[1]} tile_size={o.get('tile_size')} visual_h≈{h * max(1, int(o.get('tile_size',1)))}")
+        print(f"{key:25} content_h={h:3} canvas={size[0]}x{size[1]} tile_size={o.get('tile_size')} visual_h~{h * max(1, int(o.get('tile_size',1)))}")
     return 0
 
 

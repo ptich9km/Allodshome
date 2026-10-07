@@ -72,7 +72,7 @@ func _run() -> void:
 
 	# Снаряжение и партия, которые обязаны выжить.
 	var merc := Mercenary.new()
-	merc.anim_set = "ork_mage/t1"
+	merc.anim_set = "ork_mage_a52/t1"
 	game.add_child(merc)
 	Game.party.append(merc)
 	_check(Game.party.size() == 1, "в партии один наёмник")

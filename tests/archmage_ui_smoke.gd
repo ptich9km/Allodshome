@@ -2,7 +2,7 @@ extends SceneTree
 ## Смоук панели великого мага (ArchmagePanel) + капитан=маг.
 ##
 ## Проверяет:
-##  * на карте есть NPC is_archmage (капитан) с набором ork_mage/tN
+##  * на карте есть NPC is_archmage (капитан) с набором ork_mage_a52/tN
 ##  * панель открывается, имя/город из Lore
 ##  * сдача слитка/золота меняет power и списывает ресурс один раз
 ##  * power>=100 блокирует кнопки
@@ -51,7 +51,7 @@ func _run() -> void:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(UNITS))
 	_check(parsed is Dictionary, "units_db читается")
 	for t in range(4):
-		var key := "ork_mage/t%d" % t
+		var key := "ork_mage_a52/t%d" % t
 		_check(parsed is Dictionary and (parsed as Dictionary).has(key), "набор %s есть" % key)
 
 	print("-- карта + капитан-маг --")
@@ -84,7 +84,7 @@ func _run() -> void:
 	if not captains.is_empty():
 		var c: Node = captains[0]
 		var setn := str(c.anim_set)
-		_check(setn.begins_with("ork_mage/"), "капитан использует ork_mage (=%s)" % setn)
+		_check(setn.begins_with("ork_mage_a52/"), "капитан использует ork_mage_a52 (=%s)" % setn)
 		_check(UnitDB.has(setn), "набор капитана есть в units_db")
 	var am0 = _bus_state().get_archmage("human")
 	_check(am0 is Dictionary and not (am0 as Dictionary).is_empty(), "get_archmage(human) не пуст")
@@ -98,6 +98,12 @@ func _run() -> void:
 	await process_frame
 	var panel = ui.get("_archmage")
 	_check(panel != null and is_instance_valid(panel), "ArchmagePanel создана")
+	if panel != null:
+		var portrait = panel.get("_portrait")
+		_check(portrait != null and is_instance_valid(portrait), "в панели есть Portrait")
+		if portrait != null:
+			var ptex = portrait.get("texture")
+			_check(ptex != null, "у капитана есть спрайт в панели (texture)")
 	if panel == null:
 		_report()
 		return

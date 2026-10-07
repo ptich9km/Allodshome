@@ -111,7 +111,7 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 12
+const GEN_VERSION := 13
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -410,11 +410,11 @@ const DECOR_FOLDERS := ["barracks1"]
 const ZONES_WITH_PORTAL := ["start", "mid"]
 
 # НПЦ городов.
-## Городские NPC — орк-маги (assets/wip/characters/ork_mage → assets/units/ork_mage).
-## Аллодовские humans/* из городского спавна убраны (07.10). Ступени t0..t3.
-const GUARD_SETS := ["ork_mage/t1", "ork_mage/t2"]
-const CITIZEN_SETS := ["ork_mage/t0", "ork_mage/t1"]
-const CAPTAIN_SET := "ork_mage/t3"
+## Городские NPC — орк-маги варианта A (H=52 nearest, canvas 64).
+## Старый набор ork_mage/tN (40×40 после LANCZOS) оставлен в units_db для отката.
+const GUARD_SETS := ["ork_mage_a52/t1", "ork_mage_a52/t2"]
+const CITIZEN_SETS := ["ork_mage_a52/t0", "ork_mage_a52/t1"]
+const CAPTAIN_SET := "ork_mage_a52/t3"
 
 # Объекты по биому: подходящие ID из alm_objects.json.
 const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]

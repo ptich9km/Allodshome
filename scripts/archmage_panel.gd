@@ -2,7 +2,7 @@ class_name ArchmagePanel
 extends CanvasLayer
 ## Панель великих магов: военная плата (GDD docs/lore/gdd_archmage.md).
 ##
-## Маг в городе — капитан (NPC `is_archmage`), спрайт `ork_mage/tN` по ступени.
+## Маг в городе — капитан (NPC `is_archmage`), спрайт `ork_mage_a52/tN` по ступени.
 ## Источник данных — WorldBus.state.factions[...]["archmage"] (тик по реальному
 ## времени, sim-мир не тикает). Ставки: слиток / золото / зелье.
 
@@ -14,6 +14,7 @@ var _root: MarginContainer
 var _panel: PanelContainer
 var _name_label: Label
 var _city_label: Label
+var _portrait: TextureRect
 var _power_bar: ProgressBar
 var _power_label: Label
 var _stance_label: Label
@@ -103,17 +104,39 @@ func _build_ui() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(title)
 
+	var head := HBoxContainer.new()
+	head.name = "Head"
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", UiTheme.SPACE_4)
+	content.add_child(head)
+
+	_portrait = TextureRect.new()
+	_portrait.name = "Portrait"
+	_portrait.custom_minimum_size = Vector2(72, 80)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_portrait)
+
+	var head_col := VBoxContainer.new()
+	head_col.name = "HeadCol"
+	head_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	head_col.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	head_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(head_col)
+
 	_name_label = Label.new()
 	_name_label.name = "MageName"
 	_name_label.theme_type_variation = &"ArchmageName"
-	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content.add_child(_name_label)
+	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head_col.add_child(_name_label)
 
 	_city_label = Label.new()
 	_city_label.name = "CityName"
 	_city_label.theme_type_variation = &"ArchmageCity"
-	_city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content.add_child(_city_label)
+	_city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head_col.add_child(_city_label)
 
 	_power_bar = ProgressBar.new()
 	_power_bar.name = "PowerBar"
@@ -214,6 +237,9 @@ func _refresh() -> void:
 		_stance_label.text = ""
 		_speech_label.text = tr("В этом городе великого мага нет.")
 		_set_stake_enabled(false, false, false)
+		if _portrait != null:
+			_portrait.texture = null
+			_portrait.visible = false
 		return
 	var power := float(am.get("power", 0.0))
 	var tier := int(am.get("tier", 0))
@@ -233,6 +259,7 @@ func _refresh() -> void:
 	if not _speech_label.text.begins_with(tr("Сдавайте")):
 		_speech_label.text = tr("Сдавайте ресурсы: слитки, золото, зелья. Могущество держит фракцию.")
 	_speak_if_tier_changed(tier)
+	_set_portrait(tier)
 	_sync_captain_sprite(tier)
 	var full := power >= max_power - 0.01
 	_set_stake_enabled(not full, not full and _has_gold_stake(), not full and _find_stake_key("potion") != "")
@@ -257,8 +284,20 @@ func _speak_if_tier_changed(tier: int) -> void:
 	_speech_label.text = tr("«%s»") % str(lines[randi() % lines.size()])
 
 
+func _set_portrait(tier: int) -> void:
+	if _portrait == null:
+		return
+	var set_name := "ork_mage_a52/t%d" % clampi(tier, 0, 3)
+	var path := UnitDB.frame_path(set_name, "sprites", 1)
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path) as Texture2D
+	_portrait.texture = tex
+	_portrait.visible = tex != null
+
+
 func _sync_captain_sprite(tier: int) -> void:
-	var set_name := "ork_mage/t%d" % clampi(tier, 0, 3)
+	var set_name := "ork_mage_a52/t%d" % clampi(tier, 0, 3)
 	var scene := get_tree().current_scene
 	if scene == null:
 		return

@@ -57,7 +57,7 @@ func _run() -> void:
 	var units := _unit_names()
 	_check(units.size() > 0, "units_db читается (%d наборов)" % units.size())
 
-	for key in ["ork_mage/t0", "ork_mage/t1", "ork_mage/t2", "ork_mage/t3"]:
+	for key in ["ork_mage_a52/t0", "ork_mage_a52/t1", "ork_mage_a52/t2", "ork_mage_a52/t3"]:
 		_check(units.has(key), "набор %s есть в units_db" % key)
 
 	# POI выключены (решение игрока 07.10: арта мало, interest_points=0).
@@ -89,7 +89,7 @@ func _run() -> void:
 		_check(int(cfg.get_value("zone", "%s.poi_damage" % zone, -1)) >= 0,
 			"у зоны %s задан урон NPC точки (poi_damage)" % zone)
 
-	print("-- городские NPC — ork_mage, без humans --")
+	print("-- городские NPC — ork_mage_a52, без humans --")
 	if not FileAccess.file_exists(MAP_NPCS):
 		print("  (карта %s отсутствует — проверка пропущена)" % MAP_NPCS)
 	else:
@@ -121,8 +121,8 @@ func _run() -> void:
 		_check(humans_left == 0,
 			"аллодовские humans/* в городе не спавнятся (найдено: %d)" % humans_left)
 		for setn2 in city_sets:
-			_check(str(setn2).begins_with("ork_mage/"),
-				"городской набор %s — ork_mage" % setn2)
+			_check(str(setn2).begins_with("ork_mage_a52/"),
+				"городской набор %s — ork_mage_a52" % setn2)
 			_check(units.has(str(setn2)), "набор %s существует в units_db" % setn2)
 		_check(guards > 0, "на карте есть стражи (%d)" % guards)
 		_check(citizens > 0, "на карте есть жители (%d)" % citizens)

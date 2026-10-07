@@ -5,7 +5,7 @@ signal closed
 
 const MAX_PARTY := 4
 const CANDIDATES := [
-	"ork_mage/t0", "ork_mage/t1", "ork_mage/t2", "ork_mage/t3",
+	"ork_mage_a52/t0", "ork_mage_a52/t1", "ork_mage_a52/t2", "ork_mage_a52/t3",
 	"monsters/orc_good",
 ]
 const TALK_LINES := [

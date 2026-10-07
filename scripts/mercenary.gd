@@ -3,7 +3,7 @@ class_name Mercenary
 ## Наёмник из таверны: следует за героем, атакует врагов (Game.enemies),
 ## не качается и не носит броню (как в оригинале). Смерть — из отряда.
 
-@export var anim_set: String = "ork_mage/t1"
+@export var anim_set: String = "ork_mage_a52/t1"
 @export var max_hp: int = 70
 @export var damage: int = 6
 @export var move_speed: float = 90.0

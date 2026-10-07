@@ -4,7 +4,7 @@ class_name Npc
 ## role "citizen" — стоит на посту (мелкое шевеление); role "guard" —
 ## патрулирует город (is_patrol) и дерётся с Серыми (монстрами), героя не трогает.
 
-@export var anim_set: String = "ork_mage/t0"
+@export var anim_set: String = "ork_mage_a52/t0"
 @export var patrol_radius: int = 3           # клеток вокруг точки привязки
 @export var walk_speed: float = 45.0
 @export var pause_min: float = 1.2

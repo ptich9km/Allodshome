@@ -278,20 +278,22 @@ static func movement_direction(unit: Node2D, desired: Vector2) -> Vector2:
 	var found := 0
 	if is_instance_valid(Game.hero) and Game.hero != unit:
 		found += _sep_push(my_pos, my_layer, Game.hero)
+	# is_instance_valid ДО вызова: freed-узел в массиве роняет типизированный
+	# аргумент other: Node ещё до тела _sep_push (map_seed_integration).
 	for other in Game.enemies:
 		if found >= 6:
 			break
-		if other != unit:
+		if other != unit and is_instance_valid(other):
 			found += _sep_push(my_pos, my_layer, other)
 	for other in Game.npcs:
 		if found >= 6:
 			break
-		if other != unit:
+		if other != unit and is_instance_valid(other):
 			found += _sep_push(my_pos, my_layer, other)
 	for other in Game.party:
 		if found >= 6:
 			break
-		if other != unit:
+		if other != unit and is_instance_valid(other):
 			found += _sep_push(my_pos, my_layer, other)
 	var separation := _sep_acc
 	var result := desired.normalized() + separation * 1.5

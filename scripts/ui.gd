@@ -889,7 +889,7 @@ func _loot_tooltip_lines(lb: LootDrop) -> Array:
 
 ## Фракция по набору анимаций юнита (см. §8.2 AGENTS.md).
 func _faction_of_set(set_name: String) -> String:
-	if set_name.begins_with("ork_mage/"):
+	if set_name.begins_with("ork_mage"):
 		return "Орды Огня"
 	if set_name.begins_with("humans/"):
 		return "Альянс Света"
