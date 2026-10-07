@@ -189,6 +189,16 @@ func _test_reload_restores(game) -> void:
 		"hero_save.gold = %s" % str(Game.hero_save.get("gold")))
 	_check((Game.hero_save.get("inventory", []) as Array).size() == 2,
 		"hero_save.inventory = 2")
+	_check(Game.hero_save.has("equipped"), "hero_save.equipped есть")
+	# Симуляция Player._ready после change_scene: weapon_kind, а не type из БД.
+	var eq: Dictionary = Game.hero_save.get("equipped", {})
+	if eq.has("weapon"):
+		var wit = ItemDB.find(str(eq["weapon"]))
+		if not wit.is_empty():
+			var kind := ItemDB.weapon_kind(wit)
+			_check(kind in ["sword", "axe", "club", "pike", "bow", "xbow", "staff", "magic", "unarmed"],
+				"weapon_kind для анимации валиден (%s)" % kind)
+			_check(not kind.contains(" "), "weapon_kind без пробелов (%s)" % kind)
 	var pos: Variant = player.global_position
 	_check(pos is Vector2 and pos.distance_to(Vector2(512, 384)) < 0.01,
 		"позиция игрока восстановлена apply_payload (%s)" % str(pos))

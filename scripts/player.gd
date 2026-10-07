@@ -256,14 +256,20 @@ func _apply_hero_save() -> void:
 	if exp is Dictionary:
 		experience = (exp as Dictionary).duplicate(true)
 	# Пересобрать визуал/атаку по экипировке из сейва (не стартовой).
+	# weapon — это КИН анимации (sword/staff/...), а не type из item_db
+	# ("Long Sword"); иначе UnitAnim.setup("heroes/Long Sword") и герой невидим.
 	if equipped.has("weapon"):
 		var wkey := str(equipped["weapon"])
 		var wit := ItemDB.find(wkey)
 		if not wit.is_empty():
-			weapon = str(wit.get("type", weapon))
+			weapon = ItemDB.weapon_kind(wit)
 			two_handed = ItemDB.is_two_handed(wit)
 	if equipped.has("shield"):
 		has_shield = true
+	if equipped.has("body"):
+		var bit := ItemDB.find(str(equipped["body"]))
+		if not bit.is_empty():
+			armor_kind = ItemDB.armor_kind(bit)
 
 ## Начальный опыт из стартовых навыков (skill -> exp, как у разработчиков:
 ## exp = (1.1^skill - 1) * 1000). Дальше навык растёт от получаемого опыта.
