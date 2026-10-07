@@ -66,6 +66,14 @@ func setup(obs_folder: String, n_frames: int, w: int, h: int, a_cx: int, a_cy: i
 		frame_count = 0
 	_apply_frame()
 	_setup_shadow()
+	# Статичные варианты (камни/заборы) не анимируются — сразу выключаем process.
+	# Иначе Godot всё равно зовёт _process у тысяч узлов каждый кадр.
+	if frame_count <= 1 or base_index > 0:
+		set_process(false)
+	else:
+		# Фаза анимации: не давать ВСЕМ деревьям менять кадр в один тик
+		# (жалоба 07.10: FPS просел после плотности ~2800 деревьев).
+		_timer = randf() * FRAME_TIME
 
 ## Создать тень (spritesb-NNN.png) — силуэт объекта; рисуется ПОД спрайтом.
 func _setup_shadow() -> void:
@@ -123,8 +131,29 @@ func place_at(cell: Vector2i, tile: int, relief: float) -> void:
 func _process(delta: float) -> void:
 	if frame_count <= 1 or base_index > 0:
 		return   # статичный вариант — не анимируем
+	# Вне камеры — не тикаем (draw всё равно culится движком, CPU щадим).
+	if not _in_camera_view():
+		return
 	_timer += delta
 	if _timer >= FRAME_TIME:
 		_timer = 0.0
 		_frame = (_frame + 1) % frame_count
 		_apply_frame()
+
+
+## Примерно в кадре ли объект (с запасом под shake/lerp камеры).
+func _in_camera_view() -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return true
+	var cam := vp.get_camera_2d()
+	if cam == null:
+		return true
+	var vs: Vector2 = vp.get_visible_rect().size
+	var zoom: Vector2 = cam.zoom
+	if zoom.x <= 0.0 or zoom.y <= 0.0:
+		zoom = Vector2.ONE
+	var half := Vector2(vs.x * 0.5 / zoom.x, vs.y * 0.5 / zoom.y) + Vector2(96, 96)
+	var center: Vector2 = cam.get_screen_center_position()
+	var rect := Rect2(center - half, half * 2.0)
+	return rect.has_point(global_position)

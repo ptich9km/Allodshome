@@ -55,6 +55,12 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if Game.is_paused or _anim == null:
 		return
+	# P5: далеко от героя — спим (патруль/бой не тикаем).
+	if Game.hero != null and is_instance_valid(Game.hero) \
+			and state != "dying" and state != "decay" and state != "corpse":
+		if global_position.distance_squared_to(Game.hero.global_position) > 1600.0 * 1600.0:
+			velocity = Vector2.ZERO
+			return
 	_apply_relief_stand()
 
 	# Житель умер (его ударили монстры/герой): падение, разложение, исчезновение

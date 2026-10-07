@@ -20,6 +20,7 @@ var player: Player
 
 var minimap_image: Image
 var minimap_texture: ImageTexture
+var _minimap_base: Image = null   # кэш террейна+зданий (P3): не перерисовываем каждый тик
 var _minimap_size := Vector2.ZERO
 var _minimap_timer := 0.0
 const MINIMAP_INTERVAL := 0.25
@@ -1057,6 +1058,7 @@ func _setup_minimap():
 	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	minimap_rect.add_child(tex_rect)
 	minimap_image = null
+	_minimap_base = null
 	minimap_texture = null
 
 ## Точки юнитов двигаются, поэтому миникарта не полностью статична, но полный
@@ -1090,6 +1092,7 @@ func _draw_minimap():
 		_minimap_size = square_size
 		minimap_image = Image.create(w, h, false, Image.FORMAT_RGBA8)
 		minimap_texture = ImageTexture.create_from_image(minimap_image)
+		_minimap_base = null
 		var tex_rect := minimap_rect.get_node_or_null("MinimapTex")
 		if tex_rect:
 			tex_rect.offset_left = (msize.x - w) / 2.0
@@ -1102,21 +1105,37 @@ func _draw_minimap():
 	var scale_x := float(w) / float(mw)
 	var scale_y := float(h) / float(mh)
 
-	minimap_image.fill(MINIMAP_BG)
+	# P3: террейн+здания кэшируются; каждый тик только копируем базу + точки.
+	if _minimap_base == null or _minimap_base.get_width() != w or _minimap_base.get_height() != h:
+		_minimap_base = Image.create(w, h, false, Image.FORMAT_RGBA8)
+		_minimap_base.fill(MINIMAP_BG)
+		for ty in range(mh):
+			for tx in range(mw):
+				var color := _minimap_color_at(tx, ty)
+				if color.a == 0.0:
+					continue
+				var sx := int(tx * scale_x)
+				var sy := int(ty * scale_y)
+				var ex := int((tx + 1) * scale_x)
+				var ey := int((ty + 1) * scale_y)
+				for py in range(sy, mini(ey + 1, h)):
+					for px in range(sx, mini(ex + 1, w)):
+						_minimap_base.set_pixel(px, py, color)
+		# Здания (серые квадраты 2×2) — тоже в базу
+		if alm_map.has_method("structure_at") and alm_map.map_width > 0:
+			for ty in range(0, mh, 4):
+				for tx in range(0, mw, 4):
+					var struct: Dictionary = alm_map.structure_at(Vector2i(tx, ty))
+					if not struct.is_empty():
+						var sx2 := int(tx * scale_x)
+						var sy2 := int(ty * scale_y)
+						for dy in range(0, 2):
+							for dx in range(0, 2):
+								var xx := sx2 + dx; var yy := sy2 + dy
+								if xx >= 0 and xx < w and yy >= 0 and yy < h:
+									_minimap_base.set_pixel(xx, yy, MINIMAP_BUILDING)
 
-	# Вся карта: цвета по типу клетки (CustomMap) или terrain (.alm)
-	for ty in range(mh):
-		for tx in range(mw):
-			var color := _minimap_color_at(tx, ty)
-			if color.a == 0.0:
-				continue
-			var sx := int(tx * scale_x)
-			var sy := int(ty * scale_y)
-			var ex := int((tx + 1) * scale_x)
-			var ey := int((ty + 1) * scale_y)
-			for py in range(sy, mini(ey + 1, h)):
-				for px in range(sx, mini(ex + 1, w)):
-					minimap_image.set_pixel(px, py, color)
+	minimap_image.blit_rect(_minimap_base, Rect2(0, 0, w, h), Vector2.ZERO)
 
 	# Игрок (белая точка)
 	var px := int(ptx * scale_x)
@@ -1147,20 +1166,6 @@ func _draw_minimap():
 				if "role" in npc and str(npc.role) == "guard":
 					nc = MINIMAP_NPC_GUARD
 				minimap_image.set_pixel(nxx, nyy, nc)
-
-	# Здания (серые квадраты 2×2)
-	if alm_map.has_method("structure_at") and alm_map.map_width > 0:
-		for ty in range(0, mh, 4):
-			for tx in range(0, mw, 4):
-				var struct: Dictionary = alm_map.structure_at(Vector2i(tx, ty))
-				if not struct.is_empty():
-					var sx := int(tx * scale_x)
-					var sy := int(ty * scale_y)
-					for dy in range(0, 2):
-						for dx in range(0, 2):
-							var xx := sx + dx; var yy := sy + dy
-							if xx >= 0 and xx < w and yy >= 0 and yy < h:
-								minimap_image.set_pixel(xx, yy, MINIMAP_BUILDING)
 
 	minimap_texture.update(minimap_image)
 	var tex_rect2 := minimap_rect.get_node_or_null("MinimapTex")

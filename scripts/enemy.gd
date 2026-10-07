@@ -51,6 +51,11 @@ func _create_sprite():
 func _physics_process(delta):
 	if Game.is_paused:
 		return
+	# P5: далеко от героя — AI спит (контент не трогаем, только CPU).
+	if Game.hero != null and is_instance_valid(Game.hero):
+		if global_position.distance_squared_to(Game.hero.global_position) > 1600.0 * 1600.0:
+			velocity = Vector2.ZERO
+			return
 
 	attack_cooldown = max(0, attack_cooldown - delta)
 

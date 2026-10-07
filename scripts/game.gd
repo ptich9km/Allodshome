@@ -274,6 +274,54 @@ const SEP_DIST := 24.0
 const SEP_DIST_SQ := SEP_DIST * SEP_DIST
 const SEP_SKIP_SQ := 40.0 * 40.0
 static var _sep_acc := Vector2.ZERO
+## P4: пространственная сетка для separation — раз в кадр строим вёдра 64px,
+## ищем только соседей. Без этого NPC×2 снова даст O(n²) в физике.
+const SEP_GRID_CELL := 64.0
+static var _sep_grid: Dictionary = {}
+static var _sep_grid_frame: int = -1
+
+
+static func _sep_bucket_key(pos: Vector2) -> String:
+	return "%d,%d" % [int(floor(pos.x / SEP_GRID_CELL)), int(floor(pos.y / SEP_GRID_CELL))]
+
+
+static func _sep_insert(unit: Node2D) -> void:
+	if not is_instance_valid(unit):
+		return
+	var key := _sep_bucket_key(unit.global_position)
+	var arr: Array = _sep_grid.get(key, [])
+	arr.append(unit)
+	_sep_grid[key] = arr
+
+
+static func _sep_rebuild_grid() -> void:
+	var f := Engine.get_physics_frames()
+	if f == _sep_grid_frame:
+		return
+	_sep_grid_frame = f
+	_sep_grid.clear()
+	if is_instance_valid(Game.hero):
+		_sep_insert(Game.hero)
+	for other in Game.enemies:
+		_sep_insert(other)
+	for other in Game.npcs:
+		_sep_insert(other)
+	for other in Game.party:
+		_sep_insert(other)
+
+
+static func _sep_neighbors(pos: Vector2) -> Array:
+	var out: Array = []
+	var cx := int(floor(pos.x / SEP_GRID_CELL))
+	var cy := int(floor(pos.y / SEP_GRID_CELL))
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var key := "%d,%d" % [cx + dx, cy + dy]
+			var arr: Array = _sep_grid.get(key, [])
+			for u in arr:
+				out.append(u)
+	return out
+
 
 static func movement_direction(unit: Node2D, desired: Vector2) -> Vector2:
 	if desired.length_squared() <= 0.0001:
@@ -283,26 +331,14 @@ static func movement_direction(unit: Node2D, desired: Vector2) -> Vector2:
 	var my_layer: int = 1
 	if unit is CollisionObject2D:
 		my_layer = (unit as CollisionObject2D).collision_layer
+	_sep_rebuild_grid()
 	var found := 0
-	if is_instance_valid(Game.hero) and Game.hero != unit:
-		found += _sep_push(my_pos, my_layer, Game.hero)
-	# is_instance_valid ДО вызова: freed-узел в массиве роняет типизированный
-	# аргумент other: Node ещё до тела _sep_push (map_seed_integration).
-	for other in Game.enemies:
+	for other in _sep_neighbors(my_pos):
 		if found >= 6:
 			break
-		if other != unit and is_instance_valid(other):
-			found += _sep_push(my_pos, my_layer, other)
-	for other in Game.npcs:
-		if found >= 6:
-			break
-		if other != unit and is_instance_valid(other):
-			found += _sep_push(my_pos, my_layer, other)
-	for other in Game.party:
-		if found >= 6:
-			break
-		if other != unit and is_instance_valid(other):
-			found += _sep_push(my_pos, my_layer, other)
+		if other == unit or not is_instance_valid(other):
+			continue
+		found += _sep_push(my_pos, my_layer, other)
 	var separation := _sep_acc
 	var result := desired.normalized() + separation * 1.5
 	return result.normalized() if result.length_squared() > 0.0001 else desired.normalized()
