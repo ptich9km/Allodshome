@@ -161,7 +161,11 @@ func _run() -> void:
 	# ни на что не влияет — мутация показала, что тест остаётся зелёным.
 	var stale_dir := "user://maps/rgstale/"
 	DirAccess.make_dir_recursive_absolute(stale_dir)
-	var stale_path: String = MapGenerator.new().generate(777, "mid", stale_dir)
+	# 10.10: раса входит в имя карты (map_<seed>_<zone>_<race>.alm), поэтому
+	# generate и ensure_map обязаны говорить про ОДНУ И ТУ ЖЕ расу — иначе это
+	# два разных файла и проверка проходит вхолостую.
+	var stale_race: String = MapGenerator.city_race_for_hero("human")
+	var stale_path: String = MapGenerator.new().generate(777, "mid", stale_dir, "", "", stale_race)
 	_check(stale_path != "" and FileAccess.file_exists(stale_path),
 		"эталонная карта сгенерирована (%s)" % stale_path.get_file())
 	var stale_base := stale_path.get_basename()
@@ -177,7 +181,7 @@ func _run() -> void:
 		var f := FileAccess.open(stale_base + ".npcs.json", FileAccess.WRITE)
 		f.store_string(JSON.stringify(old))
 		f.close()
-		MapGenerator.ensure_map(777, "mid", stale_dir)
+		MapGenerator.ensure_map(777, "mid", stale_dir, stale_race)
 		var after: Variant = JSON.parse_string(
 			FileAccess.get_file_as_string(stale_base + ".npcs.json"))
 		_check(after is Dictionary

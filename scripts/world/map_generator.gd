@@ -93,9 +93,15 @@ var _stat_transition := 0
 ## file_n = 8 + индекс в этом массиве.
 const _TRANSITION_DIR_ORDER := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
-## Базовое имя файлов карты по сиду: map_<seed>_<zone>.
-static func map_basename(seed_value: int, zone: String) -> String:
-	return "map_%d_%s" % [seed_value, zone]
+## Базовое имя файлов карты по сиду: map_<seed>_<zone>[_<race>].
+##
+## Раса в имени — обязательна, а не украшение (10.10): расы городов зависят от
+## расы героя, и карта, сгенерированная за человека, не подходит за орка.
+## Без суффикса `ensure_map` вернул бы старый файл, и герой-орк увидел бы
+## город людей. Пустая раса = старый формат, им пользуются тесты и dev-карта.
+static func map_basename(seed_value: int, zone: String, race: String = "") -> String:
+	var tail: String = ("_" + race) if race != "" else ""
+	return "map_%d_%s%s" % [seed_value, zone, tail]
 
 ## Версия генератора. Записывается в .npcs.json и проверяется при загрузке.
 ##
@@ -111,7 +117,7 @@ static func map_basename(seed_value: int, zone: String) -> String:
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 15
+const GEN_VERSION := 17
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -119,8 +125,12 @@ const GEN_VERSION := 15
 ## Наличие .npcs.json проверяется не просто «для аккуратности»: если запись оборвалась
 ## на середине, .alm может существовать, а sidecar-ы — нет, и карта загрузится
 ## без зданий, НПЦ и трав.
-static func ensure_map(seed_value: int, zone: String = "mid", dir: String = MAPS_DIR) -> String:
-	var base: String = map_basename(seed_value, zone)
+static func ensure_map(seed_value: int, zone: String = "mid", dir: String = MAPS_DIR,
+		race: String = "") -> String:
+	# race пустой -> берём расу героя: расы городов зависят от неё (10.10).
+	if race == "":
+		race = _hero_faction()
+	var base: String = map_basename(seed_value, zone, race)
 	var path: String = dir + base + ".alm"
 	var npcs_path: String = dir + base + ".npcs.json"
 	if FileAccess.file_exists(path) and FileAccess.file_exists(npcs_path):
@@ -128,7 +138,13 @@ static func ensure_map(seed_value: int, zone: String = "mid", dir: String = MAPS
 			return path
 		print("MapGenerator: версия генератора изменилась (%d -> %d), карта %s перегенерируется"
 				% [_saved_gen_version(npcs_path), GEN_VERSION, base])
-	return MapGenerator.new().generate(seed_value, zone, dir)
+	return MapGenerator.new().generate(seed_value, zone, dir, "", "", race)
+
+
+## Раса героя -> id фракции для города. Пусто, если для неё нет CITY_POPULATION
+## (necro/Пожинатели, пока нет арта) — тогда генератор возьмёт первую доступную.
+static func _hero_faction() -> String:
+	return city_race_for_hero(Game.hero_race)
 
 ## Версия, записанная в sidecar (-1 = файла нет или поле нечитаемо).
 static func _saved_gen_version(npcs_path: String) -> int:
@@ -149,13 +165,14 @@ static func _saved_gen_version(npcs_path: String) -> int:
 ##   Оверрайды нужны регрессионному тесту идентичности, чтобы побайтово воспроизвести
 ##   прежний gen_smart_01.alm (см. BASE_SEED).
 func generate(seed_value: int, zone: String = "mid", dir: String = "res://assets/maps/gen/",
-		basename_override: String = "", map_name_override: String = "") -> String:
+		basename_override: String = "", map_name_override: String = "",
+		race: String = "") -> String:
 	_seed = seed_value
 	_zone = zone
 	_out_dir = dir
 	_basename = basename_override
 	if _basename == "":
-		_basename = map_basename(_seed, _zone)
+		_basename = map_basename(_seed, _zone, race)
 	_map_name = map_name_override
 	if _map_name == "":
 		_map_name = _basename
@@ -410,11 +427,35 @@ const DECOR_FOLDERS := ["barracks1"]
 const ZONES_WITH_PORTAL := ["start", "mid"]
 
 # НПЦ городов.
-## Городские NPC — орк-маги варианта A (H=52 nearest, canvas 64).
-## Старый набор ork_mage/tN (40×40 после LANCZOS) оставлен в units_db для отката.
-const GUARD_SETS := ["ork_mage_a52/t1", "ork_mage_a52/t2"]
-const CITIZEN_SETS := ["ork_mage_a52/t0", "ork_mage_a52/t1"]
-const CAPTAIN_SET := "ork_mage_a52/t3"
+## Раса города -> наборы спрайтов. Ключи = id фракций в assets/lore/world.json
+## (там же label/race/archmage). Тир = роль: граждане t0/t1, стражи t1/t2,
+## капитан-великий-маг t3.
+## У каждой расы два набора (маг + воин) - это осознанно: в городе должны быть
+## и простые жители, и те, кто держит оружие, а не 16 копий одного силуэта.
+## necro (Пожинатели) НЕТ - атласа нежити пока не нарезано. Поэтому расы
+## Пожинателей не спавнятся (см. CITY_RACES и _faction_for). Когда появится
+## арт - достаточно добавить ключ сюда, больше ничего трогать не придётся.
+const CITY_POPULATION := {
+	"humans": {
+		"guards": ["city_human_mage/t1", "city_human_warrior/t2"],
+		"citizens": ["city_human_mage/t0", "city_human_warrior/t1"],
+		"captain": "city_human_mage/t3",
+	},
+	"ork": {
+		"guards": ["city_ork_warrior/t2"],
+		"citizens": ["city_ork_warrior/t0", "city_ork_warrior/t1"],
+		"captain": "city_ork_warrior/t3",
+	},
+	"druid": {
+		"guards": ["city_druid_mage/t1", "city_druid_mage/t2"],
+		"citizens": ["city_druid_mage/t0", "city_druid_mage/t1"],
+		"captain": "city_druid_mage/t3",
+	},
+}
+## Расы, между которым�� города делятся по кругу. necro исключена, пока нет
+## арта (см. CITY_POPULATION). Стартовая зона - первая раса, не "hero":
+## при "hero" не было бы ни одного NPC в городе новичка.
+const CITY_RACES := ["humans", "ork", "druid"]
 
 # Объекты по биому: подходящие ID из alm_objects.json.
 const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]
@@ -496,13 +537,36 @@ func _place_cities(rng: RandomNumberGenerator) -> void:
 		_fill_city_oval(p, city_radius(), city_radius())
 	print("CITIES: %d/%d (zone=%s)" % [_cities.size(), count, _zone])
 
-## Присвоение фракции городу (метка-данные; арта/маркеров пока нет).
-## start — герою; faction — всем одна фракция; mid/hard — по кругу 4 фракции.
+## Раса города (id из CITY_POPULATION / world.json).
+##
+## 10.10: ПЕРВЫЙ город — раса героя. До этого расы шли по кругу CITY_RACES от
+## нуля, то есть первый город всегда был humans, и за орка/друида герой попадал
+## в чужой город (жалоба игрока: «у всех кроме людей NPC не соответствуют
+## расе»). Остальные города — по кругу, начиная с расы героя, чтобы порядок
+## был тот же, но поворот вокруг оси.
+##
+## necro (Пожинатели) в CITY_POPULATION нет (атласа нежити нет) — тогда
+## берётся первая доступная раса, и в логе пишется предупреждение.
 func _faction_for(i: int) -> String:
-	match _zone:
-		"start": return "hero"
-		"faction": return "f0"
-		_: return "f%d" % (i % 4)
+	var order := _race_order()
+	if order.is_empty():
+		return ""
+	return str(order[i % order.size()])
+
+
+## Расы городов в порядке появления: сначала раса героя, потом остальные.
+func _race_order() -> Array:
+	var out: Array = []
+	var hero := city_race_for_hero(Game.hero_race)
+	if hero != "":
+		out.append(hero)
+	for r in CITY_RACES:
+		if not out.has(r):
+			out.append(r)
+	if hero == "" and Game.hero_race == "necro":
+		push_warning("MapGenerator: у расы necro нет CITY_POPULATION - город будет "
+				+ str(out[0]) + ". Нужен атлас нежити.")
+	return out
 
 ## Залитый овал дорогой (type 3), диаметр (2*rx+1)×(2*ry+1).
 func _fill_city_oval(center: Vector2i, rx: int, ry: int) -> void:
@@ -739,7 +803,7 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 			if spec.is_empty():
 				continue
 			_place_city_building(center, spec)
-		_place_city_npcs(rng, center)
+		_place_city_npcs(rng, center, str(c["faction"]))
 	print("STRUCTURES_COUNT: %d" % _structures_out.size())
 
 ## Поставить здание (spec) в кольцо вокруг центра города, не на площадь.
@@ -804,7 +868,11 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 
 ## НПЦ города: стражи (первые 2 патрульные, остальные на постах), капитан,
 ## жители у магазина/центра. Все стоят; патруль — только первые 2 стража.
-func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
+func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i, race: String) -> void:
+	var pop: Dictionary = CITY_POPULATION.get(race, {})
+	if pop.is_empty():
+		push_error("MapGenerator: нет CITY_POPULATION для расы '%s' - город останется без NPC" % race)
+		return
 	var posts_taken := {}
 	var guard_offsets: Array = [
 		Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2),
@@ -826,7 +894,7 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 		var post := _post_cell(center, guard_offsets, posts_taken)
 		if post.x < 0:
 			continue
-		var set_name: String = _pick(rng, GUARD_SETS)
+		var set_name: String = _pick(rng, pop["guards"])
 		# Стали NPC по зоне приходят из GameConfig [zone] - сейчас значения
 		# одинаковые для всех зон (было: hp 60-100, урон 6-10 зашито здесь).
 		var hp := rng.randi_range(
@@ -834,10 +902,11 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 		var dmg := rng.randi_range(
 			GameConfig.zonei(_zone, "guard_damage_min"), GameConfig.zonei(_zone, "guard_damage_max"))
 		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg))
-	# Капитан у площади — он же ВЕЛИКИЙ МАГ города (решение игрока 07.10).
+	# Капитан у площади — он же ВЕЛИКИЙ МАГ города (решение игрока 07.10),
+	# и маг СВОЕЙ расы (09.10): в орк-городе не должен стоятьdruид-маг.
 	var cap := _post_cell(center, [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)], posts_taken)
 	if cap.x >= 0:
-		var cap_rec := _npc_rec(cap, CAPTAIN_SET, "guard", false,
+		var cap_rec := _npc_rec(cap, str(pop["captain"]), "guard", false,
 			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage"))
 		cap_rec["archmage"] = true
 		_npcs_out.append(cap_rec)
@@ -850,9 +919,62 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i) -> void:
 		var post := _post_cell(center, citizens_offsets, posts_taken)
 		if post.x < 0:
 			continue
-		var set_name: String = _pick(rng, CITIZEN_SETS)
+		var set_name: String = _pick(rng, pop["citizens"])
 		_npcs_out.append(_npc_rec(post, set_name, "citizen", false,
 			GameConfig.zonei(_zone, "citizen_hp"), 0))
+
+## Раса города по таблице CITY_RACES (тот же порядок, что у _faction_for).
+## Единственный источник правды: _faction_for отдавал мёртвые "f0..f3",
+## поэтому наборы спрайтов приходилось бы хранить отдельно и они разъехались бы.
+## Вынесено в _faction_for: раса города хранится в _cities, а не вычисляется
+## здесь второй раз (10.10) — два вычисления разъезжаются, как только
+## появляется ещё одно правило.
+func _city_race(city_index: int) -> String:
+	var order := _race_order()
+	if order.is_empty():
+		return ""
+	return str(order[city_index % order.size()])
+
+## Раса по имени набора: "city_human_mage/t1" -> "humans", "city_ork_warrior/t0"
+## -> "ork", "city_druid_mage/t2" -> "druid". Наборы названы по корню без
+## хвоста "s" (human, а не humans) и с суффиксом роли (_mage/_warrior), поэтому
+## сравнение идёт по корню, а не конкатенацией. Пусто, если набор не наш.
+static func race_of_set(set_name: String) -> String:
+	if not set_name.begins_with("city_"):
+		return ""
+	var seg := set_name.trim_prefix("city_").get_slice("/", 0)
+	for suffix in ["_mage", "_warrior"]:
+		seg = seg.trim_suffix(suffix)
+	# Сегмент = id расы из world.json. ВАЖНО: для орков это "ork", а не
+	# "orc" — 10.10 тут стоял ["orc", "ork"], и потому городской орк-маг
+	# возвращал "" (подпись фракции «Прохожий», тест на расу города падал).
+	# Тест при этом был зелёным, потому что проверял СВОЮ копию разбора, а
+	# не эту функцию.
+	for race in CITY_RACES:
+		if seg == race or seg + "s" == race:
+			return race
+	return ""
+
+
+## Раса героя -> id фракции (human -> humans). Неизвестная раса даёт "" —
+## вызывающий код обязан это учесть, а не молча получить первую в списке.
+static func race_of_hero(hero_race: String) -> String:
+	match hero_race:
+		"human": return "humans"
+		"ork": return "ork"
+		"druid": return "druid"
+		"necro": return ""
+		_: return ""
+
+
+## id фракции героя, но только если для неё есть CITY_POPULATION.
+## necro (Пожинатели) отсекается: атласа нежити нет, портрета не из чего взять.
+static func city_race_for_hero(hero_race: String) -> String:
+	var race := race_of_hero(hero_race)
+	if race != "" and CITY_POPULATION.has(race):
+		return race
+	return ""
+
 
 ## Свободный пост: клетка дороги в городе, не на площади, не занята.
 func _post_cell(center: Vector2i, offsets: Array, taken: Dictionary) -> Vector2i:
