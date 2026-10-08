@@ -40,7 +40,10 @@ const PANEL_FILES := [
 	"res://scripts/inventory_panel.gd",
 	"res://scripts/shop_panel.gd",
 	"res://scripts/inn_panel.gd",
-	"res://scripts/blacksmith_panel.gd",
+	"res://scripts/workshop_panel.gd",
+   "res://scripts/craft_tab.gd",
+   "res://scripts/craft_smith_tab.gd",
+   "res://scripts/craft_tailor_tab.gd",
 ]
 
 ## Панели, где палитра ещё инлайновая. Пусто — все интерьеры на токенах.

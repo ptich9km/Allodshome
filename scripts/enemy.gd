@@ -407,6 +407,16 @@ func _make_loot() -> Array:
 		var item := _random_gear()
 		if not item.is_empty():
 			pool.append(item)
+	# Босс и дракон с маленьким шансом роняют ЦЕЛУЮ вещь: сломанное
+	# роняют NPC (у них есть снаряжение), а из Серых лут и так идёт целым.
+	if UnitDB.is_boss(anim_set) \
+			and randi() % 100 < GameConfig.geti("craft", "boss_intact_chance"):
+		var intact := _random_gear()
+		if not intact.is_empty():
+			pool.append(intact)
+	# Магическая эссенция - второй источник наряду с портной (07.10).
+	if randi() % 100 < int(table.get("essence_chance", 0)):
+		pool.append({"key": CraftDB.ESSENCE_KEY})
 	if randi() % 100 < int(table.get("herb_chance", 0)):
 		var herbs: Array = table.get("herbs", [])
 		if herbs.size() > 0:

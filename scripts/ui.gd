@@ -782,11 +782,12 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		return
 	var icon_path := str(item.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(item.get("quality", "")))
+	var tier := CraftVFX.tier_of_item(item)
 	cell.mouse_entered.connect(func():
 		if _item_card == null:
 			_item_card = _ensure_card("item")
 		UiKit.show_hover_card(_item_card, _item_card_lines(item),
-			cell.global_position, _world_bounds(), icon_path, qcolor))
+			cell.global_position, _world_bounds(), icon_path, qcolor, tier))
 	cell.mouse_exited.connect(func():
 		if _item_card != null:
 			UiKit.hide_hover_card(_item_card))
@@ -794,7 +795,7 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		if _item_card == null:
 			_item_card = _ensure_card("item")
 		UiKit.show_hover_card(_item_card, _item_card_lines(item),
-			cell.global_position, _world_bounds(), icon_path, qcolor))
+			cell.global_position, _world_bounds(), icon_path, qcolor, tier))
 	cell.focus_exited.connect(func():
 		if _item_card != null:
 			UiKit.hide_hover_card(_item_card))
@@ -825,7 +826,8 @@ func _show_slot_card(cell: Control, slot: String) -> void:
 	lines.append("Слот: %s (клик — снять)" % ItemDB.slot_title(slot))
 	var icon_path := str(it.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(it.get("quality", "")))
-	UiKit.show_hover_card(_slot_card, lines, cell.global_position, _world_bounds(), icon_path, qcolor)
+	UiKit.show_hover_card(_slot_card, lines, cell.global_position, _world_bounds(),
+		icon_path, qcolor, CraftVFX.tier_of_item(it))
 
 func _hide_slot_card() -> void:
 	if _slot_card != null:
@@ -1356,7 +1358,7 @@ var _alchemy: AlchemyPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
 var _archmage: ArchmagePanel = null
-var _blacksmith: BlacksmithPanel = null
+var _workshop: WorkshopPanel = null
 var _inventory_panel: InventoryPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
 var _in_interior := false
@@ -1426,14 +1428,14 @@ func _on_panel_closed() -> void:
 	_alchemy = null
 	_school = null
 	_inn = null
-	_blacksmith = null
+	_workshop = null
 	_inventory_panel = null
 	_archmage = null
 	_exit_interior()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_blacksmith) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage)
+	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_workshop) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1509,15 +1511,21 @@ func open_archmage() -> void:
 	_archmage.inventory_changed.connect(_on_inventory_changed)
 	add_child(_archmage)
 
-## Кузница: переплавка оружия/брони в слитки (клик по Blacksmith).
-func open_blacksmith() -> void:
-	if _blacksmith != null and is_instance_valid(_blacksmith):
+## Мастерская: кузнец / портной / (мастер - третьим пакетом).
+## Раньше здесь была кузница, и она НЕ коннектила inventory_changed, в отличие
+## от архмага и инвентаря. Сегодня вреда ноль - панели не открываются
+## одновременно, а переплавка золото не трогает, - но как только появилась
+## третья вкладка с расходованием ресурсов, склад под витриной остался бы
+## старым. Один коннект, консистентно с остальными.
+func open_workshop() -> void:
+	if _workshop != null and is_instance_valid(_workshop):
 		return
 	_enter_interior()
-	_blacksmith = BlacksmithPanel.new()
-	_blacksmith.setup(player)
-	_blacksmith.closed.connect(_on_panel_closed)
-	add_child(_blacksmith)
+	_workshop = WorkshopPanel.new()
+	_workshop.setup(player)
+	_workshop.closed.connect(_on_panel_closed)
+	_workshop.inventory_changed.connect(_on_inventory_changed)
+	add_child(_workshop)
 
 ## Инвентарь и экипировка: модальное окно. Повторное нажатие I — закрыть.
 func open_inventory_panel() -> void:

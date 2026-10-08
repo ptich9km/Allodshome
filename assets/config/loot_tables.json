@@ -1,10 +1,11 @@
 {
-  "comment": "Лут по семействам юнитов. Читает enemy.gd:_make_loot. Шансы в %, gold_mult множитель к формуле 4+hp/5. gear=0 — звери/насекомые не роняют оружие.",
+  "comment": "Лут с Серых. Читает enemy.gd:_make_loot. Шансы в %, gold_mult умножает базу золота (4+hp/5). essence_chance добавлен 07.10: магическая эссенция, второй источник наряду с портной, перерабатывающей сломанную одежду. СЛОМАННЫЕ вещи с Серых НЕ падают: сломанное роняют только NPC (npc.gd:_random_gear), потому что только у них есть снаряжение. Целое снаряжение с Серых не убирали - это законный источник металла, и обнуление gear_chance сломало бы package_a_smoke.",
   "beast": {
     "gold_mult": 0.45,
     "gear_chance": 0,
     "potion_chance": 12,
     "herb_chance": 40,
+    "essence_chance": 3,
     "herbs": ["Herb Green Leaf", "Herb Mint", "Herb Tall Grass", "Herb White Flower"]
   },
   "insect": {
@@ -12,6 +13,7 @@
     "gear_chance": 0,
     "potion_chance": 8,
     "herb_chance": 35,
+    "essence_chance": 2,
     "herbs": ["Herb Green Leaf", "Herb Mint", "Herb Dandelion"]
   },
   "humanoid": {
@@ -19,6 +21,7 @@
     "gear_chance": 35,
     "potion_chance": 45,
     "herb_chance": 0,
+    "essence_chance": 6,
     "herbs": []
   },
   "undead": {
@@ -26,6 +29,7 @@
     "gear_chance": 18,
     "potion_chance": 8,
     "herb_chance": 0,
+    "essence_chance": 12,
     "herbs": []
   },
   "monstrous": {
@@ -33,6 +37,7 @@
     "gear_chance": 40,
     "potion_chance": 28,
     "herb_chance": 5,
+    "essence_chance": 10,
     "herbs": ["Herb Red Berry"]
   },
   "default": {
@@ -40,6 +45,7 @@
     "gear_chance": 10,
     "potion_chance": 20,
     "herb_chance": 15,
+    "essence_chance": 5,
     "herbs": ["Herb Green Leaf"]
   }
 }

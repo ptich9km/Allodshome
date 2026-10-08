@@ -83,6 +83,7 @@ func _init() -> void:
 	var faction_items := 0
 	var weapon_items := 0
 	var base_items := 0
+	var broken_items := 0
 	var wrong_group := 0
 	var nonmetal_real := 0
 	for it3 in items:
@@ -98,6 +99,11 @@ func _init() -> void:
 			# Проверяем через ПРЕФИКС пути, а не через подстроку "/faction/":
 			# у faction_w/common/... подстрока "/faction/" не находится, и все
 			# 359 предметов оружия ошибочно попадали в счётчик ошибок.
+			#
+			# Сломанные вещи (07.10) лежат в items/broken/ - это третья
+			# законная папка для металла. Путь вида items/fabric/... в неё не
+			# попадёт, потому что префикс включает слеш: подмена папки внутри
+			# имени другого каталога не пройдёт.
 			if icon3.begins_with("res://assets/items/faction/"):
 				faction_items += 1
 				# группа в пути должна совпадать с группой металла в палитре
@@ -112,6 +118,8 @@ func _init() -> void:
 			elif icon3.begins_with("res://assets/items/base/") \
 					or icon3.begins_with("res://assets/items/base_w/"):
 				base_items += 1
+			elif icon3.begins_with("res://assets/items/broken/"):
+				broken_items += 1
 			else:
 				nonmetal_real += 1
 		else:
@@ -123,6 +131,8 @@ func _init() -> void:
 	_check(faction_items > 0, "фракционные иконки брони используются (%d)" % faction_items)
 	_check(weapon_items > 0, "фракционные иконки оружия используются (%d)" % weapon_items)
 	_check(base_items > 0, "базовые иконки (сталь) используются (%d)" % base_items)
+	_check(broken_items > 0,
+		"иконки сломанных вещей используются (%d)" % broken_items)
 	_check(wrong_group == 0, "группа в пути совпадает с палитрой (расхождений: %d)" % wrong_group)
 	_check(nonmetal_real == 0,
 		"неметаллы не получили фракционные иконки (ошибок: %d)" % nonmetal_real)

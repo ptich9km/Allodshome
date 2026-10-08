@@ -45,6 +45,7 @@ func _build_ground_sprites() -> void:
 		if not (it is Dictionary):
 			continue
 		var path := ""
+		var tier := 0
 		if it.has("gold"):
 			path = LootIcons.gold_icon()
 		elif it.has("key"):
@@ -53,8 +54,12 @@ func _build_ground_sprites() -> void:
 				path = LootIcons.icon_for_potion(d, potion_size)
 			if path == "":
 				path = LootIcons.icon_for(d)
+			# Уровень крафтовой вещи: подсвеченная вещь должна бросаться в
+			# глаза на земле не меньше, чем в складе, иначе игрок не заметит,
+			# что именно выпало.
+			tier = CraftVFX.tier_of_item(d)
 		if path != "":
-			slots.append({"path": path})
+			slots.append({"path": path, "tier": tier})
 	if slots.is_empty():
 		return
 	_sprite_positions.clear()
@@ -74,6 +79,9 @@ func _build_ground_sprites() -> void:
 		s.position = Vector2(px, jitter)
 		s.z_index = 1
 		add_child(s)
+		# Свечение уровня. Sprite2D — не Control, но наследует CanvasItem,
+		# поэтому material с canvas_item-шейдером работает так же.
+		CraftVFX.apply_to_icon(s, int(slots[i].get("tier", 0)))
 		_sprite_positions.append(Vector2(px, jitter + ICON_PX * 0.5))
 
 

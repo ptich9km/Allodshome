@@ -171,6 +171,17 @@ static func tile_size(name: String) -> int:
 static func loot_family(name: String) -> String:
 	return str(get_set(name).get("loot_family", ""))
 
+## Босс или дракон? Только они роняют ЦЕЛУЮ вещь вместо сломанной
+## ([craft] boss_intact_chance).
+##
+## Поле `boss: 1` добавлено 07.10. До него признака босса не существовало
+## ВООБЩЕ, и tempting-кандидатом был tile_size (дракон 3, тролль 2) - но это
+## размер спрайта, а не «босс»: у humans/catapult1 тоже tile_size 2. Строить
+## на размере юнита значило заложить мину, которая выстрелит, когда появится
+## крупный обычный моб.
+static func is_boss(name: String) -> bool:
+	return int(get_set(name).get("boss", 0)) != 0
+
 ## Зеркалить ли спрайт юнита (Flip=1 — тролли, дракон, летающие).
 static func flip(name: String) -> bool:
 	return int(get_set(name).get("flip", 0)) != 0

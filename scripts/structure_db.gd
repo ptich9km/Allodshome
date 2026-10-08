@@ -37,6 +37,28 @@ static func ids() -> Array:
 	out.sort()
 	return out
 
+## Роль здания по type_id: workshop | shop | inn | school | alchemy | "".
+##
+## ЕДИНСТВЕННОЕ место, где folder -> роль. Логика раньше жила в
+## game.gd:_structure_kind, а tests/alice_buildings_smoke.gd ПЕРЕПИСЫВАЛА ЕЁ
+## КОПИЮ у себя: правка роли в игре и в тесте разъезжалась молча, и тест
+## продолжал проверять старую таблицу. Теперь тест зовёт эту функцию.
+static func kind_of(id: int) -> String:
+	var folder := str(get_by_id(id).get("folder", "")).to_lower()
+	# Порядок обязателен: "druidshop" содержит подстроку "shop", поэтому
+	# алхимия проверяется раньше лавки. То же и с "hive".
+	if folder.contains("druidshop") or folder.contains("hive"):
+		return "alchemy"
+	if folder.contains("shop"):
+		return "shop"
+	if folder.contains("inn"):
+		return "inn"
+	if folder.contains("train") or folder.contains("school"):
+		return "school"
+	if folder.contains("blacksmith") or folder.contains("workshop"):
+		return "workshop"
+	return ""
+
 ## Статичный превью-кадр структуры по ID (первый кадр house-001.png) или null.
 static func preview_texture(id: int) -> Texture2D:
 	var o := get_by_id(id)

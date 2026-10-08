@@ -440,8 +440,10 @@ static func _ignore_mouse_recursive(node: Node) -> void:
 
 
 ## Заполнить карточку строками и показать у точки (локальные координаты parent).
+## tier — уровень крафтовой вещи (CraftVFX.TIER_*), -1 = без свечения.
 static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
-		bounds: Vector2, icon_path: String = "", quality_color: Color = Color(-1, -1, -1, -1)) -> void:
+		bounds: Vector2, icon_path: String = "", quality_color: Color = Color(-1, -1, -1, -1),
+		tier: int = -1) -> void:
 	if card == null or not is_instance_valid(card):
 		return
 	var box: Node = card.find_child("Box", true, false)
@@ -467,6 +469,9 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			# Свечение уровня крафтовой вещи и в карточке: игрок чаще всего
+			# видит предмет именно здесь (наведение), а не в сетке.
+			CraftVFX.apply_to_icon(icon_rect, tier)
 			icon_row.add_child(icon_rect)
 			var text_box := VBoxContainer.new()
 			text_box.mouse_filter = Control.MOUSE_FILTER_IGNORE

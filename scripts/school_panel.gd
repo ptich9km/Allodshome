@@ -248,7 +248,9 @@ func _train(field: String) -> void:
 		print("Не хватает золота!")
 		return
 	player.gold -= cost
-	player.set(field, level + 1)
+	# set_skill_field, а не player.set: он пишет И поле, И опыт. Раньше здесь
+	# был player.set, из-за чего покупка не переживала загрузку сейва.
+	player.set_skill_field(field, level + 1)
 	SoundDB.play(9)
 	_refresh()
 	print("Навык %s -> %d" % [field, level + 1])

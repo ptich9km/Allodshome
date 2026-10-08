@@ -1,0 +1,91 @@
+{
+ "version": 1,
+ "craft": "smith",
+ "note_ru": "Кузнец: много слитков + немного ткани. Ткань из сломанной брони и оружия даёт кузнец сам, поэтому ткани тут мало. Магическая эссенция нужна только на дорогом стальном рецепте.",
+ "recipes": [
+  {
+   "id": "bronze_cuirass",
+   "name_ru": "Кираса бронзовая",
+   "craft": "smith",
+   "inputs": [
+    {"item": "bronze Ingot", "count": 8},
+    {"item": "Fabric", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted bronze Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine bronze Cuirass", "weight": 15.0},
+    {"key": "Crafted Master bronze Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "iron_cuirass",
+   "name_ru": "Кираса железная",
+   "craft": "smith",
+   "inputs": [
+    {"item": "iron Ingot", "count": 6},
+    {"item": "Fabric", "count": 2}
+   ],
+   "outputs": [
+    {"key": "Crafted iron Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine iron Cuirass", "weight": 15.0},
+    {"key": "Crafted Master iron Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "iron_plate",
+   "name_ru": "Кираса железная, кованая",
+   "craft": "smith",
+   "inputs": [
+    {"item": "iron Ingot", "count": 14},
+    {"item": "Fabric", "count": 3}
+   ],
+   "outputs": [
+    {"key": "Crafted iron Plate Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine iron Plate Cuirass", "weight": 15.0},
+    {"key": "Crafted Master iron Plate Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "iron_sword",
+   "name_ru": "Меч железный",
+   "craft": "smith",
+   "inputs": [
+    {"item": "iron Ingot", "count": 5},
+    {"item": "Fabric", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted iron Long Sword", "weight": 80.0},
+    {"key": "Crafted Fine iron Long Sword", "weight": 15.0},
+    {"key": "Crafted Master iron Long Sword", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "iron_axe",
+   "name_ru": "Топор железный",
+   "craft": "smith",
+   "inputs": [
+    {"item": "iron Ingot", "count": 7},
+    {"item": "Fabric", "count": 2}
+   ],
+   "outputs": [
+    {"key": "Crafted iron Axe", "weight": 80.0},
+    {"key": "Crafted Fine iron Axe", "weight": 15.0},
+    {"key": "Crafted Master iron Axe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "iron_buckler",
+   "name_ru": "Щит железный",
+   "craft": "smith",
+   "inputs": [
+    {"item": "iron Ingot", "count": 4},
+    {"item": "Fabric", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted iron Buckler", "weight": 80.0},
+    {"key": "Crafted Fine iron Buckler", "weight": 15.0},
+    {"key": "Crafted Master iron Buckler", "weight": 5.0}
+   ]
+  }
+ ]
+}

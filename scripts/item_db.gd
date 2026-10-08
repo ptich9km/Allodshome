@@ -170,14 +170,80 @@ static func armor_kind(item: Dictionary) -> String:
 ## инвентарь по is_equippable) переплавлял бы слитки в слитки.
 const _INGOT_TYPE := "Ingot"
 
-## Экипируемое ли (не книги/свитки/зелья/квест/слитки).
+## Экипируемое ли (не книги/свитки/зелья/квест/слитки/сломанное/ресурсы
+## крафта). Качество — единственный общий барьер для всего, что не является
+## боевой вещью; вторым барьером служит пустой слот у type из is_broken/ресурсов.
 static func is_equippable(item: Dictionary) -> bool:
 	var q := str(item.get("quality", ""))
-	if q in ["Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb"]:
+	if q in NON_GEAR_QUALITY:
 		return false
 	if str(item.get("type", "")) == _INGOT_TYPE:
 		return false
 	return true
+
+## Качества, которые нельзя надеть. Сломанные вещи и ресурсы крафта
+## (ткань/эссенция) - это СЫРЬЁ, а не броня: надетое сломанное не должно
+## менять get_defense()/get_absorption() героя.
+const NON_GEAR_QUALITY := [
+	"Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb",
+	"Broken", "Broken Fine", "Broken Rare",
+	"Fabric", "Essence",
+]
+
+## --- Сломанные вещи и ресурсы крафта (мастерская, 07.10) -----------------
+## Качество сломанной вещи. "" - если это не сломанная вещь.
+const BROKEN_QUALITIES := ["Broken", "Broken Fine", "Broken Rare"]
+
+## Ключ сломанной вещи для ровно этой пары (материал, категория, качество).
+## Категория: "Armor" | "Weapon" | "Garment". "" если такой записи нет.
+## Порядок слов в ключе ("Broken Fine iron Armor") обязателен: контракт
+## tests/item_key_literal_smoke.gd:111 требует, чтобы сегмент материала в
+## ключе совпадал с полем `material` в ТОЧНОМ регистре.
+static func broken_key(material: String, category: String, quality: String) -> String:
+	if material == "" or category == "" or not BROKEN_QUALITIES.has(quality):
+		return ""
+	var parts := ["Broken"]
+	if quality != "Broken":
+		parts.append(quality.split(" ", 1)[1])
+	parts.append(material)
+	parts.append(category)
+	return " ".join(parts)
+
+## Качество сломанной вещи ("Broken"/"Broken Fine"/"Broken Rare") или "".
+static func broken_quality(item: Dictionary) -> String:
+	var q := str(item.get("quality", ""))
+	return q if BROKEN_QUALITIES.has(q) else ""
+
+## Сломанная вещь? Читает ТОЛЬКО качество, а не type: у ресурсов крафта type
+## тоже не в списках слотов, и путать их нельзя.
+static func is_broken(item: Dictionary) -> bool:
+	return broken_quality(item) != ""
+
+## Ресурс крафта (ткань/эссенция)? Нужен, чтобы исключить их из продажи в
+## лавке и из подсчёта «сколько вещей можно надеть».
+static func is_craft_material(item: Dictionary) -> bool:
+	var q := str(item.get("quality", ""))
+	return q == "Fabric" or q == "Essence"
+
+## Запись базы по (материал, категория, качество). {} если нет.
+static func broken_item_for(material: String, category: String, quality: String) -> Dictionary:
+	var key := broken_key(material, category, quality)
+	return find(key) if key != "" else {}
+
+## Категория сломанной вещи: "Armor" | "Weapon" | "Garment" или "".
+static func broken_category(item: Dictionary) -> String:
+	if not is_broken(item):
+		return ""
+	var t := str(item.get("type", ""))
+	return t.substr("Broken ".length()) if t.begins_with("Broken ") else ""
+
+## Есть ли сломанная вещь этой категории из этого материала хоть в каком-то
+## качестве. Нужно дропу: «есть ли вообще что уронить».
+static func has_broken(material: String, category: String) -> bool:
+	for q in BROKEN_QUALITIES:
+		if broken_key(material, category, q) != "":
+			return true
+	return false
 
 ## Металлы, которые переплавляет кузница. Регистр важен: материал в item_db
 ## хранится в нижнем регистре (bronze, terbium...) - так же, как названы файлы

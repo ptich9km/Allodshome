@@ -305,7 +305,6 @@ func _drop_loot() -> void:
 	var drop_script: GDScript = load("res://scripts/loot_drop.gd")
 	if drop_script == null:
 		return
-	var mat := "steel" if role == "guard" else "bronze"
 	var pool: Array = []
 	var gold_base := 3 + maxi(1, max_hp / 8)
 	var gold_mult := GameConfig.getf("economy", "loot_gold_multiplier")
@@ -318,11 +317,14 @@ func _drop_loot() -> void:
 			else "Potion Medium Mana"
 		if not ItemDB.find(potion).is_empty():
 			pool.append({"key": potion})
-	# снаряжение: только сражу, и не каждый раз
-	if role == "guard" and randi() % 100 < GameConfig.geti("loot", "npc_guard_gear_chance"):
-		var gear := _random_gear(mat)
-		if not gear.is_empty():
-			pool.append(gear)
+	# Снаряжение: страж и горожанин роняют его ВСЕГДА (шанс снят 07.10).
+	#
+	# С 07.10 NPC роняет СЛОМАННУЮ вещь, а не целую: металл в игре появляется
+	# только так (убил НПЦ -> переплавка -> слиток -> рецепт). Целую вещь
+	# роняют БОССЫ и драконы - с маленьким шансом, [craft] boss_intact_chance.
+	var gear := _random_gear()
+	if not gear.is_empty():
+		pool.append(gear)
 	var drop: LootDrop = drop_script.new()
 	drop.items = pool
 	drop.potion_size = _potion_size()
@@ -337,6 +339,49 @@ func _drop_loot() -> void:
 		host.add_child(drop)
 
 
+## Случайная СЛОМАННАЯ вещь.
+##
+## Категория зависит от роли: страж носит броню и оружие, горожанин - одежду
+## мага. Это не украшение: кузнец перерабатывает броню и оружие в слитки,
+## портной - одежду в ткань и эссенцию. Если бы все роняли одно и то же,
+## одна из профессий осталась бы без сырья.
+##
+## Качество сломанной вещи выбирается весом: обычный мусор падает чаще
+## добротного, а редкий почти не встречается. Порядок - от обычного к
+## редкому, иначе случайный выбор дал бы «редкий» в третьих случаях.
+func _random_gear() -> Dictionary:
+	var categories := ["Armor", "Weapon"] if role == "guard" else ["Garment"]
+	var material := _gear_material()
+	var category: String = categories[randi() % categories.size()]
+	var quality := _roll_broken_quality()
+	var key := ItemDB.broken_key(material, category, quality)
+	if key == "" and ItemDB.has_broken(material, category):
+		# Записи этого качества нет - берём любое, что есть.
+		for q in ItemDB.BROKEN_QUALITIES:
+			key = ItemDB.broken_key(material, category, q)
+			if key != "":
+				break
+	if key == "":
+		return {}
+	return {"key": key}
+
+
+## Металл сломанной вещи по роли. Страж - сталь, горожанин - бронза (то же,
+## что и до 07.10 в _random_gear).
+func _gear_material() -> String:
+	return "steel" if role == "guard" else "bronze"
+
+
+## Взвешенный выбор качества сломанной вещи: 60 / 25 / 15.
+func _roll_broken_quality() -> String:
+	var roll := randi() % 100
+	if roll < 60:
+		return "Broken"
+	if roll < 85:
+		return "Broken Fine"
+	return "Broken Rare"
+
+
 func _potion_size() -> String:
 	## small/medium/large по силе юнита. Пороги взяты по реальным max_hp:
 	## горожане 30, стражь ~60-120, элитные твари выше.
@@ -347,8 +392,11 @@ func _potion_size() -> String:
 	return "small"
 
 
-## Случайное снаряжение из металла mat, но не дороже 1/8 золота с NPC.
-func _random_gear(mat: String) -> Dictionary:
+## Старый выбор ЦЕЛОГО снаряжения по бюджету. С 07.10 не используется:
+## NPC роняют сломанные вещи (_random_gear без аргументов), а целое
+## снаряжение осталось только у боссов в enemy.gd. Удаление функции - отдельная
+## задача: сначала убедиться, что на неё не ссылается ни один тест.
+func _random_intact_gear(mat: String) -> Dictionary:
 	var budget := maxi(15, max_hp * 6)
 	var pool: Array = []
 	for it in ItemDB.all():

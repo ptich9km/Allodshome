@@ -402,10 +402,19 @@ func _refresh_equipment() -> void:
 		var key := str(player.equipped.get(slot, ""))
 		if key == "":
 			icon_rect.texture = null
+			# Снимаем и свечение: слот пуст, а материал от прежней вещи
+			# остался бы и красил бы пустоту.
+			icon_rect.material = null
 			icon_rect.queue_redraw()
 		else:
 			var it := ItemDB.find(key)
 			icon_rect.texture = load(str(it.get("icon", ""))) if not it.is_empty() else null
+			# Свечение уровня крафтовой вещи. Для обычной вещи CraftVFX
+			# возвращает null и material просто не назначается - это обычный
+			# путь, а не ошибка. Эти 10 узлов ПУЛЕНЫ (создаются один раз в
+			# _build_equipment_area), поэтому здесь самое дешёвое место во всём
+			# интерфейсе: ноль новых узлов на перерисовку.
+			CraftVFX.apply_to_icon(icon_rect, CraftVFX.tier_of_item(it))
 			icon_rect.queue_redraw()
 
 
@@ -467,6 +476,21 @@ func _setup_stats_area() -> void:
 		["Обзор:", "sight", _VALUE_COLOR],
 		["Скорость:", "speed", _VALUE_COLOR],
 		["Щит:", "shield", _ACCENT_COLOR],
+	])
+
+	# Ремёсла. Навыки крафта НЕ покупаются в школе - они растут только от
+	# самих ремёсел, поэтому показывать их надо здесь, рядом со всем
+	# остальным, а не прятать в мастерскую.
+	#
+	# Четыре строки, а не по одной на вкладку мастерской: мастер по
+	# улучшениям - третья вкладка следующего пакета, но его навык уже
+	# существует в player.gd, и пустая строка была бы враньём.
+	_section_header(tr("РЕМЁСЛА"))
+	_stats_grid(_stats_box, [
+		["Кузнец:", "smithing", _VALUE_COLOR],
+		["Портной:", "tailoring", _VALUE_COLOR],
+		["Алхимик:", "alchemy", _VALUE_COLOR],
+		["Мастер:", "mastering", _VALUE_COLOR],
 	])
 	if _shield_label == null and _stats_box != null:
 		# Страховка: строка щита обязана существовать после сборки сетки.
@@ -576,6 +600,10 @@ func _refresh_stats() -> void:
 		_set_stat("bludgeon", str(p.bludgeon_skill))
 		_set_stat("pike", str(p.pike_skill))
 		_set_stat("shooting", str(p.shooting_skill))
+	_set_stat("smithing", str(p.smithing_skill))
+	_set_stat("tailoring", str(p.tailoring_skill))
+	_set_stat("alchemy", str(p.alchemy_skill))
+	_set_stat("mastering", str(p.mastering_skill))
 	_set_stat("fire", str(p.get_protection_fire()))
 	_set_stat("water", str(p.get_protection_water()))
 	_set_stat("air", str(p.get_protection_air()))
@@ -694,6 +722,8 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 			icon_rect.offset_right = -4.0
 			icon_rect.offset_bottom = -4.0
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			# Свечение уровня крафтовой вещи (обычная - без материала).
+			CraftVFX.apply_to_icon(icon_rect, CraftVFX.tier_of_item(item))
 			slot.add_child(icon_rect)
 
 	if count > 1:
@@ -820,13 +850,14 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		return
 	var icon_path := str(item.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(item.get("quality", "")))
+	var tier := CraftVFX.tier_of_item(item)
 	var hover_key := str(item.get("key", ""))
 	cell.mouse_entered.connect(func():
 		hovered_item_key = hover_key
 		if _hover_card == null:
 			_hover_card = _ensure_card()
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
-			_hover_at(cell), _hover_bounds(), icon_path, qcolor))
+			_hover_at(cell), _hover_bounds(), icon_path, qcolor, tier))
 	cell.mouse_exited.connect(func():
 		if hovered_item_key == hover_key:
 			hovered_item_key = ""
@@ -840,7 +871,7 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 		if _hover_card == null:
 			_hover_card = _ensure_card()
 		UiKit.show_hover_card(_hover_card, _item_card_lines(item),
-			_hover_at(cell), _hover_bounds(), icon_path, qcolor))
+			_hover_at(cell), _hover_bounds(), icon_path, qcolor, tier))
 	cell.focus_exited.connect(func():
 		if hovered_item_key == hover_key:
 			hovered_item_key = ""
@@ -879,7 +910,8 @@ func _show_slot_card(cell: Control, slot: String) -> void:
 	lines.append(tr("Слот: %s (клик — снять)") % ItemDB.slot_title(slot))
 	var icon_path := str(it.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(it.get("quality", "")))
-	UiKit.show_hover_card(_hover_card, lines, _hover_at(cell), _hover_bounds(), icon_path, qcolor)
+	UiKit.show_hover_card(_hover_card, lines, _hover_at(cell), _hover_bounds(),
+		icon_path, qcolor, CraftVFX.tier_of_item(it))
 
 
 func _hide_slot_card() -> void:

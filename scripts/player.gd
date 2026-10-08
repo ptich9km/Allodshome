@@ -18,6 +18,15 @@ class_name Player
 @export var earth_skill: int = 5
 @export var astral_skill: int = 5
 
+# Навыки РЕМЁСЕЛ (мастерская, 07.10). Растут ТОЛЬКО от крафта — в школе их
+# нет, иначе покупка за золото обесценила бы само ремесло. В школу они не
+# добавлены ещё и потому, что school_ui_smoke.gd:98 жёстко берёт
+# _train_buttons[5]; вставка в список сломала бы тест.
+@export var smithing_skill: int = 0
+@export var tailoring_skill: int = 0
+@export var alchemy_skill: int = 0
+@export var mastering_skill: int = 0
+
 var max_hp: int = 100
 var max_mana: int = 50
 var current_hp: int
@@ -51,6 +60,7 @@ var equipped: Dictionary = {}
 const SKILL_NAMES := [
 	"blade", "axe", "bludgeon", "pike", "shooting",
 	"fire", "water", "air", "earth", "astral",
+	"smithing", "tailoring", "alchemy", "mastering",
 ]
 var experience := {}        # name -> очки опыта по навыку
 const UNIT_EXP_BASE := 100  # множитель опыта цели (Template.Experience у разработчиков)
@@ -78,7 +88,7 @@ func total_experience() -> int:
 		t += int(experience.get(name, 0))
 	return t
 
-## Текущее значение навыка по имени (blade/axe/.../astral) — для урона/UI.
+## Текущее значение навыка по имени — для урона/UI.
 func skill_value(name: String) -> int:
 	match name:
 		"blade": return blade_skill
@@ -91,6 +101,10 @@ func skill_value(name: String) -> int:
 		"air": return air_skill
 		"earth": return earth_skill
 		"astral": return astral_skill
+		"smithing": return smithing_skill
+		"tailoring": return tailoring_skill
+		"alchemy": return alchemy_skill
+		"mastering": return mastering_skill
 	return 0
 
 func _set_skill_value(name: String, v: int) -> void:
@@ -105,6 +119,38 @@ func _set_skill_value(name: String, v: int) -> void:
 		"air": air_skill = v
 		"earth": earth_skill = v
 		"astral": astral_skill = v
+		"smithing": smithing_skill = v
+		"tailoring": tailoring_skill = v
+		"alchemy": alchemy_skill = v
+		"mastering": mastering_skill = v
+
+## Восстановить уровни навыков из накопленного опыта.
+##
+## ЗАЧЕМ. Найденный баг: школа покупает уровень ЧЕРЕЗ ПОЛЕ (school_panel.gd:251
+## делает `player.set(field, ...)`) и никогда не пишет в `experience`. При
+## загрузке `_apply_hero_choice()` восстанавливает базу из hero.stats, а
+## `_ready()` видя непустой `experience` пропускает `_init_experience()`. Никто
+## больше не пересчитывает уровень из опыта - то есть купленные в школе
+## уровни молча откатывались к стартовым. Крафтовые навыки унаследовали бы
+## ровно то же самое: они растут ИЗ ОПЫТА, и без этого цикла терялись бы
+## полностью.
+func _levels_from_experience() -> void:
+	for name in SKILL_NAMES:
+		var lvl := exp_to_skill(int(experience.get(name, 0)))
+		if lvl > 0:
+			_set_skill_value(name, lvl)
+
+## Задать уровень навыка по ИМЕНИ ПОЛЯ ("fire_skill") и синхронизировать опыт.
+##
+## Школа работает с полями (school_panel.gd SKILLS: ["Огонь", "fire_skill"]),
+## а gain_skill_exp - с именами из SKILL_NAMES ("fire"). Отсюда trim_suffix.
+## Побочный эффект метода - исправление бага школы: раньше покупка писала
+## только поле, опыт не трогала, и уровень откатывался при загрузке.
+func set_skill_field(field: String, v: int) -> void:
+	var name := field.trim_suffix("_skill")
+	_set_skill_value(name, v)
+	if v > 0:
+		experience[name] = maxi(int(experience.get(name, 0)), skill_to_exp(v))
 
 ## Начислить опыт навыку; если уровень из опыта вырос — поднять навык.
 func gain_skill_exp(skill_name: String, amount: int) -> void:
@@ -226,7 +272,11 @@ func _ready():
 	_ensure_sprite()
 	_create_health_bar()
 	if from_save and not experience.is_empty():
-		pass  # опыт уже из сейва
+		# Опыт из сейва - значит уровни надо ПЕРЕСЧИТАТЬ из него, а не взять
+		# базовые из hero.stats. Раньше здесь стоял голый `pass`, и покупки в
+		# школе (которые пишут только поле уровня) откатывались при загрузке;
+		# крафтовые навыки, растущие ИЗ опыта, терялись целиком.
+		_levels_from_experience()
 	else:
 		_init_experience()
 

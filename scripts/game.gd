@@ -948,21 +948,12 @@ func handle_click(world_position: Vector2):
 		if alm_map != null and alm_map.has_method("find_path"):
 			player.begin_path(alm_map.find_path(player.global_position, world_position))
 
-## Функциональная роль здания по папке структуры (StructureDB).
+## Функциональная роль здания (StructureDB).
+## Логика переехала в StructureDB.kind_of — она была продублирована копией в
+## tests/alice_buildings_smoke.gd, и правка роли в игре и в тесте разъезжалась
+## молча. Теперь тест зовёт настоящий код.
 func _structure_kind(type_id: int) -> String:
-	var def := StructureDB.get_by_id(type_id)
-	var folder := str(def.get("folder", "")).to_lower()
-	if folder.contains("druidshop") or folder.contains("hive"):
-		return "alchemy"
-	if folder.contains("shop"):
-		return "shop"
-	if folder.contains("inn"):
-		return "inn"
-	if folder.contains("train") or folder.contains("school"):
-		return "school"
-	if folder.contains("blacksmith"):
-		return "blacksmith"
-	return ""
+	return StructureDB.kind_of(type_id)
 
 ## Клик по зданию: подходим к двери (южный край футпринта).
 ## kind != "" — функциональное (магазин/таверна/…): при подходе меню.
@@ -993,7 +984,7 @@ func _open_building_kind(kind: String) -> void:
 		"alchemy": ui.open_alchemy()
 		"inn": ui.open_inn()
 		"school": ui.open_school()
-		"blacksmith": ui.open_blacksmith()
+		"workshop": ui.open_workshop()
 
 func _herb_click(herb: HerbNode) -> void:
 	if not is_instance_valid(herb) or not herb.is_available():

@@ -1,0 +1,64 @@
+{
+ "version": 1,
+ "craft": "tailor",
+ "note_ru": "Портной: много ткани + немного слитков. Кузнец тоже даёт ткань, но из сломанной брони выходит 1-2 штуки, поэтому у портного её заметно больше. Эссенция - единственный валютный затруднитель: с боссов и Серых.",
+ "recipes": [
+  {
+   "id": "linen_cape",
+   "name_ru": "Накидка льняная",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 4},
+    {"item": "iron Ingot", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Linen Cape", "weight": 80.0},
+    {"key": "Crafted Fine Linen Cape", "weight": 15.0},
+    {"key": "Crafted Master Linen Cape", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "linen_cloak",
+   "name_ru": "Плащ льняной",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "iron Ingot", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Linen Cloak", "weight": 80.0},
+    {"key": "Crafted Fine Linen Cloak", "weight": 15.0},
+    {"key": "Crafted Master Linen Cloak", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "linen_robe",
+   "name_ru": "Роба льняная",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "iron Ingot", "count": 2},
+    {"item": "Magic Essence", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Linen Robe", "weight": 80.0},
+    {"key": "Crafted Fine Linen Robe", "weight": 15.0},
+    {"key": "Crafted Master Linen Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "linen_hat",
+   "name_ru": "Колпак льняной",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Linen Hat", "weight": 80.0},
+    {"key": "Crafted Fine Linen Hat", "weight": 15.0},
+    {"key": "Crafted Master Linen Hat", "weight": 5.0}
+   ]
+  }
+ ]
+}

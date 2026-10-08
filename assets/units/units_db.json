@@ -378,6 +378,7 @@
   }
  },
  "monsters/troll": {
+  "boss": 1,
   "desc": "Fat troll",
   "folder": "monsters/troll",
   "frames": 164,
@@ -927,6 +928,7 @@
   }
  },
  "monsters/ogre": {
+  "boss": 1,
   "desc": "Ogre (Lord)",
   "folder": "monsters/ogre",
   "frames": 200,
@@ -1370,6 +1372,7 @@
   }
  },
  "monsters/dragon": {
+  "boss": 1,
   "desc": "Dragon",
   "folder": "monsters/dragon",
   "frames": 164,
@@ -2185,6 +2188,7 @@
   }
  },
  "monsters/mainnecro": {
+  "boss": 1,
   "desc": "Very Bad Guy (Urd)",
   "folder": "monsters/mainnecro",
   "frames": 224,

@@ -410,6 +410,10 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Свечение уровня крафтовой вещи. Полки магазина перестраиваются на каждый
+	# refresh, узлы не пулятся, так что материал каждый раз новый - но и
+	# Shader кэшируется в CraftVFX, поэтому компиляция не повторяется.
+	CraftVFX.apply_to_icon(icon, CraftVFX.tier_of_item(item))
 	content.add_child(icon)
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 1)
