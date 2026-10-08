@@ -287,7 +287,7 @@ func _speak_if_tier_changed(tier: int) -> void:
 func _set_portrait(tier: int) -> void:
 	if _portrait == null:
 		return
-	var set_name := "ork_mage_a52/t%d" % clampi(tier, 0, 3)
+	var set_name := _captain_set(tier)
 	var path := UnitDB.frame_path(set_name, "sprites", 1)
 	var tex: Texture2D = null
 	if ResourceLoader.exists(path):
@@ -296,18 +296,39 @@ func _set_portrait(tier: int) -> void:
 	_portrait.visible = tex != null
 
 
+## Набор капитана = его собственная раса, ступень = tier.
+##
+## Раньше здесь было жёстко "ork_mage_a52/t%d": в druid-городе маг превращался
+## в орка (жалоба игрока 09.10), и это же ломало сам NPC на карте — _sync_
+## captain_sprite переписывал anim_set живого капитана. Теперь раса берётся
+## у реального NPC, а если его нет (панель открыта не из города) — у расы
+## героя через таблицу CITY_POPULATION.
+func _captain_set(tier: int) -> String:
+	var race := _captain_race()
+	var t := clampi(tier, 0, 3)
+	if race != "" and MapGenerator.CITY_POPULATION.has(race):
+		return str((MapGenerator.CITY_POPULATION[race] as Dictionary).get("captain", ""))
+	return "ork_mage_a52/t%d" % t
+
+
+## Раса капитана из живого NPC-архмага. Пусто, если такого нет.
+func _captain_race() -> String:
+	for n in Game.npcs:
+		if not is_instance_valid(n):
+			continue
+		if bool(n.get("is_archmage")):
+			return MapGenerator.race_of_set(str((n as Npc).anim_set))
+	# Запасной путь: панель могли открыть не из города (тесты, save-load).
+	return MapGenerator.city_race_for_hero(Game.hero_race)
+
+
 func _sync_captain_sprite(tier: int) -> void:
-	var set_name := "ork_mage_a52/t%d" % clampi(tier, 0, 3)
 	var scene := get_tree().current_scene
 	if scene == null:
 		return
-	for child in scene.get_children():
-		if child is Npc and bool(child.get("is_archmage")):
-			if str(child.anim_set) != set_name:
-				child.anim_set = set_name
-				var anim = child.get_node_or_null("UnitAnim")
-				if anim != null and anim.has_method("setup"):
-					anim.setup(set_name)
+	# Ничего не переписываем: капитан уже стоит со своим набором от
+	# генератора. Прежний код подставлял ork_mage_a52/tN каждому архмагу и
+	# ломал даже druid-город.
 
 
 func _set_stake_enabled(ingot: bool, gold: bool, potion: bool) -> void:

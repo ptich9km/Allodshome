@@ -285,8 +285,13 @@ static func _sep_bucket_key(pos: Vector2) -> String:
 	return "%d,%d" % [int(floor(pos.x / SEP_GRID_CELL)), int(floor(pos.y / SEP_GRID_CELL))]
 
 
-static func _sep_insert(unit: Node2D) -> void:
-	if not is_instance_valid(unit):
+static func _sep_insert(unit) -> void:
+	# Параметр БЕЗ типа намеренно: типизированный `unit: Node2D` проверяется
+	# движком ДО входа в тело, и на освобождённом узле падает вся функция -
+	# is_instance_valid внутри уже не спасает. Жалоба игрока 09.10:
+	# "Invalid type in function '_sep_insert' ... argument 1 (previously freed)".
+	# Сторож: tests/stale_units_smoke.gd. Источник чинится в Main._ready().
+	if unit == null or not is_instance_valid(unit) or not (unit is Node2D):
 		return
 	var key := _sep_bucket_key(unit.global_position)
 	var arr: Array = _sep_grid.get(key, [])
@@ -646,6 +651,17 @@ func _ready():  # Инициализация мира и боя
 	_spawn_player_on_walkable()
 	Game.hero = player
 	Game.party.clear()
+	# enemies/npcs — static var, они ПЕРЕЖИВАЮТ смену сцены: узлы прежней
+	# карты к этому моменту уже освобождены движком, но остаются в массивах.
+	# Раньше чистился только party, и новая игра ловила
+	# `_sep_insert(unit: Node2D)`: argument 1 (previously freed) — падение на
+	# типизированном параметре происходит ДО входа в тело функции, поэтому
+	# is_instance_valid внутри _sep_insert не помогает.
+	# Это же чинит хвост в _alive_gray_count (считал мёртвые узлы).
+	Game.enemies.clear()
+	Game.npcs.clear()
+	_sep_grid.clear()
+	_sep_grid_frame = -1
 	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
 	_spawn_map_units()
 

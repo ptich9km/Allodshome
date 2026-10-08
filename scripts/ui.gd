@@ -1030,6 +1030,12 @@ func _loot_tooltip_lines(lb: LootDrop) -> Array:
 
 ## Фракция по набору анимаций юнита (см. §8.2 AGENTS.md).
 func _faction_of_set(set_name: String) -> String:
+	# Городские наборы city_* — раса города (09.10). Подпись должна быть из
+	# lore world.json, иначе в тултипе писало «Прохожий».
+	var city_race := MapGenerator.race_of_set(set_name)
+	if city_race != "":
+		var label := str(Lore.faction(city_race).get("label", ""))
+		return label if label != "" else city_race
 	if set_name.begins_with("ork_mage"):
 		return "Орды Огня"
 	if set_name.begins_with("humans/"):

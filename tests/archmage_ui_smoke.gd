@@ -84,8 +84,25 @@ func _run() -> void:
 	if not captains.is_empty():
 		var c: Node = captains[0]
 		var setn := str(c.anim_set)
-		_check(setn.begins_with("ork_mage_a52/"), "капитан использует ork_mage_a52 (=%s)" % setn)
-		_check(UnitDB.has(setn), "набор капитана есть в units_db")
+		_check(UnitDB.has(setn), "набор капитана есть в units_db (=%s)" % setn)
+		# 09.10: капитан = маг СВОЕЙ расы (CITY_POPULATION[...]["captain"]).
+		# Прежде здесь стояла проверка begins_with("ork_mage_a52/") — она держала
+		# старый контракт и пропустила бы druid-города с орком-магом.
+		var cap_race := MapGenerator.race_of_set(setn)
+		_check(cap_race != "", "набор капитана городской: %s" % setn)
+		if cap_race != "":
+			var expect := str((MapGenerator.CITY_POPULATION.get(cap_race, {}) as Dictionary)
+				.get("captain", ""))
+			_check(setn == expect,
+				"капитан расы '%s' = %s (на карте %s)" % [cap_race, expect, setn])
+			_check(setn.ends_with("/t3"), "капитан — высший тир t3 (=%s)" % setn)
+		# Все капитаны на карте (а не только первый) — своих городов.
+		for cap2 in captains:
+			var s2 := str((cap2 as Node).get("anim_set"))
+			var r2 := MapGenerator.race_of_set(s2)
+			if r2 != "" and MapGenerator.CITY_POPULATION.has(r2):
+				var e2 := str((MapGenerator.CITY_POPULATION[r2] as Dictionary).get("captain", ""))
+				_check(s2 == e2, "капитан[%s] своей расы (ожидали %s)" % [s2, e2])
 	var am0 = _bus_state().get_archmage("human")
 	_check(am0 is Dictionary and not (am0 as Dictionary).is_empty(), "get_archmage(human) не пуст")
 	if am0 is Dictionary:
