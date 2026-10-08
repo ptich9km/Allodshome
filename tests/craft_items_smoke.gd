@@ -131,32 +131,44 @@ func _test_armor_kind() -> void:
 			"%s: armor_kind = %s" % [str(d.get("key", "")), want])
 
 
-## Разделение «кузнец берёт / портной берёт»: металл переплавляется, ткань и
-## эссенция - нет. Ошибка здесь тихая: без разделения кузнец переплавлял бы
-## ткань в слитки, а портной не видел бы своей одежды.
+## Разделение «кузнец берёт / портной берёт»: металл (сломанное + целое
+## снаряжение) у кузнеца, одежда у портного. Ресурсы крафта не переплавляются.
 func _test_smeltable_split() -> void:
 	var smith_ok := 0
 	var smith_bad := 0
 	for it in ItemDB.all():
 		var d: Dictionary = it
-		if not ItemDB.is_broken(d) or ItemDB.broken_category(d) == "Garment":
+		if not CraftDB.can_recycle(CraftDB.SMITH, d):
 			continue
-		if ItemDB.is_smeltable(d):
-			smith_ok += 1
-		else:
+		if ItemDB.is_craft_material(d) or ItemDB.broken_category(d) == "Garment":
 			smith_bad += 1
-	_check(smith_ok > 0, "кузнец принимает сломанные броню/оружие (%d)" % smith_ok)
+			continue
+		if not ItemDB.is_broken(d) and ItemDB.armor_kind(d) == "light" \
+				and ItemDB.slot_of(d) != "weapon":
+			smith_bad += 1
+			continue
+		smith_ok += 1
+	_check(smith_ok > 0, "кузнец принимает броню/оружие сломанное и целое (%d)" % smith_ok)
 	_check(smith_bad == 0,
-		"кузнец не принимает сломанную одежду (%d лишних)" % smith_bad)
+		"кузнец не принимает одежду и ресурсы (%d лишних)" % smith_bad)
 
 	var tailor_ok := 0
 	for it in ItemDB.all():
 		var d: Dictionary = it
-		if not ItemDB.is_broken(d) or ItemDB.broken_category(d) != "Garment":
-			continue
-		if CraftDB.can_recycle(CraftDB.TAILOR, d) and not ItemDB.is_smeltable(d):
+		if CraftDB.can_recycle(CraftDB.TAILOR, d):
 			tailor_ok += 1
-	_check(tailor_ok > 0, "портной принимает сломанную одежду (%d)" % tailor_ok)
+	_check(tailor_ok > 0, "портной принимает одежду (%d)" % tailor_ok)
+
+	# Целая кираса: выход = 80% ресурсов рецепта iron_cuirass (6 iron + 2 Fabric).
+	var cuirass := ItemDB.find("Common iron Cuirass")
+	if not cuirass.is_empty():
+		var y := CraftDB.recycle_yield(cuirass)
+		_check(int(y.get("ingot", 0)) == 4,
+			"целая iron Cuirass: 6*0.8=4 слитка (получено %d)" % int(y.get("ingot", 0)))
+		_check(int(y.get("fabric", 0)) == 1,
+			"целая iron Cuirass: 2*0.8=1 ткань (получено %d)" % int(y.get("fabric", 0)))
+		_check(CraftDB.can_recycle(CraftDB.SMITH, cuirass),
+			"целая iron Cuirass переплавляется кузнецом")
 
 
 ## Ресурсы крафта: есть, не экипируются, не переплавляются, не продаются за
@@ -301,9 +313,8 @@ func _test_recycle_yield() -> void:
 		_check(int(yg.get("ingot", 0)) == 0, "из одежды НЕ выходят слитки")
 
 	var plain := ItemDB.find("Common iron Cuirass")
-	_check(CraftDB.recycle_yield(plain).is_empty()
-		or int(CraftDB.recycle_yield(plain).get("ingot", 0)) == 0,
-		"целую вещь переработать нельзя")
+	# Целая кираса перерабатывается: 80% ресурсов рецепта (проверено в
+	# _test_smeltable_split). Здесь только инвариант монотонности не трогаем.
 
 
 # --- Потребление рецепта ---------------------------------------------------

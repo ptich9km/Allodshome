@@ -50,18 +50,24 @@ func _build() -> WorkshopPanel:
 	var player := Player.new()
 	player.add_item(ItemDB.broken_key("iron", "Armor", "Broken Rare"))
 	player.add_item(ItemDB.broken_key("Linen", "Garment", "Broken"))
+	player.add_item("Common iron Cuirass")
+	player.add_item("Common Linen Robe")
+	player.add_item("Crafted Linen Cloak")
 	player.add_item("iron Ingot")
 	player.add_item("iron Ingot")
 	player.add_item("iron Ingot")
 	player.add_item("Fabric")
 	player.add_item("Fabric")
 	player.add_item("Fabric")
+	player.add_item("Magic Essence")
+	# Свитки рецептов: без них список рецептов пуст (петля лавки).
+	player.add_item(CraftDB.recipe_scroll_key("iron_cuirass"))
+	player.add_item(CraftDB.recipe_scroll_key("linen_robe"))
+	player.add_item(CraftDB.recipe_scroll_key("linen_cloak"))
+	player.gold = 1000
 	var panel := WorkshopPanel.new()
 	panel.setup(player)
 	root.add_child(panel)
-	# _ready НЕ вызывается вручную: add_child в дерево уже вызывает его, и
-	# второй вызов падал бы на tab_changed.connect (сигнал уже подключён),
-	# обрывая функцию на полпути.
 	return panel
 
 
@@ -104,40 +110,86 @@ func _test_structure(panel: WorkshopPanel) -> void:
 	_check(tabs != null, "есть TabContainer")
 	if tabs == null:
 		return
-	# Две активные вкладки: кузнец и портной. Мастер - третьим пакетом.
-	_check(tabs.get_tab_count() == 2,
-		"две вкладки (%d)" % tabs.get_tab_count())
+	# Три вкладки: кузнец, портной, мастер (master_enabled=1).
+	_check(tabs.get_tab_count() == 3,
+		"три вкладки (%d)" % tabs.get_tab_count())
 	_check(tabs.get_tab_title(0) == "Кузнец", "первая вкладка «Кузнец»")
 	_check(tabs.get_tab_title(1) == "Портной", "вторая вкладка «Портной»")
-	_check(tabs.get_child_count() == 2, "две вкладки в контейнере")
+	_check(tabs.get_tab_title(2) == "Мастер", "третья вкладка «Мастер»")
+	_check(tabs.get_child_count() == 3, "три вкладки в контейнере")
 
 	var smith := _tab_of(panel, CraftDB.SMITH)
 	var tailor := _tab_of(panel, CraftDB.TAILOR)
+	var master := _tab_of(panel, CraftDB.MASTER)
 	_check(smith != null, "вкладка кузнеца создана")
 	_check(tailor != null, "вкладка портного создана")
+	_check(master != null, "вкладка мастера создана")
 	if smith != null:
 		_check(smith.craft == CraftDB.SMITH, "вкладка кузнеца знает своё ремесло")
-		# Кузнец НЕ должен принимать сломанную одежду, портной - наоборот.
+		# Кузнец принимает сломанное И целую броню/оружие.
 		var smith_sees_garment := false
 		var smith_sees_armor := false
+		var smith_sees_intact := false
 		for e in smith.call("_items"):
 			if str(e.get("mode", "")) != smith.RECYCLE_ID:
 				continue
-			var cat := ItemDB.broken_category(e["item"])
+			var it: Dictionary = e["item"]
+			var cat := ItemDB.broken_category(it)
 			if cat == "Garment":
 				smith_sees_garment = true
-			elif cat == "Armor":
+			elif cat == "Armor" or ItemDB.armor_kind(it) == "heavy" \
+					or ItemDB.slot_of(it) == "weapon":
 				smith_sees_armor = true
-		_check(smith_sees_armor, "кузнец видит сломанную броню в списке")
+			if not ItemDB.is_broken(it) and ItemDB.is_equippable(it):
+				smith_sees_intact = true
+		_check(smith_sees_armor, "кузнец видит броню/оружие в списке")
 		_check(not smith_sees_garment,
-			"кузнец НЕ видит сломанную одежду (иначе ткань и эссенция у портного)")
+			"кузнец НЕ видит одежду (иначе ткань и эссенция у портного)")
+		_check(smith_sees_intact, "кузнец видит целую броню для переплавки")
+		# Рецепт с открытого свитка виден.
+		var has_recipe := false
+		for e in smith.call("_items"):
+			if str(e.get("mode", "")) == smith.RECIPE_ID \
+					and str(e.get("id", "")) == "iron_cuirass":
+				has_recipe = true
+		_check(has_recipe, "рецепт iron_cuirass виден по свитку")
 	if tailor != null:
 		var tailor_sees_garment := false
+		var tailor_sees_intact := false
 		for e in tailor.call("_items"):
-			if str(e.get("mode", "")) == tailor.RECYCLE_ID \
-					and ItemDB.broken_category(e["item"]) == "Garment":
-				tailor_sees_garment = true
+			if str(e.get("mode", "")) == tailor.RECYCLE_ID:
+				if ItemDB.broken_category(e["item"]) == "Garment":
+					tailor_sees_garment = true
+				if not ItemDB.is_broken(e["item"]) and ItemDB.is_equippable(e["item"]):
+					tailor_sees_intact = true
 		_check(tailor_sees_garment, "портной видит сломанную одежду")
+		_check(tailor_sees_intact, "портной видит целую одежду мага")
+	if master != null:
+		_check(master.craft == CraftDB.MASTER, "вкладка мастера знает своё ремесло")
+		var master_items: Array = master.call("_items")
+		var master_has_upgrade := false
+		for e in master_items:
+			if str(e.get("mode", "")) == master.RECYCLE_ID \
+					and not str(e.get("upgrade", "")).is_empty():
+				master_has_upgrade = true
+		_check(master_has_upgrade,
+			"мастер видит крафтовую вещь для улучшения (%d элементов)" % master_items.size())
+	# Полка инвентаря есть и заполнена.
+	var inv_grid := _find_named(panel, "InvShelf")
+	_check(inv_grid != null, "полка инвентаря мастерской есть")
+	if inv_grid is GridContainer:
+		_check((inv_grid as GridContainer).get_child_count() > 0,
+			"полка инвентаря не пуста")
+
+
+func _find_named(node: Node, name_: String) -> Node:
+	if node.name == name_:
+		return node
+	for c in node.get_children():
+		var r := _find_named(c, name_)
+		if r != null:
+			return r
+	return null
 
 
 # --- Переработка ----------------------------------------------------------
@@ -214,9 +266,16 @@ func _test_craft_flow(panel: WorkshopPanel) -> void:
 		var okey := CraftDB.output_key(recipe, tier)
 		_check(not ItemDB.find(okey).is_empty(), "выход уровня %d существует" % tier)
 
-	# Навык вырос.
+	# Навык вырос (навык читаем; рост опыта не гарантирует смену уровня).
 	_check(player.smithing_skill >= 0, "навык кузнеца читаем (%d)" % player.smithing_skill)
-	_check(_has_any(player, ["iron Ingot", "Fabric"]) or true, "инвентарь жив")
+	# После крафта ровно один выход рецепта добавлен в инвентарь
+	# (add_item(out_key), см. craft_tab._craft). Сторож не должен быть `or true`.
+	var any_out := false
+	for tier in 3:
+		if _count(player, CraftDB.output_key(recipe, tier)) > 0:
+			any_out = true
+			break
+	_check(any_out, "после крафта в инвентаре есть выход рецепта")
 
 
 # --- Фокус ----------------------------------------------------------------

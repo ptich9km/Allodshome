@@ -4,12 +4,13 @@ extends CanvasLayer
 signal closed
 signal inventory_changed
 
-## Категории — toggle-кнопки в шапке, не зоны фонового арта.
-## 05.10: JPEG shop_human.jpeg убран; раскладка контейнерная, референс 1280×800.
+## Категории — toggle-кнопки в шапке. Снаряжение в лавке НЕТ (08.10):
+## снаряжение = лут + крафт по свиткам; лавка продаёт зелья, книги и рецепты.
+## Рецепты разбиты по виду, иначе в общей куче неудобно искать (08.10).
 const CATEGORIES := [
-	{"id": "armor", "label": "Броня"},
-	{"id": "robe", "label": "Магическая броня"},
-	{"id": "weapon", "label": "Оружие"},
+	{"id": "recipes_armor", "label": "Рец. Броня"},
+	{"id": "recipes_weapon", "label": "Рец. Оружие"},
+	{"id": "recipes_clothes", "label": "Рец. Маг. одежда"},
 	{"id": "potions", "label": "Зелья"},
 	{"id": "books", "label": "Книги и свитки"},
 ]
@@ -19,8 +20,8 @@ const MERCHANT_LINES := [
 	"Магические книги есть только у тех, кто действительно читает магию.",
 	"Не торопись: хорошая броня окупается после второй вылазки.",
 ]
-const _CELL_BUY := Vector2(96, 100)
-const _CELL_SELL := Vector2(90, 92)
+const _CELL_BUY := Vector2(100, 104)
+const _CELL_SELL := Vector2(94, 96)
 
 var player: Player
 var _root: MarginContainer
@@ -40,6 +41,9 @@ var _category_group: ButtonGroup
 var _previous_focus: Control
 var _hover_card: PanelContainer = null
 var _category_index := 0
+var _focus_restored := false
+
+const _PANEL_MIN := Vector2(980, 580)
 
 static var _all_cache: Array = []
 
@@ -71,24 +75,20 @@ func _build_ui() -> void:
 	_root.theme = _make_theme()
 	add_child(_root)
 
-	var center := HBoxContainer.new()
+	# Центр + фиксированный размер — как у инвентаря: панель всегда по центру
+	# и не «прыгает» при resize (08.10).
+	var center := CenterContainer.new()
 	center.name = "Center"
-	center.alignment = BoxContainer.ALIGNMENT_CENTER
-	# Промежуточный контейнер не должен съедать клики — иначе «прозрачная
-	# рамка» вокруг панели блокирует и мир, и саму панель.
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(center)
-	var side := Control.new()
-	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	side.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_child(side)
 
 	_panel = PanelContainer.new()
 	_panel.name = "Panel"
 	_panel.theme_type_variation = &"ShopPanel"
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_panel.custom_minimum_size = _PANEL_MIN
 	center.add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -159,7 +159,7 @@ func _build_ui() -> void:
 	buy_col.add_child(_npc_scroll)
 	_npc_grid = GridContainer.new()
 	_npc_grid.name = "NpcShelf"
-	_npc_grid.columns = 3
+	_npc_grid.columns = 4
 	_npc_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_npc_grid.add_theme_constant_override("h_separation", UiTheme.SPACE_1)
 	_npc_grid.add_theme_constant_override("v_separation", UiTheme.SPACE_1)
@@ -184,7 +184,7 @@ func _build_ui() -> void:
 	sell_col.add_child(_player_scroll)
 	_player_grid = GridContainer.new()
 	_player_grid.name = "PlayerShelf"
-	_player_grid.columns = 4
+	_player_grid.columns = 5
 	_player_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_player_grid.add_theme_constant_override("h_separation", UiTheme.SPACE_1)
 	_player_grid.add_theme_constant_override("v_separation", UiTheme.SPACE_1)
@@ -328,18 +328,55 @@ func _refresh() -> void:
 	_hint_label.text = tr("Слева покупка · справа продажа · заблокированное не хватает золота")
 	for index in range(_category_buttons.size()):
 		_category_buttons[index].button_pressed = index == _category_index
+	# Позиции скролла и фокус: полная пересборка сеток сбрасывала их на каждой
+	# покупке — отсюда «прыжки» при покупке многих вещей (08.10).
+	var scroll_npc := 0
+	var scroll_pl := 0
+	if _npc_scroll != null and is_instance_valid(_npc_scroll):
+		scroll_npc = _npc_scroll.scroll_vertical
+	if _player_scroll != null and is_instance_valid(_player_scroll):
+		scroll_pl = _player_scroll.scroll_vertical
+	var focused_was_player := _is_focused_in(_player_scroll)
+	var focused_was_npc := _is_focused_in(_npc_scroll)
 	var npc_buttons := _build_buy_shelf(_category_index)
 	var player_buttons := _build_sell_list()
 	_configure_focus(npc_buttons, player_buttons)
-	if not npc_buttons.is_empty():
-		npc_buttons[0].call_deferred("grab_focus")
-	elif not player_buttons.is_empty():
+	if _npc_scroll != null and is_instance_valid(_npc_scroll):
+		_npc_scroll.scroll_vertical = scroll_npc
+	if _player_scroll != null and is_instance_valid(_player_scroll):
+		_player_scroll.scroll_vertical = scroll_pl
+	# Фокус: не воровать у игрока, если он был на своей полке.
+	if focused_was_player and not player_buttons.is_empty():
 		player_buttons[0].call_deferred("grab_focus")
-	else:
-		_category_buttons[_category_index].call_deferred("grab_focus")
+	elif focused_was_npc and not npc_buttons.is_empty():
+		npc_buttons[0].call_deferred("grab_focus")
+	elif not _focus_restored:
+		if not npc_buttons.is_empty():
+			npc_buttons[0].call_deferred("grab_focus")
+		elif not player_buttons.is_empty():
+			player_buttons[0].call_deferred("grab_focus")
+		else:
+			_category_buttons[_category_index].call_deferred("grab_focus")
+		_focus_restored = true
+
+
+func _is_focused_in(scroll: ScrollContainer) -> bool:
+	if scroll == null or not is_instance_valid(scroll):
+		return false
+	var f := get_viewport().gui_get_focus_owner()
+	if f == null:
+		return false
+	var n: Node = f
+	while n != null:
+		if n == scroll:
+			return true
+		n = n.get_parent()
+	return false
+
 
 func _set_category(index: int) -> void:
 	_category_index = clampi(index, 0, CATEGORIES.size() - 1)
+	_focus_restored = false
 	_refresh()
 
 func _build_buy_shelf(category_index: int) -> Array[Button]:
@@ -468,25 +505,42 @@ func _category_items(category_index: int) -> Array[Dictionary]:
 		var item: Dictionary = raw
 		var quality := str(item.get("quality", ""))
 		var price := int(item.get("price", 0))
-		if price <= 0 or price > 60000:
+		# Фильтр цены: пропускаем сломанное (0) и мусор. Зелья/книги/эликсиры
+		# с ценой 1M и книги price=0 проходят отдельно ниже.
+		if quality == "Recipe" and not category.begins_with("recipes"):
 			continue
 		var matches := false
 		match category:
-			"armor":
-				matches = ItemDB.is_equippable(item) and ItemDB.slot_of(item) != "weapon" and ItemDB.armor_kind(item) == "heavy"
-			"robe":
-				matches = ItemDB.is_equippable(item) and ItemDB.slot_of(item) != "weapon" and ItemDB.armor_kind(item) == "light"
-			"weapon":
-				matches = ItemDB.slot_of(item) == "weapon"
 			"potions":
-				matches = quality == "Potion"
+				# Все зелья, включая эликсиры атрибутов за 1M.
+				matches = quality == "Potion" and price > 0
 			"books":
+				# Только свитки заклинаний из базы. Книги ОДНОГО заклинания
+				# добавляются ниже через make_book_item. Сферные «Book Fire»
+				# (учат всю сферу) в лавку НЕ продаются.
 				matches = quality in ["Scroll", "SuperScroll"]
-		if matches:
-			pool.append(item)
-	if category == "books" and is_instance_valid(player) and player.has_mana:
+			"recipes_armor":
+				matches = quality == "Recipe" and str(item.get("bp", "")) == "armor"
+			"recipes_weapon":
+				matches = quality == "Recipe" and str(item.get("bp", "")) == "weapon"
+			"recipes_clothes":
+				matches = quality == "Recipe" and str(item.get("bp", "")) == "clothes"
+		if not matches:
+			continue
+		# Для не-зелья/книг/свитков: сломанное (price 0) и мусор >60k.
+		if quality not in ["Potion", "Scroll", "SuperScroll"] \
+				and (price <= 0 or price > 60000):
+			continue
+		if quality in ["Scroll", "SuperScroll"] and price <= 0:
+			continue
+		pool.append(item)
+	# Книги заклинаний для мага — всегда в «Книги и свитки» (не только магу:
+	# свитки уже продаются, книги — продолжение той же петли).
+	if category == "books":
 		for spell in SpellDB.catalog_spells():
-			pool.append(SpellDB.make_book_item(spell))
+			var book := SpellDB.make_book_item(spell)
+			if not book.is_empty():
+				pool.append(book)
 	return pool
 
 func _configure_focus(npc_buttons: Array[Button], player_buttons: Array[Button]) -> void:

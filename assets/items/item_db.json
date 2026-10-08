@@ -2901,7 +2901,7 @@
   "effects": [
    "castSpell=Acid_Stream:50"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_acid_stream.png"
  },
  {
   "id": 243,
@@ -2923,7 +2923,7 @@
   "effects": [
    "castSpell=Bless:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_bless.png"
  },
  {
   "id": 244,
@@ -2945,7 +2945,7 @@
   "effects": [
    "castSpell=Blizzard:50"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_blizzard.png"
  },
  {
   "id": 245,
@@ -2967,7 +2967,7 @@
   "effects": [
    "castSpell=Control_Spirit:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_control_spirit.png"
  },
  {
   "id": 246,
@@ -2989,7 +2989,7 @@
   "effects": [
    "castSpell=Curse:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_curse.png"
  },
  {
   "id": 247,
@@ -3011,7 +3011,7 @@
   "effects": [
    "castSpell=Darkness:50"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_darkness.png"
  },
  {
   "id": 248,
@@ -3033,7 +3033,7 @@
   "effects": [
    "castSpell=Diamond_Dust:50"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_diamond_dust.png"
  },
  {
   "id": 249,
@@ -3055,7 +3055,7 @@
   "effects": [
    "castSpell=Drain_Life:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_drain_life.png"
  },
  {
   "id": 250,
@@ -3077,7 +3077,7 @@
   "effects": [
    "castSpell=Fire_Arrow:50"
   ],
-  "icon": "res://assets/spells/scroll_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_fire_arrow.png"
  },
  {
   "id": 251,
@@ -3099,7 +3099,7 @@
   "effects": [
    "castSpell=Fire_Ball:50"
   ],
-  "icon": "res://assets/spells/scroll_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_fire_ball.png"
  },
  {
   "id": 252,
@@ -3121,7 +3121,7 @@
   "effects": [
    "castSpell=Wall_of_Fire:50"
   ],
-  "icon": "res://assets/spells/wall_of_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_wall_of_fire.png"
  },
  {
   "id": 253,
@@ -3143,7 +3143,7 @@
   "effects": [
    "castSpell=Haste:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_haste.png"
  },
  {
   "id": 254,
@@ -3165,7 +3165,7 @@
   "effects": [
    "castSpell=Heal:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_heal.png"
  },
  {
   "id": 255,
@@ -3187,7 +3187,7 @@
   "effects": [
    "castSpell=Ice_Missile:50"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_ice_missile.png"
  },
  {
   "id": 256,
@@ -3209,7 +3209,7 @@
   "effects": [
    "castSpell=Invisibility:50"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_invisibility.png"
  },
  {
   "id": 257,
@@ -3231,7 +3231,7 @@
   "effects": [
    "castSpell=Light:50"
   ],
-  "icon": "res://assets/spells/light.png"
+  "icon": "res://assets/spells/scrolls/sc_light.png"
  },
  {
   "id": 258,
@@ -3253,7 +3253,7 @@
   "effects": [
    "castSpell=Lightning:50"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_lightning.png"
  },
  {
   "id": 259,
@@ -3275,7 +3275,7 @@
   "effects": [
    "castSpell=Poison_Cloud:50"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_poison_cloud.png"
  },
  {
   "id": 260,
@@ -3297,7 +3297,7 @@
   "effects": [
    "castSpell=Prismatic_Spray:50"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_prismatic_spray.png"
  },
  {
   "id": 261,
@@ -3319,7 +3319,7 @@
   "effects": [
    "castSpell=Protection_from_Air:50"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_air.png"
  },
  {
   "id": 262,
@@ -3341,7 +3341,7 @@
   "effects": [
    "castSpell=Protection_from_Earth:50"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_earth.png"
  },
  {
   "id": 263,
@@ -3363,7 +3363,7 @@
   "effects": [
    "castSpell=Protection_from_Fire:50"
   ],
-  "icon": "res://assets/spells/scroll_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_fire.png"
  },
  {
   "id": 264,
@@ -3385,7 +3385,7 @@
   "effects": [
    "castSpell=Protection_from_Water:50"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_water.png"
  },
  {
   "id": 265,
@@ -3407,7 +3407,7 @@
   "effects": [
    "castSpell=Shield:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_shield.png"
  },
  {
   "id": 266,
@@ -3429,7 +3429,7 @@
   "effects": [
    "castSpell=Slow:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_slow.png"
  },
  {
   "id": 267,
@@ -3451,7 +3451,7 @@
   "effects": [
    "castSpell=Stone_Curse:50"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_stone_curse.png"
  },
  {
   "id": 268,
@@ -3473,7 +3473,7 @@
   "effects": [
    "castSpell=Summon:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_summon.png"
  },
  {
   "id": 269,
@@ -3495,7 +3495,7 @@
   "effects": [
    "castSpell=Teleport:50"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_teleport.png"
  },
  {
   "id": 270,
@@ -3517,7 +3517,7 @@
   "effects": [
    "castSpell=Wall_of_Earth:50"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_wall_of_earth.png"
  },
  {
   "id": 271,
@@ -3539,7 +3539,7 @@
   "effects": [
    "castSpell=Acid_Stream:100"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_acid_stream.png"
  },
  {
   "id": 272,
@@ -3561,7 +3561,7 @@
   "effects": [
    "castSpell=Bless:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_bless.png"
  },
  {
   "id": 273,
@@ -3583,7 +3583,7 @@
   "effects": [
    "castSpell=Blizzard:100"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_blizzard.png"
  },
  {
   "id": 274,
@@ -3605,7 +3605,7 @@
   "effects": [
    "castSpell=Control_Spirit:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_control_spirit.png"
  },
  {
   "id": 275,
@@ -3627,7 +3627,7 @@
   "effects": [
    "castSpell=Curse:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_curse.png"
  },
  {
   "id": 276,
@@ -3649,7 +3649,7 @@
   "effects": [
    "castSpell=Darkness:100"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_darkness.png"
  },
  {
   "id": 277,
@@ -3671,7 +3671,7 @@
   "effects": [
    "castSpell=Diamond_Dust:100"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_diamond_dust.png"
  },
  {
   "id": 278,
@@ -3693,7 +3693,7 @@
   "effects": [
    "castSpell=Drain_Life:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_drain_life.png"
  },
  {
   "id": 279,
@@ -3715,7 +3715,7 @@
   "effects": [
    "castSpell=Fire_Arrow:100"
   ],
-  "icon": "res://assets/spells/scroll_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_fire_arrow.png"
  },
  {
   "id": 280,
@@ -3737,7 +3737,7 @@
   "effects": [
    "castSpell=Fire_Ball:100"
   ],
-  "icon": "res://assets/spells/scroll_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_fire_ball.png"
  },
  {
   "id": 281,
@@ -3759,7 +3759,7 @@
   "effects": [
    "castSpell=Wall_of_Fire:100"
   ],
-  "icon": "res://assets/spells/wall_of_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_wall_of_fire.png"
  },
  {
   "id": 282,
@@ -3781,7 +3781,7 @@
   "effects": [
    "castSpell=Haste:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_haste.png"
  },
  {
   "id": 283,
@@ -3803,7 +3803,7 @@
   "effects": [
    "castSpell=Heal:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_heal.png"
  },
  {
   "id": 284,
@@ -3825,7 +3825,7 @@
   "effects": [
    "castSpell=Ice_Missile:100"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_ice_missile.png"
  },
  {
   "id": 285,
@@ -3847,7 +3847,7 @@
   "effects": [
    "castSpell=Invisibility:100"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_invisibility.png"
  },
  {
   "id": 286,
@@ -3869,7 +3869,7 @@
   "effects": [
    "castSpell=Light:100"
   ],
-  "icon": "res://assets/spells/light.png"
+  "icon": "res://assets/spells/scrolls/sc_light.png"
  },
  {
   "id": 287,
@@ -3891,7 +3891,7 @@
   "effects": [
    "castSpell=Lightning:100"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_lightning.png"
  },
  {
   "id": 288,
@@ -3913,7 +3913,7 @@
   "effects": [
    "castSpell=Poison_Cloud:100"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_poison_cloud.png"
  },
  {
   "id": 289,
@@ -3935,7 +3935,7 @@
   "effects": [
    "castSpell=Prismatic_Spray:100"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_prismatic_spray.png"
  },
  {
   "id": 290,
@@ -3957,7 +3957,7 @@
   "effects": [
    "castSpell=Protection_from_Air:100"
   ],
-  "icon": "res://assets/spells/scroll_air.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_air.png"
  },
  {
   "id": 291,
@@ -3979,7 +3979,7 @@
   "effects": [
    "castSpell=Protection_from_Earth:100"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_earth.png"
  },
  {
   "id": 292,
@@ -4001,7 +4001,7 @@
   "effects": [
    "castSpell=Protection_from_Fire:100"
   ],
-  "icon": "res://assets/spells/scroll_fire.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_fire.png"
  },
  {
   "id": 293,
@@ -4023,7 +4023,7 @@
   "effects": [
    "castSpell=Protection_from_Water:100"
   ],
-  "icon": "res://assets/spells/scroll_water.png"
+  "icon": "res://assets/spells/scrolls/sc_protection_from_water.png"
  },
  {
   "id": 294,
@@ -4045,7 +4045,7 @@
   "effects": [
    "castSpell=Shield:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_shield.png"
  },
  {
   "id": 295,
@@ -4067,7 +4067,7 @@
   "effects": [
    "castSpell=Slow:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_slow.png"
  },
  {
   "id": 296,
@@ -4089,7 +4089,7 @@
   "effects": [
    "castSpell=Stone_Curse:100"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_stone_curse.png"
  },
  {
   "id": 297,
@@ -4111,7 +4111,7 @@
   "effects": [
    "castSpell=Summon:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_summon.png"
  },
  {
   "id": 298,
@@ -4133,7 +4133,7 @@
   "effects": [
    "castSpell=Teleport:100"
   ],
-  "icon": "res://assets/spells/scroll_astral.png"
+  "icon": "res://assets/spells/scrolls/sc_teleport.png"
  },
  {
   "id": 299,
@@ -4155,7 +4155,7 @@
   "effects": [
    "castSpell=Wall_of_Earth:100"
   ],
-  "icon": "res://assets/spells/scroll_earth.png"
+  "icon": "res://assets/spells/scrolls/sc_wall_of_earth.png"
  },
  {
   "id": 300,
@@ -22256,5 +22256,461 @@
   "level": 1,
   "effects": [],
   "icon": "res://assets/items/base/magic_head_common.png"
+ },
+ {
+  "key": "Recipe bronze_cuirass",
+  "name_ru": "Свиток: Кираса бронзовая",
+  "name_en": "Recipe: Crafted bronze Cuirass",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_bronze_cuirass.png",
+  "price": 80,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "bronze_cuirass",
+  "bp": "armor",
+  "id": 0
+ },
+ {
+  "key": "Recipe iron_cuirass",
+  "name_ru": "Свиток: Кираса железная",
+  "name_en": "Recipe: Crafted iron Cuirass",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_iron_cuirass.png",
+  "price": 120,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "iron_cuirass",
+  "bp": "armor",
+  "id": 0
+ },
+ {
+  "key": "Recipe iron_plate",
+  "name_ru": "Свиток: Кираса железная, кованая",
+  "name_en": "Recipe: Crafted iron Plate Cuirass",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_iron_plate.png",
+  "price": 180,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "iron_plate",
+  "bp": "armor",
+  "id": 0
+ },
+ {
+  "key": "Recipe iron_sword",
+  "name_ru": "Свиток: Меч железный",
+  "name_en": "Recipe: Crafted iron Long Sword",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_iron_sword.png",
+  "price": 100,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "iron_sword",
+  "bp": "weapon",
+  "id": 0
+ },
+ {
+  "key": "Recipe iron_axe",
+  "name_ru": "Свиток: Топор железный",
+  "name_en": "Recipe: Crafted iron Axe",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_iron_axe.png",
+  "price": 110,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "iron_axe",
+  "bp": "weapon",
+  "id": 0
+ },
+ {
+  "key": "Recipe iron_buckler",
+  "name_ru": "Свиток: Щит железный",
+  "name_en": "Recipe: Crafted iron Buckler",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_iron_buckler.png",
+  "price": 90,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "iron_buckler",
+  "bp": "armor",
+  "id": 0
+ },
+ {
+  "key": "Recipe linen_cape",
+  "name_ru": "Свиток: Накидка льняная",
+  "name_en": "Recipe: Crafted Common Linen Cape",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_linen_cape.png",
+  "price": 100,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "tailor",
+  "recipe_id": "linen_cape",
+  "bp": "clothes",
+  "id": 0
+ },
+ {
+  "key": "Recipe linen_cloak",
+  "name_ru": "Свиток: Плащ льняной",
+  "name_en": "Recipe: Crafted Common Linen Cloak",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_linen_cloak.png",
+  "price": 140,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "tailor",
+  "recipe_id": "linen_cloak",
+  "bp": "clothes",
+  "id": 0
+ },
+ {
+  "key": "Recipe linen_robe",
+  "name_ru": "Свиток: Роба льняная",
+  "name_en": "Recipe: Crafted Linen Robe",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_linen_robe.png",
+  "price": 200,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "tailor",
+  "recipe_id": "linen_robe",
+  "bp": "clothes",
+  "id": 0
+ },
+ {
+  "key": "Recipe linen_hat",
+  "name_ru": "Свиток: Колпак льняной",
+  "name_en": "Recipe: Crafted Mage Hat",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_linen_hat.png",
+  "price": 120,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "tailor",
+  "recipe_id": "linen_hat",
+  "bp": "clothes",
+  "id": 0
+ },
+ {
+  "id": 1244,
+  "key": "Common steel Cuirass",
+  "name_ru": "Кираса стальная",
+  "name_en": "steel Cuirass",
+  "quality": "Common",
+  "material": "steel",
+  "type": "Cuirass",
+  "price": 1200,
+  "weight": 90.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 12,
+  "absorption": 1,
+  "magcap": 2,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/base/heavy_chest_good.png"
+ },
+ {
+  "id": 1245,
+  "key": "Common gold Cuirass",
+  "name_ru": "Кираса золотая",
+  "name_en": "gold Cuirass",
+  "quality": "Common",
+  "material": "gold",
+  "type": "Cuirass",
+  "price": 4000,
+  "weight": 100.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 16,
+  "absorption": 2,
+  "magcap": 8,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/faction/common/gold_heavy_chest_elite.png"
+ },
+ {
+  "id": 1246,
+  "key": "Crafted steel Cuirass",
+  "name_ru": "Кираса стальная",
+  "name_en": "Crafted steel Cuirass",
+  "quality": "Crafted",
+  "material": "steel",
+  "type": "Cuirass",
+  "price": 1200,
+  "weight": 90.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 12,
+  "absorption": 1,
+  "magcap": 2,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/base/heavy_chest_good.png"
+ },
+ {
+  "id": 1247,
+  "key": "Crafted Fine steel Cuirass",
+  "name_ru": "улучшенная Кираса стальная",
+  "name_en": "Crafted Fine steel Cuirass",
+  "quality": "Crafted Fine",
+  "material": "steel",
+  "type": "Cuirass",
+  "price": 1380,
+  "weight": 90.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 14,
+  "absorption": 1,
+  "magcap": 2,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/base/heavy_chest_good.png"
+ },
+ {
+  "id": 1248,
+  "key": "Crafted Master steel Cuirass",
+  "name_ru": "мастерская Кираса стальная",
+  "name_en": "Crafted Master steel Cuirass",
+  "quality": "Crafted Master",
+  "material": "steel",
+  "type": "Cuirass",
+  "price": 1620,
+  "weight": 90.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 16,
+  "absorption": 1,
+  "magcap": 3,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/base/heavy_chest_good.png"
+ },
+ {
+  "id": 1249,
+  "key": "Crafted gold Cuirass",
+  "name_ru": "Кираса золотая",
+  "name_en": "Crafted gold Cuirass",
+  "quality": "Crafted",
+  "material": "gold",
+  "type": "Cuirass",
+  "price": 4000,
+  "weight": 100.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 16,
+  "absorption": 2,
+  "magcap": 8,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/faction/common/gold_heavy_chest_elite.png"
+ },
+ {
+  "id": 1250,
+  "key": "Crafted Fine gold Cuirass",
+  "name_ru": "улучшенная Кираса золотая",
+  "name_en": "Crafted Fine gold Cuirass",
+  "quality": "Crafted Fine",
+  "material": "gold",
+  "type": "Cuirass",
+  "price": 4600,
+  "weight": 100.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 18,
+  "absorption": 2,
+  "magcap": 9,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/faction/common/gold_heavy_chest_elite.png"
+ },
+ {
+  "id": 1251,
+  "key": "Crafted Master gold Cuirass",
+  "name_ru": "мастерская Кираса золотая",
+  "name_en": "Crafted Master gold Cuirass",
+  "quality": "Crafted Master",
+  "material": "gold",
+  "type": "Cuirass",
+  "price": 5400,
+  "weight": 100.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 22,
+  "absorption": 3,
+  "magcap": 11,
+  "level": 1,
+  "effects": [],
+  "icon": "res://assets/items/faction/common/gold_heavy_chest_elite.png"
+ },
+ {
+  "key": "Recipe steel_cuirass",
+  "name_ru": "Свиток: Кираса стальная",
+  "name_en": "Recipe: Crafted steel Cuirass",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_steel_cuirass.png",
+  "price": 250,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "steel_cuirass",
+  "bp": "armor",
+  "id": 1252
+ },
+ {
+  "key": "Recipe gold_cuirass",
+  "name_ru": "Свиток: Кираса золотая",
+  "name_en": "Recipe: Crafted gold Cuirass",
+  "quality": "Recipe",
+  "type": "Recipe",
+  "material": "None",
+  "icon": "res://assets/items/recipes/recipe_gold_cuirass.png",
+  "price": 500,
+  "weight": 0.2,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "craft": "smith",
+  "recipe_id": "gold_cuirass",
+  "bp": "armor",
+  "id": 1253
+ },
+ {
+  "key": "Potion Small Healing",
+  "name_ru": "Зелье малого лечения",
+  "name_en": "Potion of Minor Healing",
+  "quality": "Potion",
+  "material": null,
+  "type": "Small Healing",
+  "price": 250,
+  "weight": 1.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "level": 1,
+  "effects": [
+   "health=+12"
+  ],
+  "icon": "res://assets/potions/health_medium.png",
+  "id": 1254
+ },
+ {
+  "key": "Potion Small Mana",
+  "name_ru": "Зелье малой маны",
+  "name_en": "Potion of Minor Mana",
+  "quality": "Potion",
+  "material": null,
+  "type": "Small Mana",
+  "price": 250,
+  "weight": 1.0,
+  "damage_min": 0,
+  "damage_max": 0,
+  "to_hit": 0,
+  "defence": 0,
+  "absorption": 0,
+  "magcap": 0,
+  "level": 1,
+  "effects": [
+   "mana=+12"
+  ],
+  "icon": "res://assets/potions/mana_medium.png",
+  "id": 1255
  }
 ]

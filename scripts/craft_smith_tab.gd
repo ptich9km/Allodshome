@@ -8,6 +8,10 @@ extends CraftTab
 ## переработка - единственный источник металла в игре, и прятать её под
 ## рецептами значит заставлять игрока гадать, откуда брать слитки.
 
+func _decor_path() -> String:
+	return "res://assets/professions/workshop/anvil.png"
+
+
 func _items() -> Array:
 	var out: Array = []
 	for raw in _inventory_items():
@@ -21,7 +25,8 @@ func _items() -> Array:
 			"count": int(raw["count"]),
 		})
 	out.append({"mode": RECIPE_ID, "id": "", "recipe": {}})
-	for r in CraftDB.recipes(CraftDB.SMITH):
+	# Только рецепты со свитком в инвентаре — петля лавки.
+	for r in CraftDB.known_recipes(CraftDB.SMITH, player):
 		out.append({"mode": RECIPE_ID, "id": str(r.get("id", "")), "recipe": r})
 	return out
 
@@ -29,10 +34,11 @@ func _items() -> Array:
 func _item_label(entry: Dictionary) -> String:
 	if str(entry.get("mode", "")) == RECYCLE_ID:
 		var item: Dictionary = entry["item"]
-		return "  %s  ×%d" % [str(item.get("name_ru", entry["key"])), int(entry["count"])]
+		var mark := "" if ItemDB.is_broken(item) else "  [целое]"
+		return "  %s  ×%d%s" % [str(item.get("name_ru", entry["key"])), int(entry["count"]), mark]
 	var recipe: Dictionary = entry.get("recipe", {})
 	if recipe.is_empty():
-		return tr("— Рецепты —")
+		return tr("— Рецепты (нужен свиток) —")
 	return "    %s" % str(recipe.get("name_ru", entry.get("id", "")))
 
 
@@ -47,6 +53,10 @@ func _build_recycle_detail(entry: Dictionary) -> void:
 	var item: Dictionary = entry["item"]
 	var y := CraftDB.recycle_yield(item)
 	_detail.add_child(_heading(str(item.get("name_ru", entry["key"]))))
+	if ItemDB.is_broken(item):
+		_detail.add_child(_note(tr("Сломанная вещь: выход по качеству.")))
+	else:
+		_detail.add_child(_note(tr("Целая вещь: выход = 80%% ресурсов крафта.")))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UiTheme.SPACE_3)
@@ -68,8 +78,12 @@ func _build_recycle_detail(entry: Dictionary) -> void:
 	if int(y.get("fabric", 0)) > 0:
 		got.add_child(_line("%s ×%d" % [str(ItemDB.find(CraftDB.FABRIC_KEY)
 			.get("name_ru", CraftDB.FABRIC_KEY)), int(y["fabric"])]))
-
-	_detail.add_child(_note(tr("Качество сломанной вещи решает, сколько слитков вы получите.")))
+	if int(y.get("essence", 0)) > 0:
+		got.add_child(_line("%s ×%d" % [str(ItemDB.find(CraftDB.ESSENCE_KEY)
+			.get("name_ru", CraftDB.ESSENCE_KEY)), int(y["essence"])]))
+	if int(y.get("ingot", 0)) == 0 and int(y.get("fabric", 0)) == 0 \
+			and int(y.get("essence", 0)) == 0:
+		got.add_child(_line(tr("Нет ресурсов для переплавки")))
 
 
 func _build_recipe_detail(entry: Dictionary) -> void:

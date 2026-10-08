@@ -49,6 +49,8 @@ BASES = [
     ("iron_sword", "Common iron Long Sword"),
     ("iron_axe", "Common iron Axe"),
     ("iron_buckler", "Common iron Buckler"),
+    ("steel_cuirass", "Common steel Cuirass"),
+    ("gold_cuirass", "Common gold Cuirass"),
     ("linen_cloak", "Common Linen Cloak"),
     ("linen_cape", "Common Linen Cape"),
 ]
@@ -86,6 +88,33 @@ SYNTH_BASES = [
         "price": 700, "weight": 1.0,
         "damage_min": 0, "damage_max": 0, "to_hit": 0,
         "defence": 3, "absorption": 0, "magcap": 20,
+    },
+    # Стартовые чертежи первой локации: сталь и золото (08.10, по слову игрока).
+    # Статы — между iron Crafted и магазинным Uncommon/Good: крафт слабее
+    # лавки того же металла, иначе свиток был бы строго лучше покупки.
+    {
+        "recipe": "steel_cuirass",
+        "key": "Common steel Cuirass",
+        "name_ru": "Кираса стальная",
+        "name_en": "steel Cuirass",
+        "material": "steel",
+        "type": "Cuirass",
+        "icon": "res://assets/items/base/heavy_chest_good.png",
+        "price": 1200, "weight": 90.0,
+        "damage_min": 0, "damage_max": 0, "to_hit": 0,
+        "defence": 12, "absorption": 1, "magcap": 2,
+    },
+    {
+        "recipe": "gold_cuirass",
+        "key": "Common gold Cuirass",
+        "name_ru": "Кираса золотая",
+        "name_en": "gold Cuirass",
+        "material": "gold",
+        "type": "Cuirass",
+        "icon": "res://assets/items/faction/common/gold_heavy_chest_elite.png",
+        "price": 4000, "weight": 100.0,
+        "damage_min": 0, "damage_max": 0, "to_hit": 0,
+        "defence": 16, "absorption": 2, "magcap": 8,
     },
 ]
 

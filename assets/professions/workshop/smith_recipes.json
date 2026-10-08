@@ -73,19 +73,48 @@
     {"key": "Crafted Master iron Axe", "weight": 5.0}
    ]
   },
-  {
-   "id": "iron_buckler",
-   "name_ru": "Щит железный",
-   "craft": "smith",
-   "inputs": [
-    {"item": "iron Ingot", "count": 4},
-    {"item": "Fabric", "count": 1}
-   ],
-   "outputs": [
-    {"key": "Crafted iron Buckler", "weight": 80.0},
-    {"key": "Crafted Fine iron Buckler", "weight": 15.0},
-    {"key": "Crafted Master iron Buckler", "weight": 5.0}
-   ]
-  }
- ]
+   {
+    "id": "iron_buckler",
+    "name_ru": "Щит железный",
+    "craft": "smith",
+    "inputs": [
+     {"item": "iron Ingot", "count": 4},
+     {"item": "Fabric", "count": 1}
+    ],
+    "outputs": [
+     {"key": "Crafted iron Buckler", "weight": 80.0},
+     {"key": "Crafted Fine iron Buckler", "weight": 15.0},
+     {"key": "Crafted Master iron Buckler", "weight": 5.0}
+    ]
+   },
+   {
+    "id": "steel_cuirass",
+    "name_ru": "Кираса стальная",
+    "craft": "smith",
+    "inputs": [
+     {"item": "steel Ingot", "count": 10},
+     {"item": "Fabric", "count": 2}
+    ],
+    "outputs": [
+     {"key": "Crafted steel Cuirass", "weight": 80.0},
+     {"key": "Crafted Fine steel Cuirass", "weight": 15.0},
+     {"key": "Crafted Master steel Cuirass", "weight": 5.0}
+    ]
+   },
+   {
+    "id": "gold_cuirass",
+    "name_ru": "Кираса золотая",
+    "craft": "smith",
+    "inputs": [
+     {"item": "gold Ingot", "count": 8},
+     {"item": "Fabric", "count": 2},
+     {"item": "Magic Essence", "count": 1}
+    ],
+    "outputs": [
+     {"key": "Crafted gold Cuirass", "weight": 80.0},
+     {"key": "Crafted Fine gold Cuirass", "weight": 15.0},
+     {"key": "Crafted Master gold Cuirass", "weight": 5.0}
+    ]
+   }
+  ]
 }

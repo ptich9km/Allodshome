@@ -202,17 +202,19 @@ func _build_ui() -> void:
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
 
-	# Верх: кукла (имя сверху) | статы 2 столбика — по центру, без пустых полей
+	# Верх: кукла (имя сверху) СЛЕВА | статы расширены вправо.
+	# Порядок внутри окна (08.10): прижать paper-doll к левому краю,
+	# статы без скролла за счёт ширины колонки. Размер панели 960×640 НЕ меняем.
 	var top := HBoxContainer.new()
 	top.name = "Top"
-	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.alignment = BoxContainer.ALIGNMENT_BEGIN
 	top.add_theme_constant_override("separation", UiTheme.SPACE_5)
 	top.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(top)
 
 	var equip_col := VBoxContainer.new()
 	equip_col.name = "EquipCol"
-	equip_col.custom_minimum_size = Vector2(300, 0)
+	equip_col.custom_minimum_size = Vector2(340, 0)
 	equip_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	equip_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	equip_col.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -228,10 +230,12 @@ func _build_ui() -> void:
 	equip_col.add_child(_hero_name)
 	_build_equipment_area(equip_col)
 
-	# Статы: узкая колонка (~320), НЕ EXPAND — иначе поле растягивается впустую.
+	# Статы: шире (520), без EXPAND_FILL — иначе инвариант 06.10 (тест).
+	# Скролл остаётся узким запасом, но при 520 и двухколоночной сетке
+	# воин/маг влезают без прокрутки на 960×640.
 	var stats_col := VBoxContainer.new()
 	stats_col.name = "StatsCol"
-	stats_col.custom_minimum_size = Vector2(320, 0)
+	stats_col.custom_minimum_size = Vector2(520, 0)
 	stats_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	stats_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_stats_col = stats_col
@@ -742,9 +746,44 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(cnt)
 
+	# Метка хоткея: предмет назначен на цифру (Game.hotbar).
+	var hot_slot := _hotbar_slot_of_key(str(item.get("key", "")))
+	if hot_slot >= 0:
+		var hk := Label.new()
+		hk.text = str(hot_slot + 1)
+		hk.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+		hk.add_theme_color_override("font_color", UiTheme.ACCENT)
+		hk.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+		hk.add_theme_constant_override("outline_size", 4)
+		hk.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		hk.offset_left = 2.0
+		hk.offset_top = -16.0
+		hk.offset_right = 18.0
+		hk.offset_bottom = -2.0
+		hk.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		hk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(hk)
+
 	slot.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_on_item_clicked(item))
+
+
+func _hotbar_slot_of_key(item_key: String) -> int:
+	for slot in Game.hotbar:
+		var entry: Dictionary = Game.hotbar.get(slot, {})
+		if str(entry.get("kind", "")) == "item" and str(entry.get("key", "")) == item_key:
+			return int(slot)
+	return -1
+
+
+func _ui_host() -> Node:
+	var p := get_parent()
+	while p != null:
+		if p.has_method("_begin_scroll_targeting"):
+			return p
+		p = p.get_parent()
+	return null
 
 
 func _on_item_clicked(item: Dictionary) -> void:
@@ -765,12 +804,21 @@ func _on_item_clicked(item: Dictionary) -> void:
 			inventory_changed.emit()
 		return
 	if quality in ["Scroll", "SuperScroll"]:
+		# Использовать свиток = прицеливание (как с хоткея). Рыцарь тоже
+		# может прочитать свиток боевым действием, не только «выучить заряд».
 		if not _magic_double_click(item_key):
 			return
-		if player.read_scroll(item_key):
-			SoundDB.play(7)
-			_refresh_inventory_grid()
-			inventory_changed.emit()
+		var spell := SpellDB.spell_from_scroll(item_key)
+		if spell == "":
+			return
+		# Инвентарь закрывается: открытая панель блокирует клики по миру
+		# (game.gd is_editor_open), и цель нельзя указать.
+		close()
+		Game.pending_scroll = {"spell": spell, "item_key": item_key}
+		var host := _ui_host()
+		if host != null and host.has_method("_begin_scroll_targeting"):
+			host._begin_scroll_targeting(item_key)
+		SoundDB.play(7)
 		return
 	if quality == "Potion":
 		if player.use_potion(item_key):

@@ -4,7 +4,7 @@
 Агент обязан прочитать файл целиком перед любыми изменениями; человек правит его по ходу развития проекта.
 
 > Правило: при каждом заметном шаге (фича/фикс/решение) — обновляй «Журнал сессий» (раздел 12).
-> Последнее обновление: 07.10 — пакет P (перф): деревья/миникарта/far-AI/spatial hash. **Глазами FPS не проверен.** Плотность не снижалась.
+> Последнее обновление: 08.10 — атлас Masters1 (чертежи/декор/ткань), свитки-чертежи в лавке, steel/gold рецепты, layout CenterContainer, декор под списком мастерской. **Глазами не проверено.**
 
 ## Содержание
 
@@ -521,6 +521,71 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 ## 12. Журнал сессий
 
 Хронология изменений. **Ное — сверху.**
+
+### 08.10 (вечер, начало сессии) — слияние веток, чистка, ветка стабилизации
+
+Сводка вчерашнего вечера (07.10) уже задокументирована ниже в этом же разделе: пакеты A/C/B/D «gamefeel», SAVE/LOAD MVP, NPC `ork_mage_a52`, архмаг 192+панель, перф (замер `find_path`/separation) и стресс-тест 1M. Утром 08.10 — мастерская (см. запись ниже/выше по дате коммита `cba9735c`).
+
+**Git на рабочем ПК (C:\Work\Allodshome):**
+
+| Шаг | Что | Статус |
+|-----|-----|--------|
+| Fetch | `origin/master` = `cba9735c` (мастерская поверх всего agent-night) | ✅ |
+| Merge | локальный `master` fast-forward 31 коммит → `cba9735c` | ✅ |
+| Ветки | все feature-ветки уже предки master (merge не требовался — только FF) | ✅ |
+| Удалены | local `feature/agent-night`, `feature/ui-design-system`; remote `feature/agent-night`, `feature/game-logic`, `feature/ui-design-system` | ✅ |
+| Новая ветка | **`feature/agent-build-stabilization`** (от master `cba9735c`) | ✅ |
+
+**Удаление упёрлось** в три untracked `.uid` (`package_{a,c,p}_smoke.gd.uid`) — Godot сгенерировал их локально на старой ветке; файлы сняты, FF прошёл. Остальные untracked (import-атласы, `_size_lab`, debug-скрипты) **не трогал** — это рабочий арт/отладка, не мусор.
+
+**Стабилизация мастерской (та же сессия).** Skills: `godot-gdscript`, `rpg`, `godot-ui-control`.
+
+| Что | Файл | Результат |
+|-----|------|-----------|
+| Рассинхрон kind: тест звал локальную копию маппинга и ждал `"blacksmith"`, игра через `StructureDB.kind_of` возвращает `"workshop"` | `tests/alice_buildings_smoke.gd` | тест зовёт `kind_of`, ожидание `202 → workshop`; **OK 68** |
+| Ложный «ЕДИНСТВЕННЫЙ читатель [craft]» — `master_enabled` и `boss_intact_chance` читают напрямую | `scripts/craft_db.gd` | комментарий с исключениями |
+| Мёртвый API в комментарии: `enabled_crafts()` не существует (настоящий `CRAFT_KINDS`) | `scripts/workshop_panel.gd` | комментарий |
+| Комментарий конфига писал будущее пакета 2 как настоящее («лавка только свитки») | `scripts/game_config.gd` | честный комментарий «сейчас продаёт снаряжение» |
+| Сторож `or true` в `workshop_ui_smoke` — «инвентарь жив» проходил всегда | `tests/workshop_ui_smoke.gd` | проверка выхода рецепта в инвентаре после `_craft` |
+
+**Прогон после правок (все зелёные):** `--headless --import`, `--quit` без SCRIPT ERROR; `craft_items_smoke` **2047 OK**; `workshop_ui_smoke` **32 OK**; `alice_buildings_smoke` **68 OK**; `config_dead_keys_smoke`; `game_config_smoke` 41; `material_migration`/`item_icons`/`loot_icon` (1106 предметов); `inventory_ui`/`shop_ui`/`equipment_combat`/`structure_anim`/`school_ui`; `runtime_errors_smoke` — 0 скрипт-ошибок (только известные RID-хвосты на exit).
+
+**Старые падения после слияния+import ЗАКРЫТЫ:** `ui_design_system_smoke` **OK 96** (было 2 провала `cmd_buttons`); `zone_travel_smoke` **OK 30** (было 7). Ранее они были на чистом master до merge workshop/import — после стабилизации зелёные.
+
+**Требуется ручная визуальная проверка по вчерашнему/утреннему:** пакет P (FPS глазами), мастерская (1280×800/600), портреты рас, ork_mage_a52 в городе — см. чек-листы в записях 07.10/08.10 ниже. **Мастерская глазами по-прежнему не проверена.**
+
+### 08.10 (вечер) — UI-пакет: атлас Masters1, свитки-чертежи, steel/gold, layout CenterContainer
+
+Skills: `godot-ui-control`, `game-ui-ux`, `rpg`, `godot-gdscript`, `create-game-assets`.  
+Ветка: `feature/agent-build-stabilization`. **Код и тесты зелёные. Глазами не проверено.**
+
+**Решения игрока:** (1) свитки рецептов = чертёж-пергамент + иконка вещи (атлас Masters1); (2) переплавка сломанного **и целого** (80% ресурсов крафта); (3) вкладка Мастер — полностью; (4) инвентарь — порядок внутри, панель 960×640 не меняем; (5) layout лавки/мастерской — **CenterContainer** как инвентарь; (6) **снаряжение из лавки убрано**; (7) стартовые чертежи: bronze/iron/steel/gold кирасы; (8) декор мастерской — крупный с прозрачностью **под списком**.
+
+**Атлас ChatGPTMasters1** (1254×1254, 9 элементов): `tests/extract_chatgpt_masters1.py` (контракт magic2). Нарезка: пустой свиток, 4 чертежа, наковальня, печка, станок, рулон ткани. **Центр чертежей стёрт diffusion-inpaint'ом** (не плоская заливка: маска по цветовому расстоянию → дилатация → 24 итерации GaussianBlur → feather + ramp к рамке). Тон пергамента не менялся.
+
+| Пакет | Что | Файлы |
+|-------|-----|-------|
+| Данные | Рецепты steel/gold кирасы + `Crafted steel/gold Cuirass` (+ Fine/Master) | `smith_recipes.json`, `gen_crafted_items.py` SYNTH_BASES |
+| Лавка | 12 запечённых свитков: `blueprint_*_empty` + иконка вещи | `tests/gen_recipe_scrolls.py`, `assets/items/recipes/recipe_*.png` |
+| Лавка | Категории: Рецепты / Зелья / Книги (**без брони/оружия/одежды**) | `shop_panel.gd` |
+| Лавка | Layout CenterContainer + min 1100×620 (как инвентарь) | `shop_panel.gd` |
+| Мастерская | Layout CenterContainer + min 900×620 | `workshop_panel.gd` |
+| Мастерская | `_fit_list` от высоты вкладки (не viewport); полка 110→80 | `craft_tab.gd`, `workshop_panel.gd` |
+| Мастерская | Декор **под списком** (α=0.32, IGNORE): наковальня→кузнец, станок→портной, печка→мастер | `craft_tab.gd` `_decor_path()` |
+| Мастерская | Переплавка целого: `can_recycle` для экипируемого; yield = входы рецепта × 0.8 | `craft_db.gd` |
+| Мастерская | Рецепты видны **только по свитку** (петля лавки) | `craft_db.gd`, `craft_smith/tailor_tab.gd` |
+| Мастер | Вкладка «Мастер»: улучшение Crafted→Fine→Master | `craft_master_tab.gd`, `master_enabled=1` |
+| Инвентарь | Кукла+слоты **влево**, статы min 320→**520** | `inventory_panel.gd` |
+| Ассеты | `fabric.png` = рулон; anvil/furnace/loom как декор | `assets/professions/workshop/*` |
+
+**Тесты:** `craft_items_smoke` **2073 OK**; `workshop_ui_smoke` **41 OK** (3 вкладки); `shop_ui_smoke` (3 категории); `inventory_ui`/`equipment_ui`/`ui_design_system` 96; `game_config`/`config_dead_keys`; `item_icons`/`material_migration`/`loot_icon` (1126); `runtime_errors_smoke` — 0 скрипт-ошибок; `--quit` чистый.
+
+**Требуется ручная визуальная проверка (1280×800 и 1280×600):**
+1. Лавка: **по центру** (не сбоку), 3 категории, свитки-чертежи с иконкой вещи, покупка без «прыжков».
+2. Мастерская: **по центру**, 3 вкладки, декор под списком (наковальня/станок/печка), полка инвентаря.
+3. Кузнец принимает **купленную** броню (метки `[целое]`); портной — магическую одежду.
+4. Мастер: список крафтовых вещей, карточка «→ Fine/Master», кнопка «Улучшить».
+5. Инвентарь: кукла+слоты слева, статы шире без скролла, панель 960×640 по центру.
 
 ### 08.10 — мастерская: сломанные вещи, крафт, навыки ремёсел, уровни вещей
 

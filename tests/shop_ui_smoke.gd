@@ -70,10 +70,10 @@ func _test_layout() -> void:
 	_check(player_grid != null, "полка игрока найдена")
 	if npc_grid == null or player_grid == null:
 		return
-	_check(npc_grid.columns == 3, "полка торговца: 3 колонки (получено %d)" % npc_grid.columns)
-	_check(player_grid.columns == 4, "полка игрока: 4 колонки (получено %d)" % player_grid.columns)
+	_check(npc_grid.columns == 4, "полка торговца: 4 колонки (получено %d)" % npc_grid.columns)
+	_check(player_grid.columns == 5, "полка игрока: 5 колонок (получено %d)" % player_grid.columns)
 	var cats: Node = _find("Categories")
-	_check(cats != null and cats.get_child_count() >= 5, "категории — кнопки в шапке")
+	_check(cats != null and cats.get_child_count() >= 5, "категории — кнопки в шапке (3 рецепта + зелья + книги)")
 	var bg: Node = _find("Background")
 	_check(bg == null, "фонового JPEG больше нет")
 

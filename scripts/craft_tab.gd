@@ -13,8 +13,8 @@ extends VBoxContainer
 ## узлы пересоздаются, и старые пути указывают в пустоту. Поэтому
 ## configure_focus() зовётся хостом НА КАЖДОМ tab_switched, а не один раз.
 
-const LIST_MIN_HEIGHT := 150.0
-const LIST_MAX_HEIGHT := 520.0
+const LIST_MIN_HEIGHT := 120.0
+const LIST_MAX_HEIGHT := 360.0
 
 ## Режим элемента списка: переработка сломанного или рецепт.
 const RECYCLE_ID := "__recycle__"
@@ -44,6 +44,11 @@ func _ready() -> void:
 	refresh()
 
 
+## Путь к декору вкладки ("" — нет). Крупная цветная картинка справа.
+func _decor_path() -> String:
+	return ""
+
+
 func _build() -> void:
 	var name_ := "%sSection" % _variation_prefix()
 	add_theme_constant_override("separation", UiTheme.SPACE_2)
@@ -71,11 +76,33 @@ func _build() -> void:
 	_list_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_list_box)
 
+	# Правая зона: деталь (лево) + декор (право), 2 строки по высоте —
+	# без отдельной строки под шапкой, которая «расползала» панель.
+	var right_row := HBoxContainer.new()
+	right_row.name = "RightRow"
+	right_row.add_theme_constant_override("separation", UiTheme.SPACE_3)
+	right_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(right_row)
+
 	_detail = VBoxContainer.new()
 	_detail.name = "Detail"
 	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail.add_theme_constant_override("separation", UiTheme.SPACE_2)
-	body.add_child(_detail)
+	right_row.add_child(_detail)
+
+	var decor_path := _decor_path()
+	if decor_path != "" and ResourceLoader.exists(decor_path):
+		var decor := TextureRect.new()
+		decor.name = "Decor"
+		decor.texture = load(decor_path)
+		decor.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		decor.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		decor.size_flags_horizontal = Control.SIZE_SHRINK_END
+		decor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		decor.custom_minimum_size = Vector2(180, 0)
+		decor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		right_row.add_child(decor)
 
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", UiTheme.SPACE_2)
@@ -101,11 +128,16 @@ func _build() -> void:
 func _fit_list() -> void:
 	if _scroll == null or not is_instance_valid(_scroll):
 		return
-	var vp := get_viewport()
-	if vp == null:
-		return
-	var h := vp.get_visible_rect().size.y
-	_scroll.custom_minimum_size = Vector2(0.0, clampf(h - 190.0, LIST_MIN_HEIGHT, LIST_MAX_HEIGHT))
+	# Высота от ВКЛАДКИ (не viewport): панель мастерской меньше окна,
+	# и привязка к окну выталкивала список за пределы TabContainer (08.10).
+	var h := size.y
+	if h < 50.0:
+		var vp := get_viewport()
+		if vp == null:
+			return
+		h = vp.get_visible_rect().size.y * 0.55
+	_scroll.custom_minimum_size = Vector2(
+		0.0, clampf(h - 70.0, LIST_MIN_HEIGHT, LIST_MAX_HEIGHT))
 
 
 # --- Переопределяется наследниками ---------------------------------------
@@ -289,7 +321,7 @@ func _rebuild_detail() -> void:
 	UiKit.clear(_detail)
 	var entry := selected_entry()
 	if entry.is_empty():
-		_detail.add_child(_make_hint(tr("Ничего не выбрано")))
+		_detail.add_child(_make_empty_hint())
 	else:
 		_build_detail(entry)
 	var label := _action_label(entry)
@@ -305,6 +337,18 @@ func _make_hint(text: String) -> Label:
 	l.theme_type_variation = &"%sHint" % _variation_prefix()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
+
+
+## Читаемое «ничего не выбрано»: крупный кегль, не муted-микро.
+func _make_empty_hint() -> Label:
+	var l := Label.new()
+	l.theme_type_variation = &"CraftEmpty"
+	l.text = tr("Ничего не выбрано")
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	return l
 
 

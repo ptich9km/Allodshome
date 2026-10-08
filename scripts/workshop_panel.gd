@@ -3,10 +3,11 @@ extends CanvasLayer
 
 ## Мастерская: кузнец / портной / (мастер — позже).
 ##
-## ХОСТ ТАБОВ. Вкладки создаются циклом по CraftDB.enabled_crafts(), а не
-## списком литералов: третья вкладка появится включением ключа в конфиге плюс
-## одной строкой, и нигде не придётся двигать индексы. Порядок и количество
-## табов НЕ пишутся в сейв, поэтому сдвиг индексов не сломает сохранение.
+## ХОСТ ТАБОВ. Вкладки создаются циклом по CraftDB.CRAFT_KINDS через
+## _enabled_kinds(), а не списком литералов: третья вкладка появится включением
+## ключа в конфиге плюс одной строкой, и нигде не придётся двигать индексы.
+## Порядок и количество табов НЕ пишутся в сейв, поэтому сдвиг индексов не
+## сломает сохранение.
 ##
 ## TabContainer, а не кнопки-категории как в shop_panel: он даёт навигацию
 ## стрелками и геймпадом по таб-баре бесплатно, иначе её пришлось бы писать
@@ -27,6 +28,10 @@ var _close_button: Button
 var _previous_focus: Control
 var _craft_tabs: Array[CraftTab] = []
 var _footer_label: Label
+var _inv_grid: GridContainer
+var _inv_scroll: ScrollContainer
+var _inv_title: Label
+var _player: Player
 
 const TAB_TITLES := {
 	CraftDB.SMITH: "Кузнец",
@@ -34,9 +39,13 @@ const TAB_TITLES := {
 	CraftDB.MASTER: "Мастер",
 }
 
+const _CELL_INV := Vector2(72, 76)
+const _PANEL_MIN := Vector2(900, 620)
+
 
 func setup(p: Player) -> void:
 	layer = 10
+	_player = p
 	_build_ui(p)
 
 
@@ -44,6 +53,7 @@ func _ready() -> void:
 	_previous_focus = UiKit.save_focus(self)
 	_tabs.tab_changed.connect(_on_tab_changed)
 	refresh_active()
+	_refresh_inventory_shelf()
 	_focus_first()
 
 
@@ -58,19 +68,18 @@ func _build_ui(p: Player) -> void:
 	_root.theme = _make_theme()
 	add_child(_root)
 
-	var center := HBoxContainer.new()
-	center.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Центр + фиксированный размер — как у инвентаря: панель всегда по центру
+	# и не «прыгает» при resize (08.10).
+	var center := CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(center)
-
-	var side := Control.new()
-	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	side.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_child(side)
 
 	_panel = PanelContainer.new()
 	_panel.theme_type_variation = &"WorkshopPanel"
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_panel.custom_minimum_size = _PANEL_MIN
 	center.add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -115,15 +124,45 @@ func _build_ui(p: Player) -> void:
 		elif kind == CraftDB.TAILOR:
 			tab = CraftTailorTab.new()
 		else:
-			# Мастер появится в следующем пакете. Пустая заглушка держит
-			# ветку живой, чтобы её не пришлось вводить экстренно.
-			tab = CraftTab.new()
+			tab = CraftMasterTab.new()
 		tab.name = kind
 		tab.setup(p, kind)
 		tab.request_refresh.connect(refresh_active)
+		tab.request_inventory_changed.connect(_on_inventory_changed)
 		_tabs.add_child(tab)
 		_tabs.set_tab_title(_tabs.get_tab_idx_from_control(tab), tr(TAB_TITLES.get(kind, kind)))
 		_craft_tabs.append(tab)
+
+	# Инвентарь игрока: аккуратная полка внизу панели (как в магазине).
+	var inv_panel := PanelContainer.new()
+	inv_panel.name = "InvShelfPanel"
+	inv_panel.theme_type_variation = &"CraftListPanel"
+	inv_panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	content.add_child(inv_panel)
+	var inv_m := MarginContainer.new()
+	UiKit.set_margins(inv_m, UiTheme.SPACE_2, UiTheme.SPACE_1, UiTheme.SPACE_2, UiTheme.SPACE_1)
+	inv_panel.add_child(inv_m)
+	var inv_col := VBoxContainer.new()
+	inv_col.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	inv_m.add_child(inv_col)
+	_inv_title = Label.new()
+	_inv_title.theme_type_variation = &"CraftSection"
+	_inv_title.text = tr("ВАШ ИНВЕНТАРЬ")
+	inv_col.add_child(_inv_title)
+	_inv_scroll = ScrollContainer.new()
+	_inv_scroll.name = "InvShelfScroll"
+	_inv_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_inv_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_inv_scroll.follow_focus = true
+	_inv_scroll.custom_minimum_size = Vector2(0, 80)
+	inv_col.add_child(_inv_scroll)
+	_inv_grid = GridContainer.new()
+	_inv_grid.name = "InvShelf"
+	_inv_grid.columns = 10
+	_inv_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inv_grid.add_theme_constant_override("h_separation", UiTheme.SPACE_1)
+	_inv_grid.add_theme_constant_override("v_separation", UiTheme.SPACE_1)
+	_inv_scroll.add_child(_inv_grid)
 
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", UiTheme.SPACE_2)
@@ -131,9 +170,71 @@ func _build_ui(p: Player) -> void:
 
 	_footer_label = Label.new()
 	_footer_label.theme_type_variation = &"WorkshopHint"
-	_footer_label.text = tr("Металл в игре появляется только из сломанных вещей.")
+	_footer_label.text = tr("Металл — из сломанного и целого снаряжения. Свитки рецептов — в лавке.")
 	_footer_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(_footer_label)
+
+
+func _refresh_inventory_shelf() -> void:
+	if _inv_grid == null or not is_instance_valid(_inv_grid):
+		return
+	UiKit.clear(_inv_grid)
+	if not is_instance_valid(_player):
+		return
+	# Полка показывает материалы/снаряжение. Свитки-рецепты (quality Recipe)
+	# НЕ показываем: это ключи разблокировки, они видны в лавке и списке
+	# рецептов своей вкладки — иначе один свиток «светится» на всех вкладках.
+	var counts := {}
+	for raw in _player.inventory:
+		var key := str(raw)
+		counts[key] = int(counts.get(key, 0)) + 1
+	var keys := counts.keys()
+	keys.sort()
+	for key in keys:
+		var item := ItemDB.find(str(key))
+		if item.is_empty():
+			continue
+		if str(item.get("quality", "")) == "Recipe":
+			continue
+		_inv_grid.add_child(_make_inv_slot(item, int(counts[key])))
+
+
+func _make_inv_slot(item: Dictionary, count: int) -> PanelContainer:
+	var slot := PanelContainer.new()
+	slot.theme_type_variation = &"CraftListItem"
+	slot.custom_minimum_size = _CELL_INV
+	var m := MarginContainer.new()
+	UiKit.set_margins(m, UiTheme.SPACE_1, UiTheme.SPACE_1, UiTheme.SPACE_1, UiTheme.SPACE_1)
+	slot.add_child(m)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	m.add_child(box)
+	var icon := TextureRect.new()
+	var path := str(item.get("icon", ""))
+	if not path.is_empty() and ResourceLoader.exists(path):
+		icon.texture = load(path)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	CraftVFX.apply_to_icon(icon, CraftVFX.tier_of_item(item))
+	box.add_child(icon)
+	if count > 1:
+		var cl := Label.new()
+		cl.theme_type_variation = &"CraftHint"
+		cl.text = "×%d" % count
+		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(cl)
+	var key := str(item.get("key", item.get("name_ru", "")))
+	slot.tooltip_text = "%s\n%s" % [str(item.get("name_ru", key)), str(item.get("quality", ""))]
+	return slot
+
+
+func _on_inventory_changed() -> void:
+	_refresh_inventory_shelf()
+	refresh_active()
 
 
 ## Виды крафта, которые показываются. Третий включается ключом в конфиге,
@@ -162,6 +263,7 @@ func refresh_active() -> void:
 	var tab := active_tab()
 	if tab != null:
 		tab.refresh()
+	_refresh_inventory_shelf()
 
 
 func _on_tab_changed(_index: int) -> void:
@@ -173,6 +275,7 @@ func _on_tab_changed(_index: int) -> void:
 		return
 	tab.refresh()
 	tab.configure_focus(_close_button)
+	_refresh_inventory_shelf()
 	_focus_first()
 
 
@@ -228,6 +331,8 @@ func _make_theme() -> Theme:
 	UiTheme.add_display_label(theme, &"CraftSection", UiTheme.FONT_MICRO,
 		UiTheme.TEXT_MUTED)
 	UiKit.add_label(theme, &"CraftHint", UiTheme.TEXT_MUTED, UiTheme.FONT_MICRO)
+	# «Ничего не выбрано» — читаемо: не муted-микро, а нормальный кегль.
+	UiKit.add_label(theme, &"CraftEmpty", UiTheme.TEXT, UiTheme.FONT_BODY)
 	UiKit.add_label(theme, &"CraftIngredientOk", UiTheme.SUCCESS, UiTheme.FONT_BODY)
 	UiKit.add_label(theme, &"CraftIngredientMissing", UiTheme.DANGER, UiTheme.FONT_BODY)
 	return theme

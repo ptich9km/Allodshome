@@ -15,6 +15,10 @@ extends CraftSmithTab
 const GARMENT_MATERIAL := "Linen"
 
 
+func _decor_path() -> String:
+	return "res://assets/professions/workshop/loom.png"
+
+
 func _items() -> Array:
 	var out: Array = []
 	for raw in _inventory_items():
@@ -28,7 +32,7 @@ func _items() -> Array:
 			"count": int(raw["count"]),
 		})
 	out.append({"mode": RECIPE_ID, "id": "", "recipe": {}})
-	for r in CraftDB.recipes(CraftDB.TAILOR):
+	for r in CraftDB.known_recipes(CraftDB.TAILOR, player):
 		out.append({"mode": RECIPE_ID, "id": str(r.get("id", "")), "recipe": r})
 	return out
 
@@ -36,7 +40,11 @@ func _items() -> Array:
 func _item_label(entry: Dictionary) -> String:
 	var recipe: Dictionary = entry.get("recipe", {})
 	if str(entry.get("mode", "")) == RECIPE_ID and recipe.is_empty():
-		return tr("— Рецепты —")
+		return tr("— Рецепты (нужен свиток) —")
+	if str(entry.get("mode", "")) == RECYCLE_ID:
+		var item: Dictionary = entry["item"]
+		var mark := "" if ItemDB.is_broken(item) else "  [целое]"
+		return "  %s  ×%d%s" % [str(item.get("name_ru", entry["key"])), int(entry["count"]), mark]
 	return super._item_label(entry)
 
 
@@ -44,7 +52,7 @@ func _build_recipe_detail(entry: Dictionary) -> void:
 	var recipe: Dictionary = entry.get("recipe", {})
 	if recipe.is_empty():
 		_detail.add_child(_make_hint(tr(
-			"Сломанная одежда мага даёт ткань и магическую эссенцию.")))
+			"Одежда мага: ткань + эссенция. Свитки рецептов — в лавке.")))
 		return
 	_detail.add_child(_heading(str(recipe.get("name_ru", entry.get("id", "")))))
 	_detail.add_child(_tier_cards(recipe))

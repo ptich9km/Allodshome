@@ -1225,7 +1225,11 @@ func _use_hotbar_item(item_key: String) -> void:
 		"Scroll", "SuperScroll":
 			var spell_name := str(item.get("type", ""))
 			Game.pending_scroll = {"spell": spell_name, "item_key": item_key}
-			_flash_cast_error("Выберите цель для свитка.")
+			# Курсор-прицел + подсказка, как при выборе свитка из инвентаря.
+			if ui != null and ui.has_method("_begin_scroll_targeting"):
+				ui._begin_scroll_targeting(item_key)
+			else:
+				_flash_cast_error("Выберите цель для свитка.")
 		_:
 			_flash_cast_error("Этот предмет нельзя применить с хоткея.")
 

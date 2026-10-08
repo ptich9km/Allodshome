@@ -3,11 +3,16 @@ extends RefCounted
 
 ## Правила мастерской: рецепты, переработка, шансы трёх уровней вещи.
 ##
-## ЕДИНСТВЕННЫЙ читатель ключей секции [craft] из game.cfg. Причина именно
+## Основной читатель ключей секции [craft] из game.cfg. Причина именно
 ## так: tests/config_dead_keys_smoke.gd падает на любом ключе, который не
-## встречается строковым литералом в коде. Двенадцать ключей, размазанных по
-## панелям и дропу, — это двенадцать мест, где легко забыть ключ при
-## рефакторинге. Исключения оговорены у самих функций ниже.
+## встречается строковым литералом в коде. Держать их в одном классе —
+## меньше мест, где забыть ключ при рефакторинге.
+##
+## ИСКЛЮЧЕНИЯ (читают [craft] напрямую, не через CraftDB):
+## - workshop_panel.gd — master_enabled (флаг вкладки «Мастер»);
+## - enemy.gd — boss_intact_chance (шанс целой вещи с босса);
+## - tier_improved_mult / tier_master_mult — только генератор
+##   tests/gen_crafted_items.py, в рантайме не читаются.
 ##
 ## ТИРЫ КРАФТОВОЙ ВЕЩИ. Рецепт хранит все три выхода явно, веса — базовые,
 ## а навык сдвигает их в рантайме. Три записи в базе вместо одного:
@@ -52,9 +57,18 @@ const TIER_IMPROVED := 1
 const TIER_MASTER := 2
 
 ## Префикс качества у записей базы по уровню. Обычная - пусто, поэтому её
-## ключ совпадает с «крафтовой вещью без приставки».
+## ключ совпадает с «крафтовой вещью без приставкой».
 const TIER_QUALITY := ["", "Fine ", "Master "]
 const TIER_QUALITY_LONG := ["Crafted", "Crafted Fine", "Crafted Master"]
+
+## Свитки рецептов: ключ = "Recipe <id>". Лавка продаёт их, инвентарь
+## хранит — рецепт открыт. Качество "Recipe", не экипируется.
+const RECIPE_SCROLL_PREFIX := "Recipe "
+
+## Выход переработки ЦЕЛОЙ вещи = 0.8 от ресурсов её крафта. Игрок: «у целой
+## брони выход на 20% ниже, чем ресурсов на крафт». Сломанная по-прежнему
+## идёт по качеству (yield_broken*).
+const INTACT_RECYCLE_MULT := 0.8
 
 static var _recipes: Dictionary = {}
 static var _loaded := false
@@ -155,6 +169,53 @@ static func recipe_by_id(id: String) -> Dictionary:
 	return {}
 
 
+## Ключ свитка-рецепта для id рецепта.
+static func recipe_scroll_key(recipe_id: String) -> String:
+	return RECIPE_SCROLL_PREFIX + recipe_id
+
+
+## Есть ли у игрока свиток этого рецепта.
+static func has_recipe_scroll(player: Player, recipe_id: String) -> bool:
+	if not is_instance_valid(player):
+		return false
+	var key := recipe_scroll_key(recipe_id)
+	for raw in player.inventory:
+		if str(raw) == key:
+			return true
+	return false
+
+
+## Рецепты, доступные игроку (по свиткам в инвентаре).
+static func known_recipes(kind: String, player: Player) -> Array:
+	var out: Array = []
+	for r in recipes(kind):
+		if has_recipe_scroll(player, str(r.get("id", ""))):
+			out.append(r)
+	return out
+
+
+## Свитки-рецепты в инвентаре: [{key, item, count, recipe_id}].
+static func recipe_scroll_items(player: Player) -> Array:
+	var counts := {}
+	for raw in player.inventory if is_instance_valid(player) else []:
+		var key := str(raw)
+		if not key.begins_with(RECIPE_SCROLL_PREFIX):
+			continue
+		counts[key] = int(counts.get(key, 0)) + 1
+	var out: Array = []
+	for key: String in counts:
+		var item := ItemDB.find(key)
+		if item.is_empty():
+			continue
+		out.append({
+			"key": key,
+			"item": item,
+			"count": int(counts[key]),
+			"recipe_id": key.substr(RECIPE_SCROLL_PREFIX.length()),
+		})
+	return out
+
+
 # --- Шансы трёх уровней ---------------------------------------------------
 
 ## Веса уровней для навыка skill. Сумма ровно 100 при ЛЮБОМ навыке.
@@ -213,12 +274,18 @@ static func output_key(recipe: Dictionary, tier: int) -> String:
 	return str((outs[idx] as Dictionary).get("key", ""))
 
 
-# --- Переработка сломанного ----------------------------------------------
+# --- Переработка (сломанное + целое) --------------------------------------
 
 ## Выход переработки: {"ingot": int, "fabric": int, "essence": int}.
-## Качество вещи решает, сколько слитков; ткань из металла идёт «вразрез» с
-## портным (см. комментарий к [craft] в game_config.gd).
+## Сломанное: качество вещи решает, сколько слитков.
+## Целое: ресурсы КРАФТА этой вещи x INTACT_RECYCLE_MULT (0.8), игрок 08.10.
 static func recycle_yield(item: Dictionary) -> Dictionary:
+	if ItemDB.is_broken(item):
+		return _yield_broken(item)
+	return _yield_intact(item)
+
+
+static func _yield_broken(item: Dictionary) -> Dictionary:
 	var q := ItemDB.broken_quality(item)
 	if q == "":
 		return {"ingot": 0, "fabric": 0, "essence": 0}
@@ -238,6 +305,56 @@ static func recycle_yield(item: Dictionary) -> Dictionary:
 	return out
 
 
+## Выход переработки ЦЕЛОЙ вещи = 0.8 от входов рецепта, который её создаёт.
+static func _yield_intact(item: Dictionary) -> Dictionary:
+	var out := {"ingot": 0, "fabric": 0, "essence": 0}
+	var r := recipe_for_item(item)
+	if r.is_empty():
+		return out
+	var mult := INTACT_RECYCLE_MULT
+	for ing in r.get("inputs", []):
+		var ikey := str(ing.get("item", ""))
+		var n := int(floor(int(ing.get("count", 0)) * mult))
+		if n <= 0:
+			continue
+		if ikey == FABRIC_KEY:
+			out.fabric += n
+		elif ikey == ESSENCE_KEY:
+			out.essence += n
+		elif ItemDB.find(ikey).get("type", "") == "Ingot":
+			out.ingot += n
+	return out
+
+
+## Рецепт, выходом которого является эта вещь (с учётом префиксов качества).
+static func recipe_for_item(item: Dictionary) -> Dictionary:
+	var key := str(item.get("key", ""))
+	if key == "":
+		return {}
+	var base := _strip_quality(key)
+	for kind in [SMITH, TAILOR]:
+		for r in recipes(kind):
+			for out in r.get("outputs", []):
+				var okey := str((out as Dictionary).get("key", ""))
+				if okey == key or _strip_quality(okey) == base:
+					return r
+	return {}
+
+
+const _QUALITY_PREFIXES := [
+	"Crafted Master ", "Crafted Fine ", "Crafted ",
+	"Master ", "Fine ", "Common ", "Rare ", "Very Rare ",
+	"Good ", "Cheap ", "Bad ", "Elite ", "Elven ",
+]
+
+
+static func _strip_quality(key: String) -> String:
+	for p in _QUALITY_PREFIXES:
+		if key.begins_with(p):
+			return key.substr(p.length())
+	return key
+
+
 static func _tier(fine: bool, rare: bool, k0: String, k1: String, k2: String) -> int:
 	if rare:
 		return GameConfig.geti("craft", k2)
@@ -247,16 +364,137 @@ static func _tier(fine: bool, rare: bool, k0: String, k1: String, k2: String) ->
 
 
 ## Может ли этот вид ремесла переработать такую вещь?
+## Сломанное + ЦЕЛАЯ экипируемая броня/оружие (кузнец) и одежда (портной).
 static func can_recycle(kind: String, item: Dictionary) -> bool:
-	if not ItemDB.is_broken(item):
+	if ItemDB.is_craft_material(item):
 		return false
-	var cat := ItemDB.broken_category(item)
-	if cat == "Garment":
-		return kind == TAILOR
-	return kind == SMITH
+	if ItemDB.is_broken(item):
+		var cat := ItemDB.broken_category(item)
+		if cat == "Garment":
+			return kind == TAILOR
+		return kind == SMITH
+	# Целое: только то, что можно надеть, и только своё ремесло.
+	if not ItemDB.is_equippable(item):
+		return false
+	if str(item.get("type", "")) == "Ingot":
+		return false
+	var slot := ItemDB.slot_of(item)
+	if slot == "":
+		return false
+	if kind == SMITH:
+		return slot == "weapon" or ItemDB.armor_kind(item) == "heavy"
+	if kind == TAILOR:
+		return ItemDB.armor_kind(item) == "light" or slot in ["cloak", "body", "head"]
+	return false
 
 
-# --- Опыт навыка ----------------------------------------------------------
+# --- Мастер: улучшение крафтовой вещи -------------------------------------
+
+## Следующий уровень качества крафтовой вещи (0→1→2). -1, если дальше некуда.
+static func next_tier(item: Dictionary) -> int:
+	var q := str(item.get("quality", ""))
+	var idx := TIER_QUALITY_LONG.find(q)
+	if idx < 0 or idx >= TIER_MASTER:
+		return -1
+	return idx + 1
+
+
+## Ключ вещи следующего уровня ("" если нет в базе).
+static func upgrade_key(item: Dictionary) -> String:
+	var t := next_tier(item)
+	if t < 0:
+		return ""
+	var key := str(item.get("key", ""))
+	# Заменить префикс качества на новый
+	var base := _strip_quality(key)
+	var new_q: String = str(TIER_QUALITY_LONG[t])
+	if new_q == "":
+		return base
+	return new_q + " " + base
+
+
+## Стоимость улучшения: ресурсы рецепта x mult + эссенция на мастерскую.
+static func upgrade_cost(item: Dictionary) -> Dictionary:
+	var out := {"ingot": 0, "fabric": 0, "essence": 0}
+	var t := next_tier(item)
+	if t < 0:
+		return out
+	var mult := 0.5 if t == TIER_IMPROVED else 1.0
+	var r := recipe_for_item(item)
+	if r.is_empty():
+		# Фолбэк без рецепта: фиксированная цена по уровню.
+		if t == TIER_IMPROVED:
+			return {"ingot": 2, "fabric": 1, "essence": 0}
+		return {"ingot": 4, "fabric": 2, "essence": 1}
+	for ing in r.get("inputs", []):
+		var ikey := str(ing.get("item", ""))
+		var n := int(ceil(int(ing.get("count", 0)) * mult))
+		if n <= 0:
+			continue
+		if ikey == FABRIC_KEY:
+			out.fabric += n
+		elif ikey == ESSENCE_KEY:
+			out.essence += n
+		elif ItemDB.find(ikey).get("type", "") == "Ingot":
+			out.ingot += n
+	if t == TIER_MASTER and out.essence < 1:
+		out.essence = 1
+	return out
+
+
+## Улучшить вещь в инвентаре на следующий уровень. Статус (русский, без tr:
+## static-функция не может звать tr() — переведёт вызывающий слой).
+static func upgrade_item(player: Player, key: String) -> String:
+	if not is_instance_valid(player):
+		return "Нет героя"
+	var item := ItemDB.find(key)
+	if item.is_empty():
+		return "Нет героя"
+	var t := next_tier(item)
+	if t < 0:
+		return "Дальше некуда"
+	var out_key := upgrade_key(item)
+	if out_key == "" or ItemDB.find(out_key).is_empty():
+		return "Нет следующего уровня в базе"
+	var cost := upgrade_cost(item)
+	var need := {}
+	var ingot_key := _ingot_key_of(item)
+	if int(cost.get("ingot", 0)) > 0 and ingot_key != "":
+		need[ingot_key] = int(cost["ingot"])
+	if int(cost.get("fabric", 0)) > 0:
+		need[FABRIC_KEY] = int(cost["fabric"])
+	if int(cost.get("essence", 0)) > 0:
+		need[ESSENCE_KEY] = int(cost["essence"])
+	for k: String in need:
+		var have := 0
+		for raw in player.inventory:
+			if str(raw) == k:
+				have += 1
+		if have < int(need[k]):
+			return "Не хватает: %s" % str(ItemDB.find(k).get("name_ru", k))
+	for k: String in need:
+		for _i in int(need[k]):
+			player.remove_item(k)
+	if not player.remove_item(key):
+		# Откат
+		for k: String in need:
+			for _i in int(need[k]):
+				player.add_item(k)
+		return "Нечего улучшать"
+	player.add_item(out_key)
+	player.gain_skill_exp(SKILL_OF.get(MASTER, ""), xp_for_craft(t))
+	SoundDB.play(9)
+	var name := str(ItemDB.find(out_key).get("name_ru", out_key))
+	if t == TIER_MASTER:
+		return "Мастерская вещь: %s" % name
+	return "Улучшено: %s" % name
+
+
+static func _ingot_key_of(item: Dictionary) -> String:
+	return ItemDB.ingot_key(str(item.get("material", "")))
+
+
+## --- Опыт навыка ----------------------------------------------------------
 
 ## Опыт за крафт: базовый + надбавка за уровень вещи.
 static func xp_for_craft(tier: int) -> int:

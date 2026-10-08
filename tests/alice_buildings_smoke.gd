@@ -52,23 +52,12 @@ func _run() -> void:
 		_check(not ResourceLoader.exists("res://assets/structures/%s/house-002.png" % folder),
 			"id %d нет house-002 (не сетка)" % id)
 
-	# --- Клик: _structure_kind по type_id ---
-	var game := Game
-	# kind через статический путь StructureDB + тот же код, что в game.gd
-	var kinds := {200: "shop", 201: "inn", 202: "blacksmith", 203: "school", 204: "alchemy"}
+	# --- Клик: kind по type_id — через StructureDB.kind_of (единый источник) ---
+	# Папка на диске blacksmith3, роль — workshop (cba9735c). Сверяемся с игрой,
+	# а не с локальной копией маппинга.
+	var kinds := {200: "shop", 201: "inn", 202: "workshop", 203: "school", 204: "alchemy"}
 	for id in kinds:
-		var folder := str(StructureDB.get_by_id(id).get("folder", "")).to_lower()
-		var kind := ""
-		if folder.contains("druidshop") or folder.contains("hive"):
-			kind = "alchemy"
-		elif folder.contains("shop"):
-			kind = "shop"
-		elif folder.contains("inn"):
-			kind = "inn"
-		elif folder.contains("train") or folder.contains("school"):
-			kind = "school"
-		elif folder.contains("blacksmith"):
-			kind = "blacksmith"
+		var kind := StructureDB.kind_of(id)
 		_check(kind == kinds[id], "клик id %d -> %s (получено %s)" % [id, kinds[id], kind])
 
 	# --- Карта: генерация с новыми зданиями ---

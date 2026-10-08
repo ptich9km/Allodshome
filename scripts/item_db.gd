@@ -187,7 +187,7 @@ static func is_equippable(item: Dictionary) -> bool:
 const NON_GEAR_QUALITY := [
 	"Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb",
 	"Broken", "Broken Fine", "Broken Rare",
-	"Fabric", "Essence",
+	"Fabric", "Essence", "Recipe",
 ]
 
 ## --- Сломанные вещи и ресурсы крафта (мастерская, 07.10) -----------------
