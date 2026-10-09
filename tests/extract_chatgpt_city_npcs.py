@@ -54,6 +54,9 @@ FEET_PAD = 2
 
 BG_CHROMA = 35.0
 BG_VAL = 150.0
+# Карман шахматки, окружённый фигурой (см. background_mask). Замер: карманы
+# 442..1463 px, серебро/пламя — до 233 px. Порог в разрыве.
+BG_POCKET_MIN = 300
 MIN_AREA = 800
 CLOSE_R = 2
 PAD = 4
@@ -74,6 +77,88 @@ ATLAS_TO_GAME = [
 ROW_Y = (286, 572, 858)  # границы рядов 0|1, 1|2, 2|3
 
 DB_PATH = os.path.join(ROOT, "assets", "units", "units_db.json")
+
+
+def _flood_from_border(free: np.ndarray) -> np.ndarray:
+    """Отметить все True-пиксели, связанные с краем (4-связность)."""
+    h, w = free.shape
+    seen = np.zeros_like(free)
+    dq: deque[tuple[int, int]] = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if free[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                dq.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if free[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                dq.append((y, x))
+    while dq:
+        y, x = dq.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and free[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                dq.append((ny, nx))
+    return seen
+
+
+def background_mask(arr: np.ndarray) -> np.ndarray:
+    """Маска фона, True = пиксель СЮЖЕТА.
+
+    НЕЛЬЗЯ просто chroma-фильтром: у атласа серебристый/стальной доспех
+    почти бесцветный, как и светлая клетка шахматки. Глобальный порог режет
+    металл насквозь — игрок увидел «у кого головы нет, у кого грудь дырявая».
+
+    Поэтому фон = то, что СВЯЗАНО С КРАЕМ картинки. Доспех внутри фигуры
+    краем не связан, даже если бесцветен, и остаётся сущностью.
+
+    Но одной связности мало: между плащом и посохом остаётся КАРМАН шахматки,
+    полностью окружённый фигурой. Он с краем не связан, значит попал бы в
+    сущность — игрок увидел «у рук большие области белого».
+
+    Карман отличается от серебра РАЗМЕРОМ, а не цветом: замер по 8 атласам
+    дал чистое разделение.
+      - карманы шахматки: 8 штук на атлас, 442..1463 px, хрома 1..1
+      - серебро/пламя посоха: ~1484 куска, <233 px, хрома 9..20
+    Порог 300 лежит в разрыве (233 < 300 < 345).
+    """
+    af = arr.astype(np.float32)
+    mx, mn = af.max(axis=2), af.min(axis=2)
+    looks_like_bg = ((mx - mn) < BG_CHROMA) & (mx > BG_VAL)
+    bg_connected = _flood_from_border(looks_like_bg)
+    # Карманы: «похожие на фон», но не связанные с краем.
+    pockets = looks_like_bg & ~bg_connected
+    for comp in _components(pockets):
+        if len(comp) >= BG_POCKET_MIN:
+            for y, x in comp:
+                bg_connected[y, x] = True
+    return ~bg_connected
+
+
+def _components(mask: np.ndarray) -> list:
+    """Список связных компонент (4-связность) как списки (y, x)."""
+    h, w = mask.shape
+    seen = np.zeros_like(mask)
+    out = []
+    ys, xs = np.where(mask)
+    for y0, x0 in zip(ys, xs):
+        if seen[y0, x0]:
+            continue
+        stack = [(int(y0), int(x0))]
+        seen[y0, x0] = True
+        comp = []
+        while stack:
+            y, x = stack.pop()
+            comp.append((y, x))
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    stack.append((ny, nx))
+        out.append(comp)
+    return out
 
 
 def dilate(mask: np.ndarray, radius: int) -> np.ndarray:
@@ -180,11 +265,48 @@ def fit_game(im: Image.Image, flip: bool) -> Image.Image:
     max_h = OUT_H - FEET_PAD
     scale = min(OUT_W / w, max_h / h)
     nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
-    im = im.resize((nw, nh), Image.Resampling.NEAREST)
+
+    # Правильный порядок: premultiply -> усреднение -> unpremultiply.
+    #
+    # Две ошибки были в старом коде, обе видны игроку на спрайте:
+    #
+    # 1) NEAREST на альфе. Кроп ~143x252 уходит в 35x62, по X это примерно
+    #    4-кратное сжатие, и NEAREST выбрасывал 3 пикселя из 4. Тонкая
+    #    светлая деталь (блеск стали, цепь) исчезала целиком — «грудь в дырявую».
+    #    BOX усредняет по площади, т.е. это доля покрытия.
+    #
+    # 2) NEAREST на цвете. У тонкого посоха выходной пиксель брал цвет
+    #    СОСЕДНЕГО фонового пикселя, и рядом с посохом и рукой появлялось
+    #    белое пятно шахматки (RGB 243,243,243, хрома 1). Поэтому цвет
+    #    усредняем ПО МАСКЕ: в premultiply фона вклад = 0, поэтому шахматка
+    #    физически не может попасть в смесь (среднее по покрытым пикселям).
+    src_a = np.asarray(im.getchannel("A"), dtype=np.float32) / 255.0
+    src_rgb = np.asarray(im.convert("RGB"), dtype=np.float32)
+    prem = src_rgb * src_a[:, :, None]
+
+    a_small = np.asarray(
+        Image.fromarray((src_a * 255).astype(np.uint8), "L").resize(
+            (nw, nh), Image.Resampling.BOX), dtype=np.float32) / 255.0
+    prem_small = np.asarray(
+        Image.fromarray(prem.astype(np.uint8), "RGB").resize(
+            (nw, nh), Image.Resampling.BOX), dtype=np.float32)
+
+    # Unpremultiply: где покрытия нет - цвет не имеет значения (альфа 0).
+    denom = np.maximum(a_small, 1e-4)[:, :, None]
+    rgb_small = np.clip(prem_small / denom, 0, 255)
+
+    # Остаточная дымка от размытой шахматки по краю убирается порогом.
+    # 64/255 ~ 25% покрытия: ниже этого пиксель всё равно не различим.
+    a_small = np.where(a_small < 0.25, 0.0, np.minimum(1.0, a_small * 1.35))
+
+    out = Image.fromarray(
+        np.dstack([rgb_small.round().astype(np.uint8),
+                   (a_small * 255).round().astype(np.uint8)]), "RGBA")
+
     canvas = Image.new("RGBA", (OUT_W, OUT_H), (0, 0, 0, 0))
     ox = (OUT_W - nw) // 2
     oy = OUT_H - FEET_PAD - nh
-    canvas.paste(im, (ox, max(0, oy)), im)
+    canvas.paste(out, (ox, max(0, oy)), out)
     return canvas
 
 
@@ -276,9 +398,7 @@ def main() -> int:
             continue
         src = Image.open(src_path).convert("RGB")
         arr = np.array(src)
-        af = arr.astype(np.float32)
-        mx, mn = af.max(axis=2), af.min(axis=2)
-        content = ~(((mx - mn) < BG_CHROMA) & (mx > BG_VAL))
+        content = background_mask(arr)
         obj = dilate(content, CLOSE_R)
         print("%s %dx%d content=%.1f%%" % (src_name, arr.shape[1], arr.shape[0],
                                            content.mean() * 100))
