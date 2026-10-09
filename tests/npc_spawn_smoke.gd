@@ -57,6 +57,20 @@ func _set_race(set_name: String) -> String:
 	return MapGenerator.race_of_set(set_name)
 
 
+## В пуле наборов есть и маг, и воин. Проверка по РОЛИ из имени набора, а не
+## по таблице: таблица может остаться старой, а наборы уже смениться.
+func _has_mage_and_warrior(pool: Array) -> bool:
+	var mage := false
+	var warrior := false
+	for s in pool:
+		var n := str(s)
+		if n.ends_with("_mage/t0") or n.ends_with("_mage/t1") or n.ends_with("_mage/t2"):
+			mage = true
+		if n.ends_with("_warrior/t0") or n.ends_with("_warrior/t1") or n.ends_with("_warrior/t2"):
+			warrior = true
+	return mage and warrior
+
+
 func _unit_names() -> Array:
 	if not FileAccess.file_exists(UNITS_PATH):
 		return []
@@ -160,8 +174,18 @@ func _run() -> void:
 		_check(races.size() > 0, "CITY_RACES непустой")
 		for race in races:
 			_check(pop.has(race), "раса '%s' из CITY_RACES есть в CITY_POPULATION" % race)
-			_check(race != "necro",
-				"раса necro (Пожинатели) не спавнится, пока нет арта нежити")
+			# 10.10 (позже): раньше здесь стояло "necro не спавнится, пока нет
+			# арта нежити". Атлас появился, поэтому проверка стала бы ровно
+			# тем сторожем, который запрещает рабочую фичу. Заменена на
+			# настоящее требование: у каждой расы города есть ОБА набора
+			# (маг и воин) - иначе в городе 16 копий одного силуэта.
+			var pe: Dictionary = pop.get(race, {})
+			var sguards: Array = pe.get("guards", [])
+			var scitizens: Array = pe.get("citizens", [])
+			_check(_has_mage_and_warrior(sguards),
+				"у расы '%s' в стражах есть и маг, и воин (%s)" % [race, str(sguards)])
+			_check(_has_mage_and_warrior(scitizens),
+				"у расы '%s' среди жителей есть и маг, и воин (%s)" % [race, str(scitizens)])
 		for race2 in pop.keys():
 			_check(races.has(race2),
 				"в CITY_POPULATION нет расы '%s', которой не выдаётся город" % race2)
@@ -286,7 +310,11 @@ func _run() -> void:
 func _test_city_matches_hero_race() -> void:
 	DirAccess.make_dir_recursive_absolute(DIR)
 	var old_race: String = Game.hero_race
-	for race in ["human", "ork", "druid"]:
+	# Перебор берём из production-списка + маппинг «раса героя -> id фракции»,
+	# а не свой список: иначе новая раса (10.10 — necro) не попадёт в проверку
+	# и тест останется зелёным на неполном покрытии.
+	for hero_race in ["human", "ork", "druid", "necro"]:
+		var race: String = str(hero_race)
 		Game.hero_race = race
 		var want: String = MapGenerator.city_race_for_hero(race)
 		_check(want != "", "раса героя '%s' есть в CITY_POPULATION (%s)" % [race, want])

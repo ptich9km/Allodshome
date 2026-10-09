@@ -117,7 +117,7 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 22
+const GEN_VERSION := 23
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -142,7 +142,7 @@ static func ensure_map(seed_value: int, zone: String = "mid", dir: String = MAPS
 
 
 ## Раса героя -> id фракции для города. Пусто, если для неё нет CITY_POPULATION
-## (necro/Пожинатели, пока нет арта) — тогда генератор возьмёт первую доступную.
+## (страховка на будущее: раса в hero_race может появиться раньше арта).
 static func _hero_faction() -> String:
 	return city_race_for_hero(Game.hero_race)
 
@@ -453,9 +453,8 @@ const ZONES_WITH_PORTAL := ["start", "mid"]
 ## капитан-великий-маг t3.
 ## У каждой расы два набора (маг + воин) - это осознанно: в городе должны быть
 ## и простые жители, и те, кто держит оружие, а не 16 копий одного силуэта.
-## necro (Пожинатели) НЕТ - атласа нежити пока не нарезано. Поэтому расы
-## Пожинателей не спавнятся (см. CITY_RACES и _faction_for). Когда появится
-## арт - достаточно добавить ключ сюда, больше ничего трогать не придётся.
+## 10.10 (позже): нежить тоже получила атлас (city_necro_mage/city_necro_warrior),
+## поэтому necro теперь полноценный город, а не откат на первую доступную расу.
 const CITY_POPULATION := {
 	"humans": {
 		"guards": ["city_human_mage/t1", "city_human_warrior/t2"],
@@ -463,20 +462,25 @@ const CITY_POPULATION := {
 		"captain": "city_human_mage/t3",
 	},
 	"ork": {
-		"guards": ["city_ork_warrior/t2"],
-		"citizens": ["city_ork_warrior/t0", "city_ork_warrior/t1"],
-		"captain": "city_ork_warrior/t3",
+		"guards": ["city_ork_mage/t1", "city_ork_warrior/t2"],
+		"citizens": ["city_ork_mage/t0", "city_ork_warrior/t1"],
+		"captain": "city_ork_mage/t3",
 	},
 	"druid": {
-		"guards": ["city_druid_mage/t1", "city_druid_mage/t2"],
-		"citizens": ["city_druid_mage/t0", "city_druid_mage/t1"],
+		"guards": ["city_druid_mage/t1", "city_druid_warrior/t2"],
+		"citizens": ["city_druid_mage/t0", "city_druid_warrior/t1"],
 		"captain": "city_druid_mage/t3",
+	},
+	"necro": {
+		"guards": ["city_necro_mage/t1", "city_necro_warrior/t2"],
+		"citizens": ["city_necro_mage/t0", "city_necro_warrior/t1"],
+		"captain": "city_necro_mage/t3",
 	},
 }
 ## Расы, между которым�� города делятся по кругу. necro исключена, пока нет
 ## арта (см. CITY_POPULATION). Стартовая зона - первая раса, не "hero":
 ## при "hero" не было бы ни одного NPC в городе новичка.
-const CITY_RACES := ["humans", "ork", "druid"]
+const CITY_RACES := ["humans", "ork", "druid", "necro"]
 
 # Объекты по биому: seedream-спрайты (alm_objects.json ID 200-211).
 # Старые аллодовские ID 1-192 из пулов убраны (папки удалены с диска).
@@ -567,8 +571,8 @@ func _place_cities(rng: RandomNumberGenerator) -> void:
 ## расе»). Остальные города — по кругу, начиная с расы героя, чтобы порядок
 ## был тот же, но поворот вокруг оси.
 ##
-## necro (Пожинатели) в CITY_POPULATION нет (атласа нежити нет) — тогда
-## берётся первая доступная раса, и в логе пишется предупреждение.
+## неcro был исключён, пока не было атласа нежити. С приходом арта (10.10,
+## позже) каждая раса героя даёт свой город, без отката.
 func _faction_for(i: int) -> String:
 	var order := _race_order()
 	if order.is_empty():
@@ -585,9 +589,6 @@ func _race_order() -> Array:
 	for r in CITY_RACES:
 		if not out.has(r):
 			out.append(r)
-	if hero == "" and Game.hero_race == "necro":
-		push_warning("MapGenerator: у расы necro нет CITY_POPULATION - город будет "
-				+ str(out[0]) + ". Нужен атлас нежити.")
 	return out
 
 ## Залитый овал дорогой (type 3), диаметр (2*rx+1)×(2*ry+1).
@@ -1048,12 +1049,15 @@ static func race_of_hero(hero_race: String) -> String:
 		"human": return "humans"
 		"ork": return "ork"
 		"druid": return "druid"
-		"necro": return ""
+		# 10.10 (позже): был "" — у нежити не было атласа, и город за нежить
+		# откатывался на первую доступную расу. Теперь атлас есть.
+		"necro": return "necro"
 		_: return ""
 
 
 ## id фракции героя, но только если для неё есть CITY_POPULATION.
-## necro (Пожинатели) отсекается: атласа нежити нет, портрета не из чего взять.
+## Проверка остаётся осмысленной: она страхует от расы без арта, если такую
+## добавят в hero_race раньше, чем появится набор спрайтов.
 static func city_race_for_hero(hero_race: String) -> String:
 	var race := race_of_hero(hero_race)
 	if race != "" and CITY_POPULATION.has(race):

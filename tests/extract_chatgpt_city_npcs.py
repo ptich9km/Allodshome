@@ -40,8 +40,12 @@ ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 SETS = [
     ("ChatGPTDruidMage1.png", "city_druid_mage"),
+    ("ChatGPTDruidWarrior1.png", "city_druid_warrior"),
     ("ChatGPTHumanMage1.png", "city_human_mage"),
     ("ChatGPTHumanWarrior1.png", "city_human_warrior"),
+    ("ChatGPTNecrMage1.png", "city_necro_mage"),
+    ("ChatGPTNecrWarrior1.png", "city_necro_warrior"),
+    ("ChatGPTOrkMage1.png", "city_ork_mage"),
     ("ChatGPTOrkWarrior1.png", "city_ork_warrior"),
 ]
 
@@ -243,8 +247,12 @@ def make_db_entry(set_name: str, tier: int, desc: str) -> dict:
 
 DESCS = {
     "city_druid_mage": "Друид-маг города",
+    "city_druid_warrior": "Друид-воин города",
     "city_human_mage": "Человек-маг города",
     "city_human_warrior": "Человек-воин города",
+    "city_necro_mage": "Пожинатель-маг города",
+    "city_necro_warrior": "Пожинатель-воин города",
+    "city_ork_mage": "Орк-маг города",
     "city_ork_warrior": "Орк-воин города",
 }
 
@@ -348,14 +356,15 @@ def main() -> int:
     print("written=%d missing=%d" % (written, len(missing)))
     if missing:
         print(missing[:12])
-    ok = written == 4 * 4 * 8 and not missing
-    print("RESULT: %s (%d/%d)" % ("OK" if ok else "GAPS", written, 128))
+    expected = len(SETS) * 4 * 8
+    ok = written == expected and not missing
+    print("RESULT: %s (%d/%d)" % ("OK" if ok else "GAPS", written, expected))
     return 0 if ok else 2
 
 
 def _write_sheet() -> None:
     cell = max(OUT_W, OUT_H) + 8
-    sheet = Image.new("RGBA", (8 * cell + 120, 4 * (cell + 8) + 40), (28, 26, 30, 255))
+    sheet = Image.new("RGBA", (8 * cell + 120, len(SETS) * (cell + 8) + 40), (28, 26, 30, 255))
     draw = ImageDraw.Draw(sheet)
     draw.text((8, 4), "City NPCs 52x64 — t0..t3 x 8 dirs (game order, col6=flip З)",
               fill=(220, 220, 220, 255))
