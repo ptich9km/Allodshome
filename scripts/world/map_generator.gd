@@ -117,7 +117,7 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 21
+const GEN_VERSION := 22
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -478,11 +478,12 @@ const CITY_POPULATION := {
 ## при "hero" не было бы ни одного NPC в городе новичка.
 const CITY_RACES := ["humans", "ork", "druid"]
 
-# Объекты по биому: подходящие ID из alm_objects.json.
-const TREE_GRASS := [1, 4, 7, 10, 16, 19, 25, 26, 27]
-const TREE_SOIL := [41, 43, 53, 55, 47, 49, 51]
-const TREE_SAND := [128, 132, 134, 98, 99]
-const TREE_MUD := [7, 49, 51]
+# Объекты по биому: seedream-спрайты (alm_objects.json ID 200-211).
+# Старые аллодовские ID 1-192 из пулов убраны (папки удалены с диска).
+const TREE_GRASS := [200, 201, 202, 205, 210, 211]   # oak, oak2, pine, bush_berry, rock, rock2
+const TREE_SOIL := [203, 204, 205, 210, 211]         # birch, willow, bush_berry, rock, rock2
+const TREE_SAND := [206, 207, 210]                   # palm, cactus, rock
+const TREE_MUD := [208, 209, 204, 210]               # dead, thorn, willow, rock
 const HERB_ITEMS := [
 	{"item": "Herb Green Leaf", "icon": "res://assets/professions/herbalism/green_leaf.png"},
 	{"item": "Herb White Flower", "icon": "res://assets/professions/herbalism/white_flower.png"},
