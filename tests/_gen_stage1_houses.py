@@ -7,9 +7,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from gen_image_kodik import load_key, gen_once, contact_sheet
 
 BG = "flat solid pure magenta background color #FF00FF, no ground plane, no cast shadow"
+# 10.10: запрет на тонкие элементы (см. комментарий в _gen_stage3_nature.py).
+NO_THIN = ("solid chunky shapes, every element at least a few pixels thick, "
+           "no thin poles, no narrow banners or ribbons, no wire fences, "
+           "no fine filaments, no semi-transparent details, solid opaque surfaces")
 STYLE = ("game building sprite, single isolated building, 3/4 top-down view "
          "like classic isometric RPG town buildings, hand-painted 2D style, "
-         "clean readable silhouette, no characters, no text, no signage text, no other objects")
+         f"clean readable silhouette, {NO_THIN}, "
+         "no characters, no text, no signage text, no other objects")
 PROMPTS = {
     "ork_a": f"Crude orcish warren house built from rough dark timber and beast hides, "
              f"jagged uneven roof with bone and horn decorations, leather flaps as door, "

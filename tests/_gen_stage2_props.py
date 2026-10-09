@@ -10,8 +10,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from gen_image_kodik import load_key, gen_once, contact_sheet
 
 BG = "flat solid pure magenta background color #FF00FF, no ground plane, no cast shadow"
+# 10.10: запрет на тонкие элементы (см. комментарий в _gen_stage3_nature.py).
+# Тонкое не вырезается чисто: края полупрозрачные и смешиваются с фоном.
+NO_THIN = ("solid chunky shapes, every element at least a few pixels thick, "
+           "no thin wires, no narrow ribbons, no fine filaments, "
+           "no semi-transparent details, solid opaque surfaces")
 STYLE = ("single small game prop sprite, 3/4 top-down view like classic isometric RPG "
          "town decorations, hand-painted 2D style, clean readable silhouette, "
+         f"{NO_THIN}, "
          "no characters, no text, no other objects, one prop only")
 PROMPTS = {
     "barrel": f"Wooden beer barrel with metal hoops, slightly worn, medieval tavern prop, {STYLE}, {BG}",

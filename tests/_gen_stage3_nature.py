@@ -7,8 +7,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 from gen_image_kodik import load_key, gen_once, contact_sheet
 
 BG = "flat solid pure magenta background color #FF00FF, no ground plane, no cast shadow"
+# 10.10: ЗАПРЕТ НА ТОНКИЕ ЭЛЕМЕНТЫ. Проверено на Willow - нити свисающих ветвей
+# тонкие и полупрозрачные, смешиваются с фоном, и после вырезания магенты
+# остаётся до 0.55% крапа (в остальных деревьях и зданиях - 0%). Тонкое не
+# режется чисто ни по цвету, ни по связности: края у него полупрозрачные.
+# Просим крупные сплошные формы, а не « wispy / thin / wispy strands».
+NO_THIN = ("solid chunky shapes, every element at least a few pixels thick, "
+           "no thin wispy strands, no narrow ribbons, no fine filaments, "
+           "no semi-transparent details, solid opaque foliage and limbs")
 STYLE = ("single small game nature sprite, 3/4 top-down view like classic isometric RPG "
          "map decorations, hand-painted 2D style, clean readable silhouette, "
+         f"{NO_THIN}, "
          "no characters, no text, no other objects, one element only")
 PROMPTS = {
     # grass biome trees
@@ -21,7 +30,8 @@ PROMPTS = {
     # soil biome
     "tree_birch": f"Slender birch tree with white bark and light green foliage, "
                   f"fantasy RPG tree, {STYLE}, {BG}",
-    "tree_willow": f"Weeping willow tree with drooping branches near ground, "
+    "tree_willow": f"Weeping willow tree with a rounded full crown and only a few "
+                   f"thick drooping limbs near ground, no long hanging strands, "
                    f"mystical swamp-edge tree, {STYLE}, {BG}",
     "bush_berry": f"Round green bush with small red berries, forest undergrowth, "
                   f"{STYLE}, {BG}",
