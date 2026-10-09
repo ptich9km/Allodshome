@@ -64,19 +64,8 @@ FUNCTIONAL = {
 }
 
 
-def cut_magenta(path: Path) -> Image.Image:
-    im = Image.open(path).convert("RGB")
-    a = np.asarray(im, dtype=np.int16)
-    h, w = a.shape[:2]
-    # median color of border pixels = actual bg (seedream magenta is noisy)
-    border = np.concatenate([
-        a[0, :].reshape(-1, 3), a[-1, :].reshape(-1, 3),
-        a[:, 0].reshape(-1, 3), a[:, -1].reshape(-1, 3),
-    ])
-    bg_color = np.median(border, axis=0)
-    dist = np.abs(a - bg_color).sum(axis=2)
-    bg = dist <= BG_TOL
-    # flood fill from borders (4-connectivity)
+def _flood_from_border(bg: np.ndarray, h: int, w: int) -> np.ndarray:
+    """Страховочная заливка от краёв. В результат cutout не входит."""
     visited = np.zeros_like(bg, dtype=bool)
     q: deque[tuple[int, int]] = deque()
     for x in range(w):
@@ -96,7 +85,31 @@ def cut_magenta(path: Path) -> Image.Image:
             if 0 <= ny < h and 0 <= nx < w and bg[ny, nx] and not visited[ny, nx]:
                 visited[ny, nx] = True
                 q.append((ny, nx))
-    alpha = np.where(visited, 0, 255).astype(np.uint8)
+    return visited
+
+
+def cut_magenta(path: Path) -> Image.Image:
+    im = Image.open(path).convert("RGB")
+    a = np.asarray(im, dtype=np.int16)
+    h, w = a.shape[:2]
+    # median color of border pixels = actual bg (seedream magenta is noisy)
+    border = np.concatenate([
+        a[0, :].reshape(-1, 3), a[-1, :].reshape(-1, 3),
+        a[:, 0].reshape(-1, 3), a[:, -1].reshape(-1, 3),
+    ])
+    bg_color = np.median(border, axis=0)
+    dist = np.abs(a - bg_color).sum(axis=2)
+    bg = dist <= BG_TOL
+    # БЕЗ заливки от краёв. Магента не встречается в арте вообще - именно её
+    # и выбрали фоном, - поэтому фон определяется ЦВЕТОМ, а не связностью.
+    # Заливка от краёв оставляла магенту, окружённую объектом (просвет под
+    # кроной, полость между стенами), и та попадала в готовый спрайт: игрок
+    # увидел мадженту на деревьях, лавке и таверне. Ровно тот же класс, что с
+    # карманами шахматки у городских НПЦ: связность вместо цвета.
+    # Заливка оставлена как СТРАХОВКА для случая, когда кадр целиком в оттенке,
+    # но в результат не входит.
+    visited = _flood_from_border(bg, h, w)
+    alpha = np.where(bg | visited, 0, 255).astype(np.uint8)
     rgba = np.dstack([np.asarray(im), alpha])
     # bbox of opaque pixels
     ys, xs = np.where(alpha > 0)

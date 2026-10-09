@@ -41,27 +41,10 @@ def cut_bg(path: Path) -> Image.Image:
     bg_color = np.median(border, axis=0)
     dist = np.abs(a - bg_color).sum(axis=2)
     bg = dist <= BG_TOL
-    h, w = bg.shape
-    visited = np.zeros_like(bg, dtype=bool)
-    q: deque[tuple[int, int]] = deque()
-    for x in range(w):
-        for y in (0, h - 1):
-            if bg[y, x] and not visited[y, x]:
-                visited[y, x] = True
-                q.append((y, x))
-    for y in range(h):
-        for x in (0, w - 1):
-            if bg[y, x] and not visited[y, x]:
-                visited[y, x] = True
-                q.append((y, x))
-    while q:
-        y, x = q.popleft()
-        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w and bg[ny, nx] and not visited[ny, nx]:
-                visited[ny, nx] = True
-                q.append((ny, nx))
-    alpha = np.where(visited, 0, 255).astype(np.uint8)
+    # Фон определяется ЦВЕТОМ, без заливки от краёв: мадженты в арте нет, её
+    # и выбрали фоном именно поэтому. Заливка оставляла магенту, окружённую
+    # объектом (просвет между ветвями, пятно в кроне), и та попадала в спрайт.
+    alpha = np.where(bg, 0, 255).astype(np.uint8)
     rgba = np.dstack([np.asarray(im), alpha])
     ys, xs = np.where(alpha > 0)
     if len(ys) == 0:
