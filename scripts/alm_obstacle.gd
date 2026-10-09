@@ -120,13 +120,30 @@ func _apply_frame() -> void:
 	_tex_w = tex.get_width()
 	_tex_h = tex.get_height()
 
-## Позиция: центр клетки + якорь (доля от реестрового размера) как в Allods16.
+## Позиция: узел стоит в ТОЧКЕ ЗЕМЛИ, спрайт смещён внутри на якорь
+## (cx, cy) от реестрового размера, как в Allods16.
+##
+## Именно так, а не position узла = левый верхний угол спрайта. Сортировка
+## по Y у Godot идёт по position узла, поэтому при старой схеме сортировались
+## ВЕРШИНЫ спрайтов, а не земля: чем объект выше, тем раньше он рисуется.
+## Камень (h=56) оказывался на 72 px "выше" дерева (h=128) и перекрывал его,
+## хотя стоял на клетку выше по ряду — жалоба игрока 10.10.
 func place_at(cell: Vector2i, tile: int, relief: float) -> void:
 	var x := cell.x * tile + tile / 2.0
 	var y := cell.y * tile + tile / 2.0 - relief
-	position = Vector2(
-		x - cx / float(reg_w) * float(_tex_w),
-		y - cy / float(reg_h) * float(_tex_h))
+	position = Vector2(x, y)
+	_apply_offsets()
+
+## Смещение спрайтов внутри узла. Тень выравнивается так же, иначе после
+## переноса якоря в спрайт она уехала бы в угол.
+func _apply_offsets() -> void:
+	var off := Vector2(
+		-cx / float(reg_w) * float(_tex_w),
+		-cy / float(reg_h) * float(_tex_h))
+	if _sprite != null:
+		_sprite.offset = off
+	if _shadow != null:
+		_shadow.offset = off
 
 func _process(delta: float) -> void:
 	if frame_count <= 1 or base_index > 0:
