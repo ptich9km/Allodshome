@@ -216,7 +216,16 @@ func _apply_frame() -> void:
 		var path := "res://assets/structures/%s/house-001.png" % folder
 		var tex := _load_cached(path)
 		if tex != null:
-			(_tiles[0] as Sprite2D).texture = tex
+			var ts := _tiles[0] as Sprite2D
+			ts.texture = tex
+			# Спрайт 128 px на футпринте 3x3 (96 px): центрируем по Х,
+			# прижимаем низ к нижнему краю футпринта - крыша свешивается
+			# вверх и по бокам, как в настоящих RPG-зданиях.
+			var fw_px := float(fw) * TILE
+			var fh_px := float(fh) * TILE
+			var tw := float(tex.get_width())
+			var th := float(tex.get_height())
+			ts.position = Vector2((fw_px - tw) * 0.5, fh_px - th)
 		return
 	var grid := fw * fh
 	var block: int = _current_block()

@@ -117,7 +117,7 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 17
+const GEN_VERSION := 18
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -408,14 +408,28 @@ const GRAY_ZONE := {
 }
 
 # Здания в городах: функциональные + жильё + декор (folder -> StructureDB).
-# 05.10: аллодовские shop1/inn1/... заменены на арт Alice (import/*128х128*.jpg).
-const SHOP_FOLDERS := ["shop3"]
-const ALCHEMY_FOLDERS := ["druidshop4"]
-const INN_FOLDERS := ["inn4"]
-const TRAIN_FOLDERS := ["train4"]
-const BLACKSMITH_FOLDERS := ["blacksmith3"]
-const HOUSE_FOLDERS := ["house_ogre"]
-const DECOR_FOLDERS := ["barracks1"]
+# 10.10: арт seedream (tests/extract_seedream_buildings.py), папки *_sN.
+# Старые Alice-папки (shop3/inn4/...) остались на диске, но в пулах не используются.
+const SHOP_FOLDERS := ["shop_s1"]
+const ALCHEMY_FOLDERS := ["druidshop_s1"]
+const INN_FOLDERS := ["inn_s1", "inn_s2"]
+const TRAIN_FOLDERS := ["train_s1"]
+const BLACKSMITH_FOLDERS := ["blacksmith_s1"]
+
+## Жильё и декор по расе города (ключи = faction id в world.json).
+## У каждой расы свой стиль зданий - орочий город не выглядит людским.
+const HOUSE_FOLDERS_BY_RACE := {
+	"humans": ["house_s1", "house_s2"],
+	"ork": ["ork_house_a1", "ork_house_a2", "ork_house_b1", "ork_house_b2"],
+	"druid": ["druid_house_a1", "druid_house_a2", "druid_house_b1", "druid_house_b2"],
+	"necro": ["necro_house_a1", "necro_house_a2", "necro_house_b1", "necro_house_b2"],
+}
+const DECOR_FOLDERS_BY_RACE := {
+	"humans": ["barracks_s1", "barracks_s2"],
+	"ork": ["ork_decor_1", "ork_decor_2"],
+	"druid": ["druid_decor_1"],
+	"necro": ["necro_decor_1"],
+}
 
 ## Зоны, в которых генератор ставит портал.
 ##
@@ -792,12 +806,12 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 			_pick(rng, INN_FOLDERS),
 		]
 		# Один жилой дом на город - по решению игрока (мы не симулятор городов).
-		# Раньше здесь стоял цикл `for i in range(mini(houses_n, 1))` с таблицей
-		# ZONE_HOUSES на 4-7 домов: цикл выполнялся ровно один раз, то есть
-		# таблица была мёртвой, а читалась как опечатка. Один прямой вызов
-		# _pick даёт ту же последовательность RNG, поэтому карты не изменились.
-		plan.append(_pick(rng, HOUSE_FOLDERS))
-		plan.append(_pick(rng, DECOR_FOLDERS))
+		# Раса дома/декора = раса города: орочий город строит орочье жильё.
+		var race := str(c.get("faction", "humans"))
+		var house_pool: Array = HOUSE_FOLDERS_BY_RACE.get(race, HOUSE_FOLDERS_BY_RACE["humans"])
+		var decor_pool: Array = DECOR_FOLDERS_BY_RACE.get(race, DECOR_FOLDERS_BY_RACE["humans"])
+		plan.append(_pick(rng, house_pool))
+		plan.append(_pick(rng, decor_pool))
 		for folder in plan:
 			var spec := _structure_spec(folder)
 			if spec.is_empty():

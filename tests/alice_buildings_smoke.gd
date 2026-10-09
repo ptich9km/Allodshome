@@ -60,7 +60,7 @@ func _run() -> void:
 		var kind := StructureDB.kind_of(id)
 		_check(kind == kinds[id], "клик id %d -> %s (получено %s)" % [id, kinds[id], kind])
 
-	# --- Карта: генерация с новыми зданиями ---
+	# --- Карта: генерация с seedream-зданиями (10.10, id 207+) ---
 	Game.request_map_by_seed(SEED, "mid")
 	var err := change_scene_to_file("res://scenes/main.tscn")
 	_check(err == OK, "main.tscn")
@@ -73,24 +73,29 @@ func _run() -> void:
 		_report()
 		return
 
-	var new_ids := {200: 0, 201: 0, 202: 0, 203: 0, 204: 0, 205: 0, 206: 0}
+	# функциональные seedream + жильё/декор по расам
+	var seedream_ids := {}
+	for id in range(207, 233):
+		seedream_ids[id] = 0
+	var functional_ids := {207: 0, 208: 0, 209: 0, 210: 0, 211: 0, 212: 0}
 	var all_st: Array = am.get("_structures") if "structures" in am else []
 	if all_st.is_empty() and am.has_method("get_structures"):
 		all_st = am.call("get_structures")
-	# structures могут быть в _structures
 	if am.get("_structures") != null:
 		all_st = am.get("_structures")
 	var found := 0
+	var found_func := 0
 	for st in all_st:
 		var tid := int(st.get("type_id", 0))
-		if new_ids.has(tid):
-			new_ids[tid] = int(new_ids[tid]) + 1
+		if seedream_ids.has(tid):
+			seedream_ids[tid] = int(seedream_ids[tid]) + 1
 			found += 1
-	print("INFO новые здания на карте: %s (всего записей %d)" % [str(new_ids), all_st.size()])
-	_check(found > 0, "на карте есть здания Alice (найдено %d)" % found)
-	# хотя бы функциональные
-	_check(int(new_ids[200]) + int(new_ids[201]) + int(new_ids[202]) + int(new_ids[203]) + int(new_ids[204]) > 0,
-		"есть функциональные shop/inn/bs/train/alchemy")
+		if functional_ids.has(tid):
+			functional_ids[tid] = int(functional_ids[tid]) + 1
+			found_func += 1
+	print("INFO seedream на карте: %s (всего записей %d)" % [str(seedream_ids), all_st.size()])
+	_check(found > 0, "на карте есть seedream-здания (найдено %d)" % found)
+	_check(found_func > 0, "есть функциональные shop/inn/bs/train/alchemy (%d)" % found_func)
 
 	# --- Дверь / nav: у функционального здания есть проходимая клетка рядом ---
 	var nav: Array = am.get("_structure_nav") if "_structure_nav" in am else []

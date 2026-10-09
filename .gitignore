@@ -50,3 +50,7 @@ assets/items/faction/*/_contact_sheet.png
 assets/items/faction/*/_contact_sheet.png.import
 assets/items/faction_w/*/_contact_sheet.png
 assets/items/faction_w/*/_contact_sheet.png.import
+
+# API keys (never commit)
+.kodik_key
+*.kodik_key
