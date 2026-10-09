@@ -54,9 +54,13 @@ FEET_PAD = 2
 
 BG_CHROMA = 35.0
 BG_VAL = 150.0
-# Карман шахматки, окружённый фигурой (см. background_mask). Замер: карманы
-# 442..1463 px, серебро/пламя — до 233 px. Порог в разрыве.
-BG_POCKET_MIN = 300
+# Детектор по фазе сетки (см. background_mask). Замер на 8 атласах: клетка
+# шахматки 12x12 px, два уровня ~254 и ~225..236, между клетками 1 px
+# мягкого перехода 241..250.
+BG_CELL_DEFAULT = 12
+BG_LEVEL_TOL = 10
+BG_CHROMA_TOL = 14
+BG_SOFT_PAD = 2
 MIN_AREA = 800
 CLOSE_R = 2
 PAD = 4
@@ -104,37 +108,66 @@ def _flood_from_border(free: np.ndarray) -> np.ndarray:
     return seen
 
 
+def _checker_levels(arr: np.ndarray) -> tuple:
+    """Период клетки и два уровня яркости шахматки, снятые с чистого угла.
+
+    Шахматка - это РЕГУЛЯРНАЯ СЕТКА. Замер на всех 8 атласах: клетка 12x12 px,
+    уровни ~254 и ~225..236, между клетками 1 px мягкого перехода (241..250).
+    """
+    lum = arr.max(axis=2).astype(np.int32)
+    corner = lum[:24, :24]
+    vals, counts = np.unique(corner, return_counts=True)
+    order = np.argsort(-counts)
+    bright = int(vals[order[0]])
+    dark = int(vals[order[1]]) if len(vals) > 1 else bright - 20
+    if dark > bright:
+        bright, dark = dark, bright
+    return BG_CELL_DEFAULT, bright, dark
+
+
 def background_mask(arr: np.ndarray) -> np.ndarray:
     """Маска фона, True = пиксель СЮЖЕТА.
 
-    НЕЛЬЗЯ просто chroma-фильтром: у атласа серебристый/стальной доспех
-    почти бесцветный, как и светлая клетка шахматки. Глобальный порог режет
-    металл насквозь — игрок увидел «у кого головы нет, у кого грудь дырявая».
+    Фон = ОБЪЕДИНЕНИЕ двух независимых детекторов. Ни один из них поодиночке
+    не работает, но у них разные слепые зоны, и объединение закрывает обе:
 
-    Поэтому фон = то, что СВЯЗАНО С КРАЕМ картинки. Доспех внутри фигуры
-    краем не связан, даже если бесцветен, и остаётся сущностью.
+      1) ЗАЛИВКА от края ("выглядит как фон" И связано с границей картинки).
+         Даёт полное покрытие, но пропускает КАРМАНЫ шахматки: между плащом и
+         посохом, между ногами, между рукой и торсом они полностью окружены
+         фигурой и до края не достаются.
 
-    Но одной связности мало: между плащом и посохом остаётся КАРМАН шахматки,
-    полностью окружённый фигурой. Он с краем не связан, значит попал бы в
-    сущность — игрок увидел «у рук большие области белого».
+      2) ДЕТЕКТОР ПО ФАЗЕ сетки ("значение совпадает с клеткой шахматки,
+         соответствующей моей фазе"). Покрывает карманы, потому что у фона
+         есть строгая позиционная структура, которой у серебра нет.
+         Замер: серебро он не ест ВООБЩЕ (0 px).
 
-    Карман отличается от серебра РАЗМЕРОМ, а не цветом: замер по 8 атласам
-    дал чистое разделение.
-      - карманы шахматки: 8 штук на атлас, 442..1463 px, хрома 1..1
-      - серебро/пламя посоха: ~1484 куска, <233 px, хрома 9..20
-    Порог 300 лежит в разрыве (233 < 300 < 345).
+    Раньше карманы снимались по РАЗМЕРУ. Это было неверно: карман между
+    ногами неотличим от серебра по размеру, и свип порогов 300/200/150/80
+    показал, что ниже 150 серебро режется тем сильнее, чем выше тир
+    (t3 минус 1296 светлых пикселей), а выше 300 остаются белые пятна.
+    Объединение обходится без порога по размеру вообще.
     """
-    af = arr.astype(np.float32)
-    mx, mn = af.max(axis=2), af.min(axis=2)
-    looks_like_bg = ((mx - mn) < BG_CHROMA) & (mx > BG_VAL)
-    bg_connected = _flood_from_border(looks_like_bg)
-    # Карманы: «похожие на фон», но не связанные с краем.
-    pockets = looks_like_bg & ~bg_connected
-    for comp in _components(pockets):
-        if len(comp) >= BG_POCKET_MIN:
-            for y, x in comp:
-                bg_connected[y, x] = True
-    return ~bg_connected
+    lum = arr.max(axis=2).astype(np.int32)
+    chroma = lum - arr.min(axis=2).astype(np.int32)
+
+    # 1) заливка от края
+    looks_like_bg = (chroma < BG_CHROMA) & (lum > BG_VAL)
+    bg = _flood_from_border(looks_like_bg)
+
+    # 2) детектор по фазе сетки + дочистка мягкого перехода между клетками
+    cell, bright, dark = _checker_levels(arr)
+    h, w = lum.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    phase = ((xx // cell) + (yy // cell)) % 2
+    expected = np.where(phase == 0, bright, dark).astype(np.int32)
+    phase_bg = (np.abs(lum - expected) <= BG_LEVEL_TOL) & (chroma <= BG_CHROMA_TOL)
+    # Переход между клетками (1 px, 241..250) не совпадает ни с одним уровнем.
+    # Он нейтральный и светлый - ровно как фон, - и лежит вплотную к клеткам,
+    # поэтому добираем его морфиологическим расширением.
+    soft = (chroma <= BG_CHROMA_TOL) & (lum >= min(bright, dark) - 6)
+    phase_bg |= soft & dilate(phase_bg, BG_SOFT_PAD)
+
+    return ~(bg | phase_bg)
 
 
 def _components(mask: np.ndarray) -> list:
@@ -384,7 +417,18 @@ def main() -> int:
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--sheet", action="store_true")
     ap.add_argument("--no-db", action="store_true")
+    # 10.10 этап 1: доводим по одному тиру, начиная с самого дешёвого по металлу
+    # (t0). Замер: потери серебра растут с тиром, t0 минус 196 px против
+    # t3 минус 1296. Тир задаётся списком, чтобы один прогон трогал только
+    # нужные кадры и откат оставался дешёвым.
+    ap.add_argument("--tiers", default="0,1,2,3",
+                    help="какие тиры нарезать, например --tiers 0")
     args = ap.parse_args()
+    tiers = [int(t) for t in args.tiers.split(",") if t.strip() != ""]
+    for t in tiers:
+        if t not in (0, 1, 2, 3):
+            print("FAIL: тир должен быть 0..3, получено %r" % t)
+            return 2
 
     db_entries: list[dict] = []
     written = 0
@@ -418,7 +462,7 @@ def main() -> int:
                 rows[2].append(c)
             else:
                 rows[3].append(c)
-        for tier in range(4):
+        for tier in tiers:
             comps = rows[tier]
             comps.sort(key=lambda c: c["x0"])
             print("  t%d: %d comps x0=%s" % (tier, len(comps),
@@ -476,7 +520,7 @@ def main() -> int:
     print("written=%d missing=%d" % (written, len(missing)))
     if missing:
         print(missing[:12])
-    expected = len(SETS) * 4 * 8
+    expected = len(SETS) * len(tiers) * 8
     ok = written == expected and not missing
     print("RESULT: %s (%d/%d)" % ("OK" if ok else "GAPS", written, expected))
     return 0 if ok else 2
