@@ -1395,5 +1395,82 @@
   "phases": 1,
   "frames": 3,
   "desc": "TA4KA 3"
+ },
+ "193": {
+  "folder": "prop_barrel",
+  "index": 0,
+  "w": 40,
+  "h": 40,
+  "cx": 20,
+  "cy": 40,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_barrel"
+ },
+ "194": {
+  "folder": "prop_barrel2",
+  "index": 0,
+  "w": 40,
+  "h": 48,
+  "cx": 20,
+  "cy": 48,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_barrel2"
+ },
+ "195": {
+  "folder": "prop_crate",
+  "index": 0,
+  "w": 40,
+  "h": 40,
+  "cx": 20,
+  "cy": 40,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_crate"
+ },
+ "196": {
+  "folder": "prop_crate2",
+  "index": 0,
+  "w": 44,
+  "h": 48,
+  "cx": 22,
+  "cy": 48,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_crate2"
+ },
+ "197": {
+  "folder": "prop_lantern",
+  "index": 0,
+  "w": 32,
+  "h": 56,
+  "cx": 16,
+  "cy": 56,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_lantern"
+ },
+ "198": {
+  "folder": "prop_sack",
+  "index": 0,
+  "w": 40,
+  "h": 40,
+  "cx": 20,
+  "cy": 40,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_sack"
+ },
+ "199": {
+  "folder": "prop_pot",
+  "index": 0,
+  "w": 32,
+  "h": 32,
+  "cx": 16,
+  "cy": 32,
+  "phases": 1,
+  "frames": 1,
+  "desc": "Seedream prop prop_pot"
  }
 }

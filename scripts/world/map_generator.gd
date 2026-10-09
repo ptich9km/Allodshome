@@ -117,7 +117,7 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 18
+const GEN_VERSION := 21
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -309,6 +309,9 @@ func _generate() -> void:
 	# 6. City content: здания + НПЦ городов (после известных спавна/портала)
 	_place_city_content(rng)
 
+	# 6b. Мелкий декор вокруг городов (бочки/ящики/фонари seedream)
+	_place_city_props(rng)
+
 	# 7. Деревья/объекты (заполняют _obstacles, обходя города/дороги/спавн)
 	_place_objects(rng)
 
@@ -430,6 +433,10 @@ const DECOR_FOLDERS_BY_RACE := {
 	"druid": ["druid_decor_1"],
 	"necro": ["necro_decor_1"],
 }
+
+## Мелкий декор карты (seedream, alm_objects.json ID 193-199).
+## Ставится вокруг городов: бочки/ящики/мешки у зданий, фонари вдоль дорог.
+const CITY_PROPS := [193, 194, 195, 196, 197, 198, 199]  # barrel, barrel2, crate, crate2, lantern, sack, pot
 
 ## Зоны, в которых генератор ставит портал.
 ##
@@ -819,6 +826,69 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 			_place_city_building(center, spec)
 		_place_city_npcs(rng, center, str(c["faction"]))
 	print("STRUCTURES_COUNT: %d" % _structures_out.size())
+
+## 6b. Мелкий декор вокруг городов: бочки/ящики/мешки/фонари (seedream).
+## Декор - на траве/почве внутри овала, не у самих зданий.
+## Фонари (197) - ТОЛЬКО на траве, примыкающей к дороге (фонарный столб
+## у тротуара), с дистанцией >= 3 клеток между фонарями, чтобы не сбивались
+## сгустком в центре площади.
+func _place_city_props(rng: RandomNumberGenerator) -> void:
+	var placed := 0
+	var lantern_cells: Array[Vector2i] = []
+	for c in _cities:
+		var center: Vector2i = c["pos"]
+		var cr := city_radius()  # овал +1 клетка «тротуара» снаружи
+		var want := rng.randi_range(5, 8)
+		var tries := 0
+		var got := 0
+		while got < want and tries < want * 24:
+			tries += 1
+			var r := rng.randi_range(2, cr + 1)
+			var dx := rng.randi_range(-r, r)
+			var dy := rng.randi_range(-r, r)
+			if cr > 0:
+				var fx := float(dx) / float(cr + 1)
+				var fy := float(dy) / float(cr + 1)
+				if fx * fx + fy * fy > 1.0:
+					continue
+			var cell := center + Vector2i(dx, dy)
+			if cell.x < 1 or cell.y < 1 or cell.x >= W - 1 or cell.y >= H - 1:
+				continue
+			var idx := cell.y * W + cell.x
+			var t := _terrain[idx]
+			# декор только на суше вне дороги: трава/почва
+			if t != 0 and t != 4:
+				continue
+			if _obstacles[idx] != 0 or _reserved.has(cell):
+				continue
+			# не лезть на свес зданий
+			var touch_bldg := false
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+					Vector2i(1, 1), Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1)]:
+				if _reserved.has(cell + d):
+					touch_bldg = true
+					break
+			if touch_bldg:
+				continue
+			var near_rd := _near_road(cell)
+			var prop_id: int
+			if near_rd:
+				# фонарь у тротуара, но не чаще 1 на 3 клетки
+				var too_close := false
+				for lc in lantern_cells:
+					if maxi(abs(lc.x - cell.x), abs(lc.y - cell.y)) < 3:
+						too_close = true
+						break
+				if too_close or rng.randf() > 0.45:
+					continue
+				prop_id = 197
+				lantern_cells.append(cell)
+			else:
+				prop_id = int(_pick(rng, [193, 194, 195, 196, 198, 199]))
+			_obstacles[idx] = prop_id
+			got += 1
+			placed += 1
+	print("CITY_PROPS: %d (ламп=%d)" % [placed, lantern_cells.size()])
 
 ## Поставить здание (spec) в кольцо вокруг центра города, не на площадь.
 ## Кольцо расширено до CITY_RADIUS (было 7) под овал 17×17, а в проверку
