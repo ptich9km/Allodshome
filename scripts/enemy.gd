@@ -19,7 +19,7 @@ var _path: Array = []             # маршрут к игроку (обход �
 var _repath := 0.0
 var _corpse_timer := 0.0          # сколько труп лежит до удаления (без разложения)
 var health_bar: HealthBar
-var _anim: UnitAnim = null
+var _anim: UnitAnimBase = null
 
 func _ready():
 	add_to_group("enemy")

@@ -16,6 +16,32 @@ static func safe_dir(from: Vector2, to: Vector2, fallback: Vector2 = Vector2.ZER
 		return fallback
 	return d.normalized()
 
+## Компасная октанта вектора направления: 0..7, ЕДИНСТВЕННЫЙ источник конвенции.
+##
+## ИНДЕКСАЦИЯ КОНТРИКЛОКОВАЯ, 0 = СЕВЕР (вверх экрана):
+##   0=север  7=северо-восток  6=восток  5=юго-восток
+##   4=юг     3=юго-запад      2=запад  1=северо-запад
+##
+## Вынесено из UnitAnim.set_direction_vec, потому что конвенцию теперь читают
+## ДВА бэкенда анимации (спрайт-листы и 2D-риг). Дублировать формулу означало
+## бы, что рано или поздно риг начнёт смотреть не туда — а направление в бою
+## игровая информация, а не украшение. Сторож: tests/anim_contract_smoke.gd.
+static func unit_octant(dir_vec: Vector2) -> int:
+	if dir_vec.length_squared() < 0.001:
+		return -1
+	var ang := rad_to_deg(dir_vec.angle())  # -180..180, 0 = вправо
+	var d := int(round((ang - 90.0) / 45.0)) % 8
+	if d < 0:
+		d += 8
+	return d
+
+## Ближайший кардинальный октант: диагональ схлопывается на соседний кардинал.
+## Нужен ригу, где нарисовано 3 ракурса (юг/восток/север), а мир запрашивает 8.
+static func snap_octant_to_cardinal(octant: int) -> int:
+	if octant < 0:
+		return -1
+	return posmod(int(round(float(octant) / 2.0)) * 2, 8)
+
 ## Разрешён ли шаг юнита по карте (общая проходимость для игрока и NPC).
 static var is_paused: bool = false
 static var player_target: Vector2 = Vector2.ZERO

@@ -1,5 +1,5 @@
 class_name UnitAnim
-extends Node2D
+extends UnitAnimBase
 ## Анимированный юнит (герой/НПЦ/монстр) из наборов assets/units.
 ##
 ## Раскладка кадров (по карте пользователя, набор unarmed 129 кадров):
@@ -17,21 +17,16 @@ extends Node2D
 ## - 8 направлений (swordsman и др.): фаза-мажор, кадр = block + phase*8 + dir;
 ##   движение 8 фаз, атака 7, смерть 4 (по units.txt).
 
-enum Anim { IDLE, MOVE, ATTACK, DYING, DECAY }
+## Поля `set_name`, `dir`, `anim`, `anim_idx`, `target_dir`, `speed_scale`,
+## константа `FULL_DIRS` и `enum Anim` унаследованы от UnitAnimBase — здесь
+## только собственное состояние этого бэкенда. Дублировать их нельзя: это
+## члены базового класса, повторное объявление — ошибка компиляции.
 
-const FULL_DIRS := 8
-
-var set_name := ""            # "heroes/swordsman", "monsters/orc", ...
 var prefix := "sprites"       # префикс кадра в папке (sprites | swordsman | ...)
 var frames: Array = []        # Texture2D кадры sprites-001..N
-var dir := 0                  # текущее МИРОВОЕ направление 0-7
-var anim: int = Anim.IDLE
-var anim_idx := 0             # номер фазы в текущем блоке
-var target_dir := -1             # направление, к которому доворачиваем (плавный поворот)
+var anim_time := 0.0
 var _rot_acc := 0.0
 const ROT_STEP_TIME := 0.05      # сек на шаг направления при повороте
-var anim_time := 0.0
-var speed_scale := 1.0        # множитель темпа (движение быстрее — шаги быстрее)
 var _last_dir := 0
 
 var _sprite: Sprite2D
@@ -78,15 +73,14 @@ func _file_dir_of(world_dir: int) -> Array:
 	return [FULL_DIRS - world_dir, true]
 
 ## Направление по вектору скорости/взгляда (world coords).
+## Октанты считает Game.unit_octant — единственный источник конвенции
+## (0 = север, индексация против часовой). Дубль здесь означал бы, что
+## 2D-риг рано или поздно начнёт смотреть не туда.
 func set_direction_vec(dir_vec: Vector2) -> void:
-	if dir_vec.length_squared() < 0.001:
-		return
-	var ang := rad_to_deg(dir_vec.angle())  # -180..180, 0 = вправо
-	# карта: 0 = юг (вниз экрана = 90deg в Godot), против часовой
-	var d := int(round((ang - 90.0) / 45.0)) % FULL_DIRS
+	var d := Game.unit_octant(dir_vec)
 	if d < 0:
-		d += FULL_DIRS
-	# Плавный поворот: к цельному направлению крутимся через промежуточные
+		return
+	# Плавный поворот: к цельного направления крутимся через промежуточные
 	if d != target_dir:
 		target_dir = d
 

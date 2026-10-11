@@ -236,7 +236,7 @@ var armor_kind: String = "heavy"   # "heavy" -> heroes/, "light" -> heroes_l/
 var weapon: String = "unarmed"     # по умолчанию без оружия — отлаживаем его анимацию
 var two_handed: bool = false
 var has_shield: bool = false
-var _anim: UnitAnim = null
+var _anim: UnitAnimBase = null
 
 func _ready():
 	_apply_hero_choice()
@@ -712,7 +712,19 @@ func get_protection_earth() -> int: return _sphere_protection("Earth")
 func get_protection_astral() -> int: return spirit / 2 + StatusEffects.resist_bonus(self, "Astral")  # астрал почти не защищается
 
 ## Текущий набор анимаций по экипировке ("heroes/swordsman_").
+##
+## ПИЛОТ 10.10: PILOT_HERO_SET — набор seedream, который проверяется в игре.
+## Пустая строка = обычная раскладка по экипировке. Откат — одна строка.
+const PILOT_HERO_SET := "heroes/pilot"
+
+## ПИЛОТ 10.10: риг вместо спрайт-листов, если для набора есть rig.json.
+## Откат всего пилота — false в этой строке. Действует только вместе с
+## PILOT_HERO_SET: сам по себе риг включается лишь там, где риг есть.
+const PILOT_RIG := true
+
 func anim_set_name() -> String:
+	if PILOT_HERO_SET != "":
+		return PILOT_HERO_SET
 	var top := "heroes" if armor_kind == "heavy" or weapon in ["staff", "magic"] else "heroes_l"
 	var base := weapon
 	match weapon:
@@ -738,6 +750,14 @@ func refresh_animation() -> void:
 	if _anim == null:
 		return
 	var set := anim_set_name()
+	# Новый набор может не иметь рига (экипировка перевела героя на другой
+	# набор). Тогда риг обязан уступить место спрайт-листам — иначе юнит
+	# остался бы скелетом от прежнего набора.
+	if _anim is RiggedAnim and not RiggedAnim.has_rig(set):
+		_anim.queue_free()
+		_anim = null
+		_ensure_sprite()
+		return
 	_anim.setup(set)
 	_anim.play(UnitAnim.Anim.MOVE, true)
 	move_speed = _calc_speed()   # скорость обновляется вместе с экипировкой
@@ -825,10 +845,26 @@ func _ensure_sprite():
 	if old_sprite:
 		old_sprite.queue_free()
 
-	_anim = UnitAnim.new()
+	_anim = _make_anim_backend(anim_set_name())
 	_anim.name = "UnitAnim"
 	add_child(_anim)
 	refresh_animation()
+
+## Создать бэкенд анимации для набора: риг, если он есть, иначе спрайт-листы.
+##
+## Бэкенды взаимозаменяемы по контракту UnitAnimBase (сторож —
+## tests/anim_contract_smoke.gd), поэтому выбор сводится к «есть ли риг».
+## PILOT_RIG отключает подмену целиком: откат пилота — одна строка.
+func _make_anim_backend(set: String) -> UnitAnimBase:
+	if PILOT_RIG and RiggedAnim.has_rig(set):
+		var r := RiggedAnim.new()
+		r.setup(set)
+		if r.is_loaded():
+			return r
+		r.free()
+	var a := UnitAnim.new()
+	a.setup(set)
+	return a
 
 func _physics_process(delta):
 	if Game.is_paused:

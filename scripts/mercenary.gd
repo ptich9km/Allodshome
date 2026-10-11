@@ -17,7 +17,7 @@ var state: String = "idle"      # idle | dying | decay | corpse
 var lifespan: float = 0.0       # >0 — призванный миньон: исчезает по истечении времени
 var _lifetime: float = 0.0
 var _corpse_timer := 0.0
-var _anim: UnitAnim = null
+var _anim: UnitAnimBase = null
 var _path: Array = []
 var _repath: float = 0.0
 

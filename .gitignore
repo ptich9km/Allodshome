@@ -38,6 +38,11 @@ __pycache__/
 assets/maps/gen/gen_smart_01.png
 assets/maps/gen/gen_smart_01.png.import
 
+# "Превью рига" (tests/rig_render_preview.gd) — выход отладочного рендера,
+# артефакт, а не контент. Аналогично контактным листам ниже.
+rig_preview.png
+rig_preview.png.import
+
 # Контактные листы ассетов - выход dev-инструмента для визуального контроля
 # (tests/extract_chatgpt_armor.py --sheet, tests/extract_chatgpt_weapons2.py --sheet,
 #  tests/gen_faction_armor_tint.py --sheet, tests/gen_faction_weapon_tint.py --sheet).
