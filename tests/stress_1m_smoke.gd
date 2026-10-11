@@ -141,25 +141,45 @@ func _run() -> void:
 
 
 func _enable_stress(on: bool) -> void:
-	# Пишем user://config/game.cfg — GameConfig перекрывает res://
-	var cfg := ConfigFile.new()
-	if FileAccess.file_exists(USER_CFG):
-		cfg.load(USER_CFG)
-	cfg.set_value("stress", "enabled", 1 if on else 0)
-	if on:
-		cfg.set_value("stress", "map_size", 1000)
-		cfg.set_value("stress", "tree_count", 83700)
-		cfg.set_value("stress", "gray_count", 7500)
-		cfg.set_value("stress", "city_guard_count", 2000)
-		cfg.set_value("stress", "city_citizen_count", 1800)
-		cfg.set_value("stress", "gen_version", 99)
-	var dir := USER_CFG.get_base_dir()
-	if not DirAccess.dir_exists_absolute(dir):
-		DirAccess.make_dir_recursive_absolute(dir)
-	cfg.save(USER_CFG)
-	# Сбрасываем кэш GameConfig
-	GameConfig._loaded = false
+	# Настройки задаются ТОЛЬКО В ПАМЯТИ. На диск они больше не пишутся.
+	#
+	# Раньше тест писал `[stress] enabled=1` в `user://config/game.cfg`, и в
+	# этом была главная проблема: пользовательский конфиг ПЕРЕЖИВАЕТ процесс.
+	# Если прогон не дошёл до обратного выключения — упал, словил таймаут, его
+	# убили, — то `enabled=1` остаётся на диске, и следующий ЛЮБОЙ тест начинает
+	# генерировать карту 1000x1000 вместо 192x192.
+	#
+	# Наблюдалось вживую: прогоны грузили 4-МБ карты, тесты упирались в таймаут,
+	# и часть «падений» после удаления Аллодов была ложной — виноват был не код.
+	# Теперь kill теста не оставляет следов: значения живут только в
+	# `GameConfig._cfg` этого процесса.
 	GameConfig.load_all()
+	if on:
+		GameConfig._cfg.set_value("stress", "enabled", 1)
+		GameConfig._cfg.set_value("stress", "map_size", 1000)
+		GameConfig._cfg.set_value("stress", "tree_count", 83700)
+		GameConfig._cfg.set_value("stress", "gray_count", 7500)
+		GameConfig._cfg.set_value("stress", "city_guard_count", 2000)
+		GameConfig._cfg.set_value("stress", "city_citizen_count", 1800)
+		GameConfig._cfg.set_value("stress", "gen_version", 99)
+	else:
+		GameConfig._cfg.set_value("stress", "enabled", 0)
+		# Подчищаем карты, рождённые на стресс-размере.
+		#
+		# Обычная карта 192x192 весит ~148 КБ, стрессовая 1000x1000 — 4 МБ.
+		# Оставленная большая карта опасна даже при выключенном стрессе:
+		# `ensure_map` видит файл и считает его валидным, поэтому следующий
+		# тест молча грузит миллион клеток вместо 36 тысяч.
+		var maps := "user://maps"
+		var d := DirAccess.open(maps)
+		if d != null:
+			for f in d.get_files():
+				if not (f.ends_with(".alm") or f.ends_with(".json")):
+					continue
+				var full := maps + "/" + f
+				if FileAccess.file_exists(full) and FileAccess.get_size(full) > 1000000:
+					print("  удаляю стресс-карту %s" % f)
+					DirAccess.remove_absolute(ProjectSettings.globalize_path(full))
 	print("  stress.enabled=%d map_size=%d" % [
 		GameConfig.geti("stress", "enabled"),
 		GameConfig.geti("stress", "map_size"),
