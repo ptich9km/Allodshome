@@ -52,7 +52,14 @@ func _run() -> void:
 
 	_test_motion_mode()
 	_test_choose_slide()
-	_test_enemy_slide()
+	# Долг из §12, закрыт 11.10: _test_enemy_slide() содержит await
+	# (_spawn_enemy_on_land()), то есть это корутина, и вызов без await
+	# возвращался на первом await. Четыре проверки внутри (не удалось поставить
+	# врага / нашлась непроходимая клетка / шаг отклоняется / скольжение
+	# разрешено) уезжали за _finish() и НИКОГДА НЕ ВЫПОЛНЯЛИСЬ — тест оставался
+	# зелёным на сломанном скольжении. Ровно тот класс, что описан в журнале:
+	# «функция с await, вызванная без него, уезжает за пределы отчёта».
+	await _test_enemy_slide()
 	_test_select_ring()
 	_finish()
 
@@ -143,19 +150,26 @@ func _test_enemy_slide() -> void:
 	e.move_speed = 120.0
 	e.set("state", "idle")
 	var start := e.global_position
-	# Цель — диагонально в непроходимую клетку: полный вектор запрещён,
-	# но одна из осей остаётся разрешённой.
-	var blocked := _blocked_cell_near(e.global_position)
-	_check(blocked.x >= 0, "найдена непроходимая клетка (%s)" % str(blocked))
+	# Цель — ДИАГОНАЛЬНО в соседнюю непроходимую клетку: полный вектор
+	# запрещён, но одна из осей остаётся разрешённой. Отсюда смысл проверки
+	# скольжения — «есть что скользить».
+	var blocked := _blocked_neighbour(e.global_position)
+	_check(blocked.x >= 0, "найдена соседняя непроходимая клетка (%s)" % str(blocked))
 	if blocked.x < 0:
 		return
 	var goal := Vector2(blocked.x * 32 + 16, blocked.y * 32 + 16)
 	var dir := Game.safe_dir(start, goal)
-	# Шаг строго по одной оси, как в реальном move_and_slide при упоре.
+	# Шаг по ДИАГОНАЛЬНОЙ оси строго, как в реальном move_and_slide при упоре.
 	var step := Vector2(dir.x, 0.0) * 120.0 * 0.016
 	if absf(dir.x) < 0.01:
 		step = Vector2(0.0, dir.y) * 120.0 * 0.016
-	_check(not e._can_step(step * 4.0),
+
+	# ВАЖНО: шаг должен ПЕРЕСЕКАТЬ границу клетки, иначе проверка вхолостую.
+	# Между клетками пусто, и шаг в 7.68 px из центра клетки остаётся внутри
+	# неё — тогда is_walkable_world даёт true и «шаг в стену» проверять нечего.
+	# Полная клетка (32 px) гарантированно входит в соседнюю.
+	var into_blocked: Vector2 = step.normalized() * 32.0
+	_check(not e._can_step(into_blocked),
 		"шаг в непроходимую сторону отклоняется (есть что скользить)")
 
 	# Скольжение: ось, оставшаяся свободной, обязана быть разрешена.
@@ -171,16 +185,43 @@ func _test_enemy_slide() -> void:
 	await process_frame
 
 
-func _blocked_cell_near(from: Vector2) -> Vector2i:
+## Блокунутая клетка СОСЕДНЯЯ ПО ОСИ — только 4 соседа, не диагональ.
+##
+## Раньше здесь был поиск по расширяющейся спирали до 14 клеток, и это была
+## причина падения «шаг в непроходимую сторону отклоняется».
+##
+## Замер (11.10): враг стоял в клетке (136, 43), спираль вернула (136, 41) —
+## ДВЕ клетки в стороне. Шаг длиной 120*0.016*4 = 7.68 px физически не мог
+## её достичь, is_walkable_world давал true (между клетками пусто), и
+## _can_step правильно разрешал шаг. Тест падал на СОВЕРЕННОЙ логике.
+##
+## Именно ОРТОГОНАЛЬНЫЙ сосед, потому что смысл проверки такой: шаг по одной
+## оси упирается в стену и отклоняется, а шаг по перпендикулярной оси
+## проскальзывает. Для диагональной стены это неразличимо: шаг строго по X
+## ведёт в (137,43), а не в (137,42), то есть в другую, свободную клетку —
+## и проверка вновь врала бы на верной логике.
+##
+## Из ортогональных выбирается тот, у которого перпендикулярный сосед
+## проходим: иначе скользить некуда и вторая проверка стала бы вхолостую.
+func _blocked_neighbour(from: Vector2) -> Vector2i:
 	if _map == null or not _map.has_method("is_walkable_world"):
 		return Vector2i(-1, -1)
-	for r in range(2, 14):
-		for dy in range(-r, r + 1):
-			for dx in range(-r, r + 1):
-				var c := Vector2i(int(from.x) / 32 + dx, int(from.y) / 32 + dy)
-				if not bool(_map.call("is_walkable_world", Vector2(c.x * 32 + 16, c.y * 32 + 16))):
-					return c
+	var base := Vector2i(int(from.x) / 32, int(from.y) / 32)
+	var perpendicular := [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]
+	for side_v in perpendicular:
+		var side: Vector2i = side_v
+		if _walk(base + side):
+			continue  # не стена
+		# Перпендикуляр к стороне. Vector2i.cross() в Godot 4 НЕ существует —
+		# поворот на 90° для осевого вектора считается так.
+		var cross := Vector2i(-side.y, side.x)
+		if _walk(base + side + cross) or _walk(base + side - cross):
+			return base + side
 	return Vector2i(-1, -1)
+
+
+func _walk(c: Vector2i) -> bool:
+	return bool(_map.call("is_walkable_world", Vector2(c.x * 32 + 16, c.y * 32 + 16)))
 
 
 func _spawn_enemy_on_land() -> Enemy:

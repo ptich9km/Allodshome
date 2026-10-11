@@ -16,6 +16,7 @@ const CELL_COLUMNS := 4
 
 var _fails: Array[String] = []
 var _panel
+var _checks := 0
 
 func _init() -> void:
 	call_deferred("_run")
@@ -119,13 +120,28 @@ func _run() -> void:
 	_report()
 
 func _check(ok: bool, what: String) -> void:
+	_checks += 1
 	if not ok:
 		_fails.append(what)
 	print("INN: %s %s" % ["ok  " if ok else "FAIL", what])
 
 func _report() -> void:
+	# Число ПРОВЕРОК, а не провалов. Раньше здесь печаталось _fails.size() в
+	# обеих ветках, и на зелёном прогоне отчёт выглядел как "RESULT: OK
+	# inn_ui_smoke (0)" — при 16 выполненных проверках. Цифра в имени теста
+	# читается как объём работы, и ноль в ней означал «ничего не проверил».
+	#
+	# Ноль выполненных проверок — не успех, а молчание: тот же класс, что в
+	# §12 (тест, который физически не может сообщить о провале). Поэтому
+	# такой прогон объявляется провалом, а не успехом.
+	if _checks == 0:
+		print("RESULT: FAIL inn_ui_smoke (проверок: 0 — тест ничего не выполнил)")
+		quit(1)
+		return
 	if _fails.is_empty():
-		print("RESULT: OK inn_ui_smoke (%d)" % _fails.size())
+		print("RESULT: OK inn_ui_smoke (проверок: %d, провалов: 0)" % _checks)
+		quit(0)
 	else:
-		print("RESULT: FAIL inn_ui_smoke (%d): %s" % [_fails.size(), str(_fails)])
-	quit(0 if _fails.is_empty() else 1)
+		print("RESULT: FAIL inn_ui_smoke (проверок: %d, провалов: %d): %s"
+			% [_checks, _fails.size(), str(_fails)])
+		quit(1)
