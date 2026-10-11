@@ -39,10 +39,19 @@ func _run() -> void:
 	_check(WalkTable.walkable_at(1, 0) == false,
 		"walkable_at для hf гор (hf=1=file2-1) — false")
 
-	# Летающие: у bat/dragon/succubus z=96 > 0
-	for set_name in ["monsters/bat", "monsters/dragon", "monsters/succubus"]:
-		_check(UnitDB.fly_z(set_name) > 0, "%s летающий (z>0)" % set_name)
-	_check(UnitDB.fly_z("humans/swordsman_") == 0 or true, "пехота без fly_z (info)")
+	# Летающие. Проверка ИНВЕРТИРОВАНА: наборов `monsters/*` (bat, dragon,
+	# succubus) с z=96 больше нет — весь арт Аллодов удалён 11.10. Сейчас в базе
+	# нет НИ ОДНОГО летающего набора, и это надо подтверждать, а не молча
+	# пропускать: если завтра появится риг летучего зверя с z>0, проверка
+	# «сейчас летающих нет» перестанет проходить и заставит разобраться.
+	# Когда риги Серых появятся, сюда вернётся проверка конкретных наборов.
+	var flying := 0
+	for name in UnitDB.all_names(""):
+		if UnitDB.fly_z(str(name)) > 0:
+			flying += 1
+	_check(flying == 0,
+		"летающих наборов сейчас нет (после чистки Аллодов), найдено: %d" % flying)
+	_check(UnitDB.fly_z("seed/sw_seed") == 0, "пехота без fly_z")
 
 	# --- Карта: BlendMesh ---
 	Game.request_map_by_seed(SEED, "mid")

@@ -1,8 +1,15 @@
 extends SceneTree
-## Диагностика: блокируют ли здания Alice клетки (навигация) и открывается ли меню.
+## Диагностика: блокируют ли здания клетки (навигация) и открывается ли меню.
 ## Запуск: godot --headless --path . --script res://tests/building_nav_smoke.gd
-
+##
+## ДИАПАЗОН ID. Раньше здесь стояло `tid < 200 or tid > 206` — диапазон
+## «зданий Alice». С 10.10 в игре арт seedream (id 207..232), и зданий Alice
+## на картах больше нет. Тест молча переставал проверять ВСЁ: ни одна дверь не
+## попадала под фильтр, `ok=0`, и падал он без внятного диагноза. Теперь берём
+## нижнюю границу константой, а верхнюю не фильтруем вовсе — здание это
+## structure_db с id >= BUILDING_ID_MIN.
 const SEED := 4242
+const BUILDING_ID_MIN := 200
 
 var _fails: Array[String] = []
 var _checks := 0
@@ -67,7 +74,7 @@ func _run() -> void:
 	var door_bad := 0
 	for st in structs:
 		var tid := int(st.get("type_id", 0))
-		if tid < 200 or tid > 206:
+		if tid < BUILDING_ID_MIN:
 			continue
 		var def: Dictionary = StructureDB.get_by_id(tid)
 		var fw := int(def.get("tile_width", 3))
@@ -93,7 +100,7 @@ func _run() -> void:
 	var hit_ok := 0
 	for st in structs:
 		var tid := int(st.get("type_id", 0))
-		if tid < 200 or tid > 206:
+		if tid < BUILDING_ID_MIN:
 			continue
 		var cell := Vector2i(int(st.get("x", 0)) + 1, int(st.get("y", 0)) + 1)
 		var s: Dictionary = am.call("structure_at", cell)

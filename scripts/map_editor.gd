@@ -321,18 +321,22 @@ func _open_npc_picker() -> void:
 	grid.columns = 6
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 4)
-	vbox.add_child(_npc_section_label("Жители (humans)"))
+	vbox.add_child(_npc_section_label("Городские жители (city_*)"))
 	vbox.add_child(grid)
-	for name in UnitDB.all_names("humans/"):
+	for name in UnitDB.all_names("city_"):
 		_add_npc_button(grid, name, pop)
 	var grid2 := GridContainer.new()
 	grid2.columns = 6
 	grid2.add_theme_constant_override("h_separation", 4)
 	grid2.add_theme_constant_override("v_separation", 4)
-	vbox.add_child(_npc_section_label("Монстры (monsters)"))
+	vbox.add_child(_npc_section_label("Прочие наборы"))
 	vbox.add_child(grid2)
-	for name in UnitDB.all_names("monsters/"):
-		_add_npc_button(grid2, name, pop)
+	# Серые переехали на риги и сейчас в базе отсутствуют (11.10), поэтому
+	# вместо пустой сетки монстров показываем то, чем их можно заменить при
+	# расстановке вручную: наёмники и пилотный риг.
+	for prefix in ["ork_mage", "rig/"]:
+		for name in UnitDB.all_names(prefix):
+			_add_npc_button(grid2, name, pop)
 	pop.popup_centered()
 
 func _npc_section_label(text: String) -> Label:

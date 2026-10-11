@@ -12,7 +12,7 @@ extends SceneTree
 ## Запуск:
 ##   godot --headless --path . --script res://tests/magic_smoke.gd
 
-const SPELL := "monsters/orc"
+const SPELL := "seed/sw_seed"
 const DB_PATH := "res://assets/spells/spells_db.json"
 
 var _fails: Array = []

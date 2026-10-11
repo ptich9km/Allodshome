@@ -28,7 +28,7 @@ https://github.com/haingt-dev/godot-pixel-cutout-rig (MIT, (c) 2026 haingt.dev).
 Изменены таблица размеров под наш масштаб и вывод.
 
 Запуск:
-    python tests/gen_rig_parts.py --out assets/units/rig/heroes_pilot/parts
+    python tests/gen_rig_parts.py --out assets/units/rig/rig_pilot/parts
 """
 from __future__ import annotations
 

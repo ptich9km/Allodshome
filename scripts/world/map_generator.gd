@@ -117,7 +117,13 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 ## v8 — сглаживание осиротевших клеток 1×1/1×2 + бленд смежных биомов.
 ## v9 — здания городов из арта Alice (structure_id 200..206).
 ## v10 — футпринт Alice 3×3 (4×3 не влезал в овал, inn/house не ставились).
-const GEN_VERSION := 23
+##
+## v24 (11.10) — ПУСТЫЕ ПУЛЫ СЕРЫХ. Весь арт Аллодов II удалён, вместе с ним
+## удалены 41 набор `monsters/*`. Без бампа этого номера уже сгенерированные
+## карты продолжают ссылаться на удалённые наборы: sidecar лежит на диске, и
+## `ensure_map` вернул бы его как свежий. Это тот же класс, что и любой другой
+## смысловой бамп здесь — кэш карты молча переживает удаление данных.
+const GEN_VERSION := 24
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -391,22 +397,34 @@ static func herb_min_distance() -> int:
 var _pending_vis_rows: int = 0
 
 # Серые (монстры palette=5 — UnitDB.is_hostile) по зоне: кластеры у дорог и в лесах.
+#
+# ПУЛЫ ПУСТЫ — и это НЕ ошибка, а следствие решения игрока от 11.10: весь арт
+# Аллодов II удалён из репозитория, вместе с ним удалены 41 набор `monsters/*`.
+# Подставлять вместо них городских стражников (`city_*`) нельзя: это мирные
+# NPC, и такой подставой мы бы тихо соврали, что монстры есть.
+#
+# ЧТО БУДЕТ, когда появятся риги Серых: набор рига подключается по тому же
+# пути, что и любой другой — записью в units_db.json и папкой
+# assets/units/rig/<набор>/. Списки ниже ожидают обычные ключи наборов, менять
+# код спавна не потребуется, только заполнить эти пути.
+const GRAY_POOL_EMPTY: Array = []
+
 const GRAY_ZONE := {
 	"start": {
 		"count": [6, 10], "hp": [25, 45], "dmg": [4, 6],
-		"pool": ["monsters/bat", "monsters/bee", "monsters/wolf", "monsters/squirrel"],
+		"pool": GRAY_POOL_EMPTY,
 	},
 	"mid": {
 		"count": [10, 14], "hp": [45, 75], "dmg": [6, 9],
-		"pool": ["monsters/orc", "monsters/goblin", "monsters/wolf", "monsters/spider", "monsters/squirrel"],
+		"pool": GRAY_POOL_EMPTY,
 	},
 	"hard": {
 		"count": [14, 18], "hp": [70, 120], "dmg": [9, 14],
-		"pool": ["monsters/troll", "monsters/ogre", "monsters/goblin", "monsters/orc", "monsters/ghost", "monsters/dino"],
+		"pool": GRAY_POOL_EMPTY,
 	},
 	"faction": {
 		"count": [12, 16], "hp": [50, 95], "dmg": [7, 11],
-		"pool": ["monsters/orc", "monsters/goblin", "monsters/wolf", "monsters/spider", "monsters/troll"],
+		"pool": GRAY_POOL_EMPTY,
 	},
 }
 
@@ -510,25 +528,18 @@ const GRAY_REGION_GRID := 3
 const GRAY_MIN_SPAWN_DISTANCE := 14   # не тыкать зверя прямо в лицо новичку
 
 ## Тематические встречи (пакет D, 07.10): улей, логово, стая — как в Аллодах.
-## hp_mult — множитель HP относительно зоны; members — сколько особей.
-const ENCOUNTER_KINDS := [
-	{"kind": "bee_hive", "sets": ["monsters/bee"], "members": [4, 6],
-		"hp_mult": 1.15, "dmg_mult": 1.0, "near": "forest", "label": "Улей"},
-	{"kind": "wolf_pack", "sets": ["monsters/wolf"], "members": [3, 4],
-		"hp_mult": 1.0, "dmg_mult": 1.0, "near": "forest", "label": "Волчья стая"},
-	{"kind": "spider_den", "sets": ["monsters/spider"], "members": [2, 3],
-		"hp_mult": 1.1, "dmg_mult": 1.05, "near": "forest", "label": "Логово пауков"},
-	{"kind": "squirrel_herd", "sets": ["monsters/squirrel"], "members": [3, 5],
-		"hp_mult": 0.9, "dmg_mult": 0.9, "near": "forest", "label": "Стая белок"},
-	{"kind": "orc_camp", "sets": ["monsters/orc", "monsters/goblin"], "members": [4, 6],
-		"hp_mult": 1.15, "dmg_mult": 1.1, "near": "road", "label": "Орочий лагерь"},
-	{"kind": "ogre_lair", "sets": ["monsters/ogre"], "members": [1, 2],
-		"hp_mult": 1.5, "dmg_mult": 1.25, "near": "any", "label": "Логово людоеда"},
-	{"kind": "troll_lair", "sets": ["monsters/troll"], "members": [1, 2],
-		"hp_mult": 1.4, "dmg_mult": 1.2, "near": "any", "label": "Логово троллей"},
-	{"kind": "bat_swarm", "sets": ["monsters/bat"], "members": [3, 5],
-		"hp_mult": 1.0, "dmg_mult": 1.0, "near": "any", "label": "Рой летучих мышей"},
-]
+##
+## СПИСОК ПУСТ, как и пулы GRAY_ZONE: все наборы `monsters/*` удалены вместе с
+## артом Аллодов II (11.10). Логика расстановки и сами виды встреч не тронуты —
+## они оживут, как только появятся риги Серых, и для этого достаточно вернуть
+## записи сюда. До тех пор ни одна стая не ставится, и это видно в отчёте
+## генератора (`gray_count=0`), а не как падение.
+##
+## Что сюда вернётся (набор -> вид встречи):
+##   bee  -> bee_hive       wolf  -> wolf_pack     spider -> spider_den
+##   squirrel -> squirrel_herd  orc/goblin -> orc_camp
+##   ogre -> ogre_lair      troll -> troll_lair    bat    -> bat_swarm
+const ENCOUNTER_KINDS: Array = []
 
 var _spawn_pos: Vector2i = Vector2i(-1, -1)
 var _portal_pos: Vector2i = Vector2i(-1, -1)
@@ -1556,7 +1567,15 @@ func _gray_cell_ok(c: Vector2i) -> bool:
 	return true
 
 ## Кластер из 2–4 Серых вокруг anchor (ячейки разнесены).
+##
+## ПУСТОЙ ПУЛ = СЕРЫХ НЕТ. Все наборы монстров удалены вместе с артом Аллодов
+## (11.10), и без этой проверки `_pick(rng, [])` возвращал null, который
+## присваивался в `String` — SCRIPT ERROR в самом генераторе карты. Раньше
+## пустой пул был невозможен, поэтому ветка не была написана.
 func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary) -> int:
+	var pool: Array = cfg.get("pool", [])
+	if pool.is_empty():
+		return 0
 	var cells: Array = [anchor]
 	for i in range(1, 3):
 		var c := _near_gray_cell(rng, anchor, cells)
@@ -1566,7 +1585,7 @@ func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary
 	for i in range(cells.size()):
 		var cc: Vector2i = cells[i]
 		_gray_cells["%d,%d" % [cc.x, cc.y]] = true
-		var set_name: String = _pick(rng, cfg["pool"])
+		var set_name: String = str(_pick(rng, pool))
 		var hp := rng.randi_range(
 			GameConfig.zonei(_zone, "gray_hp_min"), GameConfig.zonei(_zone, "gray_hp_max"))
 		var dmg := rng.randi_range(
@@ -1603,7 +1622,9 @@ func _encounter_anchor(rng: RandomNumberGenerator, near: String) -> Vector2i:
 
 ## Поставить встречу: 1 «ядро» (сильнее) + members-1 обычных вокруг.
 func _spawn_encounter(rng: RandomNumberGenerator, anchor: Vector2i, ed: Dictionary, eid: int) -> int:
-	var sets: Array = ed.get("sets", ["monsters/orc"])
+	var sets: Array = ed.get("sets", [])
+	if sets.is_empty():
+		return 0   # нет наборов — стая не ставится (см. ENCOUNTER_KINDS)
 	var members: Array = ed.get("members", [2, 3])
 	var n := rng.randi_range(int(members[0]), int(members[1]))
 	var hp_mult := float(ed.get("hp_mult", 1.0))

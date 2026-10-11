@@ -142,7 +142,26 @@ func _run() -> void:
 			if d.has("set"):
 				rec_gray += 1
 	print("  в данных новой карты серых: %d" % rec_gray)
-	_check(rec_gray > 0, "в данных новой карты есть Серые (%d)" % rec_gray)
+	# После перехода в новую зону в её sidecar не должно быть НИЧЕГО, кроме
+	# городских наборов. Серых в игре нет (11.10, чистка Аллодов: пул пуст,
+	# игрок выбрал не спавнить вовсе), поэтому требование «серых > 0» охраняло
+	# бы то, чего больше нет. Вместо него — тот же сторож, что в
+	# gray_density_smoke: никаких наборов вне city_*/ork_mage*/rig/*.
+	#
+	# Именно эта проверка ловит возврат удалённых наборов: переход между зонами
+	# как раз пересобирает карту с нуля и мог бы подтянуть что-то из кэша.
+	var stray_sets := 0
+	if parsed is Dictionary:
+		for rec2 in (parsed as Dictionary).get("npcs", []):
+			var s2 := str((rec2 as Dictionary).get("set", ""))
+			if s2.is_empty():
+				continue
+			if not (s2.begins_with("city_") or s2.begins_with("ork_mage") or s2.begins_with("rig/")):
+				stray_sets += 1
+				print("  STRAY set `%s`" % s2)
+	_check(stray_sets == 0,
+		"в данных новой карты нет наборов вне city_*/ork_mage*/rig/* (нашлось %d)" % stray_sets)
+	_check(rec_gray == 0, "в данных новой карты нет врагов — пул пуст (%d)" % rec_gray)
 	var live_gray := 0
 	for e2 in Game.enemies:
 		if not is_instance_valid(e2):
@@ -151,8 +170,8 @@ func _run() -> void:
 		var sn := str(en.get("anim_set"))
 		if UnitDB.has(sn) and UnitDB.is_hostile(sn):
 			live_gray += 1
-	_check(live_gray <= rec_gray + 2,
-		"на карте не больше Серых, чем прописано (%d живых, %d в данных) — старые не накопились"
+	_check(live_gray == rec_gray,
+		"живых врагов ровно столько же, сколько в данных новой карты (%d живых, %d в данных) — старые не накопились"
 			% [live_gray, rec_gray])
 
 	# Герой должен стоять на проходимой клетке новой карты.

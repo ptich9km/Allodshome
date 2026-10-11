@@ -13,7 +13,7 @@
 
 extends SceneTree
 
-const SET := "heroes/sw_seed"
+const SET := "seed/sw_seed"
 const CANVAS := 64
 const CONTENT_H := 52
 const FEET_Y := 62

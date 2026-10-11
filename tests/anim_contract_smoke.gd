@@ -42,9 +42,14 @@ const CONTRACT: Array = [
 ## Бэкенды, которые тест обязан проверить. RiggedAnim подхватывается, если
 ## файл есть — жёсткой ссылки на класс нет намеренно: пока файла нет, такая
 ## ссылка была бы Parse Error и тест не запускался бы вовсе.
+##
+## Эталон спрайт-листов переведён с `humans/swordsman_` на `ork_mage_a52/t0`
+## 11.10: семейства Аллодов удалены, и держать тест на их арте было бы значит
+## тащить обратно то, что вычистили. Проверки поведенческие (а не «фаза N
+## равна M»), поэтому набору не нужны блоки анимации — ему нужны кадры.
 const BACKENDS: Array = [
-	{"name": "UnitAnim", "path": "res://scripts/unit_anim.gd", "set": "humans/swordsman_"},
-	{"name": "RiggedAnim", "path": "res://scripts/rigged_anim.gd", "set": "heroes/pilot"},
+	{"name": "UnitAnim", "path": "res://scripts/unit_anim.gd", "set": "ork_mage_a52/t0"},
+	{"name": "RiggedAnim", "path": "res://scripts/rigged_anim.gd", "set": "rig/pilot"},
 ]
 
 ## Число мировых направлений (октант). Дублирует UnitAnim.FULL_DIRS, чтобы
@@ -230,21 +235,88 @@ func _test_functional(label: String, obj: Object, test_set: String) -> void:
 func _test_backend_selection() -> void:
 	if not ResourceLoader.exists("res://scripts/rigged_anim.gd"):
 		return
-	_check(bool(RiggedAnim.has_rig("heroes/pilot")),
-		"выбор бэкенда: у `heroes/pilot` риг есть")
-	_check(not bool(RiggedAnim.has_rig("humans/swordsman_")),
-		"выбор бэкенда: у `humans/swordsman_` рига нет (остаёмся на листах)")
-	_check(not bool(RiggedAnim.has_rig("heroes/не_существует")),
+	_check(bool(RiggedAnim.has_rig("rig/pilot")),
+		"выбор бэкенда: у `rig/pilot` риг есть")
+	_check(not bool(RiggedAnim.has_rig("ork_mage_a52/t0")),
+		"выбор бэкенда: у `ork_mage_a52/t0` рига нет (остаёмся на листах)")
+	_check(not bool(RiggedAnim.has_rig("нетакого/набора")),
 		"выбор бэкенда: несуществующий набор не считается ригом")
 
 	# Набор без рига обязан дать НЕ ЗАГРУЖЕННЫЙ риг, а не риг с пустым
 	# скелетом: иначе юнит просто исчезнет вместо отката к листам.
 	var r := RiggedAnim.new()
-	r.setup("humans/swordsman_")
+	r.setup("ork_mage_a52/t0")
 	_check(not r.is_loaded(), "выбор бэкенда: риг без своего rig.json не загружается")
 	_check(float(r.call("visual_height")) == 0.0,
 		"выбор бэкенда: незагруженный риг не выдаёт высоту (иначе шкала HP уедет)")
 	r.free()
+
+
+## ВИДИМОСТЬ ЧАСТЕЙ.
+##
+## Этот тест проверял контракт, кости, позы и повороты — но НИ РАЗУ не
+## спрашивал, есть ли у спрайтов текстуры. Из-за этого он оставался зелёным
+## на полностью невидимом риге:
+##
+##   `rig.json` ссылался на папку `assets/units/rig/heroes_pilot/parts/`,
+##   а при чистке Аллодов (11.10) семейство `heroes/` вычистили целиком и
+##   пилот переехал в `rig/rig_pilot/`. Ссылка в JSON осталась на старый путь,
+##   `load()` вернул null, все 19 `Sprite2D` создались пустыми — скелет был,
+##   рисовать было нечего, и в игре герой не виден.
+##
+## Проверка именно на ТЕКСТУРЕ, а не на числе узлов: пустой `Sprite2D`
+## существует и считается «частью рига», поэтому подсчёт детей проходил.
+func _test_rig_textures() -> void:
+	if not ResourceLoader.exists("res://scripts/rigged_anim.gd"):
+		return
+	var r := RiggedAnim.new()
+	r.setup("rig/pilot")
+	_check(r.is_loaded(), "рифг: пилотный риг загрузился")
+	if r.is_loaded():
+		root.add_child(r)
+		await process_frame
+
+		var sprites := 0
+		var with_tex := 0
+		var empty_tex := 0
+		var stack: Array = [r as Node]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			for ch in n.get_children():
+				stack.append(ch)
+				if ch is Sprite2D:
+					sprites += 1
+					var t: Texture2D = (ch as Sprite2D).texture
+					if t == null:
+						empty_tex += 1
+						print("  EMPTY TEXTURE: %s" % ch.name)
+					else:
+						with_tex += 1
+		_check(sprites > 0, "рифг: у рига есть части-спрайты (%d)" % sprites)
+		_check(with_tex > 0,
+			"рифг: у хотя бы одной части есть текстура (%d из %d)" % [with_tex, sprites])
+		# Строгое равенство, а не «хотя бы одна»: пустая часть не рисуется и
+		# выглядит как дыра в персонаже.
+		_check(with_tex == sprites,
+			"рифг: у ВСЕХ частей есть текстура (%d с текстурой, %d пустых)"
+				% [with_tex, empty_tex])
+
+		# Путь в rig.json обязан существовать. Именно он рассинхронизировался
+		# при переезде папки, и это ловится дешевле, чем по картинке.
+		var cfg: Variant = JSON.parse_string(FileAccess.get_file_as_string(
+			"res://assets/units/rig/rig_pilot/rig.json"))
+		_check(cfg is Dictionary, "рифг: rig.json читается")
+		if cfg is Dictionary:
+			var views: Dictionary = (cfg as Dictionary).get("views", {})
+			for vk in views.keys():
+				var parts_dir := str((views[vk] as Dictionary).get("parts", ""))
+				_check(parts_dir != "" and DirAccess.dir_exists_absolute(parts_dir),
+					"рифг: папка частей из rig.json существует (%s)" % parts_dir)
+
+		r.queue_free()
+		await process_frame
+	else:
+		r.free()
 
 
 ## Поворот рига: жалоба игрока «постоянно разворачивается спиной идёт».
@@ -257,7 +329,7 @@ func _test_rig_turning() -> void:
 	var r := RiggedAnim.new()
 	root.add_child(r)
 	r.name = "UnitAnim"
-	r.setup("heroes/pilot")
+	r.setup("rig/pilot")
 	if not r.is_loaded():
 		_check(false, "поворот рига: пилотный риг не загрузился")
 		r.queue_free()
@@ -487,6 +559,7 @@ func _run() -> void:
 
 	_check(tested > 0, "проверен хотя бы один бэкенд анимации")
 	_test_backend_selection()
+	await _test_rig_textures()
 	_test_rig_turning()
 	_report()
 

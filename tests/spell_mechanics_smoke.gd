@@ -279,7 +279,7 @@ var _inside: Array = []
 func _spawn_foe(pos: Vector2) -> Enemy:
 	var e := Enemy.new()
 	e.name = "MechTestFoe"
-	e.anim_set = "monsters/orc"
+	e.anim_set = "ork_mage_a52/t0"
 	e.max_hp = 400
 	e.damage = 1
 	e.position = pos

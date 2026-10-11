@@ -7,7 +7,11 @@ class_name Enemy
 @export var aggro_radius: float = 150.0
 @export var deaggro_radius: float = 200.0
 @export var home_position: Vector2
-@export var anim_set: String = "monsters/orc"   # набор анимаций из units_db.json
+## Набор анимации врага. Пуст по умолчанию НАМЕРЕННО: арт Аллодов удалён
+## (11.10), наборов Серых в базе нет, и дефолт вида на удалённый набор
+## означал бы либо падение в setup(), либо невидимого врага. Набор приходит
+## из генератора карты при спавне; пока пул пуст, враги не спавнятся вовсе.
+@export var anim_set: String = ""
 
 var current_hp: int
 var state: String = "idle"

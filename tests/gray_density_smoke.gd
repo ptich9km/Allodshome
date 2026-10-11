@@ -56,16 +56,30 @@ func _run() -> void:
 		gray_n += 1
 		gray_cells["%d,%d" % [int(d.get("x", 0)), int(d.get("y", 0))]] = true
 	print("  серых на карте: %d" % gray_n)
-	_check(gray_n >= 60, "Серых на карте достаточно (>=60, получилось %d)" % gray_n)
-	_check(gray_cells.size() == gray_n,
-		"на каждой клетке ровно один Серый (клеток %d, Серых %d)"
-			% [gray_cells.size(), gray_n])
-	var regions := {}
-	for k in gray_cells:
-		var p := str(k).split(",")
-		regions["%d,%d" % [int(p[0]) * 3 / 192, int(p[1]) * 3 / 192]] = true
-	_check(regions.size() == 9, "Серые разведены по ВСЕМ 9 регионам (было 2) — сейчас %d"
-			% regions.size())
+	# ПЛОТНОСТЬ СЕРЫХ ПЕРЕПИСАНА, а не удалена (11.10).
+	#
+	# Все наборы `monsters/*` удалены вместе с артом Аллодов II, пул пуст, и
+	# игрок сознательно выбрал «не спавнить вовсе». Прежние проверки «>=60
+	# Серых» и «разведены по 9 регионам» охраняли бы ровно то, чего больше
+	# нет. Заменены на инварианты, которые остаются осмысленными:
+	#   - в данных карты нет НИ ОДНОГО набора вне city_*/ork_mage*/rig/*;
+	#   - в живом мире нет ни одного врага;
+	#   - тик респавна НЕ создаёт врагов из пустого пула (иначе он воскресит
+	#     удалённые наборы — самый вероятный способ вернуть Аллодов обратно);
+	#   - ключи конфига респавна целы и положительны: когда риги Серых
+	#     появятся, механизму не придётся чинить ещё и эту часть.
+	var stray := 0
+	for n in npcs:
+		var d: Dictionary = n
+		var s := str(d.get("set", ""))
+		if s.is_empty():
+			continue
+		if not (s.begins_with("city_") or s.begins_with("ork_mage") or s.begins_with("rig/")):
+			stray += 1
+			print("  STRAY set `%s`" % s)
+	_check(stray == 0,
+		"в данных карты нет наборов вне city_*/ork_mage*/rig/* (нашлось %d)" % stray)
+	_check(gray_n == 0, "Серых на карте нет — пул пуст (нашлось %d)" % gray_n)
 
 	print("-- респавн --")
 	var err := change_scene_to_file("res://scenes/main.tscn")
@@ -85,69 +99,36 @@ func _run() -> void:
 	var target := GameConfig.geti("spawn", "gray_target")
 	var period := GameConfig.getf("spawn", "gray_respawn_seconds")
 	var min_dist := GameConfig.geti("spawn", "gray_respawn_min_dist")
+	# Ключи конфига остаются проверяемыми: механизм респавна не сломан, просто
+	# кормит его нечем. Когда риги Серых появятся, эта часть заработает сразу.
 	_check(target > 0, "лимит Серых задан (%d)" % target)
 	_check(period > 0.0, "интервал респавна задан (%.1f с)" % period)
 	_check(min_dist > 0, "минимальная дистанция от героя задана (%d клеток)" % min_dist)
 
 	var alive0: int = game.call("_alive_gray_count")
 	print("  живых Серых на старте: %d (лимит %d)" % [alive0, target])
-	_check(alive0 > 0, "на карте есть живые Серые")
+	_check(alive0 == 0, "на старте нет живых врагов (нашлось %d)" % alive0)
 
-	# Убираем часть Серых — респавн должен их вернуть.
-	# ВАЖНО: is_instance_valid проверяется ДО каста. `as Node` на уже
-	# освобождённом объекте даёт "Trying to cast a freed object".
-	var doomed: Array = []
-	for e in Game.enemies:
-		if not is_instance_valid(e):
-			continue
-		doomed.append(e)
-		if doomed.size() >= 12:
-			break
-	for raw in doomed:
-		if is_instance_valid(raw):
-			(raw as Node).queue_free()
-	for raw2 in doomed:
-		Game.enemies.erase(raw2)
-	await process_frame
-	var alive1: int = game.call("_alive_gray_count")
-	print("  после удаления 12: %d" % alive1)
-	_check(alive1 < alive0, "число живых уменьшилось (%d -> %d)" % [alive0, alive1])
-
-	# Форсируем тик респавна (не ждём реальные 20 секунд).
-	# Запоминаем КТО был до респавна: проверка дистанции касается только новых
-	# зверьков. Те, что расставлены генератором по карте, legitimately могут
-	# стоять рядом с героем — для этого они и расставлены.
-	var preexisting := {}
-	for e4 in Game.enemies:
-		if is_instance_valid(e4):
-			preexisting[(e4 as Node).get_instance_id()] = true
-	var before := alive1
+	# ГЛАВНАЯ ПРОВЕРКА ЭТОГО ТЕСТА. Тик респавна при пустом пуле обязан быть
+	# НОПОЙ. Если он начнёт доставать удалённые наборы (или подставлять
+	# city_* вместо Серых — это подмена, которую игрок запретил отдельно),
+	# респавн вернёт в игру ровно то, что мы списали 11.10. Поэтому здесь
+	# именно НУЛЬ, а не «не больше, чем было».
+	var spawned := 0
 	for _i in range(30):
 		game.call("_gray_respawn_tick", period + 0.1)
 		await process_frame
-	var alive2: int = game.call("_alive_gray_count")
-	print("  после респавна: %d" % alive2)
-	_check(alive2 > before, "респавн вернул зверьков (%d -> %d)" % [before, alive2])
-	_check(alive2 <= target + 2,
-		"респавн не превысил лимит (%d, лимит %d)" % [alive2, target])
-
-	# Только респавненные — не ближе min_dist от героя.
-	var nearest := 99999.0
-	var fresh := 0
+		spawned = game.call("_alive_gray_count")
+		if spawned > 0:
+			break
+	print("  после 30 тиков респавна: %d" % spawned)
+	_check(spawned == 0,
+		"респавн из пустого пула НЕ создаёт врагов (нашлось %d)" % spawned)
+	var sets_now := {}
 	for e5 in Game.enemies:
-		if not is_instance_valid(e5) or e5 == player:
-			continue
-		var en3: Node = e5 as Node
-		if preexisting.has(en3.get_instance_id()):
-			continue
-		fresh += 1
-		var d3: float = en3.global_position.distance_to(player.global_position) / 32.0
-		if d3 < nearest:
-			nearest = d3
-	_check(fresh > 0, "респавн добавил новых зверьков (%d)" % fresh)
-	_check(nearest >= float(min_dist),
-		"респавненные не появляются вплотную к герою (ближайший %.1f клеток, минимум %d)"
-			% [nearest, min_dist])
+		if is_instance_valid(e5):
+			sets_now[str((e5 as Node).get("anim_set"))] = true
+	_check(sets_now.is_empty(), "ни один враг не подставил набор вместо Серых: %s" % str(sets_now))
 
 	# Выключатель: period = 0 -> респавна нет.
 	_check(GameConfig.geti("spawn", "gray_target") == 0

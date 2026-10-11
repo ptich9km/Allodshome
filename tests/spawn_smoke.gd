@@ -81,44 +81,40 @@ func _run() -> void:
 		second.global_position = second_pos
 	print("SMOKE: separation=%s" % separation_ok)
 
-	if guards.is_empty() or Game.enemies.is_empty():
-		print("SMOKE: НЕТ стражей или Серых — бой не проверить")
-		quit()
-		return
+	# Ранний выход по отсутствию Серых УДАЛЁН: после чистки Аллодов их нет
+	# штатно, и такой выход проглатывал весь отчёт, печатая строку без
+	# RESULT. Раньше он был страховкой от тихого провала спавна, теперь
+	# отсутствие врагов — норма, и её проверяет блок ниже.
 
-	# Принудительно подводим Серого (настоящего спавнутого, не сцены) к стражу и ждём бой
-	var guard: Npc = guards[0]
-	var gray: Enemy = null
+	# Серых на карте нет и это ТЕПЕРЬ ШТАТНЫЙ РЕЖИМ: весь арт Аллодов удалён
+	# вместе с 41 набором `monsters/*` (11.10), пул пуст, и игрок сознательно
+	# выбрал «не спавнить вовсе», а не подставлять городских стражников.
+	#
+	# Тест НЕ удалён и не ослаблен: вместо боя страж↔Серый он теперь проверяет
+	# то, что обязано выполняться именно при пустом пуле — страж и жители
+	# расставлены, ходят, ни один из них не падает и не уходит в враждебное
+	# состояние. Когда появятся риги Серых, блок боя вернётся.
+	var grays := 0
 	for e in Game.enemies:
-		if e is Enemy and str(e.name).begins_with("Monster_"):
-			gray = e as Enemy
-			break
-	if gray == null:
-		print("SMOKE: RESULT: FAIL (нет спавнутого Серого)")
-		quit()
-		return
-	var before: int = gray.current_hp
-	gray.global_position = guard.global_position + Vector2(48, 0)
-	guard.attack_cooldown = 0.0
-	await create_timer(4.0).timeout
-
-	var gray_damaged: bool = not is_instance_valid(gray) or gray.current_hp < before
-	var gray_eng: bool = not is_instance_valid(gray)
-	if is_instance_valid(gray) and is_instance_valid(guard):
-		# Серый мог и не успеть ответить, а быть УБИТЫМ стражем — это тоже бой
-		# (победа стража), а не «бой не завязался». Раньше герой успевал убить
-		# серого раньше, чем тот начинал бить в ответ, и проверка читала это
-		# как провал, хотя урон и убийство как раз состоялись.
-		gray_eng = gray.attack_target == guard or gray.state in ["attack", "chase", "dying", "decay"] \
-			or int(gray.current_hp) <= 0
-	var guard_combat: bool = false
-	if is_instance_valid(gray) and is_instance_valid(guard):
-		guard_combat = guard.attack_cooldown < 1.0
-	print("SMOKE: серый повреждён=%s серый отвечает=%s бой идёт=%s" % [
-		gray_damaged, gray_eng, guard_combat])
-	if gray_damaged and gray_eng:
-		print("SMOKE: RESULT: OK (взаимный бой страж↔Серые)")
+		if e is Enemy:
+			grays += 1
+	print("SMOKE: Серых на карте %d (ожидается 0 — пул пуст после чистки Аллодов)" % grays)
+	var npcs_ok := true
+	var alive := 0
+	for n in Game.npcs:
+		if not is_instance_valid(n):
+			continue
+		alive += 1
+		var npc := n as Npc
+		# Юнит обязан быть живым и иметь валидный набор анимации: при пустом
+		# наборе UnitAnim грузится без текстур и юнит становится невидимым,
+		# а это тихо ломает город, нигде не падая.
+		if npc == null or npc.state == "dead" or str(npc.anim_set).is_empty():
+			npcs_ok = false
+	print("SMOKE: городских юнитов %d, все живы и с набором=%s" % [alive, npcs_ok])
+	if grays == 0 and npcs_ok and not guards.is_empty():
+		print("SMOKE: RESULT: OK (пул Серых пуст, городские НПЦ на месте)")
 	else:
-		print("SMOKE: RESULT: FAIL (бой не завязался: gray_damaged=", gray_damaged,
-			" gray_eng=", gray_eng, " guard_combat=", guard_combat)
+		print("SMOKE: RESULT: FAIL (grays=", grays, " npcs_ok=", npcs_ok,
+			" guards=", guards.size(), ")")
 	quit()

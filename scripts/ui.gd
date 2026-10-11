@@ -1029,6 +1029,10 @@ func _loot_tooltip_lines(lb: LootDrop) -> Array:
 	return lines
 
 ## Фракция по набору анимаций юнита (см. §8.2 AGENTS.md).
+##
+## Семейства `humans/` и `heroes/` (арт Аллодов II) удалены 11.10 вместе с
+## ассетами, и их ветки убраны: они ссылались бы в пустоту и подставляли бы
+## подпись удалённой фракции. Ветка `rig/` — пилотный риг героя.
 func _faction_of_set(set_name: String) -> String:
 	# Городские наборы city_* — раса города (09.10). Подпись должна быть из
 	# lore world.json, иначе в тултипе писало «Прохожий».
@@ -1038,9 +1042,7 @@ func _faction_of_set(set_name: String) -> String:
 		return label if label != "" else city_race
 	if set_name.begins_with("ork_mage"):
 		return "Орды Огня"
-	if set_name.begins_with("humans/"):
-		return "Альянс Света"
-	if set_name.begins_with("heroes/"):
+	if set_name.begins_with("rig/"):
 		return "Герой"
 	for k in ["orc", "goblin", "troll", "ogre"]:
 		if k in set_name:

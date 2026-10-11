@@ -2,16 +2,10 @@
 
 [ext_resource type="Script" uid="uid://c8japn332xnxf" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="Script" uid="uid://dto8ufx7bx2w2" path="res://scripts/player.gd" id="2_player"]
-[ext_resource type="Script" uid="uid://crei7tovawvm8" path="res://scripts/enemy.gd" id="3_enemy"]
 [ext_resource type="Script" uid="uid://b6ptpfd5x8bw0" path="res://scripts/ui.gd" id="4_ui"]
 [ext_resource type="Script" uid="uid://jgol45tm5cng" path="res://scripts/alm_map.gd" id="9_almmap"]
-[ext_resource type="Texture2D" uid="uid://drti85ievy17i" path="res://assets/units/heroes/swordsman/sprites-001.png" id="hero_tex"]
-[ext_resource type="Texture2D" uid="uid://cueegdgdv2ehl" path="res://assets/units/monsters/orc/sprites-001.png" id="orc_tex"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 15.0
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_orc"]
 radius = 15.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
@@ -46,22 +40,8 @@ zoom = Vector2(2, 2)
 [node name="Player" type="CharacterBody2D" parent="." unique_id=1525799927]
 script = ExtResource("2_player")
 
-[node name="Sprite" type="Sprite2D" parent="Player" unique_id=718009359]
-texture = ExtResource("hero_tex")
-
 [node name="Collision" type="CollisionShape2D" parent="Player" unique_id=1167390774]
 shape = SubResource("CircleShape2D_player")
-
-[node name="EnemyOrc" type="CharacterBody2D" parent="." unique_id=968909907]
-position = Vector2(128, 64)
-script = ExtResource("3_enemy")
-home_position = Vector2(128, 64)
-
-[node name="Sprite" type="Sprite2D" parent="EnemyOrc" unique_id=509630002]
-texture = ExtResource("orc_tex")
-
-[node name="Collision" type="CollisionShape2D" parent="EnemyOrc" unique_id=190324371]
-shape = SubResource("CircleShape2D_orc")
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1542485799]
 script = ExtResource("4_ui")

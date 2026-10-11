@@ -11,7 +11,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "assets" / "units" / "units_db.json"
 
-KEY = "heroes/sw_seed"
+KEY = "seed/sw_seed"
 
 ENTRY = '''"heroes/sw_seed": {
   "desc": "Hero: swordsman, seedream pilot, 8 dirs, idle 8 + move 2 + attack 2",

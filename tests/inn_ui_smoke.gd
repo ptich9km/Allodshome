@@ -7,7 +7,11 @@ extends SceneTree
 ## Запуск: godot --headless --path . --script res://tests/inn_ui_smoke.gd
 
 const SIZES := [Vector2i(1280, 800), Vector2i(1280, 600)]
-const EXPECTED_CANDIDATES := 5
+# Снимок числа кандидатов УДАЛЁН. Он был 5, пока в `inn_panel.CANDIDATES` не
+# вычеркнули `monsters/orc_good` (11.10, чистка Аллодов) — стало 4.
+# Такая константа Checking ВСЕГО РАВНО: она проверяет не вёрстку, а то, что
+# кто-то не поменял список. Реальные требования ниже — «кандидаты не пусты»
+# и «ячеек в сетке не меньше, чем кандидатов» — и они сохранили силу.
 const CELL_COLUMNS := 4
 
 var _fails: Array[String] = []
@@ -43,12 +47,12 @@ func _run() -> void:
 	print("=== ТАВЕРНА (контейнерная) ===")
 	print("кандидатов: %d, ячеек в сетке: %d, колонок: %d"
 		% [candidates.size(), grid.get_child_count(), grid.columns])
-	_check(candidates.size() == EXPECTED_CANDIDATES,
-		"кандидатов %d (ожидалось %d)" % [candidates.size(), EXPECTED_CANDIDATES])
+	_check(candidates.size() > 0, "список кандидатов не пуст (%d)" % candidates.size())
+	var expect_n: int = candidates.size()
 	_check(grid.columns == CELL_COLUMNS,
 		"сетка %d колонки (получено %d)" % [CELL_COLUMNS, grid.columns])
-	_check(grid.get_child_count() >= EXPECTED_CANDIDATES,
-		"ячеек не меньше кандидатов (%d >= %d)" % [grid.get_child_count(), EXPECTED_CANDIDATES])
+	_check(grid.get_child_count() >= expect_n,
+		"ячеек не меньше кандидатов (%d >= %d)" % [grid.get_child_count(), expect_n])
 
 	# Ячейки контентные, не артовые 96×107.57
 	var panel: Control = _panel.get("_panel")

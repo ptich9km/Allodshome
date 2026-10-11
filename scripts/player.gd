@@ -715,35 +715,26 @@ func get_protection_astral() -> int: return spirit / 2 + StatusEffects.resist_bo
 ##
 ## ПИЛОТ 10.10: PILOT_HERO_SET — набор seedream, который проверяется в игре.
 ## Пустая строка = обычная раскладка по экипировке. Откат — одна строка.
-const PILOT_HERO_SET := "heroes/pilot"
+## Пилотный риг героя. Имя набора НЕ под семейством `heroes/`: семейства
+## Аллодов удалены 11.10, и правило их чистки забрало бы и пилот (так и вышло).
+const PILOT_HERO_SET := "rig/pilot"
 
 ## ПИЛОТ 10.10: риг вместо спрайт-листов, если для набора есть rig.json.
 ## Откат всего пилота — false в этой строке. Действует только вместе с
 ## PILOT_HERO_SET: сам по себе риг включается лишь там, где риг есть.
 const PILOT_RIG := true
 
+## Набор анимаций героя.
+##
+## Раньше здесь собиралось имя вида по экипировке: `heroes/…` для тяжёлой
+## брони и магии, `heroes_l/…` для лёгкой. Оба семейства — арт Аллодов II и
+## вычищены 11.10 вместе с ассетами, поэтому ветка удалена: сборка дала бы
+## набор, которого нет в базе, и герой остался бы без анимации.
+##
+## Теперь ответ один — пилотный риг. Когда появятся риг-наборы броневых
+## комплектов, здесь вернётся отображение «комплект -> риг-набор».
 func anim_set_name() -> String:
-	if PILOT_HERO_SET != "":
-		return PILOT_HERO_SET
-	var top := "heroes" if armor_kind == "heavy" or weapon in ["staff", "magic"] else "heroes_l"
-	var base := weapon
-	match weapon:
-		"unarmed": base = "unarmed"
-		"sword":
-			base = "swordsman2h" if two_handed else ("swordsman_" if has_shield else "swordsman")
-		"axe":
-			base = "axeman2h" if two_handed else ("axeman_" if has_shield else "axeman")
-		"club":
-			base = "clubman_" if has_shield else "clubman"
-		"pike":
-			base = "pikeman_" if has_shield else "pikeman"
-		"bow": base = "archer"
-		"xbow": base = "xbowman"
-		"staff": base = "mage_st"
-		"magic": base = "mage"
-	if has_shield and base == "unarmed":
-		base = "unarmed_"
-	return "%s/%s" % [top, base]
+	return PILOT_HERO_SET
 
 ## Пересоздать анимацию после смены экипировки.
 func refresh_animation() -> void:

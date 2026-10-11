@@ -13,7 +13,7 @@
 
 extends SceneTree
 
-const RIG_SET := "heroes/pilot"
+const RIG_SET := "rig/pilot"
 const CELL := Vector2i(180, 220)
 const COLS := 5
 

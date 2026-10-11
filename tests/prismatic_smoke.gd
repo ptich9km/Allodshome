@@ -120,6 +120,8 @@ func _test_radius() -> void:
 		("дальность (%.0f) больше веера (%.0f) — иначе веер обрезан радиусом "
 			% [reach, code_radius]) + "раньше, чем дальностью")
 	var enemy := _enemy_near_hero()
+	if enemy == null:
+		enemy = await _spawn_enemy_on_land()
 	_check(enemy != null, "на карте есть живой враг для проверки дальности")
 	if enemy == null:
 		return
@@ -246,6 +248,42 @@ func _test_arc_taper() -> void:
 ## Сцены res://scenes/enemy.tscn в проекте НЕТ — враги создаются кодом в
 ## game.gd, поэтому и спавнить своего узла нельзя: пришлось бы дублировать
 ## игровую логику. Берём настоящего врага и двигаем его.
+## Спавн врага для проверок дальности.
+##
+## На карте живых врагов больше нет: все наборы `monsters/*` удалены вместе с
+## артом Аллодов (11.10), пул Серых пуст, и игрок выбрал не спавнить вовсе до
+## появления ригов. Тест обязан создать цель САМ, иначе проверка «сияние бьёт
+## на 200 px» молча выродилась бы в «сияние некому бить».
+##
+## Идиом тот же, что в `unit_physics_smoke._spawn_enemy_on_land`: `Enemy` —
+## скриптовый класс (сцены `res://scenes/enemy.tscn` не существует, враги
+## создаются кодом в `game.gd`), а `SceneTree.get_root()` — это Window, у него
+## нет `get_first_node_in_group()`, поэтому группу берём у самого SceneTree.
+func _spawn_enemy_on_land() -> Node2D:
+# Карта живёт в группе `alm_map`, а НЕ в свойстве `map` у родителя героя —
+	# так же, как в `unit_physics_smoke`.
+	var map: Node = get_first_node_in_group("alm_map")
+	if map == null or not map.has_method("is_walkable_world"):
+		return null
+	for r in range(4, 40):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var p := Vector2((int(_hero.global_position.x) / 32 + dx) * 32 + 16,
+					(int(_hero.global_position.y) / 32 + dy) * 32 + 16)
+				if not bool(map.call("is_walkable_world", p)):
+					continue
+				var e := Enemy.new()
+				e.anim_set = "ork_mage_a52/t0"
+				e.max_hp = 100
+				e.damage = 1
+				e.position = p
+				(current_scene as Node).add_child(e)
+				Game.enemies.append(e)
+				await process_frame
+				return e as Node2D
+	return null
+
+
 func _enemy_near_hero() -> Node2D:
 	var best: Node2D = null
 	var best_d := INF

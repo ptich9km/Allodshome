@@ -193,7 +193,7 @@ func _spawn_enemy_on_land() -> Enemy:
 					(int(_hero.global_position.y) / 32 + dy) * 32 + 16)
 				if bool(_map.call("is_walkable_world", p)):
 					var e := Enemy.new()
-					e.anim_set = "monsters/orc"
+					e.anim_set = "ork_mage_a52/t0"
 					e.max_hp = 100
 					e.damage = 1
 					e.position = p
@@ -219,9 +219,15 @@ func _test_select_ring() -> void:
 	# w/h в units_db.json НЕТ — там есть tile_size. Проверяем на наборе,
 	# где размер реально отличается, чтобы заглушка 128 не прошла случайно.
 	var sizes: Array = []
-	for set_name in ["ork_mage_a52/t0", "monsters/orc", "monsters/troll"]:
-		var ts := UnitDB.tile_size(set_name)
-		sizes.append(ts)
+	# Наборы взяты из ТЕКУЩЕЙ базы. Раньше здесь стояли `monsters/orc` и
+	# `monsters/troll` — они удалены вместе с артом Аллодов (11.10), и проверка
+	# продолжала проходить, потому что `UnitDB.tile_size` для неизвестного
+	# набора возвращает дефолт, а не ошибку. То есть она охраняла пустоту.
+	# Теперь наборы настоящие, и расхождение размеров снова проверяется по
+	# делу: у рига и у орка tile_size разный.
+	for set_name in ["ork_mage_a52/t0", "city_human_mage/t1", "city_ork_warrior/t2"]:
+		_check(UnitDB.has(set_name), "набор `%s` существует в базе" % set_name)
+		sizes.append(UnitDB.tile_size(set_name))
 	_check(sizes.size() == 3, "tile_size читается для трёх наборов: %s" % str(sizes))
 
 	# Кольцо у героя строится из _unit_metrics, а не из константы 128.
