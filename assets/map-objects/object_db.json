@@ -1,1657 +1,268 @@
 {
- "pine1": {
-  "desc": "Pine 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "pine1/dead/sprites",
-  "fire": null
- },
- "cactus1": {
-  "desc": "Dead Cactus 1",
+ "prop_barrel": {
+  "desc": "Seedream prop prop_barrel",
   "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null
- },
- "cactus2": {
-  "desc": "Dead Cactus 2",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null
- },
- "cactus3": {
-  "desc": "Dead Cactus 3",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null
- },
- "draz1": {
-  "desc": "Draz 1",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 105,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "draz1/dead/sprites",
-  "fire": null
- },
- "draz2": {
-  "desc": "Draz 2",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 105,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "draz2/dead/sprites",
-  "fire": null
- },
- "trbush1": {
-  "desc": "Tropic Bush 1",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush1/dead/sprites",
-  "fire": null
- },
- "trbush2": {
-  "desc": "Tropic Bush 2",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush2/dead/sprites",
-  "fire": null
- },
- "elka1": {
-  "desc": "Fur 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "elka1/dead/sprites",
-  "fire": null
- },
- "trbush3": {
-  "desc": "Tropic Bush 3",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush3/dead/sprites",
-  "fire": null
- },
- "trbush4": {
-  "desc": "Tropic Bush 4",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush4/dead/sprites",
-  "fire": null
- },
- "trbush5": {
-  "desc": "Tropic Bush 5",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush5/dead/sprites",
-  "fire": null
- },
- "trbush6": {
-  "desc": "Tropic Bush 6",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush6/dead/sprites",
-  "fire": null
- },
- "trbush7": {
-  "desc": "Tropic Bush 7",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush7/dead/sprites",
-  "fire": null
- },
- "iva1": {
-  "desc": "Iva 1",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "iva1/dead/sprites",
-  "fire": null
- },
- "trbush8": {
-  "desc": "Tropic Bush 8",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush8/dead/sprites",
-  "fire": null
- },
- "trbush9": {
-  "desc": "Tropic Bush 9",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush9/dead/sprites",
-  "fire": null
- },
- "trbush10": {
-  "desc": "Tropic Bush 10",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 64,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "trbush10/dead/sprites",
-  "fire": null
- },
- "palm1": {
-  "desc": "Palm 1",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 112,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "palm1/dead/sprites",
-  "fire": null
- },
- "palm2": {
-  "desc": "Palm 2",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 112,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "palm2/dead/sprites",
-  "fire": null
- },
- "palm3": {
-  "desc": "Palm 3",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 85,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "palm3/dead/sprites",
-  "fire": null
- },
- "palm4": {
-  "desc": "Palm 4",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 85,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "palm4/dead/sprites",
-  "fire": null
- },
- "fence2": {
-  "desc": "Grave Fence 1",
-  "phases": 1,
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "frames": 8,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Grave Fence 1"
-   },
-   {
-    "index": 1,
-    "desc": "Grave Fence 2"
-   },
-   {
-    "index": 2,
-    "desc": "Grave Fence 3"
-   },
-   {
-    "index": 3,
-    "desc": "Grave Fence 4"
-   },
-   {
-    "index": 4,
-    "desc": "Grave Fence 5"
-   },
-   {
-    "index": 5,
-    "desc": "Grave Fence 6"
-   },
-   {
-    "index": 6,
-    "desc": "Grave Fence 7"
-   },
-   {
-    "index": 7,
-    "desc": "Grave Fence 8"
-   }
-  ]
- },
- "drova": {
-  "desc": "Firewood 1",
-  "phases": 1,
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "frames": 4,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Firewood 1"
-   },
-   {
-    "index": 1,
-    "desc": "Firewood 2"
-   },
-   {
-    "index": 2,
-    "desc": "Firewood 3"
-   },
-   {
-    "index": 3,
-    "desc": "Firewood 4"
-   }
-  ]
- },
- "seno": {
-  "desc": "CEHO 1",
-  "phases": 1,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "frames": 3,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "CEHO 1"
-   },
-   {
-    "index": 1,
-    "desc": "CEHO 2"
-   },
-   {
-    "index": 2,
-    "desc": "CEHO 3"
-   }
-  ]
- },
- "maple1": {
-  "desc": "Maple 1",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "maple1/dead/sprites",
-  "fire": null
- },
- "trollstone": {
-  "desc": "Troll Stones 1",
-  "phases": 1,
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "frames": 2,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Troll Stones 1"
-   },
-   {
-    "index": 1,
-    "desc": "Troll Stones 2"
-   }
-  ]
- },
- "trollstone2": {
-  "desc": "Troll Stones 3",
-  "phases": 1,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null
- },
- "henge1": {
-  "desc": "Stonehenge 1-1",
-  "phases": 1,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "frames": 3,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Stonehenge 1-1"
-   },
-   {
-    "index": 1,
-    "desc": "Stonehenge 1-2"
-   },
-   {
-    "index": 2,
-    "desc": "Stonehenge 1-3"
-   }
-  ]
- },
- "henge2": {
-  "desc": "Stonehenge 2-1",
-  "phases": 1,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "frames": 3,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Stonehenge 2-1"
-   },
-   {
-    "index": 1,
-    "desc": "Stonehenge 2-2"
-   },
-   {
-    "index": 2,
-    "desc": "Stonehenge 2-3"
-   }
-  ]
- },
- "drtree1": {
-  "desc": "Druid tree 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "drtree1/dead/sprites",
-  "fire": null
- },
- "drtree2": {
-  "desc": "Druid tree 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "drtree2/dead/sprites",
-  "fire": null
- },
- "drtree3": {
-  "desc": "Druid tree 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "drtree3/dead/sprites",
-  "fire": null
- },
- "fattree1": {
-  "desc": "Fat tree 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "fattree1/dead/sprites",
-  "fire": null
- },
- "fattree2": {
-  "desc": "Fat tree 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "fattree2/dead/sprites",
-  "fire": null
- },
- "fattree3": {
-  "desc": "Fat tree 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 73,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "fattree3/dead/sprites",
-  "fire": null
- },
- "pihta1": {
-  "desc": "nuxTa 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "pihta1/dead/sprites",
-  "fire": null
- },
- "pihta2": {
-  "desc": "nuxTa 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "pihta2/dead/sprites",
-  "fire": null
- },
- "pihta3": {
-  "desc": "nuxTa 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "pihta3/dead/sprites",
-  "fire": null
- },
- "teerose1": {
-  "desc": "TeeRose 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "teerose1/dead/sprites",
-  "fire": null
- },
- "teerose2": {
-  "desc": "TeeRose 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "teerose2/dead/sprites",
-  "fire": null
- },
- "oak1": {
-  "desc": "Oak 1",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "oak1/dead/sprites",
-  "fire": null
- },
- "teerose3": {
-  "desc": "TeeRose 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 93,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "teerose3/dead/sprites",
-  "fire": null
- },
- "tuya1": {
-  "desc": "Tuya 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "tuya1/dead/sprites",
-  "fire": null
- },
- "tuya2": {
-  "desc": "Tuya 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "tuya2/dead/sprites",
-  "fire": null
- },
- "tuya3": {
-  "desc": "Tuya 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "tuya3/dead/sprites",
-  "fire": null
- },
- "tachka": {
-  "desc": "TA4KA 1",
-  "phases": 1,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 32,
-  "frames": 3,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "TA4KA 1"
-   },
-   {
-    "index": 1,
-    "desc": "TA4KA 2"
-   },
-   {
-    "index": 2,
-    "desc": "TA4KA 3"
-   }
-  ]
- },
- "stones": {
-  "desc": "Big stone 1",
-  "phases": 1,
-  "w": 64,
-  "h": 80,
-  "cx": 32,
+  "w": 40,
+  "h": 40,
+  "cx": 20,
   "cy": 40,
-  "frames": 9,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Big stone 1"
-   },
-   {
-    "index": 1,
-    "desc": "Big stone 2"
-   },
-   {
-    "index": 2,
-    "desc": "Big stone 3"
-   },
-   {
-    "index": 3,
-    "desc": "Rock 1"
-   },
-   {
-    "index": 4,
-    "desc": "Rock 2"
-   },
-   {
-    "index": 5,
-    "desc": "Rock 3"
-   },
-   {
-    "index": 6,
-    "desc": "Small Stone 1"
-   },
-   {
-    "index": 7,
-    "desc": "SmallStone 2"
-   },
-   {
-    "index": 8,
-    "desc": "SmallStone 3"
-   }
-  ]
+  "variants": []
  },
- "vallen1": {
-  "desc": "Vallenwood 1",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "vallen1/dead/sprites",
-  "fire": null
+ "prop_barrel2": {
+  "desc": "Seedream prop prop_barrel2",
+  "phases": 1,
+  "w": 40,
+  "h": 48,
+  "cx": 20,
+  "cy": 48,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
  },
- "pointer": {
-  "desc": "Pointer 1",
+ "prop_crate": {
+  "desc": "Seedream prop prop_crate",
+  "phases": 1,
+  "w": 40,
+  "h": 40,
+  "cx": 20,
+  "cy": 40,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "prop_crate2": {
+  "desc": "Seedream prop prop_crate2",
+  "phases": 1,
+  "w": 44,
+  "h": 48,
+  "cx": 22,
+  "cy": 48,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "prop_lantern": {
+  "desc": "Seedream prop prop_lantern",
+  "phases": 1,
+  "w": 32,
+  "h": 56,
+  "cx": 16,
+  "cy": 56,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "prop_sack": {
+  "desc": "Seedream prop prop_sack",
+  "phases": 1,
+  "w": 40,
+  "h": 40,
+  "cx": 20,
+  "cy": 40,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "prop_pot": {
+  "desc": "Seedream prop prop_pot",
   "phases": 1,
   "w": 32,
   "h": 32,
   "cx": 16,
-  "cy": 22,
-  "frames": 6,
+  "cy": 32,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Pointer 1"
-   },
-   {
-    "index": 1,
-    "desc": "Pointer 2"
-   },
-   {
-    "index": 2,
-    "desc": "Pointer 3"
-   },
-   {
-    "index": 3,
-    "desc": "Pointer 4"
-   },
-   {
-    "index": 4,
-    "desc": "Pointer 5"
-   },
-   {
-    "index": 5,
-    "desc": "Pointer 6"
-   }
-  ]
+  "variants": []
  },
- "palka": {
-  "desc": "Strange Device (Palka from Well) 1",
-  "phases": 3,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 54,
-  "frames": 6,
-  "anim_time": [
-   6,
-   6,
-   6,
-   6
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   1
-  ],
-  "dead": null,
-  "fire": null
- },
- "totem": {
-  "desc": "Totem 1",
+ "tree_oak": {
+  "desc": "Seedream tree_oak",
   "phases": 1,
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 62,
-  "frames": 2,
+  "w": 112,
+  "h": 128,
+  "cx": 56,
+  "cy": 128,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Totem 1"
-   },
-   {
-    "index": 1,
-    "desc": "Totem 2"
-   }
-  ]
+  "variants": []
  },
- "pine2": {
-  "desc": "Pine 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "pine2/dead/sprites",
-  "fire": null
- },
- "pine3": {
-  "desc": "Pine 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 100,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "pine3/dead/sprites",
-  "fire": null
- },
- "vallen2": {
-  "desc": "Vallenwood 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "vallen2/dead/sprites",
-  "fire": null
- },
- "vallen3": {
-  "desc": "Vallenwood 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "vallen3/dead/sprites",
-  "fire": null
- },
- "bush2": {
-  "desc": "Bush 2",
-  "phases": 7,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "bush2/dead/sprites",
-  "fire": null
- },
- "bush3": {
-  "desc": "Bush 3",
-  "phases": 7,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "bush3/dead/sprites",
-  "fire": null
- },
- "elka2": {
-  "desc": "Fur 2",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "elka2/dead/sprites",
-  "fire": null
- },
- "elka3": {
-  "desc": "Fur 3",
-  "phases": 7,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 96,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "elka3/dead/sprites",
-  "fire": null
- },
- "iva2": {
-  "desc": "Iva 2",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "iva2/dead/sprites",
-  "fire": null
- },
- "iva3": {
-  "desc": "Iva 3",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "iva3/dead/sprites",
-  "fire": null
- },
- "bush1": {
-  "desc": "Bush 1",
-  "phases": 7,
-  "w": 64,
-  "h": 64,
-  "cx": 32,
-  "cy": 48,
-  "frames": 7,
-  "anim_time": [
-   4,
-   4,
-   4,
-   4,
-   4,
-   4,
-   4
-  ],
-  "anim_frame": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6
-  ],
-  "dead": "bush1/dead/sprites",
-  "fire": null
- },
- "maple2": {
-  "desc": "Maple 2",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "maple2/dead/sprites",
-  "fire": null
- },
- "maple3": {
-  "desc": "Maple 3",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "maple3/dead/sprites",
-  "fire": null
- },
- "oak2": {
-  "desc": "Oak 2",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "oak2/dead/sprites",
-  "fire": null
- },
- "oak3": {
-  "desc": "Oak 3",
-  "phases": 7,
-  "w": 96,
-  "h": 96,
-  "cx": 48,
-  "cy": 80,
-  "frames": 7,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "oak3/dead/sprites",
-  "fire": null
- },
- "statue": {
-  "desc": "Statue 1",
+ "tree_oak2": {
+  "desc": "Seedream tree_oak2",
   "phases": 1,
-  "w": 128,
+  "w": 112,
   "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 2,
+  "cx": 56,
+  "cy": 128,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Statue 1"
-   },
-   {
-    "index": 1,
-    "desc": "Statue 2"
-   }
-  ]
+  "variants": []
  },
- "fence": {
-  "desc": "Fence 1",
+ "tree_pine": {
+  "desc": "Seedream tree_pine",
   "phases": 1,
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "frames": 7,
+  "w": 96,
+  "h": 128,
+  "cx": 48,
+  "cy": 128,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Fence 1"
-   },
-   {
-    "index": 1,
-    "desc": "Fence 2"
-   },
-   {
-    "index": 2,
-    "desc": "Fence 3"
-   },
-   {
-    "index": 3,
-    "desc": "Fence 4"
-   },
-   {
-    "index": 4,
-    "desc": "Fence 5"
-   },
-   {
-    "index": 5,
-    "desc": "Fence 6"
-   },
-   {
-    "index": 6,
-    "desc": "Fence 7"
-   }
-  ]
+  "variants": []
  },
- "bones": {
-  "desc": "Bones 1",
+ "tree_birch": {
+  "desc": "Seedream tree_birch",
   "phases": 1,
-  "w": 128,
+  "w": 96,
   "h": 128,
-  "cx": 64,
+  "cx": 48,
+  "cy": 128,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "tree_willow": {
+  "desc": "Seedream tree_willow",
+  "phases": 1,
+  "w": 112,
+  "h": 112,
+  "cx": 56,
+  "cy": 112,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "bush_berry": {
+  "desc": "Seedream bush_berry",
+  "phases": 1,
+  "w": 64,
+  "h": 64,
+  "cx": 32,
   "cy": 64,
-  "frames": 5,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Bones 1"
-   },
-   {
-    "index": 1,
-    "desc": "Bones 2"
-   },
-   {
-    "index": 2,
-    "desc": "Bones 3"
-   },
-   {
-    "index": 3,
-    "desc": "Bones 4"
-   },
-   {
-    "index": 4,
-    "desc": "Bones 5"
-   }
-  ]
+  "variants": []
  },
- "column": {
-  "desc": "Column 1",
+ "palm": {
+  "desc": "Seedream palm",
   "phases": 1,
-  "w": 32,
+  "w": 96,
+  "h": 128,
+  "cx": 48,
+  "cy": 128,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "cactus": {
+  "desc": "Seedream cactus",
+  "phases": 1,
+  "w": 64,
+  "h": 96,
+  "cx": 32,
+  "cy": 96,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "tree_dead": {
+  "desc": "Seedream tree_dead",
+  "phases": 1,
+  "w": 112,
+  "h": 128,
+  "cx": 56,
+  "cy": 128,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "bush_thorn": {
+  "desc": "Seedream bush_thorn",
+  "phases": 1,
+  "w": 64,
   "h": 64,
-  "cx": 16,
+  "cx": 32,
+  "cy": 64,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "rock": {
+  "desc": "Seedream rock",
+  "phases": 1,
+  "w": 64,
+  "h": 56,
+  "cx": 32,
+  "cy": 56,
+  "frames": 1,
+  "anim_time": [],
+  "anim_frame": [],
+  "dead": null,
+  "fire": null,
+  "variants": []
+ },
+ "rock2": {
+  "desc": "Seedream rock2",
+  "phases": 1,
+  "w": 64,
+  "h": 48,
+  "cx": 32,
   "cy": 48,
-  "frames": 2,
+  "frames": 1,
   "anim_time": [],
   "anim_frame": [],
   "dead": null,
   "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Column 1"
-   },
-   {
-    "index": 1,
-    "desc": "Column 2"
-   }
-  ]
- },
- "skulls": {
-  "desc": "Skulls",
-  "phases": 1,
-  "w": 32,
-  "h": 64,
-  "cx": 16,
-  "cy": 48,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null
- },
- "fence1": {
-  "desc": "Dark fence 1",
-  "phases": 1,
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "frames": 3,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Dark fence 1"
-   },
-   {
-    "index": 1,
-    "desc": "Dark fence 2"
-   },
-   {
-    "index": 2,
-    "desc": "Dark fence 3"
-   }
-  ]
- },
- "scull": {
-  "desc": "Scull fence 1",
-  "phases": 1,
-  "w": 32,
-  "h": 32,
-  "cx": 16,
-  "cy": 16,
-  "frames": 3,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": null,
-  "fire": null,
-  "variants": [
-   {
-    "index": 0,
-    "desc": "Scull fence 1"
-   },
-   {
-    "index": 1,
-    "desc": "Scull fence 2"
-   },
-   {
-    "index": 2,
-    "desc": "Scull fence 3"
-   }
-  ]
- },
- "bambuk1": {
-  "desc": "Bambuk 1",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "bambuk1/dead/sprites",
-  "fire": null
- },
- "bambuk2": {
-  "desc": "Bambuk 2",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "bambuk2/dead/sprites",
-  "fire": null
- },
- "bambuk3": {
-  "desc": "Bambuk 3",
-  "phases": 1,
-  "w": 128,
-  "h": 128,
-  "cx": 64,
-  "cy": 80,
-  "frames": 1,
-  "anim_time": [],
-  "anim_frame": [],
-  "dead": "bambuk3/dead/sprites",
-  "fire": null
+  "variants": []
  }
 }
