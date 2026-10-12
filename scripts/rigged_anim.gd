@@ -96,6 +96,9 @@ var _rot_acc := 0.0
 var _hyst_dir := -1           # угол, который сейчас подтверждается гистерезисом
 var _hyst_steps := 0
 var _scale := 1.0
+## Суффикс имён частей для текущего ракурса. Пусто = пилот (thigh.png);
+## "south" = атласный риг (thigh_south.png). Задаётся полем "suffix" в views.
+var _part_suffix := ""
 const ROT_STEP_TIME := 0.05
 ## Шагов подряд, которые новый угол должен продержаться, прежде чем юнит
 ## начнёт доворачиваться. Без этого зеркало щёлкает на границе октантов.
@@ -332,7 +335,10 @@ func _bone(parent: Node2D, bone_name: String, pos: Vector2) -> Node2D:
 
 func _part(bone: Node2D, tex: String, tone: Color, dir_path: String) -> void:
 	var s := Sprite2D.new()
-	var full := dir_path + tex + ".png"
+	# Суффикс направления: "thigh" -> "thigh_south" (атласный риг) или
+	# "thigh" -> "thigh" (пилот, suffix пустой).
+	var base := tex if _part_suffix.is_empty() else tex + "_" + _part_suffix
+	var full := dir_path + base + ".png"
 	if ResourceLoader.exists(full):
 		s.texture = load(full)
 	else:
@@ -357,6 +363,7 @@ func _build_view(view: String) -> void:
 		return
 	view_name = view
 	var dir_path: String = str(spec.get("parts", ""))
+	_part_suffix = str(spec.get("suffix", ""))
 	var far := _color(spec.get("far_tint"), Color(0.8, 0.8, 0.86))
 	var near := _color(spec.get("near_tint"), Color.WHITE)
 	var bones: Dictionary = spec.get("bones", {})
