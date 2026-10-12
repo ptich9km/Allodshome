@@ -43,6 +43,11 @@ assets/maps/gen/gen_smart_01.png.import
 rig_preview.png
 rig_preview.png.import
 
+# Контактный лист частей рига (tests/extract_rig_parts.py --preview) — выход
+# dev-инструмента, пересоздаётся одной командой.
+assets/units/rig/rig_hero_atlas/_parts_preview.png
+assets/units/rig/rig_hero_atlas/_parts_preview.png.import
+
 # Контактные листы ассетов - выход dev-инструмента для визуального контроля
 # (tests/extract_chatgpt_armor.py --sheet, tests/extract_chatgpt_weapons2.py --sheet,
 #  tests/gen_faction_armor_tint.py --sheet, tests/gen_faction_weapon_tint.py --sheet).

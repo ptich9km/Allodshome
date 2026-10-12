@@ -540,6 +540,174 @@ func _octant_vector(i: int) -> Vector2:
 	return Vector2(cos(a), sin(a))
 
 
+## Атласный риг героя: два authored-ракурса, скольжение на север/юг.
+##
+## Жалоба игрока была «персонаж смотрит во все 4 стороны, хотя решили 2».
+## Причина: rig.json держал 4 view (N/E/S/W) и карту на все кардинальные
+## октанты. Контракт, который здесь защищается:
+##   * ровно ДВА ракурса — запад и восток;
+##   * север и юг отданы одному из них и СКОЛЬЗЯТ (view не меняется);
+##   * диагонали тоже не создают нового ракурса;
+##   * части не срезаны (у каждой текстуры холст заполнен контентом).
+func _test_atlas_rig_two_views() -> void:
+	if not ResourceLoader.exists("res://scripts/rigged_anim.gd"):
+		return
+	var cfg: Variant = JSON.parse_string(FileAccess.get_file_as_string(
+		"res://assets/units/rig/rig_hero_atlas/rig.json"))
+	if not (cfg is Dictionary):
+		_check(false, "атлас: rig.json читается")
+		return
+	var views: Dictionary = (cfg as Dictionary).get("views", {})
+	_check(views.size() == 2,
+		"атлас: ровно ДВА authored-ракурса (%d)" % views.size())
+	_check(views.has("west") and views.has("east"),
+		"атлас: ракурсы называются west и east")
+	# faces_east различается — иначе оба ракурса это один и тот же кадр
+	if views.has("west") and views.has("east"):
+		var fw := int((views["west"] as Dictionary).get("faces_east", 0))
+		var fe := int((views["east"] as Dictionary).get("faces_east", 0))
+		_check(fw != fe,
+			"атлас: ракурсы смотрят в разные стороны (west=%d east=%d)" % [fw, fe])
+
+	# Скольжение: север и юг не должны переключать ракурс.
+	var r := RiggedAnim.new()
+	r.name = "UnitAnim"
+	root.add_child(r)
+	r.setup("rig/hero_atlas")
+	if not r.is_loaded():
+		_check(false, "атлас: риг загрузился")
+		r.queue_free()
+		return
+	_check(r.missing_parts().is_empty(),
+		"атлас: все текстуры частей на месте (%d отсутствует)" % r.missing_parts().size())
+
+	var wv := str((views.get("west", {}) as Dictionary).get("", ""))
+	# полный круг: вид меняется только на запад/восток
+	var seen: Dictionary = {}
+	for oct in range(8):
+		r.set_direction_vec(_octant_vector(oct))
+		for s in range(10):
+			r._advance_rotation(0.06)
+		seen[oct] = str(r.view_name)
+	_check(seen[0] == seen[4],
+		"атлас: север и юг дают один ракурс (N=%s S=%s) — скольжение"
+			% [seen[0], seen[4]])
+	# Диагонали щёлкают на БЛИЖАЙШУЮ кардиналу (1,3 -> запад; 5,7 -> восток) —
+	# это правильное поведение. Инвариант не в том, что они равны северу:
+	# он в том, что они не порождают ТРЕТЬЕГО ракурса.
+	var allowed: Array[String] = [str(seen[0]), str(seen[6]), str(seen[2])]
+	for oct in [1, 3, 5, 7]:
+		_check(allowed.has(str(seen[oct])),
+			"атлас: диагональ %d берёт существующий ракурс (%s)"
+				% [oct, seen[oct]])
+	_check(seen[6] != seen[2],
+		"атлас: восток и запад — разные ракурсы (E=%s W=%s)"
+			% [seen[6], seen[2]])
+
+	# Части не срезаны и не перевёрнуты. Проверки ДВЕ, потому что каждая
+	# ловит свой класс дефекта:
+	#   «центр пустой»      — pivot уехал с сустава (старый баг center_pivot);
+	#   «контент не с той стороны» — часть перевёрнута или обрезана по
+	#     половине холста, и пустой-центра при этом НЕТ, так что первая
+	#     проверка на такой дефект зелёная (проверено мутацией: голова,
+	#     сдвинутая в нижнюю половину холста, даёт fill 0.50 как у целой).
+	# Анатомия задаёт сторону: голов�� и торс висят на суставе СВЕРХУ
+	# (шея/таз внизу части), конечности — СНИЗУ (плечо/таз/колено сверху).
+	var hangs_from := {"head": -1, "torso": -1,
+					   "arm_far": 1, "arm_near": 1, "thigh": 1, "shin": 1}
+	# Обход частей идёт по КАЖДОМУ ракурсу отдельно. Раньше проверка смотрела
+	# на скелет в его текущем состоянии, то есть на последний построенный view:
+	# сломанная часть второго ракурса проходила молча (проверено мутацией).
+	var total_parts := 0
+	var total_hollow := 0
+	var total_wrong := 0
+	var details: Array[String] = []
+	for vname in ["west", "east"]:
+		var vdir := Vector2.LEFT if vname == "west" else Vector2.RIGHT
+		r.set_direction_vec(vdir)
+		for s in range(10):
+			r._advance_rotation(0.06)
+		_check(str(r.view_name) == vname,
+			"атлас: ракурс `%s` действительно строится (получено `%s`)"
+				% [vname, r.view_name])
+		var found := _scan_parts(r, vname, hangs_from)
+		total_parts += int(found["parts"])
+		total_hollow += int(found["hollow"])
+		total_wrong += int(found["wrong"])
+		for d in found["details"]:
+			details.append(str(d))
+
+	_check(total_parts > 0,
+		"атлас: у рига есть текстуры обоих ракурсов (%d)" % total_parts)
+	_check(total_hollow == 0,
+		"атлас: pivot каждой части попал в силуэт (пустых: %d %s)"
+			% [total_hollow, str(details)])
+	_check(total_wrong == 0,
+		"атлас: части не перевёрнуты и не срезаны по половине (%s)"
+			% str(details))
+
+	r.queue_free()
+	await process_frame
+
+
+## Скан частей одного ракурса. Возвращает СЧЁТЧИКИ, а не проверяет сам:
+## в GDScript int передаётся по значению, и проверка в отдельной функции
+## молча ничего не добавила бы наружу.
+func _scan_parts(r: Node, vname: String, hangs_from: Dictionary) -> Dictionary:
+	var parts := 0
+	var hollow := 0
+	var wrong := 0
+	var details: Array[String] = []
+	var stack: Array = [r]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for ch in n.get_children():
+			stack.append(ch)
+			if not (ch is Sprite2D):
+				continue
+			var t := (ch as Sprite2D).texture
+			if t == null:
+				continue
+			parts += 1
+			var fname := str(t.resource_path.get_file()).get_basename()
+			var img := t.get_image()
+			var w := img.get_width()
+			var h := img.get_height()
+			var cx := w / 2
+			var cy := h / 2
+			var opaque := false
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if img.get_pixel(cli(cx + dx), cli(cy + dy)).a > 0.1:
+						opaque = true
+			if not opaque:
+				hollow += 1
+				details.append("%s/%s: пустой центр" % [vname, fname])
+				continue
+			var up := 0
+			var down := 0
+			for y in range(h):
+				for x in range(w):
+					if img.get_pixel(x, y).a <= 0.1:
+						continue
+					if y < cy:
+						up += 1
+					else:
+						down += 1
+			var side := -1 if up > down else 1
+			var want: int = int(hangs_from.get(fname, 0))
+			if want != 0 and side != want:
+				wrong += 1
+				details.append("%s/%s: сторона %d, ждали %d"
+					% [vname, fname, side, want])
+	return {"parts": parts, "hollow": hollow, "wrong": wrong,
+			"details": details}
+
+
+func cli(v: int) -> int:
+	return clampi(v, 0, 100000)
+
+
 func _run() -> void:
 	var tested := 0
 	for backend in BACKENDS:
@@ -561,6 +729,7 @@ func _run() -> void:
 	_test_backend_selection()
 	await _test_rig_textures()
 	_test_rig_turning()
+	await _test_atlas_rig_two_views()
 	_report()
 
 

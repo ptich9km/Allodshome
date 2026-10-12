@@ -349,6 +349,12 @@ func _part(bone: Node2D, tex: String, tone: Color, dir_path: String) -> void:
 	bone.add_child(s)
 
 
+## Есть ли текстура части с учётом суффикса ракурса.
+func _has_part(tex: String, dir_path: String) -> bool:
+	var base := tex if _part_suffix.is_empty() else tex + "_" + _part_suffix
+	return ResourceLoader.exists(dir_path + base + ".png")
+
+
 func _disc(bone: Node2D, tex: String, tone: Color, dir_path: String) -> void:
 	# Шарнирная «пробка» в точке вращения (0,0). Рисуется ПОВЕРХ конечности
 	# (добавляется после _part) и закрывает клиновидный шов, который иначе
@@ -378,6 +384,12 @@ func _build_view(view: String) -> void:
 	var sh_x := l_torso * 0.0789
 	var sh_y := -l_torso + l_torso * 0.105
 
+	# СКЕЛЕТ РУКИ зависит от набора частей, а не от флага в конфиге: у пилота
+	# рука составная (плечо + предплечье), у атласного рига — цельная
+	# (arm_far / arm_near). Локоть в 56-пиксельном риге не читается, а
+	# лишний сустав даёт шов на каждом кадре ходьбы.
+	var one_piece_arm := _has_part("arm_far", dir_path)
+
 	_hip = _bone(self, "Hip", Vector2.ZERO)
 	_disc(_hip, "disc_lg", near, dir_path)  # таз
 
@@ -393,20 +405,28 @@ func _build_view(view: String) -> void:
 	var torso := _bone(_hip, "Torso", Vector2.ZERO)
 	#   дальняя рука ПЕРВОЙ под торсом => за стволом
 	var ab := _bone(torso, "ArmBack", Vector2(-sh_x, sh_y))
-	_part(ab, "upper_arm", far, dir_path)
-	_disc(ab, "disc_lg", far, dir_path)
-	var fb := _bone(ab, "ForearmBack", Vector2(0, l_uarm))
-	_part(fb, "forearm", far, dir_path)
-	_disc(fb, "disc_sm", far, dir_path)
+	if one_piece_arm:
+		_part(ab, "arm_far", far, dir_path)
+		_disc(ab, "disc_lg", far, dir_path)
+	else:
+		_part(ab, "upper_arm", far, dir_path)
+		_disc(ab, "disc_lg", far, dir_path)
+		var fb := _bone(ab, "ForearmBack", Vector2(0, l_uarm))
+		_part(fb, "forearm", far, dir_path)
+		_disc(fb, "disc_sm", far, dir_path)
 	#   ствол — после дальней руки (перед ней), до ближней (за ней)
 	_part(torso, "torso", near, dir_path)
 	#   ближняя рука ПОСЛЕ ствола => перед ним
 	var af := _bone(torso, "ArmFront", Vector2(sh_x, sh_y))
-	_part(af, "upper_arm", near, dir_path)
-	_disc(af, "disc_lg", near, dir_path)
-	var ff := _bone(af, "ForearmFront", Vector2(0, l_uarm))
-	_part(ff, "forearm", near, dir_path)
-	_disc(ff, "disc_sm", near, dir_path)
+	if one_piece_arm:
+		_part(af, "arm_near", near, dir_path)
+		_disc(af, "disc_lg", near, dir_path)
+	else:
+		_part(af, "upper_arm", near, dir_path)
+		_disc(af, "disc_lg", near, dir_path)
+		var ff := _bone(af, "ForearmFront", Vector2(0, l_uarm))
+		_part(ff, "forearm", near, dir_path)
+		_disc(ff, "disc_sm", near, dir_path)
 	#   голова ПОСЛЕДНЕЙ под торсом => поверх всего
 	var head := _bone(torso, "Head", Vector2(0, -l_torso))
 	_part(head, "head", near, dir_path)

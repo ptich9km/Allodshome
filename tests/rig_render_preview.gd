@@ -13,7 +13,7 @@
 
 extends SceneTree
 
-const RIG_SET := "rig/pilot"
+const RIG_SET := "rig/hero_atlas"
 const CELL := Vector2i(180, 220)
 const COLS := 5
 
@@ -28,6 +28,7 @@ const SHOTS: Array = [
 	["dying", 1.2, "dead"],
 	["decay", 0.8, "decay"],
 	["idle", 0.6, "idle W (mirror)"],
+	["idle", 0.6, "idle E"],
 ]
 
 
@@ -86,9 +87,13 @@ func _run() -> void:
 		r.position = Vector2(CELL.x * 0.5, CELL.y - 26)
 		r.play(2 if str(shot[0]) == "attack" else (3 if str(shot[0]) == "dying" else (4 if str(shot[0]) == "decay" else 1 if str(shot[0]) == "walk" else 0)), true)
 		r.advance(float(shot[1]))
-		if i == SHOTS.size() - 1:
-			# последний кадр — проверка зеркала: восток, но показан влево
+		if i == SHOTS.size() - 2:
+			# предпоследний кадр — проверка зеркала: восток, но показан влево
 			r.set_direction_vec(Vector2.LEFT)
+			for s in range(8):
+				r._advance_rotation(0.06)
+		elif i == SHOTS.size() - 1:
+			r.set_direction_vec(Vector2.RIGHT)
 			for s in range(8):
 				r._advance_rotation(0.06)
 
