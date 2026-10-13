@@ -376,72 +376,76 @@ func _build_view(view: String) -> void:
 	var l_torso := float(bones.get("L_torso", 38.0))
 	var l_uarm := float(bones.get("L_uarm", 24.0))
 	var l_thigh := float(bones.get("L_thigh", 28.0))
-	# Смещения суставов ПРОПОРЦИОНАЛЬНЫ длине костей, а не заданы константами:
-	# референс подбирал ±2 px на торсе 38 px вручную, и та же схема разъехалась
-	# бы на торсе 18 px. Коэффициенты взяты из его же настроек
-	# (плечо ±3/38, бедро ±2/38, плечо на 4 px ниже макушки торса 4/38).
-	var hip_x := l_torso * 0.0526
-	var sh_x := l_torso * 0.0789
-	var sh_y := -l_torso + l_torso * 0.105
 
-	# СКЕЛЕТ РУКИ зависит от набора частей, а не от флага в конфиге: у пилота
-	# рука составная (плечо + предплечье), у атласного рига — цельная
-	# (arm_far / arm_near). Локоть в 56-пиксельном риге не читается, а
-	# лишний сустав даёт шов на каждом кадре ходьбы.
-	var one_piece_arm := _has_part("arm_far", dir_path)
+	# Позиции суставов ОТ РЕАЛЬНЫХ РАЗМЕРОВ ТЕКСТУР, а не от долей L_torso.
+	var torso_tex := _part_size("torso", dir_path)
+	var arm_tex := _part_size("upper_arm", dir_path)
+	var thigh_tex := _part_size("thigh", dir_path)
+	# Реальная высота контента торса = половина canvas (контент в верхней половине)
+	var torso_h := torso_tex.y * 0.5
+	# Бёдра: на 1/4 ширины торса от центра
+	var hip_x := torso_tex.x * 0.25
+	# Плечо: у края торса, на 10% ниже макушки
+	var sh_x := torso_tex.x * 0.40
+	var sh_y := -torso_h + torso_h * 0.10
+
+	var composite_arm := _has_part("upper_arm", dir_path)
+	var composite_leg := _has_part("thigh", dir_path) and not _has_part("arm_far", dir_path)
 
 	_hip = _bone(self, "Hip", Vector2.ZERO)
-	_disc(_hip, "disc_lg", near, dir_path)  # таз
 
-	# ДАЛЬНЯЯ НОГА — первый ребёнок Hip => низкий z (за торсом)
-	var tb := _bone(_hip, "ThighBack", Vector2(-hip_x, 0))
-	_part(tb, "thigh", far, dir_path)
-	_disc(tb, "disc_lg", far, dir_path)
-	var sb := _bone(tb, "ShinBack", Vector2(0, l_thigh))
-	_part(sb, "shin", far, dir_path)
-	_disc(sb, "disc_sm", far, dir_path)
+	# ДАЛЬНЯЯ НОГА — за торсом
+	if composite_leg:
+		var tb := _bone(_hip, "ThighBack", Vector2(-hip_x, 0))
+		_part(tb, "thigh", far, dir_path)
+		var sb := _bone(tb, "ShinBack", Vector2(0, l_thigh))
+		_part(sb, "shin", far, dir_path)
 
-	# ТОРС — второй ребёнок Hip
+	# ТОРС
 	var torso := _bone(_hip, "Torso", Vector2.ZERO)
-	#   дальняя рука ПЕРВОЙ под торсом => за стволом
-	var ab := _bone(torso, "ArmBack", Vector2(-sh_x, sh_y))
-	if one_piece_arm:
-		_part(ab, "arm_far", far, dir_path)
-		_disc(ab, "disc_lg", far, dir_path)
-	else:
+
+	# ДАЛЬНЯЯ РУКА — под торсом
+	if composite_arm:
+		var ab := _bone(torso, "ArmBack", Vector2(-sh_x, sh_y))
 		_part(ab, "upper_arm", far, dir_path)
-		_disc(ab, "disc_lg", far, dir_path)
 		var fb := _bone(ab, "ForearmBack", Vector2(0, l_uarm))
 		_part(fb, "forearm", far, dir_path)
-		_disc(fb, "disc_sm", far, dir_path)
-	#   ствол — после дальней руки (перед ней), до ближней (за ней)
+
+	# СТВОЛ
 	_part(torso, "torso", near, dir_path)
-	#   ближняя рука ПОСЛЕ ствола => перед ним
+
+	# БЛИЖНЯЯ РУКА — перед торсом
 	var af := _bone(torso, "ArmFront", Vector2(sh_x, sh_y))
-	if one_piece_arm:
-		_part(af, "arm_near", near, dir_path)
-		_disc(af, "disc_lg", near, dir_path)
-	else:
+	if composite_arm:
 		_part(af, "upper_arm", near, dir_path)
-		_disc(af, "disc_lg", near, dir_path)
 		var ff := _bone(af, "ForearmFront", Vector2(0, l_uarm))
 		_part(ff, "forearm", near, dir_path)
-		_disc(ff, "disc_sm", near, dir_path)
-	#   голова ПОСЛЕДНЕЙ под торсом => поверх всего
-	var head := _bone(torso, "Head", Vector2(0, -l_torso))
+	elif _has_part("arm_near", dir_path):
+		_part(af, "arm_near", near, dir_path)
+
+	# ГОЛОВА — на макушке торса (не от L_torso, а от реальной высоты)
+	var head := _bone(torso, "Head", Vector2(0, -torso_h))
 	_part(head, "head", near, dir_path)
 
-	# БЛИЖНЯЯ НОГА — последний ребёнок Hip => перед торсом
+	# БЛИЖНЯЯ НОГА — перед торсом
 	var tf := _bone(_hip, "ThighFront", Vector2(hip_x, 0))
 	_part(tf, "thigh", near, dir_path)
-	_disc(tf, "disc_lg", near, dir_path)
 	var sf := _bone(tf, "ShinFront", Vector2(0, l_thigh))
 	_part(sf, "shin", near, dir_path)
-	_disc(sf, "disc_sm", near, dir_path)
 
 	_hip.scale.x = 1.0
 	_apply_mirror()
 	_build_anims()
+
+
+## Размер текстуры части (пустой вектор, если нет).
+func _part_size(tex: String, dir_path: String) -> Vector2:
+	var base := tex if _part_suffix.is_empty() else tex + "_" + _part_suffix
+	var path := dir_path + base + ".png"
+	if ResourceLoader.exists(path):
+		var t: Texture2D = load(path)
+		return Vector2(t.get_width(), t.get_height())
+	return Vector2.ZERO
 
 
 ## Порог «направление определено». Ближайшие к зеркалу октанты — север и юг:
