@@ -31,6 +31,7 @@
   python tests/gen_hero_strip.py stand --check import/Player/hero_stand_v1.png --panels 4
 """
 import argparse
+import re
 import sys
 from collections import deque
 from pathlib import Path
@@ -49,6 +50,22 @@ no helmet. He wears a rounded polished silver steel breastplate, small silver
 shoulder pads, an olive-green knee-length tunic, a wide brown leather belt, brown
 leather gauntlets, dark grey trousers and brown leather knee-high boots."""
 
+# Женщина-войн. Снаряжение и палитра РОВНО мужские — набор должен читаться как
+# та же армия, а не другой game (урок 14.10: «стиль не совпадает» оказалось
+# ложной жалобой, но единый стиль всё равно дешевле проверять). Отличия только
+# очевидные: длинные волосы, никакой бороды, женское телосложение.
+#
+# Толщина. Женская фигура по умолчанию выходит уже мужской, а норма preflight
+# одна и та же (>= 0.36) — иначе она станет новой «жердью». Поэтому ширина
+# задана явно и теми же словами, что и у мужчины, плюс отдельно запрещена
+# слишком худая талия: у боина с мечом замеры были 0.48-0.59.
+CHARACTER_F = """ONE single character repeated in every panel: a broad-shouldered, sturdy adult
+human warrior WOMAN, light skin, long brown hair hanging loose over her shoulders
+and down her back, no beard, no cape, no helmet. She wears the same rounded
+polished silver steel breastplate, small silver shoulder pads, an olive-green
+knee-length tunic, a wide brown leather belt, brown leather gauntlets, dark grey
+trousers and brown leather knee-high boots."""
+
 # Ракурс. Замер 14.10: «SIDE VIEW facing RIGHT» дал силуэт 0.24 ширины к высоте —
 # фигура вчетверо ниже, чем широка, «жердь». Это не ошибка размера: профиль по
 # определению самый узкий ракурс, видно только бок, оба плеча не читаются.
@@ -61,6 +78,12 @@ VIEW = ("THREE-QUARTER VIEW: the whole body is turned about 30 degrees towards t
         "reads as facing RIGHT: the face, the chest and the toes point to the right "
         "and NOT towards the viewer.")
 
+VIEW_F = ("THREE-QUARTER VIEW: the whole body is turned about 30 degrees towards the "
+          "viewer, so BOTH shoulders, BOTH arms and the full width of the chest are "
+          "visible, and the figure looks broad across its silhouette. She still "
+          "clearly reads as facing RIGHT: the face, the chest and the toes point to "
+          "the right and NOT towards the viewer.")
+
 # Телосложение. Отдельным блоком, потому что слово «lean» в описании персонажа
 # модель понимает буквально и рисует именно жердь — это была первая причина
 # тонкой фигуры, ракурс её только усиливал.
@@ -71,6 +94,16 @@ PROPORTIONS = """BODY PROPORTIONS - this matters as much as the pose, the figure
   third as wide as the figure is tall
 - thick thighs and calves, solid boots, the torso is a filled shape with no gaps
 - do NOT draw him slim, lean, thin, gaunt, lanky or stick-like"""
+
+PROPORTIONS_F = """BODY PROPORTIONS - this matters as much as the pose, the figure must NOT be a stick:
+- broad-shouldered and solid, thick torso, sturdy athletic build
+- the SHOULDERS are the widest part of her silhouette, clearly broader than her hips
+- the hips are NOT narrow: a slim waist under the breastplate, but the hip and
+  thigh area stays as wide as the male figure's, this is an armoured soldier
+- because both arms are visible from this angle, the body outline is roughly one
+  third as wide as the figure is tall
+- thick thighs and calves, solid boots, the torso is a filled shape with no gaps
+- do NOT draw her slim, skinny, thin, gaunt, lanky, scrawny or stick-like"""
 
 ANIMS = {
     "walk": """WALKING CYCLE, 8 panels left to right in one horizontal row.
@@ -282,6 +315,18 @@ def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36):
     return ok, rep
 
 
+def femaleize(text: str) -> str:
+    """he/she в английском тексте позы, по границам слов, регистр сохранён."""
+    out = re.sub(r"\bHe\b", "She", text)
+    out = re.sub(r"\bHis\b", "Her", out)
+    out = re.sub(r"\bHe's\b", "She's", out)
+    out = re.sub(r"\bhe\b", "she", out)
+    out = re.sub(r"\bhis\b", "her", out)
+    out = re.sub(r"\bhim\b", "her", out)
+    out = re.sub(r"\bhimself\b", "herself", out)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("anim")
@@ -292,6 +337,11 @@ def main():
                     help="id модели роутера, например black-forest-labs/flux.2-pro")
     ap.add_argument("--panels", type=int, default=8, choices=(4, 8),
                     help="4 панели на картинку — 8 физически не помещаются (14.10)")
+    ap.add_argument("--sex", choices=("m", "f"), default="m",
+                    help="пол персонажа: m — воин (по умолчанию), f — воительница")
+    ap.add_argument("--tag", default="",
+                    help="суффикс имени файла, например nb6. По умолчанию — "
+                         "тег выбранного пола")
     args = ap.parse_args()
 
     if args.check:
@@ -307,13 +357,31 @@ def main():
 
     table = ANIMS4 if args.panels == 4 else ANIMS
     layout = LAYOUT4 if args.panels == 4 else LAYOUT
+    character = CHARACTER
+    proportions = PROPORTIONS
+    view = VIEW
+    if args.sex == "f":
+        character = CHARACTER_F
+        proportions = PROPORTIONS_F
+        view = VIEW_F
+    # Местоимения в тексте поз — английские, и оставленные «He/his» модель
+    # рисует мужчину поверх женского описания персонажа. Замена по границам
+    # слов, регистр сохраняется, чтобы «He does NOT crouch» не стало «She
+    # does not». Проверяется, что после замены не осталось мужских форм.
+    pose = table[args.anim]
+    if args.sex == "f":
+        pose = femaleize(pose)
+        for leftover in ("He ", "His ", "his ", "him ", "He's"):
+            if leftover in pose:
+                raise ValueError(f"в позе '{args.anim}' осталось мужское "
+                                 f"местоимение: {leftover!r}")
     # Порядок блоков значим: характер -> телосложение -> ракурс -> поза ->
     # раскладка. Телосложение и ракурс стоят ДО описания позы, потому что
     # «SIDE VIEW» в конце промта перебивал «lean» в начале: узкий ракурс
     # побеждал при слове «broad» (замер 14.10: 0.24 ширины к высоте).
-    prompt = (f"{CHARACTER}\n\n{PROPORTIONS}\n\n{VIEW}\n\n"
-              f"{table[args.anim]}\n\n{layout}")
-    out = Path(args.out) if args.out else OUT_DIR / f"hero_{args.anim}_v1.png"
+    prompt = (f"{character}\n\n{proportions}\n\n{view}\n\n{pose}\n\n{layout}")
+    tag = args.tag or ("nb5" if args.sex == "m" else "nb6")
+    out = Path(args.out) if args.out else OUT_DIR / f"hero_{args.anim}_{tag}.png"
     gen_once(load_key(), args.model, prompt, out, SIZE, args.seed, 1, None)
     print("предполётная проверка:")
     ok, _ = preflight(str(out), expect=args.panels, min_gap=40 if args.panels == 4 else 60)

@@ -22,6 +22,7 @@ idle 1 + move 4 + attack 3 + dying 4 = 12 кадров.
 3-й — та же полная вытяжка, разницы в позе нет. Цикл замыкается сам:
 стойка -> замах -> удар -> возврат в стойку (1-й кадр = последний).
 """
+import argparse
 import json
 import sys
 from collections import deque
@@ -32,7 +33,13 @@ from PIL import Image
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "import" / "Player"
-OUT_DIR = REPO / "assets" / "units" / "hero" / "war_men"
+
+# Полосы и наборы. Мужская ветка (nb5) — по умолчанию, женская (nb6)
+# добавляется флагами, чтобы старая команда из журнала работала как раньше.
+SETS = {
+    "nb5": ("war_men", "war men"),
+    "nb6": ("war_women", "war women"),
+}
 
 OUT_W, OUT_H, FEET_Y, TARGET_H = 64, 64, 62, 54
 TOL = 45          # заливка фона от краёв
@@ -167,11 +174,15 @@ def figures_of(path, expect):
     # удара третий кусок 1322px против ~500 у остальных — это две фигуры,
     # кулаки коснулись). Делим такой кусок по минимуму профиля колонок.
     if runs:
-        widths = [b - a0 for a0, b in runs]
-        med = float(np.median(widths))
         changed = True
         while changed:
             changed = False
+            # Медиана пересчитывается НА КАЖДОМ проходе. Раньше она считалась
+            # один раз до цикла, и это ломало дорез кусков из трёх фигур:
+            # первый проход резал 1842px пополам, второй видел 1174px против
+            # старой медианы 1197 и не резал их больше (женская полоса удара
+            # 14.10: слиплись фигуры 2, 3 и 4 — процесс останавливался на 3).
+            med = float(np.median([b - a0 for a0, b in runs]))
             out = []
             for x0, x1 in runs:
                 if x1 - x0 > med * 1.5 and (x1 - x0) > 40:
@@ -248,13 +259,21 @@ def fit(rgb, alpha, scale):
 
 
 def main():
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--tag", default="nb5", choices=sorted(SETS),
+                    help="тег полос: nb5 — воин, nb6 — воительница")
+    args = ap.parse_args()
+
+    out_folder, out_label = SETS[args.tag]
+    out_dir = REPO / "assets" / "units" / "hero" / out_folder
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     blocks = []
     for name, fname, expect, take in [
-        ("idle", "hero_stand_nb5.png", 4, 1),
-        ("walk", "hero_walk_nb5.png", 4, 4),
-        ("attack", "hero_attack_nb5.png", 4, 3),
-        ("dying", "hero_die_nb5.png", 4, 4),
+        ("idle", f"hero_stand_{args.tag}.png", 4, 1),
+        ("walk", f"hero_walk_{args.tag}.png", 4, 4),
+        ("attack", f"hero_attack_{args.tag}.png", 4, 3),
+        ("dying", f"hero_die_{args.tag}.png", 4, 4),
     ]:
         print(f"{name}: {fname}")
         figs = figures_of(SRC / fname, expect)
@@ -272,10 +291,10 @@ def main():
 
     # Старые кадры от прошлых сборок (25 штук) удаляем: база объявит frames=13,
     # но лишние файлы остались бы в репозитории и импортировались движком.
-    for old in sorted(OUT_DIR.glob("sprites-*.png")):
+    for old in sorted(out_dir.glob("sprites-*.png")):
         old.unlink()
     for i, fr in enumerate(frames):
-        fr.save(OUT_DIR / f"sprites-{i + 1:03d}.png")
+        fr.save(out_dir / f"sprites-{i + 1:03d}.png")
     print(f"записано кадров: {len(frames)}")
 
     cols = 4
@@ -291,12 +310,12 @@ def main():
         r, c = divmod(i, cols)
         sheet[r * OUT_H:(r + 1) * OUT_H, c * OUT_W:(c + 1) * OUT_W] = cell
     Image.fromarray(sheet).resize((cols * OUT_W * 3, rows * OUT_H * 3), Image.NEAREST) \
-        .save(OUT_DIR / "_contact_sheet.png")
+        .save(out_dir / "_contact_sheet.png")
 
     entry = {
-        "desc": "Hero: war men, Gemini 3.1 Flash image preview 4-panel strips, "
+        "desc": f"Hero: {out_label}, Gemini 3.1 Flash image preview 4-panel strips, "
                 "three-quarter east view + mirror, idle1+move4+attack3+dying4",
-        "folder": "hero/war_men", "frames": len(frames), "prefix": "sprites",
+        "folder": f"hero/{out_folder}", "frames": len(frames), "prefix": "sprites",
         "dirs": 1, "idle_phases": 1, "move": 4, "move_begin": 0,
         "attack": 3, "dying": 4, "decay": 0, "cast": 0, "idle": 0,
         "move_f": [], "move_t": [], "attack_f": [], "attack_t": [], "die_f": [], "dying_t": [],
@@ -304,7 +323,7 @@ def main():
         "tile": None, "projectile": -1, "palette": 0, "blocks": 4,
         "resist": {"fire": 10, "water": 10, "air": 10, "earth": 10, "astral": 10},
     }
-    (OUT_DIR / "_entry.json").write_text(json.dumps(entry, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    (out_dir / "_entry.json").write_text(json.dumps(entry, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print("обновлён _entry.json")
     return 0
 

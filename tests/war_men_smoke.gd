@@ -7,7 +7,10 @@
 ##   прежним боком (не переключаются на мёртвой зоне);
 ## - индексы блоков: idle=0, move=1..4, attack=5..7, dying=8..11;
 ## - freeze_last_frame(DYING) оставляет последний кадр (12);
-## - герой реально подключён: player.PILOT_HERO_SET = "hero/war_men".
+## - герой реально подключён: player.PILOT_HERO_SET = "hero/war_men";
+## - пол героя выбирает набор: female -> hero/war_women, иначе war_men (14.10).
+##
+## Проверки набора идут по обоим: контракт у них один, различается только пол.
 ##
 ## Запуск:
 ##   godot --headless --path . --script res://tests/war_men_smoke.gd
@@ -15,6 +18,7 @@
 extends SceneTree
 
 const SET := "hero/war_men"
+const SET_F := "hero/war_women"
 const CANVAS := 64
 const FEET_Y := 62
 const DIRS := 1
@@ -39,10 +43,34 @@ func _check(ok: bool, msg: String) -> void:
 
 
 func _run() -> void:
-	var o: Dictionary = UnitDB.get_set(SET)
-	_check(not o.is_empty(), "набор %s есть в units_db" % SET)
+	_run_set(SET, true)
+	_run_set(SET_F, false)
+	_test_gender_switch()
+	_finish()
+
+
+## Пол героя выбирает набор. Проверяется на НАСТОЯЩЕМ Player: значение
+## "female" обязано совпасть с тем, что пишет экран создания героя, иначе
+## женщина получила бы мужской спрайт молча.
+func _test_gender_switch() -> void:
+	var p = load("res://scripts/player.gd").new()
+	var saved: String = str(Game.hero_gender)
+
+	Game.hero_gender = "female"
+	_check(p.anim_set_name() == SET_F,
+		"hero_gender=female -> %s (получено %s)" % [SET_F, p.anim_set_name()])
+	Game.hero_gender = "male"
+	_check(p.anim_set_name() == SET, "hero_gender=male -> %s" % SET)
+	Game.hero_gender = ""
+	_check(p.anim_set_name() == SET, "hero_gender пусто -> %s (мужской по умолчанию)" % SET)
+	Game.hero_gender = saved
+	p.free()
+
+
+func _run_set(set_name: String, is_male: bool) -> void:
+	var o: Dictionary = UnitDB.get_set(set_name)
+	_check(not o.is_empty(), "набор %s есть в units_db" % set_name)
 	if o.is_empty():
-		_finish()
 		return
 
 	_check(int(o.get("frames", -1)) == TOTAL,
@@ -57,7 +85,7 @@ func _run() -> void:
 	_check(int(o.get("w", 0)) == CANVAS and int(o.get("h", 0)) == CANVAS, "холст 64x64")
 	_check(int(o.get("cy", 0)) == FEET_Y, "cy = 62 (точка земли)")
 
-	var folder := str(o.get("folder", SET))
+	var folder := str(o.get("folder", set_name))
 	var prefix := str(o.get("prefix", "sprites"))
 	for i in range(1, TOTAL + 1):
 		var p := UnitDB.frame_path(folder, prefix, i)
@@ -66,8 +94,8 @@ func _run() -> void:
 	var anim := UnitAnim.new()
 	anim.name = "UnitAnim"  # имя узла — часть контракта (game.gd ищет по нему)
 	root.add_child(anim)
-	anim.setup(SET)
-	_check(anim.set_name == SET, "setup() принял набор")
+	anim.setup(set_name)
+	_check(anim.set_name == set_name, "setup() принял набор")
 	_check(anim.frames.size() == TOTAL,
 		"загружено кадров: %d (ожидалось %d)" % [anim.frames.size(), TOTAL])
 
@@ -124,12 +152,15 @@ func _run() -> void:
 
 	# --- герой подключён ---
 	var player_script := load("res://scripts/player.gd")
-	_check(str(player_script.PILOT_HERO_SET) == SET,
-		"player.PILOT_HERO_SET = %s" % str(player_script.PILOT_HERO_SET))
+	if is_male:
+		_check(str(player_script.PILOT_HERO_SET) == SET,
+			"player.PILOT_HERO_SET = %s" % str(player_script.PILOT_HERO_SET))
+	else:
+		_check(str(player_script.PILOT_HERO_SET_F) == set_name,
+			"player.PILOT_HERO_SET_F = %s" % str(player_script.PILOT_HERO_SET_F))
 	_check(bool(player_script.PILOT_RIG) == false, "player.PILOT_RIG = false (спрайт-лист)")
 
 	anim.queue_free()
-	_finish()
 
 
 func _set_dir(anim: UnitAnim, world_dir: int) -> void:

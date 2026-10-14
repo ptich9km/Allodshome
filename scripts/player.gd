@@ -720,8 +720,10 @@ func get_protection_astral() -> int: return spirit / 2 + StatusEffects.resist_bo
 ##   Риг технически работает, но игрок отверг его вид 14.10 («чучело»).
 ## "hero/war_men" = 12 кадров из полос Nano Banana (idle1+move4+attack3+dying4),
 ##   один профиль вправо + зеркало. Включён 14.10.
+## "hero/war_women" = тот же контракт, воительница. Пол героя выбирает набор.
 ## "" = спрайт-листы по экипировке.
 const PILOT_HERO_SET := "hero/war_men"
+const PILOT_HERO_SET_F := "hero/war_women"
 
 ## ПИЛОТ 10.10: риг вместо спрайт-листов, если для набора есть rig.json.
 ## Откат всего пилота — false в этой строке. Действует только вместе с
@@ -738,6 +740,11 @@ const PILOT_RIG := false
 ## Теперь ответ один — пилотный риг. Когда появятся риг-наборы броневых
 ## комплектов, здесь вернётся отображение «комплект -> риг-набор».
 func anim_set_name() -> String:
+	# Пол выбирает набор: до 14.10 Game.hero_gender ни на что не влиял и
+	# все герои выглядели одинаково. Значения — как их отдаёт экран создания
+	# героя (character_select.gd), любое другое считается мужским.
+	if str(Game.hero_gender) == "female":
+		return PILOT_HERO_SET_F
 	return PILOT_HERO_SET
 
 ## Пересоздать анимацию после смены экипировки.
@@ -923,13 +930,29 @@ func _physics_process(delta):
 						state = "decay"
 						_anim.play(UnitAnim.Anim.DECAY)
 					else:
+						# Блок доигран — зафиксировать ПОСЛЕДНИЙ кадр и уйти в
+						# состояние трупа. Без этого advance() зацикливал блок на
+						# первый кадр (герой вставал с распахнутыми руками), и
+						# любое снятие паузы — Esc — проигрывало смерть заново
+						# (жалоба игрока 14.10). enemy.gd делает то же через
+						# freeze_last_frame, у героя этого шага не было.
+						_anim.freeze_last_frame(UnitAnim.Anim.DYING)
+						state = "corpse"
 						get_tree().paused = true
 		"decay":
 			velocity = Vector2.ZERO
 			if _anim:
 				_anim.play(UnitAnim.Anim.DECAY)
 				if _anim.advance(delta):
+					_anim.freeze_last_frame(UnitAnim.Anim.DECAY)
+					state = "corpse"
 					get_tree().paused = true
+		"corpse":
+			# Труп: ни анимации, ни физики. Снятие паузы (Esc) больше не
+			# перезапускает падение — блок DYING уже отыграл.
+			velocity = Vector2.ZERO
+			if _anim:
+				_anim.freeze_last_frame(UnitAnim.Anim.DYING)
 
 	move_and_slide()
 	_clamp_to_map()
@@ -1574,7 +1597,7 @@ func _heal_target(target: Node2D, spell_name: String, base: int) -> void:
 func heal_amount(amount: int) -> int:
 	if amount <= 0 or current_hp >= max_hp:
 		return 0
-	if state == "dead" or state == "decay":
+	if state == "dead" or state == "decay" or state == "corpse":
 		return 0
 	var healed := mini(max_hp, current_hp + amount) - current_hp
 	if healed <= 0:
@@ -1888,7 +1911,8 @@ var _auto_buff_accum := 0.0
 
 
 func _tick_auto_cast(delta: float) -> void:
-	if state == "casting" or state == "dead" or not Game.pending_spell.is_empty():
+	if state == "casting" or state == "dead" or state == "corpse" \
+			or not Game.pending_spell.is_empty():
 		return
 	if not Game.pending_scroll.is_empty():
 		return
@@ -2031,7 +2055,7 @@ func _auto_try_buffs() -> void:
 
 func take_damage(damage: int, _attacker: Node2D) -> int:
 	# Мёртвый герой больше не получает урон
-	if state == "dead" or state == "decay":
+	if state == "dead" or state == "decay" or state == "corpse":
 		return 0
 	damage = Game.shield_reduce(self, damage)
 	if damage <= 0:
