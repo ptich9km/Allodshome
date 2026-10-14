@@ -28,6 +28,7 @@ var anim_time := 0.0
 var _rot_acc := 0.0
 const ROT_STEP_TIME := 0.05      # сек на шаг направления при повороте
 var _last_dir := 0
+var _mirror_last := false        # dirs=1: бок «скольжения» на севере/юге
 
 var _sprite: Sprite2D
 
@@ -67,6 +68,13 @@ func _file_dir_of(world_dir: int) -> Array:
 	var d := _file_dirs()
 	if d >= FULL_DIRS:
 		return [world_dir, false]
+	# Один нарисованный ракурс (hero/war_men): восток (5,6,7) как нарисован,
+	# запад (1,2,3) = зеркало. Север/юг «скользят» прежним боком — как в риге
+	# (MIRROR_EPS), решение не принимается, чтобы не мерцать.
+	if d == 1:
+		if world_dir != 0 and world_dir != 4:
+			_mirror_last = world_dir <= 3
+		return [0, _mirror_last]
 	# 5 направлений: правая половина (5,6,7) = зеркало (3,2,1)
 	if world_dir <= 4:
 		return [world_dir, false]
@@ -219,9 +227,13 @@ func _frame_index(kind: int) -> int:
 	_sprite.flip_h = flipped
 	if anim == Anim.IDLE:
 		# Стойка: у оружия (8 напр) — отдельные кадры 001-008 (idle-блок в начале).
-		# У unarmed (5 напр) — первый кадр ходьбы направления (подтверждено).
+		# У наборов dirs<8 с ненулевым idle_phases — свой idle-блок (war_men).
+		# У старых 5-направленных (idle_phases=0) — первый кадр ходьбы направления.
 		if _file_dirs() >= FULL_DIRS:
 			return dir
+		var ip := UnitDB.idle_phases(set_name)
+		if ip > 0:
+			return file_dir * ip + anim_idx
 		return _block_offset()
 	var phases: int = _phases_for(kind)
 	if phases < 1:
