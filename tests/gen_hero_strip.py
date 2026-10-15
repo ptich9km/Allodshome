@@ -105,6 +105,43 @@ PROPORTIONS_F = """BODY PROPORTIONS - this matters as much as the pose, the figu
 - thick thighs and calves, solid boots, the torso is a filled shape with no gaps
 - do NOT draw her slim, skinny, thin, gaunt, lanky, scrawny or stick-like"""
 
+# --- Орк (15.10, игрок) -------------------------------------------------------
+# Живёт по тому же контракту, что и человек: те же блоки, те же 4 фазы. Отличие
+# в трёх вещах — кожа, клыки и снаряжение. Ракурс общий (VIEW): он про человека,
+# а не про вид, и менять его для орка незачем.
+CHARACTER_O = """ONE single character repeated in every panel: a broad-shouldered, sturdy adult
+orc warrior, tall and heavily built, rough olive-green skin, a heavy brow ridge, deep
+set glowing amber eyes, a broad flat nose, large curved white tusks coming up from
+the lower jaw, thick black hair tied into a short rough tail, a scar across one
+cheek. He wears a heavy dark iron chest plate riveted over a wide leather bandolier,
+thick iron shoulder plates, a dark brown leather tunic and skirt, a wide brown
+leather belt, brown leather bracers, dark brown trousers and heavy brown leather
+boots."""
+
+# Женский орк. Отдельный текст, а не femaleize() мужского: замена
+# местоимений не даёт ни одной женской черты, и модель спокойно нарисовала
+# мужчину (15.10) — та же стойка, тот же кирас, те же плечи. У человека
+# женский вариант тоже отдельный блок CHARACTER_F, здесь ровно так же.
+CHARACTER_O_F = """ONE single character repeated in every panel: a tall, powerfully built
+adult orc warrior WOMAN, rough olive-green skin, a high cheekbone line, glowing
+amber eyes without the heavy male brow ridge, a slightly upturned broad nose, and
+large curved white tusks coming up from her lower jaw. Her long dark brown hair
+falls in TWO long thick braids down past her shoulders, and she has a small
+swept-back ponytail. She wears a fitted dark iron breastplate with a V-shaped
+neckline that shows her collarbones and neck, strapped over a dark brown leather
+tunic laced down the front, thin iron shoulder caps rather than heavy pauldrons,
+a narrow belt low on her hips, brown leather bracers, dark trousers tucked into
+brown leather boots."""
+# отдельные блоки означали бы вторую копию правил, которая со временем разъедется
+# с первой. Исключение — пропорции: у орка оба пола коренастые, поэтому
+# женские «стройные бёдра» из PROPORTIONS_F здесь не применяются.
+PROPORTIONS_O = """BODY PROPORTIONS - this matters as much as the pose, the figure must NOT be a stick:
+- tall and powerfully built, thick heavy torso, huge shoulders and back
+- the SHOULDERS are the widest part of his silhouette, clearly broader than his hips
+- long heavy arms with thick forearms, large square hands
+- thick thighs and calves, solid boots, the torso is a filled shape with no gaps
+- do NOT draw him slim, lean, thin, gaunt, lanky or stick-like"""
+
 ANIMS = {
     "walk": """WALKING CYCLE, 8 panels left to right in one horizontal row.
 The legs alternate between a WIDE stride and a NARROW passing pose:
@@ -216,6 +253,46 @@ def magenta_mask(a):
     # картинке). Признак фона — низкий зелёный канал при высоких R и B.
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     return (g < 110) & (r > 140) & (b > 140) & ((r - g) > 50)
+
+
+def components(alpha, keep_ratio=0.18):
+    """Связные компоненты всей фигуры целиком — так персонаж считается напрямую.
+
+    Колонночные прогоны не работают: у соседних фигур хвост/рука/крыло
+    соприкасаются, прогоны сливаются, и порог «шире медианы» не срабатывает
+    никогда — медиана тоже посчитана по слипшимся кускам. Замер 15.10: полоса
+    ходьбы орка дала ОДИН прогон шириной 2490px на четыре фигуры.
+    """
+    m = alpha > 0.35
+    h, w = m.shape
+    lab = np.zeros((h, w), np.int32)
+    cur = 0
+    for y in range(h):
+        for x in range(w):
+            if not m[y, x] or lab[y, x]:
+                continue
+            cur += 1
+            stack = [(y, x)]
+            lab[y, x] = cur
+            while stack:
+                cy, cx = stack.pop()
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = cy + dy, cx + dx
+                    if 0 <= ny < h and 0 <= nx < w and m[ny, nx] and not lab[ny, nx]:
+                        lab[ny, nx] = cur
+                        stack.append((ny, nx))
+    if cur == 0:
+        return []
+    areas = np.bincount(lab.ravel(), minlength=cur + 1)
+    areas[0] = 0
+    boxes = []
+    for i in range(1, cur + 1):
+        if areas[i] < areas.max() * keep_ratio:
+            continue
+        ys, xs = np.where(lab == i)
+        boxes.append((int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())))
+    boxes.sort(key=lambda b: (b[0], b[2]))
+    return boxes
 
 
 def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36):
@@ -339,6 +416,8 @@ def main():
                     help="4 панели на картинку — 8 физически не помещаются (14.10)")
     ap.add_argument("--sex", choices=("m", "f"), default="m",
                     help="пол персонажа: m — воин (по умолчанию), f — воительница")
+    ap.add_argument("--race", choices=("human", "orc"), default="human",
+                    help="раса персонажа: human — человек, orc — орк")
     ap.add_argument("--tag", default="",
                     help="суффикс имени файла, например nb6. По умолчанию — "
                          "тег выбранного пола")
@@ -357,13 +436,23 @@ def main():
 
     table = ANIMS4 if args.panels == 4 else ANIMS
     layout = LAYOUT4 if args.panels == 4 else LAYOUT
-    character = CHARACTER
-    proportions = PROPORTIONS
-    view = VIEW
-    if args.sex == "f":
-        character = CHARACTER_F
-        proportions = PROPORTIONS_F
-        view = VIEW_F
+    # Раса задаёт базу, пол — надстройку. Для человека есть отдельный женский
+    # блок (у неё другая анатомия), для орка женщина получается из мужского
+    # текста через femaleize: у орка оба пола коренастые, отдельные пропорции
+    # означали бы вторую копию правил.
+    if args.race == "orc":
+        character, proportions, view = CHARACTER_O, PROPORTIONS_O, VIEW
+        if args.sex == "f":
+            character = femaleize(character)
+            # Изначально здесь стояло femaleize(CHARACTER_O) — замена
+            # местоимений. Вышло: та же стойка, тот же кирас, те же плечи, то
+            # есть мужчина (15.10). Женский пол теперь задан явно.
+            character = CHARACTER_O_F
+            proportions = PROPORTIONS_F
+    else:
+        character, proportions, view = CHARACTER, PROPORTIONS, VIEW
+        if args.sex == "f":
+            character, proportions, view = CHARACTER_F, PROPORTIONS_F, VIEW_F
     # Местоимения в тексте поз — английские, и оставленные «He/his» модель
     # рисует мужчину поверх женского описания персонажа. Замена по границам
     # слов, регистр сохраняется, чтобы «He does NOT crouch» не стало «She
@@ -380,7 +469,9 @@ def main():
     # «SIDE VIEW» в конце промта перебивал «lean» в начале: узкий ракурс
     # побеждал при слове «broad» (замер 14.10: 0.24 ширины к высоте).
     prompt = (f"{character}\n\n{proportions}\n\n{view}\n\n{pose}\n\n{layout}")
-    tag = args.tag or ("nb5" if args.sex == "m" else "nb6")
+    default_tag = {"human": {"m": "nb5", "f": "nb6"},
+                   "orc": {"m": "oc1", "f": "oc2"}}[args.race][args.sex]
+    tag = args.tag or default_tag
     out = Path(args.out) if args.out else OUT_DIR / f"hero_{args.anim}_{tag}.png"
     gen_once(load_key(), args.model, prompt, out, SIZE, args.seed, 1, None)
     print("предполётная проверка:")

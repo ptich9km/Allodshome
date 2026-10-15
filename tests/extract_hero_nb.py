@@ -31,6 +31,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from gen_hero_strip import components
+
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "import" / "Player"
 
@@ -39,6 +41,10 @@ SRC = REPO / "import" / "Player"
 SETS = {
     "nb5": ("war_men", "war men"),
     "nb6": ("war_women", "war women"),
+    # Орки (15.10, игрок) — тот же контракт, другой персонаж. Мужской орк
+    # oc1, женский oc2; полосы лежат рядом с человеческими по тому же --tag.
+    "oc1": ("orc_men", "orc men"),
+    "oc2": ("orc_women", "orc women"),
 }
 
 OUT_W, OUT_H, FEET_Y, TARGET_H = 64, 64, 62, 54
@@ -155,6 +161,23 @@ def figures_of(path, expect):
     strong = dist > STRONG
     y0, y1 = row_band(strong)
     alpha_full = cut_mask(a, ref)
+
+    # Сперва связные компоненты: они считают фигуры напрямую. Колонночные
+    # прогоны остаются запасным путём — на некоторых полосах соседние фигуры
+    # не касаются и компонент выходит больше ожидаемого (шлейфы, осколки).
+    boxes = components(alpha_full)
+    print(f"    компонент-фигур: {len(boxes)} (ожидалось {expect})")
+    if len(boxes) >= expect:
+        chosen = boxes[:expect]
+        out = []
+        for by0, by1, bx0, bx1 in chosen:
+            sub = alpha_full[by0:by1 + 1, bx0:bx1 + 1]
+            crop = a[by0:by1 + 1, bx0:bx1 + 1]
+            print(f"      {bx1 - bx0 + 1}x{by1 - by0 + 1}")
+            out.append((crop, sub))
+        return out
+    print("    компонентов мало, перехожу на колонки")
+
     alpha = alpha_full[y0:y1 + 1]
 
     col = (alpha > 0.5).sum(axis=0)
