@@ -199,10 +199,17 @@ difference in the rise of his chest. He does not move his feet at all.
 
     "die": """A FALL TO THE GROUND, 4 panels left to right in one row.
 Panel 1: standing upright, both arms flung wide open to the sides.
-Panel 2: sinking down, knees bent, body lowering towards the ground.
-Panel 3: sitting on the ground, leaning back on his hands, legs out.
-Panel 4: lying flat on his back on the ground, face and chest pointing up.
-He NEVER lies face down. """,
+Panel 2: his knees buckle, he drops downwards, the torso already tilted, one hand
+reaching for the ground.
+Panel 3: he has fallen over onto the ground, the body turned down onto its side,
+torso already low and nearly horizontal, one arm stretched out.
+Panel 4: LYING FLAT ON THE GROUND ON HIS BACK, the body completely HORIZONTAL and
+stretched out along the ground, the head at one end and the boots at the other,
+face and chest pointing up. This panel is much WIDER than it is TALL.
+He NEVER lies face down.
+BANNED in panels 3 and 4: sitting upright, squatting, kneeling upright, resting on
+the hands behind the back, legs dangling down, a compact round shape. A SEATED
+figure is WRONG - he has to end up stretched out flat on the ground. """,
 
     "attack": """A FIST PUNCH, 4 panels left to right in one row.
 Panel 1: guard stance, both fists up in front of his chest.
@@ -220,11 +227,17 @@ PERFECTLY UPRIGHT and straight - he does NOT crouch, does NOT bend forward at th
 waist, does NOT squat and is NOT running.
 Panel 3 PASSING: the back foot swings forward and steps right up beside the front
 foot, the legs are TOGETHER, feet almost touching, his body at its highest and
-tallest, spine straight.
+tallest, spine straight. This panel is the NARROWEST of the four - the two legs
+almost overlap each other and the whole silhouette is slim, clearly narrower than
+panel 1.
 Panel 4 PUSH OFF: he rises onto the toes of the back foot, the back leg trailing
-at an angle, the front leg starting to reach forward, body rising.
+at an angle, the front leg starting to reach forward, body rising. The legs are
+only slightly apart here, a normal stride width.
 The 4 panels must show 4 clearly different leg positions, each about a quarter of
-a step apart.""",
+a step apart.
+BANNED in panels 3 and 4: legs spread very wide apart, a deep side lunge, a horse
+stance, a wide straddle, a squat. Panels 3 and 4 are the NARROW panels; only panel
+1 and 2 show the legs wide apart.""",
 }
 
 LAYOUT = """LAYOUT RULES, these matter more than the drawing:
@@ -401,6 +414,14 @@ def femaleize(text: str) -> str:
     out = re.sub(r"\bhis\b", "her", out)
     out = re.sub(r"\bhim\b", "her", out)
     out = re.sub(r"\bhimself\b", "herself", out)
+    # 15.10 (нощь): ЗАГЛАВНЫЕ — тоже. Усиленный промт смерти говорит
+    # "ON HIS BACK", и без этой строки в промте орчины оставалось "HIS":
+    # модель нарисовала бы мужчину поверх женского описания персонажа.
+    # Проверка остатков в main() это не ловила — она искала "His ", не "HIS ".
+    out = re.sub(r"\bHE\b", "SHE", out)
+    out = re.sub(r"\bHIS\b", "HER", out)
+    out = re.sub(r"\bHIM\b", "HER", out)
+    out = re.sub(r"\bHIMSELF\b", "HERSELF", out)
     return out
 
 
@@ -460,10 +481,14 @@ def main():
     pose = table[args.anim]
     if args.sex == "f":
         pose = femaleize(pose)
-        for leftover in ("He ", "His ", "his ", "him ", "He's"):
-            if leftover in pose:
-                raise ValueError(f"в позе '{args.anim}' осталось мужское "
-                                 f"местоимение: {leftover!r}")
+        # Проверка по ГРАНИЦАМ СЛОВ, а не по подстроке. Подстрока давала
+        # ложные срабатывания: "his " находится внутри "This panel is", а
+        # "HE " — внутри "THE GROUND" (15.10 ночь, из-за этого генерация
+        # орк-женщины падала, а не рисовала).
+        male = re.search(r"\b(?:he|his|him|himself)\b", pose, re.IGNORECASE)
+        if male:
+            raise ValueError(f"в позе '{args.anim}' осталось мужское "
+                             f"местоимение: {male.group(0)!r}")
     # Порядок блоков значим: характер -> телосложение -> ракурс -> поза ->
     # раскладка. Телосложение и ракурс стоят ДО описания позы, потому что
     # «SIDE VIEW» в конце промта перебивал «lean» в начале: узкий ракурс

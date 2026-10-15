@@ -1,7 +1,7 @@
 {
  "desc": "Hero: orc men, Gemini 3.1 Flash image preview 4-panel strips, three-quarter east view + mirror, idle1+move4+attack3+dying4",
- "folder": "hero/orc_men",
  "frames": 12,
+ "folder": "hero/orc_men",
  "prefix": "sprites",
  "dirs": 1,
  "idle_phases": 1,

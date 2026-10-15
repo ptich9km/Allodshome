@@ -1,4 +1,4 @@
-## Сторож набора hero/war_men (1 ракурс + зеркало, UnitAnim dirs=1).
+## Сторож наборов героя (1 ракурс + зеркало, UnitAnim dirs=1).
 ##
 ## Проверяет инварианты, которые нарезка и подключение обязана держать:
 ## - в базе 12 кадров (idle1+move4+attack3+dying4), dirs=1, холст 64x64, низ y=62;
@@ -8,9 +8,11 @@
 ## - индексы блоков: idle=0, move=1..4, attack=5..7, dying=8..11;
 ## - freeze_last_frame(DYING) оставляет последний кадр (12);
 ## - герой реально подключён: player.PILOT_HERO_SET = "hero/war_men";
-## - пол героя выбирает набор: female -> hero/war_women, иначе war_men (14.10).
+## - пол героя выбирает набор: female -> hero/war_women, иначе war_men (14.10);
+## - раса тоже выбирает набор: ork -> hero/orc_men|orc_women (15.10),
+##   остальные расы (нежить, друид) берут людский набор.
 ##
-## Проверки набора идут по обоим: контракт у них один, различается только пол.
+## Проверки набора идут по всем четырём: контракт у них один.
 ##
 ## Запуск:
 ##   godot --headless --path . --script res://tests/war_men_smoke.gd
@@ -19,6 +21,8 @@ extends SceneTree
 
 const SET := "hero/war_men"
 const SET_F := "hero/war_women"
+const SET_ORK := "hero/orc_men"
+const SET_ORK_F := "hero/orc_women"
 const CANVAS := 64
 const FEET_Y := 62
 const DIRS := 1
@@ -43,31 +47,48 @@ func _check(ok: bool, msg: String) -> void:
 
 
 func _run() -> void:
-	_run_set(SET, true)
-	_run_set(SET_F, false)
-	_test_gender_switch()
+	_run_set(SET, "PILOT_HERO_SET")
+	_run_set(SET_F, "PILOT_HERO_SET_F")
+	_run_set(SET_ORK, "PILOT_HERO_SET_ORK")
+	_run_set(SET_ORK_F, "PILOT_HERO_SET_ORK_F")
+	_test_race_and_gender_switch()
 	_finish()
 
 
-## Пол героя выбирает набор. Проверяется на НАСТОЯЩЕМ Player: значение
-## "female" обязано совпасть с тем, что пишет экран создания героя, иначе
-## женщина получила бы мужской спрайт молча.
-func _test_gender_switch() -> void:
+## Раса и пол выбирают набор. Проверяется на НАСТОЯЩЕМ Player: значения
+## обязаны совпасть с тем, что пишет экран создания героя, иначе герой-орк
+## получил бы человеческий спрайт молча (ровно тот случай, что 15.10).
+func _test_race_and_gender_switch() -> void:
 	var p = load("res://scripts/player.gd").new()
-	var saved: String = str(Game.hero_gender)
+	var saved_gender: String = str(Game.hero_gender)
+	var saved_race: String = str(Game.hero_race)
 
-	Game.hero_gender = "female"
-	_check(p.anim_set_name() == SET_F,
-		"hero_gender=female -> %s (получено %s)" % [SET_F, p.anim_set_name()])
-	Game.hero_gender = "male"
-	_check(p.anim_set_name() == SET, "hero_gender=male -> %s" % SET)
-	Game.hero_gender = ""
-	_check(p.anim_set_name() == SET, "hero_gender пусто -> %s (мужской по умолчанию)" % SET)
-	Game.hero_gender = saved
+	# раса, пол -> ожидаемый набор. "" означает «старый сейв без расы».
+	var matrix := [
+		["human", "male", SET], ["human", "female", SET_F],
+		["human", "", SET], ["", "male", SET],
+		["ork", "male", SET_ORK], ["ork", "female", SET_ORK_F],
+		["ork", "", SET_ORK], ["orc", "male", SET_ORK],
+		["necro", "male", SET], ["necro", "female", SET_F],
+		["druid", "male", SET], ["druid", "female", SET_F],
+	]
+	for row in matrix:
+		var race := str(row[0])
+		var gender := str(row[1])
+		var want := str(row[2])
+		Game.hero_race = race
+		Game.hero_gender = gender
+		_check(p.anim_set_name() == want,
+			"раса %s / пол %s -> %s (получено %s)" % [
+				race if race != "" else "(пусто)", gender if gender != "" else "(пусто)",
+				want, p.anim_set_name()])
+
+	Game.hero_race = saved_race
+	Game.hero_gender = saved_gender
 	p.free()
 
 
-func _run_set(set_name: String, is_male: bool) -> void:
+func _run_set(set_name: String, const_name: String) -> void:
 	var o: Dictionary = UnitDB.get_set(set_name)
 	_check(not o.is_empty(), "набор %s есть в units_db" % set_name)
 	if o.is_empty():
@@ -151,14 +172,15 @@ func _run_set(set_name: String, is_male: bool) -> void:
 	_check(anim._sprite.texture == last_tex, "текстура трупа = sprites-%03d" % TOTAL)
 
 	# --- герой подключён ---
+	# Константы читаются картой скрипта: обращение вида `player_script.CONST`
+	# требует имени литералом, а наборов четыре и список должен быть данными.
 	var player_script := load("res://scripts/player.gd")
-	if is_male:
-		_check(str(player_script.PILOT_HERO_SET) == SET,
-			"player.PILOT_HERO_SET = %s" % str(player_script.PILOT_HERO_SET))
-	else:
-		_check(str(player_script.PILOT_HERO_SET_F) == set_name,
-			"player.PILOT_HERO_SET_F = %s" % str(player_script.PILOT_HERO_SET_F))
-	_check(bool(player_script.PILOT_RIG) == false, "player.PILOT_RIG = false (спрайт-лист)")
+	var consts: Dictionary = player_script.get_script_constant_map()
+	_check(consts.has(const_name), "player.gd объявляет %s" % const_name)
+	if consts.has(const_name):
+		_check(str(consts[const_name]) == set_name,
+			"player.%s = %s (получено %s)" % [const_name, set_name, str(consts[const_name])])
+	_check(bool(consts.get("PILOT_RIG", true)) == false, "player.PILOT_RIG = false (спрайт-лист)")
 
 	anim.queue_free()
 

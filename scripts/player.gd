@@ -721,9 +721,14 @@ func get_protection_astral() -> int: return spirit / 2 + StatusEffects.resist_bo
 ## "hero/war_men" = 12 кадров из полос Nano Banana (idle1+move4+attack3+dying4),
 ##   один профиль вправо + зеркало. Включён 14.10.
 ## "hero/war_women" = тот же контракт, воительница. Пол героя выбирает набор.
+## "hero/orc_men" / "hero/orc_women" = тот же контракт, орк и орчица (15.10).
+##   Раса выбирает набор, пол — внутри расы. У остальных рас (нежить, друид)
+##   своего набора ещё нет, они берут людский.
 ## "" = спрайт-листы по экипировке.
 const PILOT_HERO_SET := "hero/war_men"
 const PILOT_HERO_SET_F := "hero/war_women"
+const PILOT_HERO_SET_ORK := "hero/orc_men"
+const PILOT_HERO_SET_ORK_F := "hero/orc_women"
 
 ## ПИЛОТ 10.10: риг вместо спрайт-листов, если для набора есть rig.json.
 ## Откат всего пилота — false в этой строке. Действует только вместе с
@@ -743,9 +748,14 @@ func anim_set_name() -> String:
 	# Пол выбирает набор: до 14.10 Game.hero_gender ни на что не влиял и
 	# все герои выглядели одинаково. Значения — как их отдаёт экран создания
 	# героя (character_select.gd), любое другое считается мужским.
-	if str(Game.hero_gender) == "female":
-		return PILOT_HERO_SET_F
-	return PILOT_HERO_SET
+	# Раса — с 15.10: у орков свой набор. "orc" тоже принимается, потому что
+	# так раса называется в `MapGenerator.CITY_RACES` и в старых сейвах.
+	var female := str(Game.hero_gender) == "female"
+	match str(Game.hero_race):
+		"ork", "orc":
+			return PILOT_HERO_SET_ORK_F if female else PILOT_HERO_SET_ORK
+		_:
+			return PILOT_HERO_SET_F if female else PILOT_HERO_SET
 
 ## Пересоздать анимацию после смены экипировки.
 func refresh_animation() -> void:

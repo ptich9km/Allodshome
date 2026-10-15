@@ -48,6 +48,7 @@ SETS = {
 }
 
 OUT_W, OUT_H, FEET_Y, TARGET_H = 64, 64, 62, 54
+MAX_W = 60        # предел по ширине: та же полоса, что по вертикали (низ 62)
 TOL = 45          # заливка фона от краёв
 STRONG = 120      # порог «настоящей» фигуры против призрака
 MIN_COL = 5       # колонка короче — не фигура
@@ -285,6 +286,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="nb5", choices=sorted(SETS),
                     help="тег полос: nb5 — воин, nb6 — воительница")
+    ap.add_argument("--only", default="", choices=("idle", "walk", "attack", "dying"),
+                    help="перерезать только этот блок, остальные кадры не трогать")
+    ap.add_argument("--strip", default="",
+                    help="полоса для блока из --only (путь к PNG)")
     args = ap.parse_args()
 
     out_folder, out_label = SETS[args.tag]
@@ -298,33 +303,59 @@ def main():
         ("attack", f"hero_attack_{args.tag}.png", 4, 3),
         ("dying", f"hero_die_{args.tag}.png", 4, 4),
     ]:
-        print(f"{name}: {fname}")
-        figs = figures_of(SRC / fname, expect)
+        if args.only and name != args.only:
+            continue
+        # --strip перекрывает полосу этого блока: нужно, когда одна фаза
+        # перегенерирована отдельно, а остальные три остаются из прошлой
+        # сборки (15.10 ночь: у орка поменяли только смерть).
+        src = Path(args.strip) if (args.only and name == args.only and args.strip) else SRC / fname
+        print(f"{name}: {src.name}")
+        figs = figures_of(src, expect)
         if len(figs) != expect or any(f is None for f in figs):
             print(f"FAIL: {name} — фигур {len(figs)}, годных {sum(f is not None for f in figs)}")
             return 1
         blocks.append((name, figs[:take]))
 
+    # Номер первого кадра блока в общей нумерации 1..12. Считается по полной
+    # раскладке, а не по позиции в blocks: при --only в blocks один блок,
+    # а кадры должны попасть на свои места (dying -> 9..12), иначе
+    # перезапись одной фазы сдвинула бы остальные.
+    first = {"idle": 1, "walk": 2, "attack": 6, "dying": 9}
+
     frames = []
     for name, figs in blocks:
-        scale = TARGET_H / max(al.shape[0] for _, al in figs)
-        print(f"{name}: max h={max(al.shape[0] for _, al in figs)} scale={scale:.4f}")
-        for rgb, al in figs:
-            frames.append(fit(rgb, al, scale))
+        # Масштаб блока — общий для всех его фаз, иначе фигура пульсирует
+        # между кадрами. Ограничиваем по ОБЕИМ осям: 15.10 в блоке dying
+        # орка самая высокая фигура стоящая (54 px), а самая широкая — лежащая
+        # (63 px на холсте 64), и по высоте она не влезала: кадр выходил
+        # срезанным по краям. Раньше считался только TARGET_H (15.10).
+        max_h = max(al.shape[0] for _, al in figs)
+        max_w = max(al.shape[1] for _, al in figs)
+        scale = min(TARGET_H / max_h, MAX_W / max_w)
+        print(f"{name}: max h={max_h} w={max_w} scale={scale:.4f}")
+        for k, (rgb, al) in enumerate(figs):
+            frames.append((first[name] + k, fit(rgb, al, scale)))
 
     # Старые кадры от прошлых сборок (25 штук) удаляем: база объявит frames=13,
     # но лишние файлы остались бы в репозитории и импортировались движком.
-    for old in sorted(out_dir.glob("sprites-*.png")):
-        old.unlink()
-    for i, fr in enumerate(frames):
-        fr.save(out_dir / f"sprites-{i + 1:03d}.png")
+    # При --only удалять нельзя — блок один, а кадры остальных фаз на диске
+    # единственные и пришли из другой полосы.
+    if not args.only:
+        for old in sorted(out_dir.glob("sprites-*.png")):
+            old.unlink()
+    for idx, fr in frames:
+        fr.save(out_dir / f"sprites-{idx:03d}.png")
     print(f"записано кадров: {len(frames)}")
 
+    # Контактный лист собирается с диска, по всем sprites-*.png, а не из
+    # набора `frames`: при --only в frames только один блок, и лист из 4
+    # картинок перезаписал бы полный обзор набора из 12 (15.10 ночь).
+    on_disk = sorted(out_dir.glob("sprites-*.png"))
     cols = 4
-    rows = (len(frames) + cols - 1) // cols
+    rows = (len(on_disk) + cols - 1) // cols
     sheet = np.zeros((rows * OUT_H, cols * OUT_W, 3), np.uint8)
-    for i, fr in enumerate(frames):
-        arr = np.array(fr)
+    for i, path in enumerate(on_disk):
+        arr = np.array(Image.open(path).convert("RGBA"))
         yy, xx = np.mgrid[0:OUT_H, 0:OUT_W]
         chk = np.where(((xx // 8) + (yy // 8)) % 2 == 0, 90, 60).astype(np.uint8)
         cell = np.dstack([chk, chk, chk])
@@ -336,9 +367,13 @@ def main():
         .save(out_dir / "_contact_sheet.png")
 
     entry = {
+        # frames — ВСЕГО в наборе (idle1+move4+attack3+dying4 = 12), а не
+        # число записанных в этом прогоне. При --only блок один, и раньше
+        # сюда попадало 4 — набор в базе объявлял бы 4 кадра (15.10 ночь).
         "desc": f"Hero: {out_label}, Gemini 3.1 Flash image preview 4-panel strips, "
                 "three-quarter east view + mirror, idle1+move4+attack3+dying4",
-        "folder": f"hero/{out_folder}", "frames": len(frames), "prefix": "sprites",
+        "frames": 12,
+        "folder": f"hero/{out_folder}", "prefix": "sprites",
         "dirs": 1, "idle_phases": 1, "move": 4, "move_begin": 0,
         "attack": 3, "dying": 4, "decay": 0, "cast": 0, "idle": 0,
         "move_f": [], "move_t": [], "attack_f": [], "attack_t": [], "die_f": [], "dying_t": [],
