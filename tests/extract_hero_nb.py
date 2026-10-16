@@ -536,8 +536,11 @@ def main():
         # сюда попадало 4 — набор в базе объявлял бы 4 кадра (15.10 ночь).
         "desc": f"Hero: {out_label}, Gemini 3.1 Flash image preview 4-panel strips, "
                 "three-quarter east view + mirror, idle1+move4+attack3+dying4",
-        "frames": 12,
-        "folder": f"hero/{out_folder}", "prefix": "sprites",
+        # Порядок ключей - как в остальных 11 наборах репозитория (folder,
+        # frames, prefix). Нарезчик писал frames перед folder, и любая пересборка
+        # набора давала ложный diff из одной перестановки строк.
+        "folder": f"hero/{out_folder}",
+        "frames": 12, "prefix": "sprites",
         "dirs": 1, "idle_phases": 1, "move": 4, "move_begin": 0,
         "attack": 3, "dying": 4, "decay": 0, "cast": 0, "idle": 0,
         "move_f": [], "move_t": [], "attack_f": [], "attack_t": [], "die_f": [], "dying_t": [],
