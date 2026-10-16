@@ -41,6 +41,8 @@ from PIL import Image
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DIR = REPO / "import" / "Player"
+# Поле от фигуры до края кадра, px. Меньше — кадр срезан по краю при нарезке.
+EDGE_MIN = 3
 MODEL = "google/gemini-nano-banana-2.1"
 SIZE = "1536x1024"
 
@@ -170,14 +172,50 @@ panels 6, 7, 8 lying flat on his back face up, still. He NEVER lies face down.
 """,
 }
 
-LAYOUT4 = """LAYOUT RULES, these matter more than the drawing:
-- exactly 4 separate figures in a single horizontal row, evenly spaced
-- HUGE empty gaps between the figures: at least 150 pixels of completely empty
-  background between the right edge of one figure and the left edge of the next
-- every figure the same size, feet on the same horizontal line, full body from
-  head to boots inside its own space, nothing cropped
+LAYOUT4 = """PURPOSE, read this first: you are drawing ONE SPRITESHEET STRIP FOR A 2D VIDEO
+GAME. Every panel is a SEPARATE ANIMATION FRAME of the same figure, the game
+will cut this image apart and play the panels one after another as an animation.
+So the panels must be like frames on a film strip: each panel is ONE whole
+complete figure in ONE clean pose, standing on its own, with nothing of the
+neighbouring panels bleeding into it.
 
-ABSOLUTELY NO GROUND SHADOW, no cast shadow, no dark blur under the boots, no
+NEVER smear, merge or blend the phases. BANNED between and inside the panels:
+ghosting, double images, motion blur, a semi-transparent second figure, a pose
+trailing off into the next panel, or two panels sharing a limb. If two poses
+share a shape, the NEXT panel must still show a full separate figure.
+
+COUNT IS LAW: draw EXACTLY 4 figures in the whole image. Never 5, never 7.
+Do not draw the same sequence twice, do not repeat a panel, and do not add an
+extra panel at the end to finish the motion. When the fourth figure is drawn,
+STOP. There is NO second row and NO second strip: the whole area below the
+figures stays empty background. (Measured 16.10: a strip was answered with
+SEVEN figures in two rows - a three-step fall on top and a four-step fall
+below - which cannot be cut into a 4-frame animation at all.)
+
+SIZE IS LAW TOO - DO THE ARITHMETIC BEFORE YOU DRAW:
+All four figures have to stand next to each other in ONE row, so each one may
+take at most ONE QUARTER of the image width. Keep every figure at most 22
+percent of the image WIDTH and at most 60 percent of the image HEIGHT.
+If the creature is naturally WIDER than it is tall - a spectre, a cloud, a
+smoke column, anything spreading sideways - you must draw it MUCH smaller, so
+that four of them still fit side by side. A figure drawn too wide does not
+overlap its neighbours in a row: the model then spills it into a second row,
+which the game cannot cut apart.
+
+LAYOUT RULES:
+- exactly 4 separate figures in a single horizontal row, evenly spaced
+- one horizontal row only, all four on ONE ground line, none above another
+- empty gaps of pure background between the figures, at least 80 pixels from
+  the right edge of one figure to the left edge of the next one; nothing of any
+  kind may pass through those gaps
+- every figure the same size, full body, nothing cropped
+- EVERY figure keeps a strip of clear empty background on ALL FOUR sides -
+  above it, below it, left of it, right of it - at least 30 pixels on each
+  side. NOTHING may touch or cross the border of the image. A figure that runs
+  into the edge of the picture will be cut in half by the game, so this is a
+  hard error, not a style choice.
+
+ABSOLUTELY NO GROUND SHADOW, no cast shadow, no dark blur under the feet, no
 floor, no ground plane, no horizontal line, no surface, no reflection. The area
 under and around every figure must be the same flat background as the rest of
 the image.
@@ -240,7 +278,19 @@ stance, a wide straddle, a squat. Panels 3 and 4 are the NARROW panels; only pan
 1 and 2 show the legs wide apart.""",
 }
 
-LAYOUT = """LAYOUT RULES, these matter more than the drawing:
+LAYOUT = """PURPOSE, read this first: you are drawing ONE SPRITESHEET STRIP FOR A 2D VIDEO
+GAME. Every panel is a SEPARATE ANIMATION FRAME of the same character, the game
+will cut this image apart and play the panels one after another as an animation.
+So the panels must be like frames on a film strip: each panel is ONE whole
+complete character in ONE clean pose, standing on its own, with nothing of the
+neighbouring panels bleeding into it.
+
+NEVER smear, merge or blend the phases. BANNED between and inside the panels:
+ghosting, double images, motion blur, a semi-transparent second figure, a pose
+trailing off into the next panel, or two panels sharing a limb. If two poses
+share a shape, the NEXT panel must still show a full separate figure.
+
+LAYOUT RULES, these matter more than the drawing:
 - exactly 8 separate figures in a single horizontal row, evenly spaced
 - HUGE empty gaps of pure background between the figures, at least 100 pixels of
   completely empty background between the right edge of one figure and the left
@@ -249,6 +299,11 @@ LAYOUT = """LAYOUT RULES, these matter more than the drawing:
   head to boots inside its own space, nothing cropped
 - each figure fills the image height, from the very top of the head to the very
   bottom of the boots, leaving only small equal margins
+- EVERY figure keeps a strip of clear empty background on ALL FOUR sides -
+  above the head, below the boots, left of the arm, right of the arm - at least
+  30 pixels on each side. NOTHING may touch or cross the border of the image.
+  A figure that runs into the edge of the picture will be cut in half by the
+  game, so this is a hard error, not a style choice.
 
 ABSOLUTELY NO GROUND SHADOW, no cast shadow, no dark blur under the boots, no
 floor, no ground plane, no horizontal line, no surface, no reflection. The area
@@ -308,7 +363,8 @@ def components(alpha, keep_ratio=0.18):
     return boxes
 
 
-def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36):
+def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36,
+              edge_min_min=EDGE_MIN):
     """Проверка СЫРОГО png. Возвращает (ok, строки отчёта)."""
     a = np.array(Image.open(path).convert("RGB")).astype(np.int32)
     bgm = magenta_mask(a)
@@ -372,6 +428,21 @@ def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36):
     rep.append(f"линия ног: разброс {spread}px по {len(feet_y)} фигурам")
     ok_feet = spread <= feet_tol
 
+    # 4b. КРАЙ КАДРА. Фигура, упирающаяся в край, будет срезана по нему при
+    # нарезке — это проходило зелёным дважды: у орка 12-й кадр упирался в
+    # левый край, у орк-женщины в полосе смерти панели 1 и 4 стояли вплотную
+    # к левому и правому краю (поля L=0 и R=0). Ни одна из шести проверок
+    # выше на это не смотрит: зазоры меряются МЕЖДУ фигурами, а не до края.
+    pads = []
+    for x0, x1 in runs:
+        ys, _ = np.where(fg[:, x0:x1 + 1])
+        if ys.size == 0:
+            continue
+        pads.append((x0, int(ys.min()), w - 1 - x1, h - 1 - int(ys.max())))
+    edge_min = min(min(p) for p in pads) if pads else 0
+    rep.append(f"поле до края кадра: худшее {edge_min}px (норма >= {edge_min_min})")
+    ok_edge = bool(pads) and edge_min >= edge_min_min
+
     # 5. ТОЛЩИНА ФИГУРЫ. Этой проверки не было 14.10, и это ровно тот класс,
     # что уже ловил проект дважды: метрика, которая не измеряет главное.
     # Полоса пришла с отношением ширины к высоте 0.24 — фигура в 4 раза
@@ -394,13 +465,14 @@ def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36):
                f"норма >= {min_ratio:.2f})")
     ok_ratio = bool(ratios) and worst >= min_ratio
 
-    ok = ok_bg and ok_figs and ok_gaps and ok_shadow and ok_feet and ok_ratio
+    ok = ok_bg and ok_figs and ok_gaps and ok_shadow and ok_feet and ok_ratio and ok_edge
     for line in rep:
         print("   " + line)
     print(f"   ИТОГ: {'ГОДЕН' if ok else 'БРАК — правь промт'}"
           f" (фон {'ок' if ok_bg else 'плохо'}, фигур {'ок' if ok_figs else 'плохо'}, "
           f"зазоры {'ок' if ok_gaps else 'плохо'}, тень {'ок' if ok_shadow else 'ЕСТЬ'}, "
           f"ноги {'ок' if ok_feet else 'плохо'}, "
+          f"край {'ок' if ok_edge else 'ФИГУРА У КРАЯ — будет срезана'}, "
           f"толщина {'ок' if ok_ratio else 'ЖЕРДЬ — правь ракурс и телосложение'})")
     return ok, rep
 

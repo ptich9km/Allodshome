@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Генерация ИИ-полосы ЗВЕРЯ (волк, белка, пчела, динозавр), 4 панели.
 
 Зачем отдельный скрипт, а не ещё один пресет в gen_hero_strip.py: промт героя
@@ -16,7 +16,7 @@
 
 Запуск:
   python tests/gen_monster_strip.py wolf stand --panels 4
-  python tests/gen_monster_strip.py wolf stand --check import/Monsters/wolf_stand_m1.png --panels 4
+  python tests/gen_monster_strip.py wolf stand --check import/Monsters/wolf_stand_nb1.png --panels 4
 """
 import argparse
 import sys
@@ -270,7 +270,7 @@ def main() -> int:
     from gen_image_kodik import gen_once, load_key
 
     out = Path(args.out) if args.out else \
-        OUT_DIR / f"{args.monster}_{args.anim}_m1.png"
+        OUT_DIR / f"{args.monster}_{args.anim}_nb1.png"
     gen_once(load_key(), args.model, build_prompt(args.monster, args.anim),
              out, SIZE, args.seed, 1, None)
     print("предполётная проверка:")

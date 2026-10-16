@@ -52,6 +52,8 @@ MAX_W = 60        # предел по ширине: та же полоса, чт
 TOL = 45          # заливка фона от краёв
 STRONG = 120      # порог «настоящей» фигуры против призрака
 MIN_COL = 5       # колонка короче — не фигура
+EDGE_MIN = 3      # поле от фигуры до края кадра; меньше — кадр срезан по нему
+ROW_TOL = 50      # разброс линии стоп внутри одной строки панелей, px
 
 
 def bg_ref(a):
@@ -155,6 +157,61 @@ def label_keep_largest(alpha):
     return out
 
 
+def rows_of(boxes, tol=ROW_TOL):
+    """Группировка компонентов в строки по линии стоп.
+
+    Нужна из-за полос, где модель кладёт панели не в один ряд, а в две строки
+    или по диагонали. Компоненты при этом НЕ слипаются (метки эксклюзивны,
+    общих пикселей нет) — расходится только прямоугольник, и сортировка
+    «сверху вниз, слева направо» даёт вперемешку из обеих строк.
+
+    Признак строки — общая ЛИНИЯ СТОП, а не вертикальное перекрытие: в падении
+    верх фигуры уезжает вниз с каждой панелью, а низ остаётся на земле. На
+    полосе смерти орк-женщины (16.10) низ четырёх панелей: 1682, 1674, 1670,
+    1672 — разброс 12 px, то есть одна строка. По перекрытию четвёртая
+    панель отваливалась в отдельную «строку» (её высота 219 против 791 у
+    первой, и порог перекрытия рос вместе со строкой).
+    """
+    rows = []
+    for b in sorted(boxes, key=lambda t: t[1]):
+        best, best_d = None, None
+        for r in rows:
+            d = abs(b[1] - r["feet"])
+            if d <= tol and (best_d is None or d < best_d):
+                best, best_d = r, d
+        if best is None:
+            rows.append({"feet": b[1], "boxes": [b]})
+        else:
+            best["feet"] = (best["feet"] * len(best["boxes"]) + b[1]) // (len(best["boxes"]) + 1)
+            best["boxes"].append(b)
+    return rows
+
+
+def head_feet_offset(alpha):
+    """Смещение головы относительно стоп, в долях ширины фигуры.
+
+    Знак читается как направление падения: положительный - голова впереди
+    стоп (падает ВПЕРЁД), отрицательный - голова позади (падает НАЗАД).
+    Нужен, чтобы ловить полосу, где первые панели падают в одну сторону, а
+    последняя показывает падение в другую (замер 16.10 на полосе смерти
+    орк-женщины: +0.029, +0.105, +0.235, и вдруг -0.151).
+    """
+    ys, xs = np.where(alpha > 0.5)
+    if ys.size == 0:
+        return 0.0
+    y0, y1, x0 = int(ys.min()), int(ys.max()), int(xs.min())
+    w = max(1, int(xs.max()) - x0)
+    h = y1 - y0 + 1
+
+    def cx(ra, rb):
+        cols = np.where(alpha[ra:rb + 1] > 0.5)[1]
+        return float(cols.mean() - x0) / w if cols.size else 0.0
+
+    head = cx(y0, y0 + max(1, int(h * 0.15)))
+    feet = cx(y1 - max(1, int(h * 0.25)), y1)
+    return head - feet
+
+
 def figures_of(path, expect):
     a = np.array(Image.open(path).convert("RGB")).astype(np.int32)
     ref = bg_ref(a)
@@ -170,10 +227,47 @@ def figures_of(path, expect):
     print(f"    компонент-фигур: {len(boxes)} (ожидалось {expect})")
     if len(boxes) >= expect:
         chosen = boxes[:expect]
+        if len(boxes) > expect:
+            # 15.10/16.10: лишние компоненты отбрасывались МОЛЧА. На полосе
+            # ходьбы орк-женщины их было 8 вместо 4 (два ряда по четыре) — в игру
+            # уехал верхний ряд, нижний просто исчез, и полоса считалась годной.
+            # Теперь это громкий ВНИМАНИЕ: либо модель разложила панели в две
+            # строки, либо фигуры слиплись. Проверяется глазами по контактному
+            # листу, а не догадкой инструмента.
+            print(f"    ВНИМАНИЕ: компонентов {len(boxes)} больше ожидаемых {expect}")
+            groups = sorted(rows_of(boxes), key=lambda r: min(b[0] for b in r["boxes"]))
+            for gi, r in enumerate(groups, 1):
+                ys_ = [b[0] for b in r["boxes"]]
+                ye_ = [b[1] for b in r["boxes"]]
+                print(f"      строка {gi}: фигур {len(r['boxes'])}, "
+                      f"y={min(ys_)}..{max(ye_)}, стопы {min(ye_)}..{max(ye_)}")
+            exact = [r for r in groups if len(r["boxes"]) == expect]
+            if len(exact) == 1:
+                # Ровно одна строка содержит нужное число панелей - берём её.
+                # На полосе смерти орк-женщины (16.10) сверху лежали 3 панели,
+                # снизу 4: сортировка отдавала 3 верхние и 1 нижнюю.
+                chosen = sorted(exact[0]["boxes"], key=lambda b: b[2])
+                print(f"      берём строку с {expect} панелями (остальные строки "
+                      f"отброшены: {len(boxes) - expect} фигур)")
+            else:
+                chosen = boxes[:expect]
+                print(f"      строк с ровно {expect} панелями: {len(exact)} — "
+                      f"взять строку однозначно нельзя, берём первые {expect}")
+                for extra in boxes[expect:]:
+                    print(f"      отброшен {extra[3] - extra[2] + 1}x{extra[1] - extra[0] + 1} "
+                          f"на y={extra[0]}..{extra[1]}")
         out = []
+        h_img, w_img = a.shape[:2]
         for by0, by1, bx0, bx1 in chosen:
             sub = alpha_full[by0:by1 + 1, bx0:bx1 + 1]
             crop = a[by0:by1 + 1, bx0:bx1 + 1]
+            # Фигура у края кадра = кадр срезан по нему (замер 15.10: у орка
+            # панель 12 упиралась в левый край, у орк-женщины панели 1 и 4 — в
+            # левый и правый). preflight на это не смотрит, поэтому здесь.
+            pads = (bx0, by0, w_img - 1 - bx1, h_img - 1 - by1)
+            if min(pads) < EDGE_MIN:
+                print(f"      ВНИМАНИЕ: фигура у края кадра "
+                      f"(поля L{pads[0]} T{pads[1]} R{pads[2]} B{pads[3]}) - кадр срезан")
             print(f"      {bx1 - bx0 + 1}x{by1 - by0 + 1}")
             out.append((crop, sub))
         return out
@@ -282,6 +376,33 @@ def fit(rgb, alpha, scale):
     return cell
 
 
+DIR_DEADBAND = 0.03   # смещение меньше этого - шум, а не направление падения
+
+
+def _mirror_if_direction_breaks(figs, cell, k):
+    """Отзеркалить последний кадр смерти, если он падает в другую сторону.
+
+    Признак — измерение, а не догадка: `head_feet_offset` даёт смещение головы
+    относительно стоп в долях ширины фигуры. Если первые панели падают в одну
+    сторону, а последняя в другую, полоса противоречит сама себе; отражённый
+    кадр продолжает падение. На принятом наборе orc_men правило молчит
+    (+0.172, +0.070, +0.028 — все вперёд), на полосе орк-женщины срабатывает.
+    """
+    offs = [head_feet_offset(al) for _, al in figs]
+    early = offs[:-1]
+    pos = sum(1 for o in early if o > DIR_DEADBAND)
+    neg = sum(1 for o in early if o < -DIR_DEADBAND)
+    want = 1 if pos > neg else (-1 if neg > pos else 0)
+    last = offs[-1]
+    detail = " ".join(f"{o:+.3f}" for o in offs)
+    if want and last * want < -DIR_DEADBAND:
+        print(f"    ВНИМАНИЕ: панели {detail} — последняя противоречит падению, "
+              f"зеркалю её")
+        return cell.transpose(Image.FLIP_LEFT_RIGHT)
+    print(f"    направление падения согласовано: {detail}")
+    return cell
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="nb5", choices=sorted(SETS),
@@ -290,6 +411,12 @@ def main():
                     help="перерезать только этот блок, остальные кадры не трогать")
     ap.add_argument("--strip", default="",
                     help="полоса для блока из --only (путь к PNG)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="ничего не записывать: только сравнить, что изменилось бы "
+                         "на диске. Наборы людей НЕ воспроизводятся из своих полос "
+                         "текущим нарезчиком (они нарезаны версией до MAX_W), "
+                         "поэтому слепой пересборкой можно затереть принятый игроком "
+                         "арт. Проверяй этим перед любым запуском без --strip.")
     args = ap.parse_args()
 
     out_folder, out_label = SETS[args.tag]
@@ -334,17 +461,54 @@ def main():
         scale = min(TARGET_H / max_h, MAX_W / max_w)
         print(f"{name}: max h={max_h} w={max_w} scale={scale:.4f}")
         for k, (rgb, al) in enumerate(figs):
-            frames.append((first[name] + k, fit(rgb, al, scale)))
+            cell = fit(rgb, al, scale)
+            # Последний кадр смерти обязан продолжать то же падение, что и
+            # предыдущие. Модель это иногда ломает: полоса смерти орк-женщины
+            # дала смещение головы относительно стоп +0.029, +0.105, +0.235
+            # (падает ВПЕРЁД), а в последней панели -0.151 (падает НАЗАД).
+            # Зеркалим последний кадр, когда он противоречит остальным.
+            if name == "dying" and len(figs) >= 2 and k == len(figs) - 1:
+                cell = _mirror_if_direction_breaks(figs, cell, k)
+            frames.append((first[name] + k, cell))
 
     # Старые кадры от прошлых сборок (25 штук) удаляем: база объявит frames=13,
     # но лишние файлы остались бы в репозитории и импортировались движком.
     # При --only удалять нельзя — блок один, а кадры остальных фаз на диске
     # единственные и пришли из другой полосы.
-    if not args.only:
+    if not args.dry_run and not args.only:
         for old in sorted(out_dir.glob("sprites-*.png")):
             old.unlink()
+
+    changed = []
     for idx, fr in frames:
-        fr.save(out_dir / f"sprites-{idx:03d}.png")
+        target = out_dir / f"sprites-{idx:03d}.png"
+        if args.dry_run:
+            if not target.exists():
+                changed.append(f"sprites-{idx:03d}.png ОТСУТСТВУЕТ")
+            else:
+                import hashlib
+                import io
+                # Хэшировать надо ТО ЖЕ, что уйдёт на диск: файл PNG, а не сырые
+                # пиксели. Сравнение bytes-файла с tobytes() всегда даёт «различие».
+                buf = io.BytesIO()
+                fr.save(buf, format="PNG")
+                old = hashlib.sha256(target.read_bytes()).hexdigest()
+                new = hashlib.sha256(buf.getvalue()).hexdigest()
+                if old != new:
+                    changed.append(f"sprites-{idx:03d}.png ИЗМЕНЯЕТСЯ")
+            continue
+        fr.save(target)
+
+    if args.dry_run:
+        if changed:
+            print(f"DRY-RUN: изменились бы {len(changed)} кадров из {len(frames)}:")
+            for line in changed:
+                print(f"  {line}")
+        else:
+            print(f"DRY-RUN: все {len(frames)} кадров на диске совпали бы байт в байт")
+        print("DRY-RUN: ничего не записано")
+        return 1 if changed else 0
+
     print(f"записано кадров: {len(frames)}")
 
     # Контактный лист собирается с диска, по всем sprites-*.png, а не из
