@@ -84,15 +84,23 @@ def main() -> None:
     existing_folders = {v.get("folder") for v in db.values() if isinstance(v, dict)}
     next_id = max(int(k) for k in db.keys()) + 1
 
+    # 17.10: отсутствующий исходник больше НЕ роняет весь прогон. Исходники
+    # `import/_stage3_nature` выборочно удалены (в репозитории их нет), и
+    # `sys.exit(1)` делал невозможной перенарезку ОДНОГО объекта — а это ровно
+    # то, что требовалось игроку. Пропуск тихим не сделан: в конце печатается
+    # отчёт «нарезано/пропущено», и прогон без единой нарезки всё равно падает.
+    cut, skipped = 0, []
     for folder, (src, cw, ch) in SOURCES.items():
         if not src.exists():
-            print(f"FAIL missing {src}")
-            sys.exit(1)
+            print(f"SKIP нет исходника {src.name} (нарезка не выполнена)")
+            skipped.append(folder)
+            continue
         out_dir = REPO / "assets/map-objects" / folder
         out_dir.mkdir(parents=True, exist_ok=True)
         content = cut_bg(src)
         sprite = fit_canvas(content, cw, ch)
         sprite.save(out_dir / "sprites-001.png")
+        cut += 1
         print(f"cut {folder}: content={content.size} canvas={cw}x{ch}")
 
         if folder in existing_folders:
@@ -110,6 +118,11 @@ def main() -> None:
         }
         print(f"  alm_objects +{next_id}")
         next_id += 1
+
+    print(f"нарезано: {cut}, пропущено без исходника: {len(skipped)} {skipped}")
+    if cut == 0:
+        print("FAIL ничего не нарезано: переименуй исходник в import/_stage3_nature")
+        sys.exit(1)
 
     DB.write_text(json.dumps(db, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print("done")

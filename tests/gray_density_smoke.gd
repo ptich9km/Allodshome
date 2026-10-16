@@ -69,8 +69,9 @@ func _run() -> void:
 	#     самый вероятный способ вернуть Аллодов обратно);
 	#   - пул непуст -> Серые есть в данных, живые враги есть на старте, а
 	#     респавн выдаёт наборы только из пула.
-	var zone_cfg: Dictionary = MapGenerator.GRAY_ZONE.get("mid", {})
-	var pool: Array = zone_cfg.get("pool", [])
+	# Пул берётся ТЕМ ЖЕ способом, что и в генераторе (`gray_pool_for_zone`),
+	# а не своей копией: своя копия разошлась бы с кодом молча.
+	var pool: Array = MapGenerator.gray_pool_for_zone("mid")
 	print("  пул Серых в зоне mid: %d наборов" % pool.size())
 
 	var stray := 0

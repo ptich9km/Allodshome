@@ -1703,8 +1703,9 @@ func _gray_respawn_tick(delta: float) -> void:
 	var cell := _gray_respawn_cell()
 	if cell.x < 0:
 		return
-	var pool: Array = (MapGenerator.GRAY_ZONE.get(Game.map_zone,
-		MapGenerator.GRAY_ZONE["mid"]) as Dictionary).get("pool", [])
+	# Пул берётся из ТОЙ ЖЕ полосы тиров, что и при генерации карты. Если
+	# респавн брал бы пул напрямую, в стартовой зоне появились бы тиры 4-5.
+	var pool: Array = MapGenerator.gray_pool_for_zone(Game.map_zone)
 	if pool.is_empty():
 		return
 	var set_name: String = str(pool[randi() % pool.size()])
@@ -1714,10 +1715,12 @@ func _gray_respawn_tick(delta: float) -> void:
 	var e2 := Enemy.new()
 	e2.name = "Monster_" + set_name.get_file()
 	e2.anim_set = set_name
-	e2.max_hp = randi_range(GameConfig.zonei(Game.map_zone, "gray_hp_min"),
-		GameConfig.zonei(Game.map_zone, "gray_hp_max"))
-	e2.damage = randi_range(GameConfig.zonei(Game.map_zone, "gray_damage_min"),
-		GameConfig.zonei(Game.map_zone, "gray_damage_max"))
+	# Тир усиливает респавненного зверя так же, как при генерации карты.
+	var mults: Array = MapGenerator.gray_tier_mults(set_name)
+	e2.max_hp = int(round(float(randi_range(GameConfig.zonei(Game.map_zone, "gray_hp_min"),
+		GameConfig.zonei(Game.map_zone, "gray_hp_max"))) * float(mults[0])))
+	e2.damage = int(round(float(randi_range(GameConfig.zonei(Game.map_zone, "gray_damage_min"),
+		GameConfig.zonei(Game.map_zone, "gray_damage_max"))) * float(mults[1])))
 	e2.position = spot
 	e2.home_position = spot
 	add_child(e2)

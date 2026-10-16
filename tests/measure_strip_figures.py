@@ -87,7 +87,7 @@ def _rows(boxes: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int]]:
     return sorted(rows)
 
 
-def measure(path: Path) -> tuple[bool, list[str]]:
+def measure(path: Path, check_feet: bool = True) -> tuple[bool, list[str]]:
     lines: list[str] = []
     img = Image.open(path)
     W, H = img.size
@@ -149,12 +149,19 @@ def measure(path: Path) -> tuple[bool, list[str]]:
 
     if len(feet) > 1:
         spread = max(feet) - min(feet)
-        mark = "ок  " if spread <= FEET_TOL else "БРАК"
-        if spread > FEET_TOL:
-            ok = False
-            lines.append(f"    {mark} ЛИНИЯ НОГ: разброс {spread}px по {len(feet)} панелям (норма <= {FEET_TOL})")
+        if not check_feet:
+            # Фаза парения: панели стоят на РАЗНОЙ высоте по замыслу («4
+            # clearly different body heights»), поэтому общая линия ног тут не
+            # дефект, а требование промта. Тот же класс, что толщина на
+            # компактных позах: метрика меряет не главное свойство.
+            lines.append(f"    ноги: разброс {spread}px - фаза парения, проверка отключена")
         else:
-            lines.append(f"    {mark} ЛИНИЯ НОГ: разброс {spread}px")
+            mark = "ок  " if spread <= FEET_TOL else "БРАК"
+            if spread > FEET_TOL:
+                ok = False
+                lines.append(f"    {mark} ЛИНИЯ НОГ: разброс {spread}px по {len(feet)} панелям (норма <= {FEET_TOL})")
+            else:
+                lines.append(f"    {mark} ЛИНИЯ НОГ: разброс {spread}px")
 
     lying = [i for i, b in enumerate(band_boxes, 1)
              if (b[1] - b[0]) and (b[3] - b[2] + 1) / (b[1] - b[0] + 1) >= LYING_RATIO]
@@ -178,6 +185,9 @@ def main() -> int:
     ap.add_argument("--files", nargs="*", default=[], help="конкретные PNG для замера")
     ap.add_argument("--monsters", action="store_true", help="полосы зверей из import/Monsters")
     ap.add_argument("--edge-min", type=int, default=EDGE_MIN, help="минимальное поле до края кадра")
+    ap.add_argument("--flight", action="store_true",
+                    help="полоса фазы парения: панели стоят на разной высоте по "
+                         "замыслу, проверка общей линии ног отключается")
     args = ap.parse_args()
     EDGE_MIN = args.edge_min
 
@@ -203,7 +213,7 @@ def main() -> int:
 
     bad = 0
     for t in existing:
-        ok, lines = measure(t)
+        ok, lines = measure(t, check_feet=not args.flight)
         print("\n".join(lines))
         print()
         if not ok:

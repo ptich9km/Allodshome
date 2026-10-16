@@ -995,7 +995,14 @@ func _unit_tooltip_lines(e: Node2D) -> Array:
 	var lines: Array = []
 	var set_name := str(e.anim_set) if "anim_set" in e else ""
 	var set_data := UnitDB.get_set(set_name)
-	var name := str(set_data.get("desc", ""))
+	# `name_ru` — человеческое имя набора («Свирепый волк», «Владыка волков»).
+	# Раньше здесь брался только `desc`, а у Серых это английская строка вида
+	# «Monster wolf, Gemini Nano Banana strips…», то есть игрок видел в тултипе
+	# служебный текст. Фатальным дефектом это не было: подпись всё равно была
+	# непустой, и `set_name` как запасной путь не срабатывал.
+	var name := str(set_data.get("name_ru", ""))
+	if name == "":
+		name = str(set_data.get("desc", ""))
 	if name == "":
 		name = set_name.get_slice("/", 1) if "/" in set_name else set_name
 	lines.append(name if name != "" else "Существо")

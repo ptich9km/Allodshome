@@ -99,12 +99,54 @@ MONSTERS = {
                    "NO WINGS of any kind"),
         "move": "hover", "attack": "cast",
     },
-    "succubus": {
+"succubus": {
         "name": "a tall beautiful dark-skinned demon woman",
-        "detail": ("long curved black horns, wide membranous bat wings, black "
-                   "hooves instead of feet, a long barbed tail, glowing yellow "
-                   "eyes, dark hair, wearing dark leather armour"),
-        "move": "fly", "attack": "cast",
+        "detail": "long curved black horns, membranous bat wings that she keeps "
+                  "FOLDED CLOSED against her back, black hooves instead of feet, a "
+                  "long barbed tail, glowing yellow eyes, dark hair, wearing dark "
+                  "leather armour",
+        "move": "glide", "attack": "cast", "die": "kneel",
+        # Ширина задана по той же причине, что и троллю: крылатое существо
+        # не влезает в четыре панели в ряд. Успешный `glide` это доказал —
+        # достаточно сложить крылья и потребовать узкий силуэт.
+        "width": "EACH FIGURE AT MOST 20% OF THE IMAGE WIDTH: the wings stay "
+                 "folded flat against the back, the arms stay close to the body, "
+                 "nothing sticks out to the sides, and a wide empty gap separates "
+                 "every figure from the next. Leave the outermost 6% of the image "
+                 "on the LEFT and on the RIGHT completely EMPTY - no part of any "
+                 "figure may touch the edge of the picture.",
+    },
+    # 17.10: два вида по просьбе игрока. Оба двуногие, поэтому `move = legs`
+    # и `die = legs` (падение набок описано для двуногих).
+    # Людоед: описание намеренно без «человеческого лица» — иначе модель
+    # рисует почти человека, и зверь перестаёт быть Серым.
+    "cannibal": {
+        "name": "a tall gaunt wild humanoid beast",
+        "detail": "sallow grey-green skin stretched over a thin frame, a long narrow "
+                  "head with a wide flat nose and a lipless mouth full of yellow "
+                  "teeth, sunken pale eyes, long thin clawed fingers, bare feet, "
+                  "wearing only a ragged hide loincloth, a butchered human bone "
+                  "hanging from a cord at its belt",
+        "move": "legs", "attack": "bite", "die": "legs",
+    },
+    "troll": {
+        "name": "a stocky mossy troll",
+        # Слова размера УБРАНЫ после двух замеров: 600 px при норме 557 (22%).
+        # Модель дважды проигнорировала «20% ширины», но каждый раз рисовала
+        # «huge massive broad-shouldered» — то есть размер в описании
+        # перевешивал цифру. В игре тролль того же размера, что остальные
+        # Серые (все кадры ~54 px), поэтому «огромный» на картинке ничего не
+        # даёт, а ширину портит.
+        "detail": "mossy grey-green skin, a wide flat head with a heavy brow and blunt "
+                  "teeth, small deep-set yellow eyes, thick forearms, a rope belt with "
+                  "a pouch, holding a gnarled wooden club resting UPRIGHT on his "
+                  "shoulder so that it points straight up and never sideways",
+        "move": "legs", "attack": "smash", "die": "legs",
+        "width": "EACH FIGURE AT MOST 20% OF THE IMAGE WIDTH: the feet close "
+                 "together, the legs not spread, both free arms close to the body, "
+                 "the club standing vertically above the shoulder, nothing sticking "
+                 "out to the sides. Leave a wide empty gap on both sides of every "
+                 "figure. Exactly 4 figures, all the SAME size, in a SINGLE row.",
     },
 }
 
@@ -124,6 +166,25 @@ front legs reaching forward.
 The 4 panels must show 4 clearly different leg positions, each about a quarter of
 a gallop apart. It does NOT rear up on its hind legs.
 """,
+    # Двуногие. Появилось вместе с людоедом и троллем (17.10): у четвероногих
+    # фаза `run` требует «does NOT rear up on its hind legs», а оба новых вида
+    # ходят на двух ногах, и этот запрет с ними прямо противоречил бы описанию.
+    "legs": """A WALK ON TWO LEGS, 4 panels left to right in one row, seen from the side
+walking across the ground.
+Panel 1: standing tall on both legs, one leg forward and one back, arms at the sides.
+Panel 2: stepping forward, the front leg swinging ahead of the body, the shoulders
+rocking slightly.
+Panel 3: passing, the legs gathered UNDER the body, one foot just leaving the ground,
+the hips highest.
+Panel 4: the trailing leg swinging forward, the body stretched out, arms swinging
+slightly in the opposite direction to the legs.
+The 4 panels must show 4 clearly different leg positions. It stays UPRIGHT on two
+legs in every panel and NEVER drops onto all fours, NEVER crouches down on its
+front limbs, and its silhouette stays no wider than its own shoulders.
+EXACTLY 4 figures, all at the SAME size and the same height, drawn in a SINGLE
+horizontal row of 4 - never 8 figures, never two rows, never one figure under
+another, and never a fifth figure added anywhere.
+""",
     "fly": """A FLIGHT, 4 panels left to right in one row, seen in mid air with clear
 empty background all around the body and no ground under it.
 Panel 1: the wings are fully spread open and level, body gliding forward.
@@ -134,6 +195,20 @@ Panel 4: the wings are spread wide open again at the start of the next beat.
 The 4 panels must show 4 clearly different wing positions. Its legs hang relaxed
 below the body and barely move, the flying is done with the wings.
 """,
+    # Узкий силуэт для существ, которые в полёте иначе не влезают в полосу:
+    # у суккуба раскрытые крылья давали 600-900 px на панель, и четыре таких
+    # не помещались в ряд на холсте 2528 px (замер 17.10: нужно 2798).
+    "glide": """A COMPACT HOVERING FLIGHT, 4 panels left to right in one row, seen in mid
+air with clear empty background all around the body and no ground under it.
+The wings stay FOLDED CLOSE AGAINST THE BODY at all times - the whole silhouette
+is no wider than the creature's own shoulders, and NEVER spreads out sideways.
+Panel 1: wings folded tight against the back, body held upright, hovering.
+Panel 2: the folded wings lift slightly, the body rises a little.
+Panel 3: the folded wings sweep down close to the flanks, the body sinks a
+little, legs tucked up behind.
+Panel 4: the folded wings return to the back, body at the highest point.
+The 4 panels must show 4 clearly different body heights. The wings NEVER open
+out, NEVER spread wide, and nothing of the creature sticks out sideways.""",
     # Для тех, у кого крыльев НЕТ. Общий текст полёта говорит «взмах крыльев»,
     # и призрак отрастил себе крылья, которых в описании не было (15.10):
     # контактные листы показали ангела с белыми крыльями вместо бесногого
@@ -155,6 +230,24 @@ ragged smoke. Do NOT give it wings.
 # Фаза атаки — по виду. Игрок, 15.10: обычно кусает, но дракон и суккуб маги.
 # Раньше был один текст на всех, и магу пришлось бы изображать кусание лапой.
 ANIM_ATTACK = {
+    # Тролль (17.10). Отдельная фаза, а не `bite`: троллю положено бить дубиной,
+    # и общий текст кусания заставил бы его открывать пасть.
+    "smash": """A CLUB SMASH, 4 panels left to right in one row.
+Panel 1: standing upright on two legs, the heavy wooden club held low at its side,
+both hands on it, still.
+Panel 2: the club raised high above the head with both arms, the body leaning back,
+the mouth open in a roar.
+Panel 3: the club swung down and forward, hitting the ground in front of the feet,
+the body leaning hard forward, dust kicking up at the point of impact.
+Panel 4: the club resting on the ground in front after the swing, the body still
+leaning forward, arms lowering.
+The 4 panels must show 4 clearly different club positions. It NEVER lies down and
+NEVER sits during the smash, it stays upright on two legs, and the club stays a
+solid thick shape in every panel.
+The swing stays COMPACT and close to the body: the club only reaches a little way
+in FRONT of the feet and NEVER sweeps out to the side, so every panel is about as
+wide as the standing body. All 4 figures are at the SAME size in a SINGLE row.
+""",
     "bite": """A BITE, 4 panels left to right in one row.
 Panel 1: standing still, head forward, mouth closed, alert.
 Panel 2: the head pulled back and slightly up, mouth wide open, jaws spread,
@@ -189,6 +282,9 @@ Panel 3: both arms thrust forward and DOWN, a bright bolt or burst of light
 leaving the hands.
 Panel 4: the same bolt a little further along, the arms still extended.
 It NEVER lies down during the cast, its body stays upright in the air.
+The wings stay FOLDED CLOSED AGAINST THE BACK throughout the whole cast - they
+NEVER open, NEVER spread out sideways, and the silhouette stays no wider than the
+body's own shoulders. The glow gathers between the hands, not between the wings.
 """,
 }
 
@@ -221,12 +317,62 @@ Panel 4: lying flat on its SIDE on the ground, the smoke spread out flat around
 it, eyes closed, head resting on the ground. It NEVER lies on its back and NEVER
 on its belly.
 """,
-    "legs": """A FALL TO THE SIDE, 4 panels left to right in one row.
-Panel 1: standing upright, both arms at the sides, still alive.
+# Падение существа с КРЫЛЬЯМИ (17.10). Существующий `legs` требует
+    # «arms spreading out for balance», и при падении крылья расправляются:
+    # замер полосы — ширина фигуры растёт 467 → 640 → 666 → 725 px, последняя
+    # панель лежит плашмя (w/h 2.51), и четыре такие не помещаются в ряд.
+    # Успешная фаза полёта `glide` работает ровно потому, что крылья там
+    # описаны отдельной фразой. Здесь — то же требование для падения.
+    # Смерть «осесть на колени» (17.10, решение игрока). Причина: упасть плашмя
+    # для крылатого существа физически не влезает в полосу — замер: ширина
+    # фигуры растёт 488 → 566 → 735 → 660 px, и 4 панели в ряд на холсте
+    # 2528 px не помещаются даже без зазоров. Поза на коленях узкая: тело
+    # вертикально, крылья сложены, ничего не распластано по земле.
+    "kneel": """A COLLAPSE TO THE KNEES, 4 panels left to right in ONE horizontal row.
+The body stays UPRIGHT the whole time - she sinks DOWN onto her knees, she never
+tips over and never lies down. The wings stay FOLDED CLOSED against the back at
+all times, the arms hang close to the body, and nothing spreads out sideways: the
+silhouette is no wider than her shoulders in every panel.
+Panel 1: standing upright on two legs, wings folded on the back, still alive.
+Panel 2: the knees buckling, the body sinking down, the head lowering.
+Panel 3: down on both knees, the body upright but low, the head bowed forward, the
+folded wings still tight against the back.
+Panel 4: kneeling still, head sunk low, arms slack at the sides, eyes closed, the
+folded wings resting against the back. She NEVER falls flat and NEVER lies down.
+The knees of the kneeling panels touch the SAME ground line as the feet in panel 1
+- the body never floats and never sinks through the ground. All 4 figures are the
+SAME size in a SINGLE horizontal row, with an empty margin at both edges.
+""",
+    "glide_fall": """A FALL TO THE SIDE, 4 panels left to right in ONE horizontal row.
+The wings stay FOLDED CLOSED AGAINST THE BACK at all times, exactly as in the
+flight panels - they NEVER open, NEVER spread out sideways, and nothing of the
+body or the wings ever sticks out to the side. The whole silhouette stays no
+wider than her own shoulders in every panel.
+Panel 1: standing upright on two legs, wings folded tight on the back, still alive.
+Panel 2: the whole body tilting sideways, the folded wings still tight to the back,
+arms staying close to the body instead of spreading out.
+Panel 3: falling sideways, one shoulder and one hip touching the ground, wings
+still folded flat against the back, the knees starting to draw in.
+Panel 4: lying on her SIDE on the ground in a COMPACT CURLED pose - the knees
+drawn UP towards the chest, the arms tucked in, the wings still folded tight
+against the back. She NEVER lies stretched out straight and NEVER lies on her
+back or on her belly.
+The lying figure stays CURLLED and COMPACT: its length from head to knee is
+clearly SHORTER than the standing figure is tall, and its width is no more than
+half its length. It NEVER spreads out flat like a starfish.
+The lowest point of the lying body touches the same ground line as the feet in
+panel 1 - the body never floats. All 4 figures are the SAME size in a SINGLE row.
+""",
+    "legs": """A FALL TO THE SIDE, 4 panels left to right in ONE horizontal row.
+Panel 1: standing upright on two legs, both arms at the sides, still alive.
 Panel 2: the whole body tilting sideways, arms spreading out for balance.
 Panel 3: falling sideways, one shoulder and one hip touching the ground.
 Panel 4: lying flat on its SIDE on the ground, arms slack, eyes closed, head
 resting on the ground. It NEVER lies on its back and NEVER on its belly.
+EVERY lying panel must REST ON THE GROUND: the lowest point of the body touches
+exactly the same ground line as the feet in panel 1, the body is never floating,
+never hovering and never raised above the ground. All 4 panels are drawn at the
+same figure size and in a SINGLE row, never one under another.
 """,
 }
 
@@ -235,6 +381,8 @@ def build_prompt(monster: str, anim: str) -> str:
     spec = MONSTERS[monster]
     character = (f"ONE single animal repeated in every panel: {spec['name']}, "
                  f"{spec['detail']}. Same individual creature in every panel.")
+    # Правило ширины вида, если оно есть (см. тролля).
+    width = f"\n\n{spec['width']}" if spec.get("width") else ""
     if anim == "stand":
         body = """AN IDLE STANCE, 4 panels left to right in one row.
 Panel 1: holding still, weight evenly, head up, calm but alert.
@@ -246,10 +394,14 @@ the rise of its chest. It does not move its feet at all.
     elif anim == "attack":
         body = ANIM_ATTACK[spec["attack"]]
     elif anim == "die":
-        body = ANIM_DIE["legs" if spec["name"].endswith("demon woman") else spec["move"]]
+        # Раньше фаза смерти выбиралась сравнением строки: `"legs" if
+        # name.endswith("demon woman") else move`. Проверка по окончанию описания
+        # ломается от любой правки формулировки и молча выбирала падение набок
+        # четвероногому. Теперь вид задаёт фару сам полем `die`.
+        body = ANIM_DIE[spec.get("die", spec["move"])]
     else:
         raise KeyError(anim)
-    return f"{character}\n\n{PROPORTIONS}\n\n{VIEW}\n\n{body}\n\n{LAYOUT4}"
+    return f"{character}{width}\n\n{PROPORTIONS}\n\n{VIEW}\n\n{body}\n\n{LAYOUT4}"
 
 
 def main() -> int:

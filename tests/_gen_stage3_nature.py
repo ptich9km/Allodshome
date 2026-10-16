@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Stage 3: new trees/bushes/rocks replacing Allods art via seedream."""
+import argparse
 import sys
 from pathlib import Path
 
@@ -41,10 +42,25 @@ PROMPTS = {
     "cactus": f"Tall saguaro cactus with two arms, desert plant, "
               f"{STYLE}, {BG}",
     # mud / swamp
-    "tree_dead": f"Dead bare tree with twisted grey branches no leaves, "
-                 f"haunted swamp tree, {STYLE}, {BG}",
-    "bush_thorn": f"Spiky thorny bramble bush with dark twisted branches, "
-                  f"swamp undergrowth, {STYLE}, {BG}",
+    # 17.10: переделаны по просьбе игрока. Причина фиолетового измерена, а не
+    # угадана: `tree_dead` вышел на 89% сине-фиолетовых пикселей, тогда как у
+    # принятого дуба фиолетовых <1%, а розовых (тёплых) 10%. Виновник промта —
+    # сочетание "twisted grey branches" + "haunted swamp tree": модель отрисовала
+    # серый как фиолетовый. Слово `grey` убрано (серый берётся из тепла и земли,
+    # а не из названия цвета), добавлен прямой запрет фиолетового и требование
+    # совпасть по тону с дубом.
+    "tree_dead": f"Dead bare tree, thick twisted branches with NO leaves, dry weathered "
+                 f"warm grey-brown bark, sun-bleached pale tan wood, a few short broken "
+                 f"stubs, natural forest deadfall, "
+                 f"STRICTLY NO purple, NO violet, NO blue, NO magenta, NO glowing "
+                 f"magic colour — bark is warm brown and pale tan only, "
+                 f"same earthy brown palette as an oak tree, "
+                 f"{STYLE}, {BG}",
+    "bush_thorn": f"Spiky thorny bramble bush, thick dark brown woody branches with a few "
+                  f"dry dull olive leaves, low tangled scrub, "
+                  f"STRICTLY NO purple, NO violet, NO blue, NO magenta, "
+                  f"brown and dull olive only, same earthy palette as an oak tree, "
+                  f"{STYLE}, {BG}",
     # rocks (any biome)
     "rock": f"Single medium grey boulder with moss patches, fantasy RPG map rock, "
             f"{STYLE}, {BG}",
@@ -54,23 +70,48 @@ PROMPTS = {
 
 
 def main() -> None:
+    # 17.10: добавлен выбор объектов и модели. Скрипт по умолчанию ударил бы по
+    # ВСЕМ 19 объектам, а нужно было два; модель и количество кандидатов —
+    # решение игрока (по умолчанию тот же seedream, что и раньше).
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", default="", help="объекты через запятую, пусто = все")
+    ap.add_argument("--model", default="bytedance-seed/seedream-5-0-flash")
+    ap.add_argument("--n", type=int, default=1, help="кандидатов на объект")
+    ap.add_argument("--force", action="store_true", help="перегенерировать, даже если файл есть")
+    args = ap.parse_args()
+
     key = load_key()
     out_dir = Path(__file__).parent.parent / "import" / "_stage3_nature"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.only:
+        wanted = [s.strip() for s in args.only.split(",") if s.strip()]
+        unknown = [w for w in wanted if w not in PROMPTS]
+        if unknown:
+            raise SystemExit(f"нет таких объектов: {unknown}")
+        prompts = {k: PROMPTS[k] for k in wanted}
+    else:
+        prompts = PROMPTS
+
     results = []
-    for name, prompt in PROMPTS.items():
-        out = out_dir / f"{name}.png"
-        if out.exists():
-            print(f"skip {out}")
-            results.append({"model": "seedream", "out": str(out), "cost": 0, "sec": 0})
-            continue
-        try:
-            r = gen_once(key, "bytedance-seed/seedream-5-0-flash", prompt,
-                         out, "1024x1024", seed=4000 + hash(name) % 100,
-                         n=1, extra=None)
-            results.append(r)
-        except SystemExit as e:
-            print(f"FAIL {name}: {e}")
+    for name, prompt in prompts.items():
+        # При n>1 каждый кандидат пишется отдельным файлом: один промт с
+        # несколькими кандидатами смешивается в коллаж, из которого потом
+        # нельзя вырезать ни один нормальный спрайт.
+        for i in range(args.n):
+            suffix = "" if args.n == 1 else f"_c{i}"
+            out = out_dir / f"{name}{suffix}.png"
+            if out.exists() and not args.force:
+                print(f"skip {out}")
+                results.append({"model": args.model, "out": str(out), "cost": 0, "sec": 0})
+                continue
+            try:
+                r = gen_once(key, args.model, prompt, out, "1024x1024",
+                             seed=4000 + (hash(name) % 100) + i * 7,
+                             n=1, extra=None)
+                results.append(r)
+            except SystemExit as e:
+                print(f"FAIL {name}{suffix}: {e}")
     ok = [r for r in results if Path(r["out"]).exists()]
     labels = [Path(r["out"]).stem for r in ok]
     paths = [Path(r["out"]) for r in ok]

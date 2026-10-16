@@ -201,11 +201,29 @@ def cut_figures(path: Path, expect: int):
     return out
 
 
+# Летающие виды и высота полёта (`fly_z`, поле `z` в units_db). Без него зверь
+# не обходит воду и горы — `enemy.gd` проверяет именно `fly_z > 0`.
+#
+# Значения bat/bee/ghost/dragon взяты из `units_db.json` (проверено замером), то
+# есть таблица им не противоречит. `succubus` добавлен 17.10: она летающая, но
+# поля `z` у неё не было — нарезка о нём не знала, и в базе она была бы
+# наземной.
+FLY_Z = {"bat": 32, "bee": 24, "ghost": 28, "dragon": 40, "succubus": 96}
+
+
 def build_set(name: str, target_h: int, dry_run: bool = False) -> bool:
     figs = {}
+    # 17.10: полоса `attack` теперь НЕОБЯЗАТЕЛЬНА. У суккуба её нет (игрок
+    # решил не тратить деньги на третий заход), и раньше набор без неё просто
+    # не собирался. Прецедент в проекте есть: `ork_mage` живёт с `attack: 0` —
+    # «урон считается, анимации удара нет». Отсутствующая фаза честно пишется
+    # в `_entry.json` как `attack: 0`, а не выдаётся за полный набор.
     for anim in ("stand", "move", "attack", "die"):
         path = SRC / f"{name}_{anim}_nb1.png"
         if not path.exists():
+            if anim == "attack":
+                print(f"  {name}/attack: полосы нет -> набор без фазы удара (attack: 0)")
+                continue
             print(f"  {name}/{anim}: полосы нет, пропуск")
             return False
         print(f"{name}/{anim}: {path.name}")
@@ -222,6 +240,8 @@ def build_set(name: str, target_h: int, dry_run: bool = False) -> bool:
             old.unlink()
     frames = []
     for anim in ("stand", "move", "attack", "die"):
+        if anim not in figs:
+            continue
         block = figs[anim]
         # Масштаб блока — по самому высокому И самому широкому, иначе широкий
         # зверь (бегущий волк) не влезает в холст и срезается по бокам.
@@ -261,18 +281,24 @@ def build_set(name: str, target_h: int, dry_run: bool = False) -> bool:
     for i, fr in enumerate(frames):
         fr.save(out_dir / f"sprites-{i + 1:03d}.png")
 
+    has_attack = "attack" in figs
+    n_attack = LAYOUT["attack"][1] if has_attack else 0
+    blocks = "idle1+move4" + ("+attack3" if has_attack else "") + "+dying4"
     entry = {
         "desc": f"Monster {name}, Gemini Nano Banana strips, three-quarter east view "
-                "+ mirror, idle1+move4+attack3+dying4",
+                f"+ mirror, {blocks}" + ("" if has_attack else " (NO ATTACK ANIMATION)"),
         "folder": f"monsters/{name}", "frames": len(frames), "prefix": "sprites",
         "dirs": 1, "idle_phases": 1, "move": 4, "move_begin": 0,
-        "attack": 3, "dying": 4, "decay": 0, "cast": 0, "idle": 0,
+        "attack": n_attack, "dying": 4, "decay": 0, "cast": 0, "idle": 0,
         "move_f": [], "move_t": [], "attack_f": [], "attack_t": [],
         "die_f": [], "dying_t": [],
         "w": OUT_W, "h": OUT_H, "cx": OUT_W // 2, "cy": FEET_Y,
         "tile": None, "projectile": -1, "palette": 5, "blocks": 4,
         "resist": {"fire": 10, "water": 10, "air": 10, "earth": 10, "astral": 10},
     }
+    if name in FLY_Z:
+        entry["z"] = FLY_Z[name]
+        print(f"  {name}: летающий, z={FLY_Z[name]}")
     (out_dir / "_entry.json").write_text(
         json.dumps(entry, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     _contact_sheet(frames, out_dir / "_contact_sheet.png")

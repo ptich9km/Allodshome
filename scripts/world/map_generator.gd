@@ -132,7 +132,12 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 ## карты продолжают ссылаться на удалённые наборы: sidecar лежит на диске, и
 ## `ensure_map` вернул бы его как свежий. Это тот же класс, что и любой другой
 ## смысловой бамп здесь — кэш карты молча переживает удаление данных.
-const GEN_VERSION := 26
+# 27: тиры Серых — полосы по зонам, респавн читает ту же полосу.
+# 28: добавлены людоед и тролль (9 видов вместо 7). Без бампа старые карты в
+# user:// остались бы без них.
+# 29: добавлена суккуб (10 видов). У неё `attack: 0` — фазы удара нет по
+# решению игрока, урон при этом наносится как у всех.
+const GEN_VERSION := 29
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -432,24 +437,55 @@ const GRAY_POOL_TEST: Array = [
 	"monsters/bee", "monsters/bat", "monsters/ghost", "monsters/dragon",
 ]
 
-const GRAY_ZONE := {
-	"start": {
-		"count": [6, 10], "hp": [25, 45], "dmg": [4, 6],
-		"pool": GRAY_POOL_TEST,
-	},
-	"mid": {
-		"count": [10, 14], "hp": [45, 75], "dmg": [6, 9],
-		"pool": GRAY_POOL_TEST,
-	},
-	"hard": {
-		"count": [14, 18], "hp": [70, 120], "dmg": [9, 14],
-		"pool": GRAY_POOL_TEST,
-	},
-	"faction": {
-		"count": [12, 16], "hp": [50, 95], "dmg": [7, 11],
-		"pool": GRAY_POOL_TEST,
-	},
+# Тиры Серых. Каждый вид имеет 5 наборов: тир 1 — сам зверь без перекраски
+# (`monsters/<вид>`), тиры 2..5 — перекрашенные копии `monsters/<вид>_t<N>`.
+# Перекраска бесплатна (ни одного вызова API), генератор — tests/gen_grey_tiers.py.
+const GRAY_SPECIES: Array = ["wolf", "dino", "squirrel", "bee", "bat", "ghost", "dragon",
+	"cannibal", "troll", "succubus"]
+
+# Полоса тиров по зонам (решение игрока): чем глубже, тем опаснее вид.
+#  start   1-2  новичок не встречает элит
+#  mid     2-3  обычная охота, первые древние
+#  hard    3-4  опасные, легендарные
+#  faction 4-5  элиты и владыки
+const GRAY_TIER_BAND := {
+	"start": [1, 2],
+	"mid": [2, 3],
+	"hard": [3, 4],
+	"faction": [4, 5],
 }
+
+# Усиление за тир поверх статов зоны (формула из §13, пакет C).
+# Тир 1 — x1.0, тир 5 — hp x2.4, урон x2.0.
+const GRAY_TIER_HP_STEP := 0.35
+const GRAY_TIER_DMG_STEP := 0.25
+
+
+static func gray_set_name(species: String, tier: int) -> String:
+	return "monsters/%s" % species if tier <= 1 else "monsters/%s_t%d" % [species, tier]
+
+
+## Пул наборов зоны: все виды × тиры её полосы.
+static func gray_pool_for_zone(zone: String) -> Array:
+	var band: Array = GRAY_TIER_BAND.get(zone, GRAY_TIER_BAND["mid"])
+	var out: Array = []
+	for sp in GRAY_SPECIES:
+		for t in range(int(band[0]), int(band[1]) + 1):
+			out.append(gray_set_name(str(sp), t))
+	return out
+
+
+## [hp_mult, dmg_mult] для тира. Тир берётся из units_db.json, а не разбирается
+## из имени: имя — это строка, база — источник истины.
+static func gray_tier_mults(set_name: String) -> Array:
+	var tier := int(UnitDB.get_set(set_name).get("tier", 1))
+	var step := float(maxi(tier - 1, 0))
+	return [1.0 + GRAY_TIER_HP_STEP * step, 1.0 + GRAY_TIER_DMG_STEP * step]
+
+# Числа зон (количество Серых, hp, урон) живут в `assets/config/game.cfg`
+# и читаются через `GameConfig.zonei`, а не здесь. Прежний `GRAY_ZONE`
+# держал вторую копию этих чисел и пул наборов; и то и другое заменено
+# на `GRAY_TIER_BAND` + `gray_pool_for_zone`.
 
 # Здания в городах: функциональные + жильё + декор (folder -> StructureDB).
 # 10.10: арт seedream (tests/extract_seedream_buildings.py), папки *_sN.
@@ -1395,7 +1431,6 @@ func _herb_cell_ok(cell: Vector2i) -> bool:
 ## Теперь сначала обходим РЕГИОНЫ по очереди и по кластеру в каждом, а уже
 ## потом добираем случайно — так покрытие карты гарантировано.
 func _place_greys(rng: RandomNumberGenerator) -> void:
-	var cfg: Dictionary = GRAY_ZONE.get(_zone, GRAY_ZONE["mid"])
 	var count: int = rng.randi_range(
 		GameConfig.zonei(_zone, "gray_count_min"), GameConfig.zonei(_zone, "gray_count_max"))
 	if GameConfig.geti("stress", "enabled") != 0:
@@ -1433,7 +1468,7 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 		var anchor := _gray_anchor_in_region(rng, reg)
 		if anchor.x < 0:
 			continue
-		placed += _gray_cluster(rng, anchor, cfg)
+		placed += _gray_cluster(rng, anchor)
 
 	# Добор: если регионы не дали нужного количества (мало дорог/леса в части
 	# карты), берём любые подходящие якоря.
@@ -1449,7 +1484,7 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 			anchor = _forest_anchor(rng)
 		if anchor.x < 0 or not _gray_anchor_ok(anchor):
 			continue
-		placed += _gray_cluster(rng, anchor, cfg)
+		placed += _gray_cluster(rng, anchor)
 
 	var regions_used := {}
 	for k in _gray_cells.keys():
@@ -1595,8 +1630,8 @@ func _gray_cell_ok(c: Vector2i) -> bool:
 ## (11.10), и без этой проверки `_pick(rng, [])` возвращал null, который
 ## присваивался в `String` — SCRIPT ERROR в самом генераторе карты. Раньше
 ## пустой пул был невозможен, поэтому ветка не была написана.
-func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary) -> int:
-	var pool: Array = cfg.get("pool", [])
+func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i) -> int:
+	var pool: Array = gray_pool_for_zone(_zone)
 	if pool.is_empty():
 		return 0
 	var cells: Array = [anchor]
@@ -1609,10 +1644,16 @@ func _gray_cluster(rng: RandomNumberGenerator, anchor: Vector2i, cfg: Dictionary
 		var cc: Vector2i = cells[i]
 		_gray_cells["%d,%d" % [cc.x, cc.y]] = true
 		var set_name: String = str(_pick(rng, pool))
-		var hp := rng.randi_range(
-			GameConfig.zonei(_zone, "gray_hp_min"), GameConfig.zonei(_zone, "gray_hp_max"))
-		var dmg := rng.randi_range(
-			GameConfig.zonei(_zone, "gray_damage_min"), GameConfig.zonei(_zone, "gray_damage_max"))
+		# Тир усиливает зверя поверх статов зоны. Множитель по тиру НЕ должен
+		# искажать среднюю силу зоны, поэтому он и берётся из полосы зоны: в
+		# `start` полоса 1-2, и тир 2 — это +35% hp, а не ×2.4.
+		var mults: Array = gray_tier_mults(set_name)
+		var hp := int(round(float(rng.randi_range(
+			GameConfig.zonei(_zone, "gray_hp_min"), GameConfig.zonei(_zone, "gray_hp_max")))
+			* float(mults[0])))
+		var dmg := int(round(float(rng.randi_range(
+			GameConfig.zonei(_zone, "gray_damage_min"), GameConfig.zonei(_zone, "gray_damage_max")))
+			* float(mults[1])))
 		_npcs_out.append({
 			"x": int(cc.x), "y": int(cc.y), "set": set_name,
 			"hp_max": hp, "damage": dmg,
