@@ -253,9 +253,13 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 	}
 	var payload := {
 		"version": VERSION,
-		"map": { "seed": int(Game.map_seed), "zone": str(Game.map_zone) },
+		"map": {
+			"seed": int(Game.map_seed), "zone": str(Game.map_zone),
+			"fog": Game.fog.mask_rle() if Game.fog != null else "",
+		},
 		"hero": hero,
 		"world": world_dict,
+		"events": EventSystem.instance.to_payload() if EventSystem.instance != null else [],
 		"quests": [],  # системы квестов в проекте нет; блок заведён сразу,
 		              # чтобы не мигрировать формат потом
 	}
@@ -294,6 +298,9 @@ static func apply_payload(d: Dictionary, player) -> void:
 	var map_d: Dictionary = d.get("map", {})
 	Game.map_seed = int(map_d.get("seed", 0))
 	Game.map_zone = str(map_d.get("zone", "mid"))
+	# Туман и события (19.10): применяются узлами после сборки карты.
+	Game.pending_fog_rle = str(map_d.get("fog", ""))
+	Game.pending_events = (d.get("events", []) as Array).duplicate(true)
 	var h: Dictionary = d.get("hero", {})
 	Game.hero_class = str(h.get("class", Game.hero_class))
 	Game.hero_gender = str(h.get("gender", Game.hero_gender))

@@ -48,6 +48,9 @@ static var player_target: Vector2 = Vector2.ZERO
 static var enemies: Array = []
 static var npcs: Array = []               # мирные жители (Npc) вне Game.enemies
 static var hero: Node2D = null            # игрок (для наёмников/лута)
+static var fog: FogOfWar = null         # fog of war of the hero map (19.10)
+static var pending_fog_rle: String = "" # saved fog mask, applied by FogOfWar
+static var pending_events: Array = []   # saved events, applied by EventSystem
 static var party: Array = []              # наёмники (Mercenary) из таверны
 static var mana_regen_accum: float = 0.0
 static var _trauma: float = 0.0
@@ -690,6 +693,14 @@ func _ready():  # Инициализация мира и боя
 	_sep_grid_frame = -1
 	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
 	_spawn_map_units()
+
+	# Fog of war + dynamic events (19.10): nodes find the map via group.
+	var fog_node := FogOfWar.new()
+	fog_node.name = "FogOfWar"
+	add_child(fog_node)
+	var events_node := EventSystem.new()
+	events_node.name = "EventSystem"
+	add_child(events_node)
 
 	if camera and player:
 		camera.position = player.camera_focus()

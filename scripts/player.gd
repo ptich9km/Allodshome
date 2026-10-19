@@ -1678,6 +1678,8 @@ func _chain_targets(aim: Vector2, radius: float, origin: Vector2,
 		# трупа проверяем через "поле в узле", а не get("state", "").
 		if "state" in e and str(e.get("state")) in ["dying", "decay", "corpse"]:
 			continue
+		if Game.fog != null and Game.fog.blocks_process(e.global_position):
+			continue
 		var pos := (e as Node2D).global_position
 		if reach > 0.0 and origin.distance_to(pos) > reach:
 			continue
@@ -1751,6 +1753,8 @@ func _raise_dead(target_position: Vector2, spell_name: String) -> void:
 		var st := str(e.get("state"))
 		if st != "dying" and st != "decay" and st != "corpse":
 			continue
+		if Game.fog != null and Game.fog.blocks_process(e.global_position):
+			continue
 		var d: float = (e.global_position as Vector2).distance_to(target_position)
 		if d < best_d:
 			best_d = d
@@ -1817,7 +1821,11 @@ func _damage_area_at(pos: Vector2, radius: float, dmg: int, sphere: String = "")
 		alm_map.damage_area(pos, radius, dmg)
 	var targets: Array = []
 	for enemy in Game.enemies:
-		if is_instance_valid(enemy) and enemy.global_position.distance_to(pos) <= radius:
+		if not is_instance_valid(enemy):
+			continue
+		if Game.fog != null and Game.fog.blocks_process(enemy.global_position):
+			continue
+		if enemy.global_position.distance_to(pos) <= radius:
 			targets.append(enemy)
 	Game.deal_damage_area(targets, dmg, "magic", sphere, self)
 
@@ -1876,6 +1884,8 @@ func get_nearest_enemy(click_pos: Vector2, attack_range: float) -> Node2D:
 
 	for enemy in Game.enemies:
 		if is_instance_valid(enemy):
+			if Game.fog != null and Game.fog.blocks_process(enemy.global_position):
+				continue
 			var dist = enemy.global_position.distance_to(click_pos)
 			if dist < min_dist:
 				min_dist = dist

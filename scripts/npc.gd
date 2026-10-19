@@ -61,6 +61,11 @@ func _physics_process(delta: float) -> void:
 		if global_position.distance_squared_to(Game.hero.global_position) > 1600.0 * 1600.0:
 			velocity = Vector2.ZERO
 			return
+	# Туман войны (19.10): вне видимой клетки житель не тикает и не рисуется.
+	if Game.fog != null and Game.fog.blocks_process(global_position):
+		visible = false
+		return
+	visible = true
 	_apply_relief_stand()
 
 	# Житель умер (его ударили монстры/герой): падение, разложение, исчезновение

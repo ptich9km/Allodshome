@@ -194,10 +194,11 @@ func _run() -> void:
 		_check(dv == 0 or dv == 1, "debug.%s — переключатель 0/1 (сейчас %d)" % [dk, dv])
 	_check(GameConfig.geti("debug", "all_magic") != 0,
 		"все заклинания выдаются по умолчанию (иначе бету нечем тестировать)")
-	# fog_of_war заведён ЗАРАНЕЕ, тумана в игре нет. Сторож, чтобы никто
-	# не решил, что ключ «работает» и включил его в расчёте на эффект.
-	_check(GameConfig.geti("debug", "fog_of_war") == 0,
-		"fog_of_war выключен: тумана войны в игре нет, ключ пока ничего не делает")
+	# fog_of_war теперь РАБОЧИЙ ключ (19.10, FogOfWar): 0 = туман выключен,
+	# 1 = включён. Значение вне 0/1 считаем битым конфигом.
+	var fog_key := GameConfig.geti("debug", "fog_of_war")
+	_check(fog_key == 0 or fog_key == 1,
+		"fog_of_war — рабочий переключатель тумана войны (0/1), сейчас %d" % fog_key)
 
 	_report()
 	quit(0 if _fails.is_empty() else 1)

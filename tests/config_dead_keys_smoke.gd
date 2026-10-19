@@ -26,7 +26,6 @@ const CFG_SRC := "res://scripts/game_config.gd"
 ## Ключи, которые разрешено не читать из кода: заготовки под будущие фичи.
 ## Для них обязателен комментарий-обоснование в game_config.gd.
 const ALLOWED_DEAD := {
-	"debug.fog_of_war": "тумана войны в игре нет; ключ заведён заранее",
 	"mob_tier.hp_multiplier": "тиров мобов ещё нет, место заведено заранее",
 	"metal.absorption_min": "ссылается только тест game_config_smoke",
 	"metal.absorption_max": "ссылается только тест game_config_smoke",

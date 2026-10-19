@@ -23,6 +23,8 @@ var minimap_texture: ImageTexture
 var _minimap_base: Image = null   # кэш террейна+зданий (P3): не перерисовываем каждый тик
 var _minimap_size := Vector2.ZERO
 var _minimap_timer := 0.0
+var _fog_img: Image = null        # кэш тумана для миникарты (19.10)
+var _fog_dirty := true
 const MINIMAP_INTERVAL := 0.25
 
 func setup_ui(p: Player):
@@ -1077,6 +1079,12 @@ func _setup_minimap():
 	minimap_image = null
 	_minimap_base = null
 	minimap_texture = null
+	# Туман (19.10): подписка на маску - фог-слой миникарты
+	# перерисовывается только при изменении, а не каждый тик.
+	var fog_node: Node = get_tree().get_first_node_in_group("fog")
+	if fog_node != null and not fog_node.updated.is_connected(_on_fog_updated):
+		fog_node.updated.connect(_on_fog_updated)
+	_fog_dirty = true
 
 ## Точки юнитов двигаются, поэтому миникарта не полностью статична, но полный
 ## перебор всей карты каждый кадр (65k клеток на Beach) — лишний. Обновляем
@@ -1121,6 +1129,7 @@ func _draw_minimap():
 	var pty: int = int(player.global_position.y) / alm_map.tile_size
 	var scale_x := float(w) / float(mw)
 	var scale_y := float(h) / float(mh)
+	var fog_on := Game.fog != null and Game.fog.enabled
 
 	# P3: террейн+здания кэшируются; каждый тик только копируем базу + точки.
 	if _minimap_base == null or _minimap_base.get_width() != w or _minimap_base.get_height() != h:
@@ -1154,6 +1163,13 @@ func _draw_minimap():
 
 	minimap_image.blit_rect(_minimap_base, Rect2(0, 0, w, h), Vector2.ZERO)
 
+	# Фог-слой (19.10): черное и приглушенное поверх террейна.
+	if fog_on:
+		if _fog_dirty or _fog_img == null or _fog_img.get_width() != w:
+			_rebuild_fog_layer(w, h)
+		if _fog_img != null:
+			minimap_image.blend_rect(_fog_img, Rect2(0, 0, w, h), Vector2.ZERO)
+
 	# Игрок (белая точка)
 	var px := int(ptx * scale_x)
 	var py := int(pty * scale_y)
@@ -1169,6 +1185,8 @@ func _draw_minimap():
 			var etx: int = int(enemy.global_position.x) / alm_map.tile_size
 			var ety: int = int(enemy.global_position.y) / alm_map.tile_size
 			var exx := int(etx * scale_x); var eyy := int(ety * scale_y)
+			if fog_on and Game.fog.state_at(Vector2i(etx, ety)) < FogOfWar.STATE_VISIBLE:
+				continue
 			if exx >= 0 and exx < w and eyy >= 0 and eyy < h:
 				minimap_image.set_pixel(exx, eyy, MINIMAP_ENEMY)
 
@@ -1178,17 +1196,61 @@ func _draw_minimap():
 			var ntx: int = int(npc.global_position.x) / alm_map.tile_size
 			var nty: int = int(npc.global_position.y) / alm_map.tile_size
 			var nxx := int(ntx * scale_x); var nyy := int(nty * scale_y)
+			if fog_on and Game.fog.state_at(Vector2i(ntx, nty)) < FogOfWar.STATE_VISIBLE:
+				continue
 			if nxx >= 0 and nxx < w and nyy >= 0 and nyy < h:
 				var nc: Color = MINIMAP_NPC_CIV
 				if "role" in npc and str(npc.role) == "guard":
 					nc = MINIMAP_NPC_GUARD
 				minimap_image.set_pixel(nxx, nyy, nc)
 
+	# Маркеры событий/квестов (19.10): всегда видны, поверх фога.
+	if MinimapMarkers.instance != null:
+		_draw_minimap_markers(w, h, mw, mh)
+
 	minimap_texture.update(minimap_image)
 	var tex_rect2 := minimap_rect.get_node_or_null("MinimapTex")
 	if tex_rect2:
 		tex_rect2.texture = minimap_texture
 
+## Фог-слой миникарты: готовая мини-картинка тумана (1px/клетку) из FogOfWar,
+## масштабируется под рамку; перестройка только по сигналу updated (19.10).
+func _rebuild_fog_layer(w: int, h: int) -> void:
+	_fog_dirty = false
+	if Game.fog == null or Game.fog.mini_img == null:
+		_fog_img = null
+		return
+	_fog_img = Game.fog.mini_img.duplicate()
+	_fog_img.resize(w, h, Image.INTERPOLATE_NEAREST)
+
+func _on_fog_updated() -> void:
+	_fog_dirty = true
+
+## Маркеры событий и будущих квестов: крестик 3x3, поверх фога
+## (решение игрока - маркеры всегда видны). Бой пульсирует,
+## в последний отрезок жизни мигает.
+func _draw_minimap_markers(w: int, h: int, mw: int, mh: int) -> void:
+	var sx := float(w) / float(mw)
+	var sy := float(h) / float(mh)
+	var blink := (Time.get_ticks_msec() / 400) % 2 == 0
+	for m in MinimapMarkers.instance.all_for(Game.map_seed, Game.map_zone):
+		var cx := int(int(m["cell_x"]) * sx)
+		var cy := int(int(m["cell_y"]) * sy)
+		var col: Color
+		if int(m["kind"]) == MinimapMarkers.Kind.BATTLE:
+			if float(m["ttl_left"]) < 20.0 and blink:
+				continue
+			col = Color(1.0, 0.25, 0.15, 1.0) if blink else Color(0.75, 0.1, 0.1, 1.0)
+		else:
+			col = Color(1.0, 0.75, 0.1, 1.0)
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if absi(dx) + absi(dy) > 1:
+					continue
+				var xx := cx + dx
+				var yy := cy + dy
+				if xx >= 0 and xx < w and yy >= 0 and yy < h:
+					minimap_image.set_pixel(xx, yy, col)
 # Цвета миникарты: игровые данные (биомы/юниты), не палитра UI-панелей.
 const MINIMAP_NPC_GUARD := Color(0.2, 0.8, 0.2, 1.0)
 const MINIMAP_NPC_CIV := Color(1.0, 0.85, 0.2, 1.0)

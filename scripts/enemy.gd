@@ -24,6 +24,9 @@ var _repath := 0.0
 var _corpse_timer := 0.0          # сколько труп лежит до удаления (без разложения)
 var health_bar: HealthBar
 var _anim: UnitAnimBase = null
+## Стычка событий (19.10): тег своей группы и тег противника. Пусто = обычный Серый.
+var event_tag: String = ""
+var foe_group: String = ""
 
 func _ready():
 	add_to_group("enemy")
@@ -60,6 +63,11 @@ func _physics_process(delta):
 		if global_position.distance_squared_to(Game.hero.global_position) > 1600.0 * 1600.0:
 			velocity = Vector2.ZERO
 			return
+	# Туман войны (19.10): вне видимой клетки юнит не тикает и не рисуется.
+	if Game.fog != null and Game.fog.blocks_process(global_position):
+		visible = false
+		return
+	visible = true
 
 	attack_cooldown = max(0, attack_cooldown - delta)
 
@@ -227,6 +235,13 @@ func _can_step(step: Vector2) -> bool:
 ## ближайший страж-НПЦ города в радиусе агро.
 ## Невидимого героя враг «не замечает» дальше 40 px, но видит вплотную.
 func _combat_target() -> Node2D:
+	# Стычка событий (19.10): пока враг в группе события, он бьёт
+	# противоположную группу; удар героя по нему переводит его на героя
+	# (см. take_damage). Противник умер или исчез - обычная логика ниже.
+	if foe_group != "":
+		var foe: Node2D = EventSystem.foe_for(self)
+		if foe != null:
+			return foe
 	var player = get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player):
 		var dp := Game.units_range(self, player)
@@ -328,6 +343,11 @@ func take_damage(dmg: int, attacker) -> int:
 		return 0
 	if dmg <= 0:
 		return 0
+	# Герой ударил участника стычки - выходит из события и отвечает герою.
+	if foe_group != "" and is_instance_valid(attacker) \
+			and (attacker as Node).is_in_group("player"):
+		event_tag = ""
+		foe_group = ""
 	# Раньше щит на враге не работал: shield_reduce здесь не вызывался
 	var shielded := Game.shield_reduce(self, dmg)
 	if shielded <= 0:

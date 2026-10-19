@@ -44,6 +44,11 @@ var _blend_primary: ImageTexture
 var _blend_secondary: ImageTexture
 var _blend_border: ImageTexture
 var _blend_cells := 0
+## Чанк-рендер террейна (19.10): BlendMesh режется на квадраты CHUNK_CELLS,
+## видимые только в кадре камеры (+CHUNK_MARGIN). Фундамент карт 96x96.
+const CHUNK_CELLS := 16
+const CHUNK_MARGIN := 96.0
+var _blend_chunks: Array = []     # чанки бленда: {node: MeshInstance2D, rect: Rect2}
 var _atlas_cells := 0
 const ROAD_T := 3
 const MOUNTAIN_T := 1
@@ -537,40 +542,7 @@ func _build_relief_mesh() -> void:
 
 	_build_blend_assets()
 
-	var st_blend := SurfaceTool.new()
-	st_blend.begin(Mesh.PRIMITIVE_TRIANGLES)
-
-	for y in range(map_height):
-		for x in range(map_width):
-			var i := y * map_width + x
-			var t: int = types[i]
-			if t < 0:
-				continue
-
-			var h00 := _node_h(x, y)
-			var h10 := _node_h(x + 1, y)
-			var h01 := _node_h(x, y + 1)
-			var h11 := _node_h(x + 1, y + 1)
-			var p00 := Vector3(x * TILE, y * TILE - h00, 0)
-			var p10 := Vector3((x + 1) * TILE, y * TILE - h10, 0)
-			var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
-			var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
-
-			var br := _brightness(x, y)
-			# COLOR.a — только яркость (паттерн пилота). Типы — в текстурах.
-			st_blend.set_color(Color(1.0, 1.0, 1.0, br))
-			var u0 := float(x) / float(map_width)
-			var v0 := float(y) / float(map_height)
-			var u1 := float(x + 1) / float(map_width)
-			var v1 := float(y + 1) / float(map_height)
-			st_blend.set_uv(Vector2(u0, v0)); st_blend.add_vertex(p00)
-			st_blend.set_uv(Vector2(u1, v0)); st_blend.add_vertex(p10)
-			st_blend.set_uv(Vector2(u0, v1)); st_blend.add_vertex(p01)
-			st_blend.set_uv(Vector2(u1, v0)); st_blend.add_vertex(p10)
-			st_blend.set_uv(Vector2(u1, v1)); st_blend.add_vertex(p11)
-			st_blend.set_uv(Vector2(u0, v1)); st_blend.add_vertex(p01)
-			_blend_cells += 1
-
+	# ReliefMesh остаётся с материалом атласа (тесты/освещение ссылаются).
 	var amesh := ArrayMesh.new()
 	var mat := ShaderMaterial.new()
 	var shader := Shader.new()
@@ -585,21 +557,10 @@ void fragment() {
 	mesh.mesh = amesh
 	mesh.material = mat
 
-	if _blend_cells > 0:
-		var arr_b: Array = st_blend.commit_to_arrays()
-		if not arr_b.is_empty() and (arr_b[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() > 0:
-			var bmesh := ArrayMesh.new()
-			bmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr_b)
-			if blend_mesh == null:
-				blend_mesh = MeshInstance2D.new()
-				blend_mesh.name = "BlendMesh"
-				blend_mesh.z_index = mesh.z_index
-				add_child(blend_mesh)
-			blend_mesh.mesh = bmesh
-			blend_mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			var mat_b := ShaderMaterial.new()
-			var sh_b := Shader.new()
-			sh_b.code = """shader_type canvas_item;
+	# Материал и шейдер бленда — общие для всех чанков (19.10).
+	var mat_b := ShaderMaterial.new()
+	var sh_b := Shader.new()
+	sh_b.code = """shader_type canvas_item;
 uniform sampler2D u_primary : filter_nearest, repeat_disable;
 uniform sampler2D u_secondary : filter_nearest, repeat_disable;
 uniform sampler2D u_border : filter_linear, repeat_disable;
@@ -651,17 +612,101 @@ void fragment() {
 	vec3 b = sample_biome(nid, local, cell, 11.3);
 	COLOR = vec4(mix(a, b, m) * COLOR.a, 1.0);
 }"""
-			mat_b.shader = sh_b
-			mat_b.set_shader_parameter("u_primary", _blend_primary)
-			mat_b.set_shader_parameter("u_secondary", _blend_secondary)
-			mat_b.set_shader_parameter("u_border", _blend_border)
-			for bi in range(BIOME_COUNT):
-				mat_b.set_shader_parameter("u_t%d" % bi, _blend_strips[bi])
-			mat_b.set_shader_parameter("u_map_cells", Vector2(map_width, map_height))
-			blend_mesh.material = mat_b
+	mat_b.shader = sh_b
+	mat_b.set_shader_parameter("u_primary", _blend_primary)
+	mat_b.set_shader_parameter("u_secondary", _blend_secondary)
+	mat_b.set_shader_parameter("u_border", _blend_border)
+	for bi in range(BIOME_COUNT):
+		mat_b.set_shader_parameter("u_t%d" % bi, _blend_strips[bi])
+	mat_b.set_shader_parameter("u_map_cells", Vector2(map_width, map_height))
 
-	print("AlmMap: меш собран (бленд=%d, полос=%d, blend=%s)" % [
-		_blend_cells, _blend_strips.size(), "yes" if blend_mesh != null else "no"])
+	# Чанки 16×16 клеток: тот же материал и UV всей карты, но каждый чанк —
+	# свой MeshInstance2D, который скрывается вне кадра камеры (19.10).
+	var chunks_x := int(ceil(map_width / float(CHUNK_CELLS)))
+	var chunks_y := int(ceil(map_height / float(CHUNK_CELLS)))
+	for cy in range(chunks_y):
+		for cx in range(chunks_x):
+			var st_c := SurfaceTool.new()
+			st_c.begin(Mesh.PRIMITIVE_TRIANGLES)
+			var y_to := mini((cy + 1) * CHUNK_CELLS, map_height)
+			var x_to := mini((cx + 1) * CHUNK_CELLS, map_width)
+			for y in range(cy * CHUNK_CELLS, y_to):
+				for x in range(cx * CHUNK_CELLS, x_to):
+					var i := y * map_width + x
+					var t: int = types[i]
+					if t < 0:
+						continue
+					var h00 := _node_h(x, y)
+					var h10 := _node_h(x + 1, y)
+					var h01 := _node_h(x, y + 1)
+					var h11 := _node_h(x + 1, y + 1)
+					var p00 := Vector3(x * TILE, y * TILE - h00, 0)
+					var p10 := Vector3((x + 1) * TILE, y * TILE - h10, 0)
+					var p01 := Vector3(x * TILE, (y + 1) * TILE - h01, 0)
+					var p11 := Vector3((x + 1) * TILE, (y + 1) * TILE - h11, 0)
+					var br := _brightness(x, y)
+					# COLOR.a — только яркость (паттерн пилота). Типы — в текстурах.
+					st_c.set_color(Color(1.0, 1.0, 1.0, br))
+					var u0 := float(x) / float(map_width)
+					var v0 := float(y) / float(map_height)
+					var u1 := float(x + 1) / float(map_width)
+					var v1 := float(y + 1) / float(map_height)
+					st_c.set_uv(Vector2(u0, v0)); st_c.add_vertex(p00)
+					st_c.set_uv(Vector2(u1, v0)); st_c.add_vertex(p10)
+					st_c.set_uv(Vector2(u0, v1)); st_c.add_vertex(p01)
+					st_c.set_uv(Vector2(u1, v0)); st_c.add_vertex(p10)
+					st_c.set_uv(Vector2(u1, v1)); st_c.add_vertex(p11)
+					st_c.set_uv(Vector2(u0, v1)); st_c.add_vertex(p01)
+					_blend_cells += 1
+			var arr_c: Array = st_c.commit_to_arrays()
+			if arr_c.is_empty():
+				continue
+			var verts: PackedVector3Array = arr_c[Mesh.ARRAY_VERTEX]
+			if verts.size() == 0:
+				continue
+			var bmesh := ArrayMesh.new()
+			bmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr_c)
+			var mi := MeshInstance2D.new()
+			mi.mesh = bmesh
+			mi.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			mi.material = mat_b
+			mi.z_index = mesh.z_index
+			mi.name = "BlendChunk_%d_%d" % [cx, cy]
+			add_child(mi)
+			_blend_chunks.append({
+				"node": mi,
+				"rect": Rect2(cx * CHUNK_CELLS * TILE, cy * CHUNK_CELLS * TILE,
+					CHUNK_CELLS * TILE, CHUNK_CELLS * TILE),
+			})
+			if blend_mesh == null:
+				blend_mesh = mi
+				blend_mesh.name = "BlendMesh"
+
+	print("AlmMap: меш собран (бленд=%d, полос=%d, чанков=%d)" % [
+		_blend_cells, _blend_strips.size(), _blend_chunks.size()])
+
+## Видимость чанков по камере: чанк вне кадра (+запас) не рисуется.
+func _process(_delta: float) -> void:
+	if _blend_chunks.is_empty():
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var cam := vp.get_camera_2d()
+	if cam == null:
+		return
+	var vs: Vector2 = vp.get_visible_rect().size
+	var zoom: Vector2 = cam.zoom
+	if zoom.x <= 0.0 or zoom.y <= 0.0:
+		zoom = Vector2.ONE
+	var half := Vector2(vs.x * 0.5 / zoom.x, vs.y * 0.5 / zoom.y) + Vector2(CHUNK_MARGIN, CHUNK_MARGIN)
+	var center: Vector2 = cam.get_screen_center_position()
+	var view := Rect2(center - half, half * 2.0)
+	for c in _blend_chunks:
+		var node: MeshInstance2D = c["node"]
+		if node == null or not is_instance_valid(node):
+			continue
+		node.visible = (c["rect"] as Rect2).intersects(view)
 
 ## Пара (secondary, unused_border) — secondary = самый частый чужой сосед.
 ## Сам mix в шейдере: по полю type/6 между tid и nid (формула пилота).
