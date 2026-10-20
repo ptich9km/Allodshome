@@ -61,6 +61,15 @@ assets/items/faction/*/_contact_sheet.png.import
 assets/items/faction_w/*/_contact_sheet.png
 assets/items/faction_w/*/_contact_sheet.png.import
 
+# Служебные рендеры импорта предметов (tests/gen_items_atlas_kodik.py,
+# tests/slice_items_atlas.py) и варианты дроп-иконок
+# (tests/gen_loot_icons_derived.py) — выход dev-инструмента, пересоздаётся
+# одной командой; в git уходят сырые ИИ-листы, summary.json и _review_all.png.
+import/items_atlas/_check_*
+import/items_atlas/_dbg_*
+import/items_atlas/_sliced/
+import/loot_icons_derived/
+
 # API keys (never commit)
 .kodik_key
 *.kodik_key
