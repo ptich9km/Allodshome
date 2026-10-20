@@ -137,6 +137,49 @@ brown leather boots."""
 # отдельные блоки означали бы вторую копию правил, которая со временем разъедется
 # с первой. Исключение — пропорции: у орка оба пола коренастые, поэтому
 # женские «стройные бёдра» из PROPORTIONS_F здесь не применяются.
+# --- Нежить-воин, Пожинатели (20.10, игрок) ----------------------------------
+# Тот же контракт, что человек/орк: PROPORTIONS и VIEW общие (про телосложение
+# и ракурс, не про вид). Уточнение игрока 20.10: в промте обязательно слово
+# «sprite sheet», мелкие детали, ремни-полосы-ленты запрещены — они мельчат
+# на 64px холсте и рвут силуэт при вырезке.
+CHARACTER_U = """ONE single character repeated in every panel of this SPRITE SHEET for a 2D
+video game: a tall, powerfully built UNDEAD SKELETON WARRIOR of the Harvesters
+faction, thick heavy bones, bare bone-white skull with deep dark eye sockets and
+a faint green glow deep in the eyes, exposed bone-white ribcage, spine, arms and
+legs, no flesh, no hair, no rotting tissue, no exposed organs. THE ARMS AND LEGS
+ARE BARE BONES: thin straight white twin bones (radius and ulna, tibia and fibula)
+with round bone joints, like a Halloween skeleton, NOT muscular, NOT fleshy, NO
+muscle mass, NO skin on the limbs. He wears a battered
+dark rusted iron chest plate worn over the ribcage, heavy dark rusted iron
+compact small shoulder plates that sit close to the body and are NOT wider than
+the shoulders themselves, a plain black leather belt, plain dark iron bracers,
+dark grey cloth wrappings on the shins and plain blackened iron boots. NO straps,
+NO belts crossing the chest, NO hanging cloth, NO ribbons, NO small details.
+SIZE: draw the skeleton figure SMALL and COMPACT, at most 15 percent of the image
+width, with very wide empty background margins on both sides of every figure."""
+
+# --- Друид-воин, Круг Друидов (20.10, игрок) ----------------------------------
+# Человекоподобный воин друидов. Рога и капюшон намеренно запрещены: торчащие
+# элементы срезаются краем кадра и ломают линию ног при нарезке.
+PROPORTIONS_U = """BODY PROPORTIONS - this matters as much as the pose, the figure must NOT be a stick:
+- tall and powerfully built SKELETON: broad bony shoulder blades and pelvis make the
+  silhouette wide, the ribcage is a big filled bony barrel with no gaps
+- the SHOULDERS are the widest part of the silhouette, clearly broader than the hips
+- the limbs are BARE THIN BONES, not muscular: thin straight twin bones with round
+  joints, but they are drawn long and heavy enough to read at small size
+- because both arms are visible from this angle, the body outline is roughly one
+  third as wide as the figure is tall
+- do NOT draw him slim, weak, skinny, gaunt, lanky or stick-like"""
+
+CHARACTER_D = """ONE single character repeated in every panel of this SPRITE SHEET for a 2D
+video game: a broad-shouldered, sturdy adult human DRUID WARRIOR of the Circle
+of Druids faction, tanned weathered skin, long thick grey-brown hair and a full
+grey-brown beard, no hood, no cape, no helmet, no antlers. He wears a bark-brown
+hardened leather chest plate overlaid with large smooth green leaves and plain
+wooden plates, a thick woven rope belt, fur-lined green shoulder wraps, plain
+brown leather bracers, dark green trousers and rough brown leather boots. NO
+straps, NO hanging vines or ribbons, NO small twigs, beads or tiny details."""
+
 PROPORTIONS_O = """BODY PROPORTIONS - this matters as much as the pose, the figure must NOT be a stick:
 - tall and powerfully built, thick heavy torso, huge shoulders and back
 - the SHOULDERS are the widest part of his silhouette, clearly broader than his hips
@@ -241,13 +284,17 @@ Panel 2: his knees buckle, he drops downwards, the torso already tilted, one han
 reaching for the ground.
 Panel 3: he has fallen over onto the ground, the body turned down onto its side,
 torso already low and nearly horizontal, one arm stretched out.
-Panel 4: LYING FLAT ON THE GROUND ON HIS BACK, the body completely HORIZONTAL and
-stretched out along the ground, the head at one end and the boots at the other,
-face and chest pointing up. This panel is much WIDER than it is TALL.
+Panel 4: LYING ON THE GROUND ON HIS BACK, face and chest pointing up, but the body
+is drawn TILTED AND COMPACT: knees slightly bent, arms relaxed on the ground, the
+whole fallen figure fits inside its own quarter of the image width. Do NOT draw
+the fallen body stretched out horizontally across a wide area.
 He NEVER lies face down.
 BANNED in panels 3 and 4: sitting upright, squatting, kneeling upright, resting on
 the hands behind the back, legs dangling down, a compact round shape. A SEATED
-figure is WRONG - he has to end up stretched out flat on the ground. """,
+figure is WRONG - he has to end up lying on the ground.
+SPACING: all four figures stay in their own equal quarters of the image width, so
+wide bands of empty background remain between every pair of neighbouring panels,
+including between panel 3 and panel 4.""",
 
     "attack": """A FIST PUNCH, 4 panels left to right in one row.
 Panel 1: guard stance, both fists up in front of his chest.
@@ -259,10 +306,13 @@ Feet planted, no weapon. """,
     "walk": """A WALKING CYCLE, 4 panels left to right in one row, calm even walking pace.
 Panel 1 CONTACT: the front heel just touched the ground, the back leg is stretched
 far behind, legs at their widest apart, body upright, spine perfectly straight.
-Panel 2 DOWN: his weight sinks onto the front leg, his body is at its lowest point
-of the step, the back leg is still stretched behind pushing off. His SPINE STAYS
-PERFECTLY UPRIGHT and straight - he does NOT crouch, does NOT bend forward at the
-waist, does NOT squat and is NOT running.
+Panel 2 DOWN: his weight rolls onto the front leg, the back leg is still stretched
+behind pushing off. This is ONLY the small natural dip of a normal walking step:
+the front knee bends very slightly, the body drops just a few pixels lower than in
+panel 1. His legs stay STRAIGHT and nearly extended, the SPINE STAYS PERFECTLY
+UPRIGHT and straight - he does NOT crouch, does NOT bend forward at the waist,
+does NOT squat, does NOT kneel, does NOT bend his knees deeply and is NOT running.
+The figure in panel 2 is the SAME SIZE as in all other panels.
 Panel 3 PASSING: the back foot swings forward and steps right up beside the front
 foot, the legs are TOGETHER, feet almost touching, his body at its highest and
 tallest, spine straight. This panel is the NARROWEST of the four - the two legs
@@ -509,8 +559,9 @@ def main():
                     help="4 панели на картинку — 8 физически не помещаются (14.10)")
     ap.add_argument("--sex", choices=("m", "f"), default="m",
                     help="пол персонажа: m — воин (по умолчанию), f — воительница")
-    ap.add_argument("--race", choices=("human", "orc"), default="human",
-                    help="раса персонажа: human — человек, orc — орк")
+    ap.add_argument("--race", choices=("human", "orc", "undead", "druid"), default="human",
+                    help="раса персонажа: human — человек, orc — орк, undead — нежить "
+                         "(Пожинатели), druid — друид (Круг Друидов)")
     ap.add_argument("--tag", default="",
                     help="суффикс имени файла, например nb6. По умолчанию — "
                          "тег выбранного пола")
@@ -542,6 +593,13 @@ def main():
             # есть мужчина (15.10). Женский пол теперь задан явно.
             character = CHARACTER_O_F
             proportions = PROPORTIONS_F
+    elif args.race == "undead":
+        # PROPORTIONS_U вместо общего: «толстый торс» человеческих пропорций
+        # модель понесла на руки (20.10: у walk нежити выросли мышцы). У скелета
+        # ширина даётся лопатками/тазом, а конечности — голые кости.
+        character, proportions, view = CHARACTER_U, PROPORTIONS_U, VIEW
+    elif args.race == "druid":
+        character, proportions, view = CHARACTER_D, PROPORTIONS, VIEW
     else:
         character, proportions, view = CHARACTER, PROPORTIONS, VIEW
         if args.sex == "f":
@@ -567,7 +625,9 @@ def main():
     # побеждал при слове «broad» (замер 14.10: 0.24 ширины к высоте).
     prompt = (f"{character}\n\n{proportions}\n\n{view}\n\n{pose}\n\n{layout}")
     default_tag = {"human": {"m": "nb5", "f": "nb6"},
-                   "orc": {"m": "oc1", "f": "oc2"}}[args.race][args.sex]
+                   "orc": {"m": "oc1", "f": "oc2"},
+                   "undead": {"m": "un1", "f": "un2"},
+                   "druid": {"m": "dr1", "f": "dr2"}}[args.race][args.sex]
     tag = args.tag or default_tag
     out = Path(args.out) if args.out else OUT_DIR / f"hero_{args.anim}_{tag}.png"
     gen_once(load_key(), args.model, prompt, out, SIZE, args.seed, 1, None)

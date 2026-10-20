@@ -41,6 +41,9 @@ SRC = REPO / "import" / "Player"
 SETS = {
     "nb5": ("war_men", "war men"),
     "nb6": ("war_women", "war women"),
+    # Нежить (Пожинатели) и друиды (Круг Друидов), 20.10 — тот же контракт.
+    "un1": ("undead_men", "undead men"),
+    "dr1": ("druid_men", "druid men"),
     # Орки (15.10, игрок) — тот же контракт, другой персонаж. Мужской орк
     # oc1, женский oc2; полосы лежат рядом с человеческими по тому же --tag.
     "oc1": ("orc_men", "orc men"),
