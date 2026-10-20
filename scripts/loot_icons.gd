@@ -2,15 +2,19 @@ class_name LootIcons
 extends RefCounted
 ## Иконки для мешка лута: какой спрайт показать на земле и в тултипе.
 ##
-## ЗАЧЕМ ОТДЕЛЬНЫЙ КЛАСС. assets/loot_icons/ содержит 19 металлов x {оружие,
+## ЗАЧЕМ ОТДЕЛЬНЫЙ КЛАСС. assets/loot_icons/ содержит 20 металлов x {оружие,
 ## броня} плюс баночки зелий трёх размеров - это "видно с расстояния" версии
 ## предметов, мелкие и читаемые. Фракционные иконки из assets/items/faction/
 ## годятся для склада, но не для мешка на земле: там нужно опознать вещь за
 ## секунду, а не рассмотреть.
 ##
 ## ПРАВИЛА.
-##  * золото -> слиток из assets/professions/blacksmith/, отдельной иконки
-##    монеты в loot_icons нет;
+##  * золото-ДЕНЬГИ -> монета gold_coin.png; деньгами gold_icon() зовёт
+##    loot_drop.gd напрямую (золото — число у игрока, не предмет);
+##  * золото-СНАРЯЖЕНИЕ с 20.10 -> {gold}_weapon/_armor.png, как у прочих
+##    металлов (программные дроп-иконки, tests/gen_loot_icons_derived.py;
+##    раньше mat == "gold" гонялся на монету — золотая броня на земле
+##    выглядела деньгами);
 ##  * снаряжение -> {material}_weapon.png или {material}_armor.png, выбор по
 ##    ItemDB.slot_of(): оружие и щиты считаются оружием, остальное бронёй;
 ##  * зелья -> баночка по типу (health/mana) и размеру; размер задаёт вызывающий
@@ -53,6 +57,8 @@ static func gold_icon() -> String:
 	# из item_db, а золото — число у игрока, и игрок искал слиток в инвентаре
 	# после подбора. У золота теперь своя картинка — монета
 	# (tests/gen_gold_coin.py, 32x32, тот же стиль, что у баночек).
+	# 20.10: эта функция — только про ДЕНЬГИ. Снаряжение из золота рисуется
+	# своими {gold}_weapon/_armor.png через _loot_icon_for_material().
 	var coin := "%sgold_coin.png" % LOOT_DIR
 	if ResourceLoader.exists(coin):
 		return coin
@@ -72,9 +78,6 @@ static func icon_for_potion(item: Dictionary, size: String) -> String:
 static func _loot_icon_for_material(mat: String, slot: String) -> String:
 	if mat == "" or mat == "none":
 		return ""
-	# золото: слиток есть, а {gold}_weapon - нет (в loot_icons 19 металлов)
-	if mat == "gold":
-		return gold_icon()
 	if slot in WEAPON_SLOTS:
 		return _existing("%s%s_weapon.png" % [LOOT_DIR, mat])
 	# броня, аксессуары, плащи - всё идёт в *_armor. Аксессуаров в loot_icons

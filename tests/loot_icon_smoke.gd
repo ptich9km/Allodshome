@@ -152,8 +152,11 @@ func _test_potion_icons() -> void:
 
 
 func _test_gold_metal_fallback() -> void:
-	## У золота нет {gold}_weapon.png в loot_icons, но есть слиток. Проверяем,
-	## что LootIcons не возвращает пустую строку (предмет без иконки на земле).
+	## 20.10: у золотого снаряжения появились дроп-иконки {gold}_weapon/_armor
+	## (программный downscale+наклон, tests/gen_loot_icons_derived.py). Раньше
+	## ветка mat == "gold" в LootIcons гнала ЛЮБОЙ золотой предмет на монету, и
+	## золотая броня на земле выглядела деньгами. Деньги и сейчас монета:
+	## loot_drop.gd зовёт gold_icon() напрямую (проверяет _test_gold_icon).
 	var gold_item := _first_with(func(d): return str(d.get("material", "")) == "gold" \
 		and ItemDB.is_equippable(d))
 	_check(not gold_item.is_empty(), "найден предмет из золота")
@@ -161,6 +164,8 @@ func _test_gold_metal_fallback() -> void:
 		return
 	var p := LootIcons.icon_for(gold_item)
 	_check(p != "", "золото имеет иконку (получено '%s')" % p)
+	_check(p.ends_with("gold_weapon.png") or p.ends_with("gold_armor.png"),
+		"золотое снаряжение рисуется снаряжением, а не монетой (получено %s)" % p.get_file())
 	_check(ResourceLoader.exists(p), "иконка золотого предмета существует")
 
 
