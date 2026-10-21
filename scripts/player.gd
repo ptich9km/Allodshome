@@ -723,7 +723,7 @@ func get_protection_astral() -> int: return spirit / 2 + StatusEffects.resist_bo
 ## "hero/war_women" = тот же контракт, воительница. Пол героя выбирает набор.
 ## "hero/orc_men" / "hero/orc_women" = тот же контракт, орк и орчица (15.10).
 ##   Раса выбирает набор, пол — внутри расы. Нежить (necro) и друид получили
-##   свои наборы 20.10; женских вариантов у них пока нет — мужской на оба пола.
+##   свои наборы 20.10; нежить и друиды — свои женские наборы 21.10.
 ## "" = спрайт-листы по экипировке.
 const PILOT_HERO_SET := "hero/war_men"
 const PILOT_HERO_SET_UNDEAD := "hero/undead_men"
@@ -731,6 +731,8 @@ const PILOT_HERO_SET_DRUID := "hero/druid_men"
 const PILOT_HERO_SET_F := "hero/war_women"
 const PILOT_HERO_SET_ORK := "hero/orc_men"
 const PILOT_HERO_SET_ORK_F := "hero/orc_women"
+const PILOT_HERO_SET_UNDEAD_F := "hero/undead_women"
+const PILOT_HERO_SET_DRUID_F := "hero/druid_women"
 
 ## ПИЛОТ 10.10: риг вместо спрайт-листов, если для набора есть rig.json.
 ## Откат всего пилота — false в этой строке. Действует только вместе с
@@ -757,10 +759,9 @@ func anim_set_name() -> String:
 		"ork", "orc":
 			return PILOT_HERO_SET_ORK_F if female else PILOT_HERO_SET_ORK
 		"necro", "undead":
-			# Женского набора у нежити пока нет (20.10): мужской на оба пола.
-			return PILOT_HERO_SET_UNDEAD
+			return PILOT_HERO_SET_UNDEAD_F if female else PILOT_HERO_SET_UNDEAD
 		"druid":
-			return PILOT_HERO_SET_DRUID
+			return PILOT_HERO_SET_DRUID_F if female else PILOT_HERO_SET_DRUID
 		_:
 			return PILOT_HERO_SET_F if female else PILOT_HERO_SET
 

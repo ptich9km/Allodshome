@@ -44,6 +44,9 @@ SETS = {
     # Нежить (Пожинатели) и друиды (Круг Друидов), 20.10 — тот же контракт.
     "un1": ("undead_men", "undead men"),
     "dr1": ("druid_men", "druid men"),
+    # Женские версии тех же рас, 20.10 — тот же контракт.
+    "un2": ("undead_women", "undead women"),
+    "dr2": ("druid_women", "druid women"),
     # Орки (15.10, игрок) — тот же контракт, другой персонаж. Мужской орк
     # oc1, женский oc2; полосы лежат рядом с человеческими по тому же --tag.
     "oc1": ("orc_men", "orc men"),
@@ -537,8 +540,9 @@ def main():
         # frames — ВСЕГО в наборе (idle1+move4+attack3+dying4 = 12), а не
         # число записанных в этом прогоне. При --only блок один, и раньше
         # сюда попадало 4 — набор в базе объявлял бы 4 кадра (15.10 ночь).
-        "desc": f"Hero: {out_label}, Gemini 3.1 Flash image preview 4-panel strips, "
-                "three-quarter east view + mirror, idle1+move4+attack3+dying4",
+        "desc": f"Hero: {out_label}, 4-panel strips (stand — Gemini 3.1 Flash, "
+                "walk/attack/die — mai-image-2.6-flash), three-quarter east "
+                "view + mirror, idle1+move4+attack3+dying4",
         # Порядок ключей - как в остальных 11 наборах репозитория (folder,
         # frames, prefix). Нарезчик писал frames перед folder, и любая пересборка
         # набора давала ложный diff из одной перестановки строк.

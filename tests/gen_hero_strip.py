@@ -171,6 +171,27 @@ PROPORTIONS_U = """BODY PROPORTIONS - this matters as much as the pose, the figu
   third as wide as the figure is tall
 - do NOT draw him slim, weak, skinny, gaunt, lanky or stick-like"""
 
+# --- Нежить-воительница, Пожинатели (20.10) -----------------------------------
+# НЕ скелет: у скелета пол не читается, и женский набор стал бы копией un1.
+# Канон — портрет выбора героя necro_f_war: бледная мёртвая женщина с тёмными
+# волосами. Броня та же, что у un1 (ржавая кираса Пожинателей), чтобы набор
+# читался той же армией. Юбка короткая рваная (до колена): длинная юбка
+# портрета в walk/attack прячет ноги, шаг и удар не читаются.
+CHARACTER_U_F = """ONE single character repeated in every panel of this SPRITE SHEET for a 2D
+video game: a sturdy adult UNDEAD WOMAN warrior of the Harvesters faction, pale
+grey-white dead skin, long straight black hair falling loose down her back, dark
+sunken eyes with a faint green glow deep in them, a calm dead face. The body is
+whole and feminine, NOT a skeleton: no bare bones, no skull, no ribcage, no
+rotting tissue, no wounds, no exposed organs. She wears a battered dark rusted
+iron chest plate, heavy dark rusted iron compact small shoulder plates that sit
+close to the body and are NOT wider than the shoulders themselves, a plain black
+leather belt, plain dark iron bracers, a short tattered dark grey cloth kilt down
+to the knees over dark grey cloth wrappings on the shins, and plain blackened
+iron boots. NO straps, NO belts crossing the chest, NO hanging cloth, NO ribbons,
+NO small details.
+SIZE: draw the figure SMALL and COMPACT, at most 15 percent of the image
+width, with very wide empty background margins on both sides of every figure."""
+
 CHARACTER_D = """ONE single character repeated in every panel of this SPRITE SHEET for a 2D
 video game: a broad-shouldered, sturdy adult human DRUID WARRIOR of the Circle
 of Druids faction, tanned weathered skin, long thick grey-brown hair and a full
@@ -179,6 +200,21 @@ hardened leather chest plate overlaid with large smooth green leaves and plain
 wooden plates, a thick woven rope belt, fur-lined green shoulder wraps, plain
 brown leather bracers, dark green trousers and rough brown leather boots. NO
 straps, NO hanging vines or ribbons, NO small twigs, beads or tiny details."""
+
+# --- Друидка-воин, Круг Друидов (20.10) ---------------------------------------
+# Тот же контракт «та же армия»: снаряжение РОВНО мужское dr1 (дублёная кожа,
+# листья, верёвочный пояс, штаны, сапоги), отличия — тело и длинные волосы.
+# Длинное платье с портрета druid_f_war не годится: в walk/attack не видны ноги.
+# Волосы — как на портрете, рыжие.
+CHARACTER_D_F = """ONE single character repeated in every panel of this SPRITE SHEET for a 2D
+video game: a broad-shouldered, sturdy adult human DRUID WARRIOR WOMAN of the
+Circle of Druids faction, tanned weathered skin, long thick auburn-red hair
+falling loose over her shoulders and down her back, no beard, no hood, no cape,
+no helmet, no antlers. She wears the same bark-brown hardened leather chest plate
+overlaid with large smooth green leaves and plain wooden plates, a thick woven
+rope belt, fur-lined green shoulder wraps, plain brown leather bracers, dark
+green trousers and rough brown leather boots. NO straps, NO hanging vines or
+ribbons, NO small twigs, beads or tiny details."""
 
 PROPORTIONS_O = """BODY PROPORTIONS - this matters as much as the pose, the figure must NOT be a stick:
 - tall and powerfully built, thick heavy torso, huge shoulders and back
@@ -299,8 +335,10 @@ including between panel 3 and panel 4.""",
     "attack": """A FIST PUNCH, 4 panels left to right in one row.
 Panel 1: guard stance, both fists up in front of his chest.
 Panel 2: right fist cocked back beside his shoulder.
-Panel 3: right arm driving forward, fist half way out.
-Panel 4: right arm fully extended straight ahead at shoulder height, fist closed.
+Panel 3: right arm driving forward, fist half way out, elbow stays close to the body.
+Panel 4: right arm fully extended straight AHEAD at shoulder height, fist closed;
+the extended arm stays within the width of his own shoulders, it does NOT reach
+sideways into the next panel and does NOT touch or overlap the neighbouring figure.
 Feet planted, no weapon. """,
 
     "walk": """A WALKING CYCLE, 4 panels left to right in one row, calm even walking pace.
@@ -363,6 +401,49 @@ the image.
 Background: one single flat vivid magenta (255, 0, 255), perfectly uniform.
 EXCLUDE: text, letters, numbers, captions, grid lines, borders, weapons,
 scenery, signature, watermark, duplicate figures."""
+
+
+def normalize_bg(path, tol=60):
+    """Перекраска фона в точную мадженту (21.10, mai-image-2.6-flash).
+
+    mai-image рисует отличный согласованный лист, но фон отдаёт розовым
+    (не чистая 255,0,255) — preflight его не распознаёт. Flood-fill от
+    краёв по цветовой близости к доминирующему цвету фона -> точная
+    маджента. Осознанный детерминированный preprocessing, прецедент —
+    LANCZOS/BICUBIC в gen_loot_icons_derived.py. Затрагивает только
+    связанный с краями фон: фигуры и зазоры внутри не трогаются.
+    """
+    from collections import deque
+    a = np.array(Image.open(path).convert("RGB"))
+    h, w = a.shape[:2]
+    # доминирующий цвет: мода по 4 угловым пятнам 40x40
+    corners = np.concatenate([a[:40, :40].reshape(-1, 3), a[:40, -40:].reshape(-1, 3),
+                              a[-40:, :40].reshape(-1, 3), a[-40:, -40:].reshape(-1, 3)])
+    bg = np.median(corners, axis=0)
+    diff = np.abs(a.astype(np.int32) - bg.astype(np.int32)).max(axis=2)
+    mask = diff <= tol
+    seen = np.zeros((h, w), bool)
+    dq = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if mask[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                dq.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if mask[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                dq.append((y, x))
+    while dq:
+        y, x = dq.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                dq.append((ny, nx))
+    a[seen] = (255, 0, 255)
+    Image.fromarray(a).save(path)
+    return int(seen.sum())
 
 
 def magenta_mask(a):
@@ -567,9 +648,22 @@ def main():
                          "тег выбранного пола")
     args = ap.parse_args()
 
+    # Норма толщины зависит от пола. Калибровка 20.10 по ОДОБРЕННЫМ игроком
+    # наборам: мужчины 0.39–0.48 (dr1 0.39, un1 0.48), женщины 0.32–0.34
+    # (nb6 0.32, oc2 0.34, un2 0.33). Порог 0.36 откалиброван по мужчинам
+    # и браковал годных женщин («ЖЕРДЬ» на каждой женской полосе), поэтому
+    # для женщин порог 0.30 — ниже одобренной вилки, но выше настоящей жерди
+    # (~0.24, замер 14.10).
+    min_ratio = 0.30 if args.sex == "f" else 0.36
+
+    # Порог зазора 4-панельного листа: 28. Калибровка 21.10: одобренная
+    # игроком nb6 walk имеет худший зазор 36, а порог 40 браковал её же
+    # вилку (mai-image даёт 29–37 при годной нарезке).
+    gap4 = 28
     if args.check:
         ok, _ = preflight(args.check, expect=args.panels,
-                          min_gap=40 if args.panels == 4 else 60)
+                          min_gap=gap4 if args.panels == 4 else 60,
+                          min_ratio=min_ratio)
         return 0 if ok else 1
 
     if args.anim not in (ANIMS4 if args.panels == 4 else ANIMS):
@@ -597,9 +691,18 @@ def main():
         # PROPORTIONS_U вместо общего: «толстый торс» человеческих пропорций
         # модель понесла на руки (20.10: у walk нежити выросли мышцы). У скелета
         # ширина даётся лопатками/тазом, а конечности — голые кости.
-        character, proportions, view = CHARACTER_U, PROPORTIONS_U, VIEW
+        if args.sex == "f":
+            # 20.10: воительница — бледная мёртвая женщина (портрет necro_f_war),
+            # а не скелет; пропорции и ракурс — женские боевые.
+            character, proportions, view = CHARACTER_U_F, PROPORTIONS_F, VIEW_F
+        else:
+            character, proportions, view = CHARACTER_U, PROPORTIONS_U, VIEW
     elif args.race == "druid":
-        character, proportions, view = CHARACTER_D, PROPORTIONS, VIEW
+        if args.sex == "f":
+            # 20.10: друидка в снаряжении dr1 («та же армия»), не в платье.
+            character, proportions, view = CHARACTER_D_F, PROPORTIONS_F, VIEW_F
+        else:
+            character, proportions, view = CHARACTER_D, PROPORTIONS, VIEW
     else:
         character, proportions, view = CHARACTER, PROPORTIONS, VIEW
         if args.sex == "f":
@@ -631,8 +734,14 @@ def main():
     tag = args.tag or default_tag
     out = Path(args.out) if args.out else OUT_DIR / f"hero_{args.anim}_{tag}.png"
     gen_once(load_key(), args.model, prompt, out, SIZE, args.seed, 1, None)
+    # mai-image (и другие) могут отдать фон «почти маджента» — нормализуем
+    # до точной, иначе preflight не распознает фон.
+    n = normalize_bg(out)
+    print(f"нормализация фона: {n} пикселей перекрашено")
     print("предполётная проверка:")
-    ok, _ = preflight(str(out), expect=args.panels, min_gap=40 if args.panels == 4 else 60)
+    ok, _ = preflight(str(out), expect=args.panels,
+                      min_gap=gap4 if args.panels == 4 else 60,
+                      min_ratio=min_ratio)
     return 0 if ok else 2
 
 

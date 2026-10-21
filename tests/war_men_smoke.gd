@@ -25,6 +25,8 @@ const SET_ORK := "hero/orc_men"
 const SET_ORK_F := "hero/orc_women"
 const SET_UNDEAD := "hero/undead_men"
 const SET_DRUID := "hero/druid_men"
+const SET_UNDEAD_F := "hero/undead_women"
+const SET_DRUID_F := "hero/druid_women"
 const CANVAS := 64
 const FEET_Y := 62
 const DIRS := 1
@@ -53,6 +55,8 @@ func _run() -> void:
 	_run_set(SET_F, "PILOT_HERO_SET_F")
 	_run_set(SET_ORK, "PILOT_HERO_SET_ORK")
 	_run_set(SET_ORK_F, "PILOT_HERO_SET_ORK_F")
+	_run_set(SET_UNDEAD_F, "PILOT_HERO_SET_UNDEAD_F")
+	_run_set(SET_DRUID_F, "PILOT_HERO_SET_DRUID_F")
 	_test_race_and_gender_switch()
 	_finish()
 
@@ -71,9 +75,9 @@ func _test_race_and_gender_switch() -> void:
 		["human", "", SET], ["", "male", SET],
 		["ork", "male", SET_ORK], ["ork", "female", SET_ORK_F],
 		["ork", "", SET_ORK], ["orc", "male", SET_ORK],
-		# 20.10: у нежити и друида свои наборы; женских пока нет — мужской на оба пола.
-		["necro", "male", SET_UNDEAD], ["necro", "female", SET_UNDEAD],
-		["druid", "male", SET_DRUID], ["druid", "female", SET_DRUID],
+		# 21.10: у нежити и друида есть женские наборы.
+		["necro", "male", SET_UNDEAD], ["necro", "female", SET_UNDEAD_F],
+		["druid", "male", SET_DRUID], ["druid", "female", SET_DRUID_F],
 	]
 	for row in matrix:
 		var race := str(row[0])
