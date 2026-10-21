@@ -510,6 +510,8 @@ def main():
                     help="перерезать только этот блок, остальные кадры не трогать")
     ap.add_argument("--strip", default="",
                     help="полоса для блока из --only (путь к PNG)")
+    ap.add_argument("--pick", default="",
+                    help="ручной выбор панелей 'строка:колонка', напр. '1:1,1:2,1:3,2:1'")
     ap.add_argument("--dry-run", action="store_true",
                     help="ничего не записывать: только сравнить, что изменилось бы "
                          "на диске. Наборы людей НЕ воспроизводятся из своих полос "
@@ -537,6 +539,44 @@ def main():
         src = Path(args.strip) if (args.only and name == args.only and args.strip) else SRC / fname
         print(f"{name}: {src.name}")
         figs = figures_of(src, expect)
+        if args.pick:
+            # Ручной выбор панелей «строка:колонка» (например, hm2 attack:
+            # 1:1,1:2,1:3,2:1). Разбиваем лист на сетку expect ячеек, сколько
+            # их фактичесски на изображении — по найденным компонентам/строкам.
+            import re as _re
+            # ячейка может нести суффикс 'm' — отзеркалить кадр по горизонтали
+            # (игрок: «2:2 надо отзеркалить, упал не в ту сторону головой»)
+            cells = []
+            mirror = []
+            for c in args.pick.split(","):
+                c = c.strip().lower()
+                m = c.endswith("m")
+                r_, c_ = map(int, c.rstrip("m").split(":"))
+                cells.append((r_, c_))
+                mirror.append(m)
+            if len(cells) != expect:
+                print(f"FAIL: --pick содержит {len(cells)} ячеек, ожидается {expect}")
+                return 1
+            a_img = np.array(Image.open(src).convert("RGB")).astype(np.int32)
+            all_boxes = components(cut_mask(a_img, bg_ref(a_img)))
+            rows_ = sorted(rows_of(all_boxes), key=lambda r: min(b[0] for b in r["boxes"]))
+            grid = {}
+            for ri, r in enumerate(rows_, 1):
+                for ci, b in enumerate(sorted(r["boxes"], key=lambda t: t[2]), 1):
+                    grid[(ri, ci)] = b
+            missing = [c for c in cells if c not in grid]
+            if missing:
+                print(f"FAIL: ячейки {missing} не найдены на листе")
+                return 1
+            figs = []
+            for i, (r_, c_) in enumerate(cells):
+                by0, by1, bx0, bx1 = grid[(r_, c_)]
+                crop = a_img[by0:by1 + 1, bx0:bx1 + 1]
+                if mirror[i]:
+                    crop = crop[:, ::-1]
+                sub = cut_mask(crop, bg_ref(a_img))
+                figs.append((crop, sub))
+            print(f"    --pick: взяты ячейки {args.pick}")
         if len(figs) != expect or any(f is None for f in figs):
             print(f"FAIL: {name} — фигур {len(figs)}, годных {sum(f is not None for f in figs)}")
             return 1

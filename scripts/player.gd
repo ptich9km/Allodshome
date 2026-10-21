@@ -40,6 +40,10 @@ var _swing_target: Node2D = null     # цель замаха (снапшот); i
 var move_speed: float = 120.0
 var _path: Array = []        # маршрут (мировые точки — центры клеток), без «льда»
 var _pending_cast: Dictionary = {}   # текущая подготовка заклинания (cast_time)
+## Одноразовый «замах каста»: после применения заклинания (книга/свиток/авто)
+## доигрываем attack-блок целиком — маг поднимает и опускает посох, магия
+## при этом вылетает из центра персонажа. <=0 = анимации нет.
+var _cast_swing_left := 0.0
 var _stuck_frames := 0
 var _repath_timer := 0.0
 
@@ -733,6 +737,15 @@ const PILOT_HERO_SET_ORK := "hero/orc_men"
 const PILOT_HERO_SET_ORK_F := "hero/orc_women"
 const PILOT_HERO_SET_UNDEAD_F := "hero/undead_women"
 const PILOT_HERO_SET_DRUID_F := "hero/druid_women"
+## Класс mage (21.10): у каждого мага свой набор по расе и полу.
+const PILOT_HERO_SET_MAGE := "hero/mage_human_men"
+const PILOT_HERO_SET_MAGE_F := "hero/mage_human_women"
+const PILOT_HERO_SET_MAGE_ORK := "hero/mage_orc_men"
+const PILOT_HERO_SET_MAGE_ORK_F := "hero/mage_orc_women"
+const PILOT_HERO_SET_MAGE_UNDEAD := "hero/mage_undead_men"
+const PILOT_HERO_SET_MAGE_UNDEAD_F := "hero/mage_undead_women"
+const PILOT_HERO_SET_MAGE_DRUID := "hero/mage_druid_men"
+const PILOT_HERO_SET_MAGE_DRUID_F := "hero/mage_druid_women"
 
 ## ПИЛОТ 10.10: риг вместо спрайт-листов, если для набора есть rig.json.
 ## Откат всего пилота — false в этой строке. Действует только вместе с
@@ -755,6 +768,18 @@ func anim_set_name() -> String:
 	# Раса — с 15.10: у орков свой набор. "orc" тоже принимается, потому что
 	# так раса называется в `MapGenerator.CITY_RACES` и в старых сейвах.
 	var female := str(Game.hero_gender) == "female"
+	# Класс mage (21.10): у магов свои наборы с мантией и посохом,
+	# раскладка рас та же, что у воинов.
+	if Game.hero_class == "mage":
+		match str(Game.hero_race):
+			"ork", "orc":
+				return PILOT_HERO_SET_MAGE_ORK_F if female else PILOT_HERO_SET_MAGE_ORK
+			"necro", "undead":
+				return PILOT_HERO_SET_MAGE_UNDEAD_F if female else PILOT_HERO_SET_MAGE_UNDEAD
+			"druid":
+				return PILOT_HERO_SET_MAGE_DRUID_F if female else PILOT_HERO_SET_MAGE_DRUID
+			_:
+				return PILOT_HERO_SET_MAGE_F if female else PILOT_HERO_SET_MAGE
 	match str(Game.hero_race):
 		"ork", "orc":
 			return PILOT_HERO_SET_ORK_F if female else PILOT_HERO_SET_ORK
@@ -901,12 +926,23 @@ func _physics_process(delta):
 
 	# Авто-каст мага (пакет C): лечение и баффы без ручного прицеливания.
 	_tick_auto_cast(delta)
+	# Герой всегда смотрит в сторону курсора (пожелание игрока 21.10):
+	# в стойке/замахе каста доворачивается к мыши, при движении и в бою —
+	# направление выбирает движение/цель, как раньше.
+	_update_facing_mouse(delta)
 
 	match state:
 		"idle":
 			velocity = Vector2.ZERO
 			if _anim:
-				_anim.play(UnitAnim.Anim.IDLE)
+				if _cast_swing_left > 0.0:
+					# Доигрываем замах каста (play() с тем же блоком не сбросит фазу).
+					_cast_swing_left -= delta
+					_anim.play(UnitAnim.Anim.ATTACK)
+					_anim.speed_scale = 1.0
+					_anim.advance(delta)
+				else:
+					_anim.play(UnitAnim.Anim.IDLE)
 		"casting":
 			velocity = Vector2.ZERO
 			_tick_casting(delta)
@@ -1243,6 +1279,23 @@ func attack_enemy(delta):
 		_impact_timer = -1.0
 		_swing_target = null
 
+## Герой доворачивается к курсору, когда сам не занят направлением:
+## в стойке, в замахе каста и в состоянии "casting". В движении и бою
+## направление задаёт скорость/цель — туда не лезем.
+func _update_facing_mouse(delta: float) -> void:
+	if _anim == null:
+		return
+	if state != "idle" and state != "casting":
+		return
+	# Курсор под мышью в мировых координатах; мёртвая зона вокруг героя —
+	# чтобы не дёргался, когда курсор стоит на самом персонаже.
+	var to_mouse := get_global_mouse_position() - global_position
+	if to_mouse.length() < 24.0:
+		return
+	_anim.set_direction_vec(to_mouse)
+	if _anim is UnitAnim:
+		(_anim as UnitAnim)._advance_rotation(delta)
+
 ## Звук удара оружием героя (Sfx100-160: units\sword|axe|club|bow|cbow|pike|sling).
 func _sound_weapon_attack() -> void:
 	var id := 0
@@ -1343,6 +1396,25 @@ func can_cast(name: String) -> bool:
 		return current_mana >= SpellDB.mana_cost(name)   # маг за ману
 	return false
 
+
+## Одноразовый замах каста: длительность — полная сумма attack-блока набора
+## (у всех наборов героя 3 фазы), с запасом на кадр.
+func _play_cast_swing() -> void:
+	# Кастер обязан остановиться: каст на ходу был невозможен визуально
+	# (жалоба игрока 21.10). Гасим путь и цель движения — иначе state = "move"
+	# вернётся на следующем кадре и герой пойдёт дальше, не доиграв замах.
+	_path.clear()
+	velocity = Vector2.ZERO
+	Game.player_target = global_position
+	if state == "move" or state == "chase":
+		state = "idle"
+	var times: Array = UnitDB.block_times(anim_set_name(), "attack_t", UnitDB.attack_phases(anim_set_name()))
+	var total := 0.5
+	for t in times:
+		total += float(t)
+	_cast_swing_left = total
+	if _anim:
+		_anim.play(UnitAnim.Anim.ATTACK, true)
 
 ## Использовать заклинание по имени. Возвращает true, если каст начат.
 ## При cast_time > 0 входит в состояние "casting" и доводит эффект позже.
@@ -1459,6 +1531,9 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 	var dmg := int(spell.get("damage", 0))
 	var area := float(spell.get("area", 0))
 	_play_spell_sound(name, sphere)
+	# Анимация каста: подъём и опускание посоха. Магия вылетает из центра
+	# (cast_origin), но герой не стоит столбом (жалоба игрока 21.10).
+	_play_cast_swing()
 	SpellVFX.cast_flash(cast_origin(), sphere)
 	# Эффекты «на себя» (вампиризм Drain_Life) — всегда на кастере, даже если
 	# заклинание летит снарядом в сторону.

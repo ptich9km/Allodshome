@@ -26,8 +26,8 @@ func _check(ok: bool, msg: String) -> void:
 
 func _run() -> void:
 	var g := MapGenerator.new()
-	var w := MapGenerator.W
-	g._terrain.resize(w * MapGenerator.H)
+	var w := g.W
+	g._terrain.resize(w * g.H)
 
 	# --- Двойной берег: вода(2) сверху, песок(5) снизу ---
 	# (0,0)=2 (1,0)=2

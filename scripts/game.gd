@@ -660,6 +660,12 @@ func _setup_post_pass() -> void:
 func _ready():  # Инициализация мира и боя
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
 
+	# С 21.10: физическая интерполяция проекта (physics/common) заставляет
+	# Camera2D переключаться на physics-процесс и печатать WARNING, если
+	# callback = IDLE. Камера и так двигается в _physics_process (lerp по
+	# герою) — задаём PHYSICS явно, вар не печатается, дёрганья нет.
+	camera.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
+
 	# Свет и пост-обработка 2D. Без них эффекты рисуются «как есть» и выглядят
 	# наклейками: правило VFX — эффект должен излучать и освещать мир.
 	_setup_rendering()
@@ -1570,6 +1576,11 @@ func _physics_process(delta):
 	# lerp в _process «дёргает» картинку относительно physics-interpolated
 	# позиции юнита (жалоба игрока 07.10).
 	if is_instance_valid(player) and camera:
+		# Камеру двигаем явно в physics-процессе — значит и обрабатывать её
+		# позицию она обязана в том же тике. process_callback = PHYSICS задан
+		# в _ready выше/в сцене; включение physics-интерполяции проекта
+		# заставляет движок сам "переопределять" камеру на physics-режим —
+		# это штатно и печатает WARNING. Глушим вывод вар на этом узле.
 		camera.position = camera.position.lerp(player.camera_focus(), 8.0 * delta)
 		if _trauma > 0.0:
 			_trauma = maxf(_trauma - 1.2 * delta, 0.0)

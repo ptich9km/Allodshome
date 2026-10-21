@@ -126,7 +126,7 @@ static func base_theme(spec: Dictionary = {}) -> Theme:
 
 ## Золотой стиль полосы прокрутки. Раньше он жил только в shop_panel, поэтому
 ## скролл рецептов в алхимии оставался системным серым.
-static func apply_scrollbar(theme: Theme, radius: int = 5, margin: int = 4) -> void:
+static func apply_scrollbar(theme: Theme, radius: int = 5, _margin: int = 4) -> void:
 	theme.set_stylebox("scroll", "VScrollBar",
 		panel_style(Color(0.04, 0.03, 0.02, 0.38), Color(0, 0, 0, 0), radius))
 	theme.set_stylebox("scroll_focus", "VScrollBar",

@@ -411,6 +411,40 @@ stance, a wide straddle, a squat. Panels 3 and 4 are the NARROW panels; only pan
 1 and 2 show the legs wide apart.""",
 }
 
+# 21.10: mage attack — the only weapon is a staff, so the attack is a simple
+# staff raise/lower, nothing else. Player correction: the staff is NOT cocked
+# back behind the head and NOT swung overhead — just lifted up and lowered.
+ANIMS4_MAGE = {
+    "attack": """A SLOW STAFF LIFT: raising the staff straight up in FRONT of the
+body and then lowering it back down, 4 panels left to right in one row.
+Panel 1: standing still, the staff held vertically at the side, one hand gripping
+it at waist height, staff tip pointing up.
+Panel 2: the same single hand has lifted the staff a little way up, the staff now
+held vertically in front of the body at about chest height. The OTHER hand is
+NOT holding a second staff - there is only ONE staff in the whole image and it
+is gripped by ONLY ONE hand in every panel. The body posture in this panel is
+exactly the same upright relaxed stance as in panel 1 - the spine is NOT
+stretched, NOT elongated, NOT straightened upward, the figure does NOT grow
+taller, legs stay bent and relaxed the same way.
+Panel 3: the hand has lifted the staff straight up in front of the body, the arm
+extended upward but still IN FRONT of the figure, the staff vertical beside the
+shoulder, NOT behind the head, NOT cocked back, NOT swung sideways.
+Panel 4: the hand has lowered the staff back down to the starting position at the
+side, exactly like panel 1.
+This is ONLY a calm vertical lift-and-lower motion of one arm holding the staff.
+Nothing else moves: feet stay planted in the same place, body stays upright, no
+punch, no throw, no lunge, no swing, no spin. The staff is NOT thrown or dropped.
+The staff is NEVER held behind the head or behind the back.
+SAME HAND IS LAW: the staff is held in the SAME single hand in ALL FOUR panels.
+The hand NEVER switches, NEVER swaps from left to right or right to left between
+panels. One hand holds the staff from the first panel to the last.
+SPACING: all four figures stay in their own equal quarters of the image width, so
+wide bands of empty background remain between every pair of neighbouring panels.
+The raised arm and staff stay within the width of the figure's own shoulders and
+do NOT touch or overlap the neighbouring figure. All four figures stand on ONE
+ground line in ONE horizontal row.""",
+}
+
 LAYOUT = """PURPOSE, read this first: you are drawing ONE SPRITESHEET STRIP FOR A 2D VIDEO
 GAME. Every panel is a SEPARATE ANIMATION FRAME of the same character, the game
 will cut this image apart and play the panels one after another as an animation.
@@ -796,7 +830,9 @@ def main():
     # рисует мужчину поверх женского описания персонажа. Замена по границам
     # слов, регистр сохраняется, чтобы «He does NOT crouch» не стало «She
     # does not». Проверяется, что после замены не осталось мужских форм.
-    pose = table[args.anim]
+    # Mage attack uses a dedicated staff raise/lower pose (player request,
+    # 21.10): the generic punch animation makes no sense with a robe and staff.
+    pose = ANIMS4_MAGE.get(args.anim, table[args.anim]) if args.hero_class == "mage" else table[args.anim]
     if args.sex == "f":
         pose = femaleize(pose)
         # Проверка по ГРАНИЦАМ СЛОВ, а не по подстроке. Подстрока давала

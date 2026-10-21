@@ -31,7 +31,7 @@ func reseed() -> void:
 	var f_h: Dictionary = state.new_faction("Люди", "human")
 	var f_e: Dictionary = state.new_faction("Орки", "ork")
 	var r: Dictionary = state.new_region("Черноземье")
-	var c_h: Dictionary = state.new_city("Речной Пост", f_h.id, r.id)
+	var _c_h: Dictionary = state.new_city("Речной Пост", f_h.id, r.id)
 	var c_e: Dictionary = state.new_city("Кровавый Бор", f_e.id, r.id)
 	var u1: Dictionary = state.new_unit(f_h.id, "fire")
 	var u2: Dictionary = state.new_unit(f_e.id, "fire")

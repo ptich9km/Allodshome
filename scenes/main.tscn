@@ -35,6 +35,7 @@ script = ExtResource("9_almmap")
 alm_path = "res://assets/maps/gen/gen_smart_01.alm"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=563323442]
+process_callback = 2
 zoom = Vector2(2, 2)
 
 [node name="Player" type="CharacterBody2D" parent="." unique_id=1525799927]

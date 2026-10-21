@@ -27,6 +27,15 @@ const SET_UNDEAD := "hero/undead_men"
 const SET_DRUID := "hero/druid_men"
 const SET_UNDEAD_F := "hero/undead_women"
 const SET_DRUID_F := "hero/druid_women"
+## Класс mage (21.10): свои наборы по расе и полу.
+const SET_MAGE := "hero/mage_human_men"
+const SET_MAGE_F := "hero/mage_human_women"
+const SET_MAGE_ORK := "hero/mage_orc_men"
+const SET_MAGE_ORK_F := "hero/mage_orc_women"
+const SET_MAGE_UNDEAD := "hero/mage_undead_men"
+const SET_MAGE_UNDEAD_F := "hero/mage_undead_women"
+const SET_MAGE_DRUID := "hero/mage_druid_men"
+const SET_MAGE_DRUID_F := "hero/mage_druid_women"
 const CANVAS := 64
 const FEET_Y := 62
 const DIRS := 1
@@ -57,17 +66,26 @@ func _run() -> void:
 	_run_set(SET_ORK_F, "PILOT_HERO_SET_ORK_F")
 	_run_set(SET_UNDEAD_F, "PILOT_HERO_SET_UNDEAD_F")
 	_run_set(SET_DRUID_F, "PILOT_HERO_SET_DRUID_F")
+	_run_set(SET_MAGE, "PILOT_HERO_SET_MAGE")
+	_run_set(SET_MAGE_F, "PILOT_HERO_SET_MAGE_F")
+	_run_set(SET_MAGE_ORK, "PILOT_HERO_SET_MAGE_ORK")
+	_run_set(SET_MAGE_ORK_F, "PILOT_HERO_SET_MAGE_ORK_F")
+	_run_set(SET_MAGE_UNDEAD, "PILOT_HERO_SET_MAGE_UNDEAD")
+	_run_set(SET_MAGE_UNDEAD_F, "PILOT_HERO_SET_MAGE_UNDEAD_F")
+	_run_set(SET_MAGE_DRUID, "PILOT_HERO_SET_MAGE_DRUID")
+	_run_set(SET_MAGE_DRUID_F, "PILOT_HERO_SET_MAGE_DRUID_F")
 	_test_race_and_gender_switch()
 	_finish()
 
 
-## Раса и пол выбирают набор. Проверяется на НАСТОЯЩЕМ Player: значения
+## Раса, пол и КЛАСС выбирают набор. Проверяется на НАСТОЯЩЕМ Player: значения
 ## обязаны совпасть с тем, что пишет экран создания героя, иначе герой-орк
 ## получил бы человеческий спрайт молча (ровно тот случай, что 15.10).
 func _test_race_and_gender_switch() -> void:
 	var p = load("res://scripts/player.gd").new()
 	var saved_gender: String = str(Game.hero_gender)
 	var saved_race: String = str(Game.hero_race)
+	var saved_class: String = str(Game.hero_class)
 
 	# раса, пол -> ожидаемый набор. "" означает «старый сейв без расы».
 	var matrix := [
@@ -85,13 +103,32 @@ func _test_race_and_gender_switch() -> void:
 		var want := str(row[2])
 		Game.hero_race = race
 		Game.hero_gender = gender
+		Game.hero_class = "warrior"
 		_check(p.anim_set_name() == want,
 			"раса %s / пол %s -> %s (получено %s)" % [
 				race if race != "" else "(пусто)", gender if gender != "" else "(пусто)",
 				want, p.anim_set_name()])
 
+	# 21.10: класс mage — свои наборы на каждую расу и пол.
+	var mage_matrix := [
+		["human", "male", SET_MAGE], ["human", "female", SET_MAGE_F],
+		["orc", "male", SET_MAGE_ORK], ["orc", "female", SET_MAGE_ORK_F],
+		["ork", "male", SET_MAGE_ORK], ["ork", "female", SET_MAGE_ORK_F],
+		["necro", "male", SET_MAGE_UNDEAD], ["necro", "female", SET_MAGE_UNDEAD_F],
+		["undead", "male", SET_MAGE_UNDEAD], ["undead", "female", SET_MAGE_UNDEAD_F],
+		["druid", "male", SET_MAGE_DRUID], ["druid", "female", SET_MAGE_DRUID_F],
+	]
+	Game.hero_class = "mage"
+	for row in mage_matrix:
+		Game.hero_race = str(row[0])
+		Game.hero_gender = str(row[1])
+		_check(p.anim_set_name() == str(row[2]),
+			"mage: раса %s / пол %s -> %s (получено %s)" % [
+				row[0], row[1], row[2], p.anim_set_name()])
+
 	Game.hero_race = saved_race
 	Game.hero_gender = saved_gender
+	Game.hero_class = saved_class
 	p.free()
 
 

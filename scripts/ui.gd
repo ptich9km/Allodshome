@@ -1389,13 +1389,13 @@ func _update_cooldowns() -> void:
 		var b := _spell_buttons_filled[i] as Button
 		if not is_instance_valid(b):
 			continue
-		var name := str(_spell_button_names[i])
-		var left := float(player.cast_cooldowns.get(name, 0.0))
+		var spell_name := str(_spell_button_names[i])
+		var left := float(player.cast_cooldowns.get(spell_name, 0.0))
 		# Считать округлённые секунды: показывать «0.3 с» бессмысленно.
 		var shown := int(ceil(left))
-		if shown == _cd_shown.get(name, -1):
+		if shown == _cd_shown.get(spell_name, -1):
 			continue
-		_cd_shown[name] = shown
+		_cd_shown[spell_name] = shown
 		_set_cooldown_visual(b, left, SpellDB.cooldown_of(name))
 
 func toggle_spells():

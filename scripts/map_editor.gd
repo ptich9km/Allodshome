@@ -44,6 +44,11 @@ var _inspect_msg := ""           # сообщение инспектора (де
 func _ready() -> void:
 	camera = Camera2D.new()
 	camera.zoom = Vector2(1, 1)
+	# Камера редактора двигается в _process (idle): при включённой physics-
+	# интерполяции проекта движок печатает WARNING о переопределении режима.
+	# Камере редактора интерполяция не нужна — отключаем флаг на узле.
+	camera.process_callback = Camera2D.CAMERA2D_PROCESS_IDLE
+	camera.reset_physics_interpolation()
 	add_child(camera)
 	camera.make_current()
 
