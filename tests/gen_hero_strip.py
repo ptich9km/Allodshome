@@ -223,6 +223,51 @@ PROPORTIONS_O = """BODY PROPORTIONS - this matters as much as the pose, the figu
 - thick thighs and calves, solid boots, the torso is a filled shape with no gaps
 - do NOT draw him slim, lean, thin, gaunt, lanky or stick-like"""
 
+# --- Маги всех 4 рас (21.10, игрок) -------------------------------------------
+# Урок 21.10 (~300 руб): свои формулировки уводили модель в реализм. Правило:
+# блок персонажа = воинский ДОСЛОВНО до блока одежды, меняется ТОЛЬКО одежда —
+# одна длинная мантия до земли (ноги скрыты, «не так будет видно косяки
+# с ногами»), минимум мелких деталей. Пропорции — воинские алиасы.
+# ЗАПОМНИ: боевые полосы всегда --panels 4 (дефолт 8 кладёт «2 ряда по 6»,
+# инцидент hm1); генерация — только с одобрения игрока, по 1 попытке.
+# Полная памятка: .kodik/memories/hero-strip-generation-standard.md.
+
+def _mage_robe(color):
+    return (f"ONE single full-length plain {color} MAGE ROBE instead of armor, "
+            "hanging loose ALL THE WAY DOWN TO THE GROUND, the hem resting on the "
+            "floor: the legs are COMPLETELY HIDDEN under the hem, no trousers and "
+            "no boots visible. Simple wide sleeves, plain sturdy cloth. NO armor "
+            "plates, NO belts, NO straps, NO ribbons, NO hanging cloth, NO small "
+            "details. A simple plain wooden staff, ONE staff only.")
+
+CHARACTER_M = CHARACTER.split("He wears")[0] + "He wears " + _mage_robe("deep blue")
+CHARACTER_M_F = CHARACTER_F.split("She wears")[0] + "She wears " + _mage_robe("deep blue")
+CHARACTER_OM = CHARACTER_O.split("He wears")[0] + "He wears " + _mage_robe("deep red")
+CHARACTER_OM_F = CHARACTER_O_F.split("She wears")[0] + "She wears " + _mage_robe("deep red")
+CHARACTER_UM = CHARACTER_U.split("He wears")[0] + "He wears " + _mage_robe("violet")
+CHARACTER_UM_F = CHARACTER_U_F.split("She wears")[0] + "She wears " + _mage_robe("violet")
+CHARACTER_DM = CHARACTER_D.split("He wears")[0] + "He wears " + _mage_robe("moss-green")
+CHARACTER_DM_F = CHARACTER_D_F.split("She wears")[0] + "She wears " + _mage_robe("moss-green")
+
+# Пропорции магов: воинская база, но вычеркнуты строки про бёдра/сапоги —
+# они конфликтуют с «ноги скрыты под мантией»: модель переливает массу в
+# торс (жирный + грудь) и занижает рост (лилипут). Диагноз по om1, 21.10.
+_BASE_STRIPS = ("thick thighs and calves, solid boots, ",
+                "thick thighs and calves, solid boots\n")
+
+def _mage_props(base: str) -> str:
+    s = base
+    for strip in _BASE_STRIPS:
+        s = s.replace(strip, "")
+    s += ("- the figure is TALL: the robe hangs straight down from the shoulders "
+          "and the total height reads as a tall warrior, NOT a short squat figure\n"
+          "- the chest stays flat under the robe, no breast bulge, no fat torso\n"
+          "- do NOT draw the figure fat, chubby, bloated or top-heavy")
+    return s
+
+PROPORTIONS_M = _mage_props(PROPORTIONS)
+PROPORTIONS_M_F = _mage_props(PROPORTIONS_F)
+
 ANIMS = {
     "walk": """WALKING CYCLE, 8 panels left to right in one horizontal row.
 The legs alternate between a WIDE stride and a NARROW passing pose:
@@ -380,13 +425,14 @@ share a shape, the NEXT panel must still show a full separate figure.
 
 LAYOUT RULES, these matter more than the drawing:
 - exactly 8 separate figures in a single horizontal row, evenly spaced
-- HUGE empty gaps of pure background between the figures, at least 100 pixels of
+- each figure is SMALL: at most 22 percent of the image WIDTH and at most 60
+  percent of the image HEIGHT, so that 8 figures really fit into one row
+- HUGE empty gaps of pure background between the figures, at least 60 pixels of
   completely empty background between the right edge of one figure and the left
   edge of the next one; nothing of any kind may pass through those gaps
 - every figure the same size, feet on the same horizontal line, full body from
   head to boots inside its own space, nothing cropped
-- each figure fills the image height, from the very top of the head to the very
-  bottom of the boots, leaving only small equal margins
+- TWO ROWS IS A HARD ERROR: all 8 figures stand on ONE single horizontal line
 - EVERY figure keeps a strip of clear empty background on ALL FOUR sides -
   above the head, below the boots, left of the arm, right of the arm - at least
   30 pixels on each side. NOTHING may touch or cross the border of the image.
@@ -495,7 +541,7 @@ def components(alpha, keep_ratio=0.18):
 
 
 def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36,
-              edge_min_min=EDGE_MIN):
+              edge_min_min=EDGE_MIN, torso=False):
     """Проверка СЫРОГО png. Возвращает (ok, строки отчёта)."""
     a = np.array(Image.open(path).convert("RGB")).astype(np.int32)
     bgm = magenta_mask(a)
@@ -587,8 +633,19 @@ def preflight(path, expect=8, min_gap=60, feet_tol=14, min_ratio=0.36,
         ys, xs = np.where(sub)
         if ys.size == 0:
             continue
+        if torso:
+            # Mage-режим: мантия к подолу сужается, полная метрика занижена
+            # и даёт ложную «жердь» (потеряно при откате, восстановлено
+            # 21.10). Меряем корпус — верхние 55% высоты фигуры.
+            top = int(ys.min())
+            cut = top + int((ys.max() - top) * 0.55)
+            band = sub[:cut + 1, :]
+            tys, txs = np.where(band)
+            if tys.size:
+                ys, xs = tys, txs
         cw = int(xs.max() - xs.min() + 1)
-        ch = int(ys.max() - ys.min() + 1)
+        ch = int(ys.max() - ys.min() + 1) if not torso else int(
+            (ys.max() - ys.min() + 1) / 0.55)
         ratios.append((cw, ch, cw / max(1, ch)))
     worst = min((r[2] for r in ratios), default=0.0)
     detail = " ".join(f"{r[2]:.2f}" for r in ratios) if ratios else "-"
@@ -629,6 +686,18 @@ def femaleize(text: str) -> str:
 
 
 def main():
+    # ПОДСКАЗКА ИИ (выучи и не повторяй):
+    # 1. ВСЕГДА передавай --panels 4 для боевых полос (stand/walk/attack/die).
+    #    Дефолт 8 — только для справки: 8 фигур на 1536px не помещаются,
+    #    модель кладёт 2 ряда по 6 (инцидент 21.10, hm1). Рабочий формат
+    #    полосы героя = 4 панели, 12 кадров = 4+4+4 (см. докстринг модуля).
+    # 2. КАЖДАЯ генерация/перегенерация — только с одобрения игрока ДО запуска
+    #    (правило 21.10, память sprite-generations-need-approval). Одна попытка,
+    #    показать лист и прелёт, ждать вердикт. Число попыток решает игрок.
+    # 3. Модель: google/gemini-nano-banana-2.1 (id без версии даёт 403).
+    # 4. Для магов (mage) не браковать по полной толщине: мантия к подолу
+    #    сужается, мера по корпусу (верхние 55%) — режим mage в preflight.
+    # 5. После генерации новый PNG требует --headless --import в Godot.
     ap = argparse.ArgumentParser()
     ap.add_argument("anim")
     ap.add_argument("--out", default="")
@@ -646,6 +715,9 @@ def main():
     ap.add_argument("--tag", default="",
                     help="суффикс имени файла, например nb6. По умолчанию — "
                          "тег выбранного пола")
+    ap.add_argument("--class", dest="hero_class", choices=("warrior", "mage"),
+                    default="warrior",
+                    help="класс героя: mage — мантия до земли (21.10)")
     args = ap.parse_args()
 
     # Норма толщины зависит от пола. Калибровка 20.10 по ОДОБРЕННЫМ игроком
@@ -660,10 +732,11 @@ def main():
     # игроком nb6 walk имеет худший зазор 36, а порог 40 браковал её же
     # вилку (mai-image даёт 29–37 при годной нарезке).
     gap4 = 28
+    mage = args.hero_class == "mage"
     if args.check:
         ok, _ = preflight(args.check, expect=args.panels,
                           min_gap=gap4 if args.panels == 4 else 60,
-                          min_ratio=min_ratio)
+                          min_ratio=min_ratio, torso=mage)
         return 0 if ok else 1
 
     if args.anim not in (ANIMS4 if args.panels == 4 else ANIMS):
@@ -707,6 +780,18 @@ def main():
         character, proportions, view = CHARACTER, PROPORTIONS, VIEW
         if args.sex == "f":
             character, proportions, view = CHARACTER_F, PROPORTIONS_F, VIEW_F
+    if args.hero_class == "mage":
+        # 21.10: класс маг — воинские блоки дословно, меняется только одежда
+        # (мантия до земли). Пропорции — воинские алиасы.
+        mage_map = {"human": (CHARACTER_M, CHARACTER_M_F, PROPORTIONS_M, PROPORTIONS_M_F),
+                    "orc": (CHARACTER_OM, CHARACTER_OM_F, PROPORTIONS_M, PROPORTIONS_M_F),
+                    "undead": (CHARACTER_UM, CHARACTER_UM_F, PROPORTIONS_M, PROPORTIONS_M_F),
+                    "druid": (CHARACTER_DM, CHARACTER_DM_F, PROPORTIONS_M, PROPORTIONS_M_F)}
+        cm, cf, pm, pf = mage_map[args.race]
+        if args.sex == "f":
+            character, proportions, view = cf, pf, VIEW_F
+        else:
+            character, proportions, view = cm, pm, VIEW
     # Местоимения в тексте поз — английские, и оставленные «He/his» модель
     # рисует мужчину поверх женского описания персонажа. Замена по границам
     # слов, регистр сохраняется, чтобы «He does NOT crouch» не стало «She
@@ -731,6 +816,11 @@ def main():
                    "orc": {"m": "oc1", "f": "oc2"},
                    "undead": {"m": "un1", "f": "un2"},
                    "druid": {"m": "dr1", "f": "dr2"}}[args.race][args.sex]
+    if args.hero_class == "mage":
+        default_tag = {"human": {"m": "hm1", "f": "hm2"},
+                       "orc": {"m": "om1", "f": "om2"},
+                       "undead": {"m": "nm1", "f": "nm2"},
+                       "druid": {"m": "dm1", "f": "dm2"}}[args.race][args.sex]
     tag = args.tag or default_tag
     out = Path(args.out) if args.out else OUT_DIR / f"hero_{args.anim}_{tag}.png"
     gen_once(load_key(), args.model, prompt, out, SIZE, args.seed, 1, None)
@@ -741,7 +831,7 @@ def main():
     print("предполётная проверка:")
     ok, _ = preflight(str(out), expect=args.panels,
                       min_gap=gap4 if args.panels == 4 else 60,
-                      min_ratio=min_ratio)
+                      min_ratio=min_ratio, torso=mage)
     return 0 if ok else 2
 
 

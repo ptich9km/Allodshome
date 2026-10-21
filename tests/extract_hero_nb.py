@@ -51,6 +51,15 @@ SETS = {
     # oc1, женский oc2; полосы лежат рядом с человеческими по тому же --tag.
     "oc1": ("orc_men", "orc men"),
     "oc2": ("orc_women", "orc women"),
+    # Маги и магички всех 4 рас, 21.10 — тот же контракт.
+    "hm1": ("mage_human_men", "mage human men"),
+    "hm2": ("mage_human_women", "mage human women"),
+    "om1": ("mage_orc_men", "mage orc men"),
+    "om2": ("mage_orc_women", "mage orc women"),
+    "nm1": ("mage_undead_men", "mage undead men"),
+    "nm2": ("mage_undead_women", "mage undead women"),
+    "dm1": ("mage_druid_men", "mage druid men"),
+    "dm2": ("mage_druid_women", "mage druid women"),
 }
 
 OUT_W, OUT_H, FEET_Y, TARGET_H = 64, 64, 62, 54
@@ -384,6 +393,90 @@ def fit(rgb, alpha, scale):
 
 DIR_DEADBAND = 0.03   # смещение меньше этого - шум, а не направление падения
 
+# --- Флип-нормализация посоха (mage, 21.10) --------------------------------
+# Промт не умеет зафиксировать руку: «LEFT hand» рисовало посох в правой,
+# «right side of picture» — два посоха и 2 ряда. Модель выбирает руку сама,
+# фаза к фазе. Лечение — измерение: посох = тонкая высокая вертикаль
+# у края фигуры. Ищем колонку вне тела с максимумом заполнения по верхним
+# 60% высоты; если посох оказался в «неправильной» стороне, кадр зеркалится.
+# Нейтральный канон: посох держится СЛЕВА от зрителя (как в одобренных
+# stand-полосах, 21.10).
+MAGE_TAGS = {"hm1", "hm2", "om1", "om2", "nm1", "nm2", "dm1", "dm2"}
+
+
+def _staff_side(rgb, alpha):
+    """Вернуть сторону посоха: 'left'/'right'/'none'/'both'.
+
+    Посох ищем в верхних 60% высоты фигуры как вертикальную палку:
+    колонки, где alpha>0.5, группируем в отрезки, отрезок считаем палкой,
+    если он узкий (<= 8% ширины фигуры), высокий (>= 40% высоты) и его
+    заполнение почти сплошное (>= 0.6).
+    """
+    h, w = alpha.shape
+    m = alpha > 0.5
+    ys, _ = np.where(m)
+    if ys.size == 0:
+        return "none"
+    top, bot = int(ys.min()), int(ys.max())
+    band_top = top + int((bot - top) * 0.0)
+    band_bot = top + int((bot - top) * 0.60)
+    col = m[band_top:band_bot + 1, :].sum(axis=0)
+    col_h = band_bot - band_top + 1
+    active = col >= max(2, int(col_h * 0.35))
+    runs, start = [], -1
+    for x, v in enumerate(active):
+        if v and start < 0:
+            start = x
+        elif not v and start >= 0:
+            runs.append((start, x - 1))
+            start = -1
+    if start >= 0:
+        runs.append((start, len(active) - 1))
+    sticks = []
+    for x0, x1 in runs:
+        wd = x1 - x0 + 1
+        fill = col[x0:x1 + 1].mean() / max(1, col_h)
+        if wd <= max(3, int(w * 0.08)) and (x1 - x0 + 1) * fill >= col_h * 0.4 \
+                and fill >= 0.6:
+            sticks.append(((x0 + x1) / 2, wd))
+    if not sticks:
+        return "none"
+    if len(sticks) >= 2 and sticks[0][0] < w * 0.3 and sticks[-1][0] > w * 0.7:
+        return "both"
+    center = sticks[0][0]
+    if center < w * 0.45:
+        return "left"
+    if center > w * 0.55:
+        return "right"
+    return "none"
+
+
+def _flip_staff_normalization(figs, tag):
+    """Для mage-наборов: зеркалить фазы, где посох не в левой половине.
+
+    Кадр с посохом «both» не лечится флипом — печатаем ВНИМАНИЕ, решение
+    за игроком (перегенерация). Возвращает список фаз с пометкой флипа.
+    """
+    if tag not in MAGE_TAGS:
+        return figs
+    out = []
+    for i, (rgb, al) in enumerate(figs):
+        if rgb is None:
+            out.append((rgb, al))
+            continue
+        side = _staff_side(rgb, al)
+        if side == "right":
+            print(f"    фаза {i + 1}: посох справа — зеркалю кадр")
+            out.append((np.ascontiguousarray(rgb[:, ::-1]),
+                        np.ascontiguousarray(al[:, ::-1])))
+        elif side == "both":
+            print(f"    ВНИМАНИЕ: фаза {i + 1}: посох в ОБОИХ руках — флип не "
+                  f"лечит, нужна перегенерация полосы")
+            out.append((rgb, al))
+        else:
+            out.append((rgb, al))
+    return out
+
 
 def _mirror_if_direction_breaks(figs, cell, k):
     """Отзеркалить последний кадр смерти, если он падает в другую сторону.
@@ -447,6 +540,10 @@ def main():
         if len(figs) != expect or any(f is None for f in figs):
             print(f"FAIL: {name} — фигур {len(figs)}, годных {sum(f is not None for f in figs)}")
             return 1
+        if name != "dying":
+            # Флип-нормализация посоха (mage, 21.10): фазу смерти не трогаем,
+            # там фигура лежит и посох не читается.
+            figs = _flip_staff_normalization(figs, args.tag)
         blocks.append((name, figs[:take]))
 
     # Номер первого кадра блока в общей нумерации 1..12. Считается по полной
