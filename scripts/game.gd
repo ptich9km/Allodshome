@@ -1080,7 +1080,7 @@ func _archmage_at_position(click_pos: Vector2) -> Node2D:
 			continue
 		if not ("is_archmage" in n) or not bool(n.is_archmage):
 			continue
-		if unit_hit_rect(n).grow(8.0).has_point(click_pos):
+		if unit_hover_hit(n, click_pos, 8.0):
 			return n
 	return null
 
@@ -1152,10 +1152,10 @@ func _hover_unit() -> Node2D:
 		return null
 	var mouse := player.get_global_mouse_position()
 	for e in enemies:
-		if is_instance_valid(e) and unit_hit_rect(e).grow(6.0).has_point(mouse):
+		if is_instance_valid(e) and unit_hover_hit(e, mouse):
 			return e
 	for e in npcs:
-		if is_instance_valid(e) and unit_hit_rect(e).grow(6.0).has_point(mouse):
+		if is_instance_valid(e) and unit_hover_hit(e, mouse):
 			return e
 	return null
 
@@ -1237,7 +1237,7 @@ func _update_target_ring() -> void:
 
 func get_enemy_at_position(click_pos: Vector2) -> Node2D:
 	for enemy in enemies:
-		if is_instance_valid(enemy) and unit_hit_rect(enemy).grow(8.0).has_point(click_pos):
+		if is_instance_valid(enemy) and unit_hover_hit(enemy, click_pos, 8.0):
 			return enemy
 	return null
 
@@ -1426,13 +1426,13 @@ func _resolve_spell_click(world_position: Vector2) -> void:
 
 ## Цель-союзник под курсором: сам герой, мирный НПЦ или наёмник.
 func _ally_at_position(world_position: Vector2) -> Node2D:
-	if is_instance_valid(player) and unit_hit_rect(player).grow(8.0).has_point(world_position):
+	if is_instance_valid(player) and unit_hover_hit(player, world_position, 8.0):
 		return player
 	for n in npcs:
-		if is_instance_valid(n) and unit_hit_rect(n).grow(8.0).has_point(world_position):
+		if is_instance_valid(n) and unit_hover_hit(n, world_position, 8.0):
 			return n
 	for m in party:
-		if is_instance_valid(m) and unit_hit_rect(m).grow(8.0).has_point(world_position):
+		if is_instance_valid(m) and unit_hover_hit(m, world_position, 8.0):
 			return m
 	return null
 
@@ -1479,6 +1479,74 @@ static func unit_hit_rect(u: Node2D) -> Rect2:
 		return Rect2(u.global_position + Vector2(-vw * 0.5, -vh), Vector2(vw, vh))
 	var base := u.global_position + Vector2(-w / 2.0, -float(o.get("h", 128)))
 	return Rect2(base + Vector2(sel.position.x, sel.position.y), Vector2(sel.size.x, sel.size.y))
+
+## Пиксельный ховер: попадание по непрозрачному пикселю текущего кадра.
+##
+## unit_hit_rect строится из легаси sel_box/аппроксимации и у части наборов
+## не совпадает с видимым силуэтом (жалоба игрока: «надо целиться ниже»).
+## Здесь — точный тест по альфа-каналу; fallback — unit_hit_rect, если
+## спрайта/текстуры нет (битые наборы, смерть без кадров).
+static var _alpha_cache: Dictionary = {}   # Texture2D -> Dictionary{столбец x -> Dictionary{y: true}}
+static func unit_hover_hit(u: Node2D, world_pos: Vector2, slack: float = 6.0) -> bool:
+	if not is_instance_valid(u):
+		return false
+	var anim: Node = u.get_node_or_null("UnitAnim")
+	var sprite: Sprite2D = null
+	if anim != null:
+		sprite = anim.get_node_or_null("Sprite") as Sprite2D
+	var tex: Texture2D = null
+	if sprite != null and sprite.texture != null and is_instance_valid(sprite.texture):
+		tex = sprite.texture
+	if tex == null:
+		return unit_hit_rect(u).grow(slack).has_point(world_pos)
+	# Точка в локальных координатах спрайта (учитывает рельеф/позицию узла).
+	var lp := sprite.to_local(world_pos)
+	var sx := sprite.scale.x
+	var sy := sprite.scale.y
+	if is_equal_approx(sx, 0.0) or is_equal_approx(sy, 0.0):
+		return unit_hit_rect(u).grow(slack).has_point(world_pos)
+	var px := int(floor(lp.x / sx))
+	var py := int(floor(lp.y / sy))
+	var w := tex.get_width()
+	var h := tex.get_height()
+	if sprite.flip_h:
+		px = w - 1 - px
+	# Вне кадра — прежний rect с допуском (люфты, тени, широкие хвосты).
+	if px < -int(slack) or py < -int(slack) or px >= w + int(slack) or py >= h + int(slack):
+		return unit_hit_rect(u).grow(slack).has_point(world_pos)
+	var img := tex.get_image()
+	if img == null:
+		return unit_hit_rect(u).grow(slack).has_point(world_pos)
+	var mask: Dictionary = _alpha_cache.get(tex, {})
+	if mask.is_empty():
+		mask = _build_alpha_mask(img)
+		_alpha_cache[tex] = mask
+	var cx := clampi(px, 0, w - 1)
+	var cy := clampi(py, 0, h - 1)
+	var col: Dictionary = mask.get(cx, {})
+	if col.has(cy):
+		return true
+	# Непрозрачный пиксель не под курсором: допуск slack по 4 направлениям.
+	var s := int(ceil(slack))
+	for off in [[s, 0], [-s, 0], [0, s], [0, -s]]:
+		var nx: int = cx + int(off[0])
+		var ny: int = cy + int(off[1])
+		if nx >= 0 and nx < w and ny >= 0 and ny < h:
+			if (mask.get(nx, {}) as Dictionary).has(ny):
+				return true
+	return false
+
+## Маска непрозрачных пикселей: столбец x -> множество y (порог альфы 8/255).
+static func _build_alpha_mask(img: Image) -> Dictionary:
+	var mask := {}
+	for x in range(img.get_width()):
+		var col := {}
+		for y in range(img.get_height()):
+			if img.get_pixel(x, y).a8 > 8:
+				col[y] = true
+		if not col.is_empty():
+			mask[x] = col
+	return mask
 
 ## Расстояние между КОРПУСАМИ юнитов (хит-бокс к хит-боксу; 0 при пересечении).
 ## Для боя: юниты встают вплотную телами и атакуют, а не «издалека по центру».

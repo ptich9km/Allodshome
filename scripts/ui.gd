@@ -953,7 +953,7 @@ func _world_hover_target() -> Array:
 	var world := player.get_global_mouse_position()
 	_world_hover_unit = null
 	for e in Game.enemies + Game.npcs:
-		if is_instance_valid(e) and Game.unit_hit_rect(e).grow(8.0).has_point(world):
+		if is_instance_valid(e) and Game.unit_hover_hit(e, world, 8.0):
 			_world_hover_unit = e
 			return [_unit_hover_key(e), _unit_tooltip_lines(e)]
 	if alm_map and alm_map.map_width > 0:

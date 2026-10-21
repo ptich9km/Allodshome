@@ -307,6 +307,10 @@ func _abstract_tick() -> void:
 
 func _first_alive(ev: Dictionary, key: String) -> Enemy:
 	for u in ev[key]:
+		# Каст на ОСВОБОЖДЁННОМ объекте бросает «Trying to cast a freed
+		# object» — сначала проверка по Variant, потом каст.
+		if u is Object and is_instance_valid(u) == false:
+			continue
 		var e: Enemy = u as Enemy
 		if e != null and is_instance_valid(e) \
 				and e.state != "dying" and e.state != "decay" and e.state != "corpse":
