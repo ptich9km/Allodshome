@@ -174,6 +174,19 @@ static func recipe_scroll_key(recipe_id: String) -> String:
 	return RECIPE_SCROLL_PREFIX + recipe_id
 
 
+## id всех рецептов всех профессий. Нужен наградам (квест главы может дать
+## чертёж): перебирать имена файлов *_recipes.json в геймплейном коде нельзя.
+static func all_recipe_ids() -> Array:
+	_load()
+	var out: Array = []
+	for kind in CRAFT_KINDS:
+		for r in recipes(kind):
+			var id := str(r.get("id", ""))
+			if id != "":
+				out.append(id)
+	return out
+
+
 ## Есть ли у игрока свиток этого рецепта.
 static func has_recipe_scroll(player: Player, recipe_id: String) -> bool:
 	if not is_instance_valid(player):

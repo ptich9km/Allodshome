@@ -1,0 +1,387 @@
+class_name QuestDB
+extends RefCounted
+## Town head quest templates (assets/quests/quest_db.json).
+##
+## DATA ONLY, plus the generation of ONE offer from a template: types,
+## counts per difficulty, texts, rewards. World state (what was offered,
+## what was taken) lives in QuestSystem - not here, and not in the map.
+##
+## Project rule: data lives in JSON, not in hardcoded dictionaries. A broken
+## file is a push_error and an empty set; the game goes on without quests.
+
+const DB_PATH := "res://assets/quests/quest_db.json"
+
+## MVP types. The rest of the original's types (escort, interception, guard
+## massacre, undead summon) need mechanics the game does not have yet.
+const TYPES := ["KILL_SPECIES", "KILL_GROUP", "KILL_TARGET", "GATHER",
+	"FIND_ITEM", "DELIVER", "URGENT"]
+
+## Beasts from MapGenerator.GRAY_SPECIES that have an English singular name.
+## A target beast is ONE concrete monster: its name goes into the title (%s)
+## and the text, so a missing key just means the species is never a target.
+const BEAST_SINGULAR := {
+	"wolf": "wolf", "dino": "lizard", "squirrel": "mad squirrel",
+	"bee": "swarm of bees", "bat": "bat", "ghost": "ghost",
+	"dragon": "dragon", "cannibal": "ogre", "troll": "troll",
+	"succubus": "succubus",
+}
+
+## Plural forms for "Put down %d %s". Redundant in English, kept so the JSON
+## templates can address singular and plural through one table.
+const BEAST_PLURAL_ACC := {
+	"wolf": "wolves", "dino": "lizards", "squirrel": "squirrels",
+	"bee": "bees", "bat": "bats", "ghost": "ghosts",
+	"dragon": "dragons", "cannibal": "ogres", "troll": "trolls",
+	"succubus": "succubi",
+}
+
+const DIFFICULTY_NAMES := ["easy", "normal", "hard"]
+
+## populate keys whose value is a number and therefore needs %d in the text.
+const NUMERIC_POPULATE := ["count", "minutes"]
+
+## populate keys whose value is a number written as a word (%s).
+const WORD_POPULATE := ["count_word"]
+
+## Case of the plural species form per template, separately for the title and
+## for the text sentence: a hunt title names the beasts as an object ("Hunt for
+## wolves"), while its sentence may need the subject form ("wolves at the
+## gates"). A template that is not listed takes the accusative in both, which
+## is what a kill order does ("put down five wolves").
+const SPECIES_FORM := {
+	"kill_species": {"title": "acc", "text": "nom"},
+	"urgent_hunt": {"title": "acc", "text": "nom"},
+}
+
+static var _templates: Array[Dictionary] = []
+static var _item_names: Dictionary = {}
+static var _difficulty_gold: Array = [25, 50, 90]
+static var _difficulty_mult: Array = [1.0, 1.8, 3.0]
+static var _loaded := false
+
+
+static func clear_cache() -> void:
+	_templates = []
+	_item_names = {}
+	_difficulty_gold = [25, 50, 90]
+	_difficulty_mult = [1.0, 1.8, 3.0]
+	_loaded = false
+
+
+static func _load() -> void:
+	if _loaded:
+		return
+	_loaded = true
+	var f := FileAccess.open(DB_PATH, FileAccess.READ)
+	if f == null:
+		push_error("QuestDB: cannot open " + DB_PATH)
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not (parsed is Dictionary):
+		push_error("QuestDB: %s is not a JSON object" % DB_PATH)
+		return
+	var db: Dictionary = parsed
+	if db.get("difficulty_gold") is Array:
+		_difficulty_gold = db["difficulty_gold"]
+	if db.get("difficulty_mult") is Array:
+		_difficulty_mult = db["difficulty_mult"]
+	if db.get("quest_item_names") is Dictionary:
+		_item_names = db["quest_item_names"]
+	var list: Variant = db.get("templates", [])
+	if not (list is Array):
+		push_error("QuestDB: templates is not an array")
+		return
+	for raw in list:
+		var t := _validate(raw)
+		if not t.is_empty():
+			_templates.append(t)
+
+
+static func _validate(raw: Variant) -> Dictionary:
+	if not (raw is Dictionary):
+		push_error("QuestDB: template is not an object")
+		return {}
+	var d: Dictionary = raw
+	var id := str(d.get("id", ""))
+	var type := str(d.get("type", ""))
+	if id == "":
+		push_error("QuestDB: template without id")
+		return {}
+	if not TYPES.has(type):
+		push_error("QuestDB: unknown type '%s' in template %s" % [type, id])
+		return {}
+	var counts: Variant = d.get("count_by_difficulty", [])
+	if not (counts is Array) or (counts as Array).size() < 3:
+		push_error("QuestDB: %s - count_by_difficulty must hold 3 numbers" % id)
+		return {}
+	var needs_items := type in ["GATHER", "FIND_ITEM", "DELIVER"]
+	var pool: Array = []
+	if needs_items:
+		var raw_pool: Variant = d.get("item_pool", [])
+		if not (raw_pool is Array) or (raw_pool as Array).is_empty():
+			push_error("QuestDB: %s - type %s without item_pool" % [id, type])
+			return {}
+		for key in raw_pool:
+			if ItemDB.find(str(key)).is_empty():
+				push_error("QuestDB: %s - unknown item '%s'" % [id, key])
+				return {}
+			if quest_item_name(str(key)) == "":
+				push_error("QuestDB: %s - item '%s' has no quest_item_names entry"
+					% [id, key])
+				return {}
+			pool.append(str(key))
+	d["item_pool"] = pool
+	# Player-visible text lives in the locale table, never in this file: the
+	# template only names the keys, and a missing key would show up raw on a
+	# quest card.
+	for field in ["title_key", "text_key"]:
+		var key := str(d.get(field, ""))
+		if key == "" or not Loc.has_key(key):
+			push_error("QuestDB: %s - unknown %s '%s'" % [id, field, key])
+			return {}
+	# populate fixes the ORDER of substitutions and its keys also fix the
+	# PLACEHOLDER KIND: a number goes in as %d, a text as %s (a number the words
+	# around it need as a word - count_word - goes in as %s too). It fills the
+	# TEXT in order; the title reuses the first text key of that order through
+	# its only %s. A mismatch would break the runtime formatter ("a number is
+	# required") and print raw %s, so such a template is not loaded at all.
+	var populate: Variant = d.get("populate", [])
+	var order: Array = populate if populate is Array else []
+	var text := _text_for_locale(str(d["text_key"]))
+	var title_src := _text_for_locale(str(d["title_key"]))
+	if not placeholders_fit(text, order):
+		push_error("QuestDB: %s - text placeholders do not match populate %s"
+			% [id, order])
+		return {}
+	if not placeholders_fit(title_src, order, true):
+		push_error("QuestDB: %s - the title needs one text placeholder and a text populate key"
+			% id)
+		return {}
+	return d
+
+
+## True when the placeholders of the template text, read left to right, are
+## exactly the populate keys and match their kind: %d for a number, %s for a
+## text. Any other specifier, or a literal % glued to text, is a mismatch too.
+##
+## A "title" holds either no placeholder at all or one %s, which takes the
+## first TEXT key of `order` (a title never shows a bare number).
+static func placeholders_fit(text: String, order: Array, title := false) -> bool:
+	var found: Array = []
+	var i := text.find("%")
+	while i >= 0:
+		if i + 1 >= text.length():
+			return false
+		var code := text.substr(i + 1, 1)
+		if code != "d" and code != "s":
+			return false
+		found.append(code)
+		i = text.find("%", i + 2)
+	if title:
+		if found.is_empty():
+			return true
+		if found.size() != 1 or str(found[0]) != "s":
+			return false
+		for k in order:
+			if not NUMERIC_POPULATE.has(str(k)) and not WORD_POPULATE.has(str(k)):
+				return true
+		return false
+	if found.size() != order.size():
+		return false
+	for k in range(order.size()):
+		var numeric := NUMERIC_POPULATE.has(str(order[k]))
+		if numeric != (str(found[k]) == "d"):
+			return false
+	return true
+
+
+## All locale versions of a key, the current language first: the card has to
+## pick the one that fits this language, and a version with other placeholders
+## must not be shown.
+static func text_versions(key: String) -> Array:
+	var out: Array = []
+	for code in Loc.locales_in_use():
+		var value := Loc.text_in(key, code)
+		if value != "" and not out.has(value):
+			out.append(value)
+	return out
+
+
+static func _text_for_locale(key: String) -> String:
+	var versions := text_versions(key)
+	return "" if versions.is_empty() else str(versions[0])
+
+
+## Quest name of a quest item in the current locale, with the class word
+## ("herb 'Green Leaf'"). Empty when the key has no entry: a missing name must never fall back to the
+## shop name of item_db, which may end with a trait such as "4.4".
+##
+## `short` gives the bare name without the class word, which a title needs: a
+## title already says what is being searched for.
+static func quest_item_name(item_key: String, short := false) -> String:
+	_load()
+	var entry: Variant = _item_names.get(item_key, {})
+	if not (entry is Dictionary):
+		return ""
+	var picked := str((entry as Dictionary).get(Loc.locale(), ""))
+	if picked == "":
+		picked = str((entry as Dictionary).get("ru", ""))
+	if short:
+		var field := "%s_short" % Loc.locale()
+		var bare := str((entry as Dictionary).get(field, ""))
+		if bare != "":
+			return bare
+	return picked
+
+
+static func templates() -> Array[Dictionary]:
+	_load()
+	return _templates
+
+
+static func template(id: String) -> Dictionary:
+	for t in templates():
+		if str(t.get("id", "")) == id:
+			return t
+	return {}
+
+
+## Reward/count multiplier for difficulty 1..3.
+static func difficulty_mult(difficulty: int) -> float:
+	_load()
+	var i := clampi(difficulty - 1, 0, _difficulty_mult.size() - 1)
+	return float(_difficulty_mult[i])
+
+
+static func base_gold(difficulty: int) -> int:
+	_load()
+	var i := clampi(difficulty - 1, 0, _difficulty_gold.size() - 1)
+	return int(_difficulty_gold[i])
+
+
+## Templates available at this difficulty: min_difficulty and tags (DELIVER
+## needs at least two towns).
+static func templates_for(zone: String, difficulty: int, city_count: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for t in templates():
+		if difficulty < int(t.get("min_difficulty", 1)):
+			continue
+		var tags: Array = t.get("tags", [])
+		if tags.has("needs_two_cities") and city_count < 2:
+			continue
+		out.append(t)
+	return out
+
+
+## Weighted template pick. excluded - ids not offered right now (already in
+## this town's offers or already taken).
+static func pick_template(rng: RandomNumberGenerator, zone: String,
+		difficulty: int, city_count: int, excluded: Array) -> Dictionary:
+	var pool := templates_for(zone, difficulty, city_count)
+	var total := 0
+	for t in pool:
+		if excluded.has(str(t.get("id", ""))):
+			continue
+		total += maxi(1, int(t.get("weight", 1)))
+	if total <= 0:
+		return {}
+	var roll := rng.randi_range(1, total)
+	for t in pool:
+		if excluded.has(str(t.get("id", ""))):
+			continue
+		roll -= maxi(1, int(t.get("weight", 1)))
+		if roll <= 0:
+			return t
+	return {}
+
+
+## Count for one template at a difficulty, with a little jitter.
+static func count_for(template_d: Dictionary, difficulty: int,
+		rng: RandomNumberGenerator) -> int:
+	var counts: Array = template_d.get("count_by_difficulty", [1, 1, 1])
+	var base := int(counts[clampi(difficulty - 1, 0, counts.size() - 1)])
+	if base <= 1:
+		return base
+	return maxi(1, base + rng.randi_range(-1, 1))
+
+
+## Gray set of the needed tier: "monsters/wolf_t2".
+##
+## `species` is the beast ("wolf"), NOT a set: the tier comes from the zone
+## band plus the difficulty shift, and MapGenerator builds the set name.
+static func gray_set_for_species(species: String, difficulty: int,
+		zone: String, rng: RandomNumberGenerator) -> String:
+	var band: Array = MapGenerator.GRAY_TIER_BAND.get(zone, MapGenerator.GRAY_TIER_BAND["mid"])
+	var lo := int(band[0])
+	var hi := int(band[1])
+	var shift := difficulty - 1
+	var tier := clampi(lo + shift + rng.randi_range(0, 1), lo, hi)
+	return MapGenerator.gray_set_name(species, tier)
+
+
+## Species that can become a hunt target at this zone and difficulty.
+static func species_for_quest(zone: String, difficulty: int,
+		rng: RandomNumberGenerator) -> Array:
+	var band: Array = MapGenerator.GRAY_TIER_BAND.get(zone, MapGenerator.GRAY_TIER_BAND["mid"])
+	var shift := difficulty - 1
+	var lo := int(band[0])
+	var hi := int(band[1])
+	var out: Array = []
+	for sp in MapGenerator.GRAY_SPECIES:
+		var tier := clampi(lo + shift + rng.randi_range(0, 1), lo, hi)
+		if UnitDB.has(MapGenerator.gray_set_name(str(sp), tier)):
+			out.append(str(sp))
+	return out
+
+
+## Set of one concrete target monster (KILL_TARGET): same species at the top
+## tier of the zone - the pack leader must be tougher than the rest.
+static func target_set_for_species(species: String, zone: String) -> String:
+	var band: Array = MapGenerator.GRAY_TIER_BAND.get(zone, MapGenerator.GRAY_TIER_BAND["mid"])
+	var set_name := MapGenerator.gray_set_name(species, int(band[1]))
+	if UnitDB.has(set_name):
+		return set_name
+	return MapGenerator.gray_set_name(species, int(band[0]))
+
+
+## The plural form to use for one template: "title" or "text", one of "nom"
+## and "acc". QuestSystem._fill asks per card part, so the header and the
+## sentence inside it may disagree on the case.
+static func species_form(template_id: String, mode: String) -> String:
+	var entry: Variant = SPECIES_FORM.get(template_id, {})
+	if entry is Dictionary:
+		return str((entry as Dictionary).get(mode, "acc"))
+	return "acc"
+
+
+## Species name for a quest text: the localized singular ("wolf"), the English
+## table as a fallback. A Russian quest card must not read "wolves".
+static func species_title(species: String) -> String:
+	var loc_key := "ui.quest.beast." + species
+	if Loc.has_key(loc_key):
+		return Loc.t(loc_key)
+	return str(BEAST_SINGULAR.get(species, species))
+
+
+## Species plural in the accusative, the form "Put down %d %s" needs (a direct
+## object); English has the bare plural.
+static func species_plural_acc(species: String) -> String:
+	return species_plural(species, "acc")
+
+
+## Plural species form with the case the template needs: "nom" for a subject
+## ("Hunt: wolves"), "acc" for an object ("Put down five wolves"). English has
+## one plural for both.
+static func species_plural(species: String, form: String) -> String:
+	var suffix := "" if form == "acc" else "_" + form
+	var loc_key := "ui.quest.beast_pl" + suffix + "." + species
+	if Loc.has_key(loc_key):
+		return Loc.t(loc_key)
+	return str(BEAST_PLURAL_ACC.get(species, species))
+
+
+## Faction whose reputation the town's quest pays into. Generator city races
+## are "humans"/"ork"/... - the same keys MapGenerator.CITY_POPULATION has.
+static func faction_of_race(race: String) -> String:
+	return race if MapGenerator.CITY_POPULATION.has(race) else ""

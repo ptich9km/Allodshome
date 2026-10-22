@@ -51,6 +51,10 @@ static var hero: Node2D = null            # игрок (для наёмнико�
 static var fog: FogOfWar = null         # fog of war of the hero map (19.10)
 static var pending_fog_rle: String = "" # saved fog mask, applied by FogOfWar
 static var pending_events: Array = []   # saved events, applied by EventSystem
+## Сохранённые квесты (офферы, активные, история): их применяет QuestSystem.
+## Пусто — новая игра; applied=true — блок уже прочитан (не применяем дважды).
+static var pending_quests: Dictionary = {}
+static var pending_quests_applied: bool = false
 static var party: Array = []              # наёмники (Mercenary) из таверны
 static var mana_regen_accum: float = 0.0
 static var _trauma: float = 0.0
@@ -436,6 +440,7 @@ var _pending_building := ""               # здание, к которому г
 var _pending_s: Dictionary = {}           # структура-цель ожидающего входа
 var _pending_herb: HerbNode = null
 var _pending_archmage: Node2D = null      # капитан-маг, к которому подходим
+var _pending_city_head: Node2D = null     # глава города, к которому подходим
 var _save_menu: SaveMenu = null
 var _autosave_accum: float = 0.0
 ## Интервал автосейва. 60 с - компромисс: чаще - лишний ввод-вывод, реже -
@@ -714,6 +719,9 @@ func _ready():  # Инициализация мира и боя
 	var events_node := EventSystem.new()
 	events_node.name = "EventSystem"
 	add_child(events_node)
+	var quests_node := QuestSystem.new()
+	quests_node.name = "QuestSystem"
+	add_child(quests_node)
 
 	if camera and player:
 		camera.position = player.camera_focus()
@@ -824,6 +832,8 @@ func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	e.home_position = pos
 	add_child(e)
 	enemies.append(e)
+	if alm_map != null and alm_map.has_method("watch_enemy"):
+		alm_map.call("watch_enemy", e)
 
 func _spawn_npc(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var n := Npc.new()
@@ -835,6 +845,8 @@ func _spawn_npc(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	n.role = role
 	n.is_patrol = bool(rec.get("patrol", false))
 	n.is_archmage = bool(rec.get("archmage", false))
+	n.is_city_head = bool(rec.get("head", false)) or role == "head"
+	n.city_id = str(rec.get("city_id", ""))
 	var post: Array = rec.get("post", [])
 	if post.size() >= 2:
 		var post_cell := Vector2i(int(post[0]), int(post[1]))
@@ -971,6 +983,12 @@ func _input(event):
 		if ui:
 			ui.toggle_spells()
 
+	# Журнал квестов по W (как в оригинале, quest.txt: «press 'W'»)
+	if event is InputEventKey and event.pressed and event.keycode == KEY_W \
+			and not event.ctrl_pressed:
+		if ui and not ui.is_editor_open():
+			ui.open_quests()
+
 func handle_click(world_position: Vector2):
 	# Герой мёртв (падение/разложение) — управление не работает
 	if is_instance_valid(player) and player.state in ["dead", "decay"]:
@@ -980,6 +998,7 @@ func handle_click(world_position: Vector2):
 	_pending_building = ""
 	_pending_s = {}
 	_pending_archmage = null
+	_pending_city_head = null
 
 	# Клик по зданию (функциональному или декоративному): всегда к двери.
 	# Функциональное — при подходе меню + герой «внутри»; декоративное — только подход.
@@ -998,6 +1017,11 @@ func handle_click(world_position: Vector2):
 	var mage = _archmage_at_position(world_position)
 	if mage != null:
 		_archmage_click(mage)
+		return
+	# Клик по главе города: подходим / открываем квесты города.
+	var head = _city_head_at_position(world_position)
+	if head != null:
+		_city_head_click(head)
 		return
 
 	var enemy = get_enemy_at_position(world_position)
@@ -1105,6 +1129,7 @@ func _archmage_click(mage: Node2D) -> void:
 	_pending_s = {}
 	_pending_herb = null
 	player.attack_target = null
+	_pending_city_head = null
 	if player.global_position.distance_to(mage.global_position) <= 90.0:
 		ui.open_archmage()
 		return
@@ -1123,6 +1148,50 @@ func _process_pending_archmage() -> void:
 	if player.global_position.distance_to(_pending_archmage.global_position) <= 90.0:
 		_pending_archmage = null
 		ui.open_archmage()
+
+
+## Глава города под курсором (NPC ролью "head").
+func _city_head_at_position(click_pos: Vector2) -> Node2D:
+	for n in npcs:
+		if not is_instance_valid(n):
+			continue
+		if not ("is_city_head" in n) or not bool(n.is_city_head):
+			continue
+		if unit_hover_hit(n, click_pos, 8.0):
+			return n
+	return null
+
+
+## Клик по главе: если рядом — панель квестов, иначе подходим (как у мага).
+func _city_head_click(head: Node2D) -> void:
+	if ui == null or not is_instance_valid(player) or not is_instance_valid(head):
+		return
+	_pending_building = ""
+	_pending_s = {}
+	_pending_herb = null
+	_pending_archmage = null
+	player.attack_target = null
+	if player.global_position.distance_to(head.global_position) <= 90.0:
+		ui.open_quests(str(head.get("city_id")))
+		return
+	_pending_city_head = head
+	player_target = head.global_position
+	player.state = "move"
+	if alm_map != null and alm_map.has_method("find_path"):
+		player.begin_path(alm_map.find_path(player.global_position, head.global_position))
+
+
+func _process_pending_city_head() -> void:
+	if _pending_city_head == null:
+		return
+	if not is_instance_valid(_pending_city_head) or ui == null:
+		_pending_city_head = null
+		return
+	if player.global_position.distance_to(_pending_city_head.global_position) <= 90.0:
+		var cid := str(_pending_city_head.get("city_id"))
+		_pending_city_head = null
+		ui.open_quests(cid)
+
 
 ## Точка входа (дверь): проходимая клетка под южным краем корпуса здания.
 func _door_point(s: Dictionary) -> Vector2:
@@ -1621,6 +1690,7 @@ func _process(delta):
 	_process_pending_building()
 	_process_pending_herb()
 	_process_pending_archmage()
+	_process_pending_city_head()
 	Game.tick_shields(delta)
 	StatusEffects.tick(delta)
 	_check_portal()

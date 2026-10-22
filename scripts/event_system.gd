@@ -21,10 +21,24 @@ const GROUP_GAP_CELLS := 4        # клетки между центрами г�
 static var instance: EventSystem = null
 
 var _events: Array[Dictionary] = []   # активные события текущей карты
+## Freed members of a clash. An Enemy is unregistered here the moment it dies
+## or leaves the tree: dropping an event on the first dead member would strip
+## the tags of the survivors, and every lookup over a freed node is a risk.
+var _gone: Array = []
 var _spawn_accum := 0.0
 var _abstract_accum := 0.0
 var _map_key := ""                    # "seed:zone:w:h" текущей карты
 var _next_event_id := 1
+
+## Counter of dead enemies. Enemy nodes call it whenever a member leaves the
+## fight (takes the killing blow, a corpse rots away, a fleeing one despawns),
+## so no signal argument is involved: Godot casts signal arguments to the
+## declared types, and a freed Object cannot be cast to Enemy.
+static func note_freed() -> void:
+	if instance != null and is_instance_valid(instance):
+		instance._gone.append(true)
+		if instance._gone.size() > 512:
+			instance._gone.clear()
 
 func _ready() -> void:
 	add_to_group("events")
@@ -249,40 +263,45 @@ func _spawn_group(map: Node, ev: Dictionary, side: String, set_name: String,
 			e.queue_free()
 			continue
 		host.add_child(e)
+		# As close to the enemy as possible: one that leaves the tree by another
+		# path must report it too, or a clash with him never closes.
+		if not e.tree_exited.is_connected(_note_tree_exited):
+			e.tree_exited.connect(_note_tree_exited)
 		Game.enemies.append(e)
 		placed.append(e)
 
-## Цель для участника стычки (вызывается из Enemy._combat_target).
+func _note_tree_exited() -> void:
+	note_freed()
+
+## Clash foes (called from Enemy._combat_target).
 static func foe_for(e: Enemy) -> Node2D:
 	if instance == null:
 		return null
 	return instance._foe_for(e)
 
 func _foe_for(e: Enemy) -> Node2D:
+	var best: Node2D = null
+	var bd := BATTLE_RADIUS_PX
 	for ev in _events:
 		var tag_a := str(ev["tag_a"])
 		var tag_b := str(ev["tag_b"])
 		if e.event_tag != tag_a and e.event_tag != tag_b:
 			continue
-		var best: Node2D = null
-		var bd := BATTLE_RADIUS_PX
-		for other in Game.enemies:
-			if other == null or not is_instance_valid(other):
-				continue
-			var o: Enemy = other as Enemy
-			if o == null or o.event_tag != e.foe_group:
-				continue
-			if o.state == "dying" or o.state == "decay" or o.state == "corpse":
-				continue
-			var d := Game.units_range(e, o)
-			if d < bd:
-				bd = d
-				best = o
-		return best
-	return null
+		for side in ["members_a", "members_b"]:
+			for o in _alive_in(ev, side):
+				if o.event_tag != e.foe_group:
+					continue
+				if o.state == "dying" or o.state == "decay" or o.state == "corpse":
+					continue
+				var d := Game.units_range(e, o)
+				if d < bd:
+					bd = d
+					best = o
+	return best
 
 ## «Дешёвое» разрешение боёв вне поля зрения героя.
 func _abstract_tick() -> void:
+	_check_gone()
 	var fog: Node = get_tree().get_first_node_in_group("fog")
 	for ev in _events.duplicate():
 		var pos := Vector2(float(int(ev["cell_x"]) + 1) * 16.0,
@@ -305,48 +324,66 @@ func _abstract_tick() -> void:
 		if _first_alive(ev, "members_a") == null or _first_alive(ev, "members_b") == null:
 			_finish_event(ev)
 
+## Clash participants that have left the fight since the previous tick. The
+## counter is cleared here, not after resolving a clash: frees of the current
+## frame count too.
+func _check_gone() -> void:
+	var n := _gone.size()
+	_gone.clear()
+	if n <= 0:
+		return
+	for ev in _events.duplicate():
+		# The same rule as in _abstract_tick: a standing corpse looks for no foe,
+		# so the tags come off the survivors and the clash is closed.
+		if _first_alive(ev, "members_a") == null or _first_alive(ev, "members_b") == null:
+			_finish_event(ev)
+
 func _first_alive(ev: Dictionary, key: String) -> Enemy:
+	var best: Enemy = null
+	for e in _alive_in(ev, key):
+		if e.state != "dying" and e.state != "decay" and e.state != "corpse":
+			best = e
+			break
+	return best
+
+## Members of a side that have not been freed. A cast of a freed instance
+## raises, so is_instance_valid() runs first: it takes a Variant and is safe
+## for freed nodes.
+func _alive_in(ev: Dictionary, key: String) -> Array:
+	var out: Array = []
 	for u in ev[key]:
-		# Каст на ОСВОБОЖДЁННОМ объекте бросает «Trying to cast a freed
-		# object», а `u is Object` на freed-инстансе — ту же ошибку;
-		# is_instance_valid() принимает Variant и безопасен для freed.
 		if is_instance_valid(u) == false:
 			continue
 		var e: Enemy = u as Enemy
-		if e != null and is_instance_valid(e) \
-				and e.state != "dying" and e.state != "decay" and e.state != "corpse":
-			return e
-	return null
+		if e != null:
+			out.append(e)
+	return out
 
-## Стычка кончилась: выжившие становятся обычными Серыми.
+## A clash is over: the survivors go back to being ordinary Greys.
 func _finish_event(ev: Dictionary) -> void:
 	_clear_tags(ev)
 	_remove_marker(ev)
 	_events.erase(ev)
 	print("EVENT: стычка %d завершилась" % int(ev["id"]))
 
-## Стычка истекла по времени: выжившие деспавнятся без лута.
+func _clear_tags(ev: Dictionary) -> void:
+	for key in ["members_a", "members_b"]:
+		for e in _alive_in(ev, key):
+			e.event_tag = ""
+			e.foe_group = ""
+
+## Time ran out: survivors despawn without loot.
 func _expire_event(ev: Dictionary) -> void:
 	_free_event_units(ev)
 	_remove_marker(ev)
 	_events.erase(ev)
 	print("EVENT: стычка %d истекла по времени" % int(ev["id"]))
 
-func _clear_tags(ev: Dictionary) -> void:
-	for key in ["members_a", "members_b"]:
-		for u in ev[key]:
-			var e: Enemy = u as Enemy
-			if e != null and is_instance_valid(e):
-				e.event_tag = ""
-				e.foe_group = ""
-
 func _free_event_units(ev: Dictionary) -> void:
 	for key in ["members_a", "members_b"]:
-		for u in ev[key]:
-			var e: Enemy = u as Enemy
-			if e != null and is_instance_valid(e):
-				Game.enemies.erase(e)
-				e.queue_free()
+		for e in _alive_in(ev, key):
+			Game.enemies.erase(e)
+			e.queue_free()
 
 func _remove_marker(ev: Dictionary) -> void:
 	if MinimapMarkers.instance != null and ev.has("marker_id"):

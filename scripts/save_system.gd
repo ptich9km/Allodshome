@@ -260,8 +260,9 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"hero": hero,
 		"world": world_dict,
 		"events": EventSystem.instance.to_payload() if EventSystem.instance != null else [],
-		"quests": [],  # системы квестов в проекте нет; блок заведён сразу,
-		              # чтобы не мигрировать формат потом
+		# Town head quests (22.10): offers, active quests and history are data;
+		# nodes (elite, pickups) are rebuilt by QuestSystem on load.
+		"quests": QuestSystem.instance.to_payload() if QuestSystem.instance != null else {},
 	}
 	var meta := {
 		"hero_name": Game.hero_name,
@@ -301,6 +302,11 @@ static func apply_payload(d: Dictionary, player) -> void:
 	# Туман и события (19.10): применяются узлами после сборки карты.
 	Game.pending_fog_rle = str(map_d.get("fog", ""))
 	Game.pending_events = (d.get("events", []) as Array).duplicate(true)
+	# Older saves (before 22.10) kept an empty ARRAY here, meaning "no quests".
+	# That is not a corruption: fall back to the empty schema silently.
+	var qd: Variant = d.get("quests", {})
+	Game.pending_quests = (qd as Dictionary).duplicate(true) if qd is Dictionary else {}
+	Game.pending_quests_applied = false
 	var h: Dictionary = d.get("hero", {})
 	Game.hero_class = str(h.get("class", Game.hero_class))
 	Game.hero_gender = str(h.get("gender", Game.hero_gender))

@@ -537,21 +537,25 @@ const CITY_POPULATION := {
 		"guards": ["city_human_mage/t1", "city_human_warrior/t2"],
 		"citizens": ["city_human_mage/t0", "city_human_warrior/t1"],
 		"captain": "city_human_mage/t3",
+		"head": "city_human_mage/t2",
 	},
 	"ork": {
 		"guards": ["city_ork_mage/t1", "city_ork_warrior/t2"],
 		"citizens": ["city_ork_mage/t0", "city_ork_warrior/t1"],
 		"captain": "city_ork_mage/t3",
+		"head": "city_ork_mage/t2",
 	},
 	"druid": {
 		"guards": ["city_druid_mage/t1", "city_druid_warrior/t2"],
 		"citizens": ["city_druid_mage/t0", "city_druid_warrior/t1"],
 		"captain": "city_druid_mage/t3",
+		"head": "city_druid_mage/t2",
 	},
 	"necro": {
 		"guards": ["city_necro_mage/t1", "city_necro_warrior/t2"],
 		"citizens": ["city_necro_mage/t0", "city_necro_warrior/t1"],
 		"captain": "city_necro_mage/t3",
+		"head": "city_necro_mage/t2",
 	},
 }
 ## Расы, между которым�� города делятся по кругу. necro исключена, пока нет
@@ -896,7 +900,7 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 			if spec.is_empty():
 				continue
 			_place_city_building(center, spec)
-		_place_city_npcs(rng, center, str(c["faction"]))
+		_place_city_npcs(rng, center, race, city_id_of(city_index))
 	print("STRUCTURES_COUNT: %d" % _structures_out.size())
 
 ## 6b. Мелкий декор вокруг городов: бочки/ящики/мешки/фонари (seedream).
@@ -1023,8 +1027,14 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 	return true
 
 ## НПЦ города: стражи (первые 2 патрульные, остальные на постах), капитан,
-## жители у магазина/центра. Все стоят; патруль — только первые 2 стража.
-func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i, race: String) -> void:
+## глава города, жители у магазина/центра. Все стоят; патруль — только
+## первые 2 стража.
+##
+## Глава (22.10) — отдельный NPC ролью "head": у него квесты и маркер «!»
+## (scripts/quest_marker.gd). Стоит у площади рядом с капитаном, но на кольце
+## жителей — в толпе капитан и глава не должны сливаться.
+func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i,
+		race: String, city_id: String) -> void:
 	var pop: Dictionary = CITY_POPULATION.get(race, {})
 	if pop.is_empty():
 		push_error("MapGenerator: нет CITY_POPULATION для расы '%s' - город останется без NPC" % race)
@@ -1057,15 +1067,25 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i, race: String
 			GameConfig.zonei(_zone, "guard_hp_min"), GameConfig.zonei(_zone, "guard_hp_max"))
 		var dmg := rng.randi_range(
 			GameConfig.zonei(_zone, "guard_damage_min"), GameConfig.zonei(_zone, "guard_damage_max"))
-		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg))
+		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg, city_id))
 	# Капитан у площади — он же ВЕЛИКИЙ МАГ города (решение игрока 07.10),
 	# и маг СВОЕЙ расы (09.10): в орк-городе не должен стоятьdruид-маг.
 	var cap := _post_cell(center, [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)], posts_taken)
 	if cap.x >= 0:
 		var cap_rec := _npc_rec(cap, str(pop["captain"]), "guard", false,
-			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage"))
+			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage"),
+			city_id)
 		cap_rec["archmage"] = true
 		_npcs_out.append(cap_rec)
+	# Глава города — квестодатель. Стоит у площади, набор своей расы.
+	var head_set := str(pop.get("head", pop["citizens"][0]))
+	var head := _post_cell(center, [Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)], posts_taken)
+	if head.x >= 0:
+		var head_rec := _npc_rec(head, head_set, "head", false,
+			GameConfig.zonei(_zone, "citizen_hp"), 0, city_id)
+		head_rec["head"] = true
+		_npcs_out.append(head_rec)
 	# Жители (стоят, не патрулируют) — кольца 3–4
 	var cit_n := rng.randi_range(
 		GameConfig.zonei(_zone, "citizen_count_min"), GameConfig.zonei(_zone, "citizen_count_max"))
@@ -1077,19 +1097,20 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i, race: String
 			continue
 		var set_name: String = _pick(rng, pop["citizens"])
 		_npcs_out.append(_npc_rec(post, set_name, "citizen", false,
-			GameConfig.zonei(_zone, "citizen_hp"), 0))
+			GameConfig.zonei(_zone, "citizen_hp"), 0, city_id))
 
-## Раса города по таблице CITY_RACES (тот же порядок, что у _faction_for).
-## Единственный источник правды: _faction_for отдавал мёртвые "f0..f3",
-## поэтому наборы спрайтов приходилось бы хранить отдельно и они разъехались бы.
-## Вынесено в _faction_for: раса города хранится в _cities, а не вычисляется
-## здесь второй раз (10.10) — два вычисления разъезжаются, как только
-## появляется ещё одно правило.
+## id города для квестов: "c<индекс>t<раса-в-списке>". Индекс — порядок
+## города в генераторе; суффикс t0.. повторяет расу из CITY_RACES.
+## Городам из военного .alm (без генератора) индексы выдаёт AlmMap.
 func _city_race(city_index: int) -> String:
 	var order := _race_order()
 	if order.is_empty():
 		return ""
 	return str(order[city_index % order.size()])
+
+
+static func city_id_of(city_index: int) -> String:
+	return "c%dt%d" % [city_index, city_index % maxi(1, CITY_RACES.size())]
 
 ## Раса по имени набора: "city_human_mage/t1" -> "humans", "city_ork_warrior/t0"
 ## -> "ork", "city_druid_mage/t2" -> "druid". Наборы названы по корню без
@@ -1151,12 +1172,14 @@ func _post_cell(center: Vector2i, offsets: Array, taken: Dictionary) -> Vector2i
 		return c
 	return Vector2i(-1, -1)
 
-func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool, hp: int, dmg: int) -> Dictionary:
+func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool,
+		hp: int, dmg: int, city_id: String = "") -> Dictionary:
 	return {
 		"x": post.x, "y": post.y, "set": set_name,
 		"role": role, "patrol": patrol,
 		"post": [post.x, post.y],
 		"hp_max": hp, "damage": dmg,
+		"city_id": city_id,
 	}
 
 ## Этап 8: точки интереса ВНЕ городов.

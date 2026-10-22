@@ -1191,9 +1191,9 @@ func _draw_minimap_markers(w: int, h: int, mw: int, mh: int) -> void:
 		if int(m["kind"]) == MinimapMarkers.Kind.BATTLE:
 			if float(m["ttl_left"]) < 20.0 and blink:
 				continue
-			col = Color(1.0, 0.25, 0.15, 1.0) if blink else Color(0.75, 0.1, 0.1, 1.0)
+			col = MINIMAP_BATTLE if blink else MINIMAP_BATTLE_FADE
 		else:
-			col = Color(1.0, 0.75, 0.1, 1.0)
+			col = MINIMAP_QUEST
 		for dy in range(-1, 2):
 			for dx in range(-1, 2):
 				if absi(dx) + absi(dy) > 1:
@@ -1208,6 +1208,10 @@ const MINIMAP_NPC_CIV := Color(1.0, 0.85, 0.2, 1.0)
 const MINIMAP_ENEMY := Color(1.0, 0.2, 0.2, 1.0)
 const MINIMAP_BUILDING := Color(0.5, 0.45, 0.4, 1.0)
 const MINIMAP_HERO := Color(1, 1, 1, 1)
+## Quest markers: battle pulse and head "!" dot (game data, not the UI palette).
+const MINIMAP_BATTLE := Color(1.0, 0.25, 0.15, 1.0)
+const MINIMAP_BATTLE_FADE := Color(0.75, 0.1, 0.1, 1.0)
+const MINIMAP_QUEST := Color(1.0, 0.75, 0.1, 1.0)
 const MINIMAP_BG := Color(0.03, 0.03, 0.04, 1.0)
 const MINIMAP_CUSTOM := {  # MINIMAP biome colors
 	1: Color(0.55, 0.35, 0.15, 1.0),    # MINIMAP soil
@@ -1372,6 +1376,7 @@ var _alchemy: AlchemyPanel = null
 var _school: SchoolPanel = null
 var _inn: InnPanel = null
 var _archmage: ArchmagePanel = null
+var _quests: QuestPanel = null
 var _workshop: WorkshopPanel = null
 var _inventory_panel: InventoryPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
@@ -1446,11 +1451,12 @@ func _on_panel_closed() -> void:
 	_workshop = null
 	_inventory_panel = null
 	_archmage = null
+	_quests = null
 	_exit_interior()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_workshop) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage)
+	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_workshop) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage) or is_instance_valid(_quests)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1555,6 +1561,23 @@ func open_inventory_panel() -> void:
 	_inventory_panel.closed.connect(_on_panel_closed)
 	_inventory_panel.inventory_changed.connect(_on_inventory_changed)
 	add_child(_inventory_panel)
+
+
+## Квесты главы города (22.10): офферы, взятые задания, сдача, отмена.
+## city_id пустой — журнал без города (хоткей W): видно только взятое.
+## Повторное W закрывает панель, как I закрывает инвентарь.
+func open_quests(city_id: String = "") -> void:
+	if _quests != null and is_instance_valid(_quests):
+		if city_id == "" or str(_quests.get("city_id")) == city_id:
+			_quests.close()
+			return
+		_quests.close()
+	_enter_interior()
+	_quests = QuestPanel.new()
+	_quests.setup(player, city_id)
+	_quests.closed.connect(_on_panel_closed)
+	_quests.inventory_changed.connect(_on_inventory_changed)
+	add_child(_quests)
 
 func _update_gold(amount: int) -> void:
 	if is_instance_valid(hud_gold_label):

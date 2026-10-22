@@ -91,7 +91,7 @@ func _write_save(slot: String, hero: String, day: int, stamp: int) -> void:
 		},
 		"world": { "day": day, "global_threat": 0.4, "relations": {}, "hero": {},
 			"journal": [], "cities": {} },
-		"quests": [],
+		"quests": {},
 		"meta": { "hero_name": hero, "hero_class": "mage", "level": 5, "day": day,
 			"zone": "mid", "seed": 777, "stamp": stamp },
 	})

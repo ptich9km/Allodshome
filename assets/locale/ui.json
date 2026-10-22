@@ -287,5 +287,485 @@
  "ui.common.close": {
   "ru": "Закрыть",
   "en": "Close"
+ },
+ "ui.quest.take": {
+  "ru": "Взять",
+  "en": "Take"
+ },
+ "ui.quest.abandon": {
+  "ru": "Отменить",
+  "en": "Abandon"
+ },
+ "ui.quest.turn_in": {
+  "ru": "Сдать",
+  "en": "Turn in"
+ },
+ "ui.quest.title": {
+  "ru": "КВЕСТЫ",
+  "en": "QUESTS"
+ },
+ "ui.quest.taken_title": {
+  "ru": "ВЗЯТЫЕ ЗАДАНИЯ (%d / %d)",
+  "en": "TAKEN QUESTS (%d / %d)"
+ },
+ "ui.quest.gold": {
+  "ru": "Золото: %d",
+  "en": "Gold: %d"
+ },
+ "ui.quest.difficulty_easy": {
+  "ru": "легко",
+  "en": "easy"
+ },
+ "ui.quest.difficulty_normal": {
+  "ru": "обычно",
+  "en": "normal"
+ },
+ "ui.quest.difficulty_hard": {
+  "ru": "сложно",
+  "en": "hard"
+ },
+ "ui.quest.reward_gold": {
+  "ru": "Награда: %d золота",
+  "en": "Reward: %d gold"
+ },
+ "ui.quest.gold_amount": {
+  "ru": "%d золота",
+  "en": "%d gold"
+ },
+ "ui.quest.blueprint": {
+  "ru": "чертёж",
+  "en": "blueprint"
+ },
+ "ui.quest.blueprint_named": {
+  "ru": "Чертёж: %s",
+  "en": "Blueprint: %s"
+ },
+ "ui.quest.taken_from_head": {
+  "ru": "Взят у главы: %s",
+  "en": "Taken from the head of %s"
+ },
+ "ui.quest.quest_taken": {
+  "ru": "Задание взято.",
+  "en": "Quest taken."
+ },
+ "ui.quest.quest_abandoned": {
+  "ru": "Задание отменено.",
+  "en": "Quest abandoned."
+ },
+ "ui.quest.no_such_quest": {
+  "ru": "Такого задания нет.",
+  "en": "No such quest."
+ },
+ "ui.quest.turned_in": {
+  "ru": "Сдано: %s",
+  "en": "Turned in: %s"
+ },
+ "ui.quest.disabled": {
+  "ru": "Квесты выключены.",
+  "en": "Quests are disabled."
+ },
+ "ui.quest.err_taken": {
+  "ru": "Вы уже взяли похожее задание.",
+  "en": "You already have a quest like this one."
+ },
+ "ui.quest.err_gone": {
+  "ru": "Этого задания больше нет.",
+  "en": "This quest is gone."
+ },
+ "ui.quest.err_full": {
+  "ru": "Больше заданий взять нельзя.",
+  "en": "No more quests can be taken."
+ },
+ "ui.quest.err_elsewhere": {
+  "ru": "Сдать задание можно только там, где его взяли.",
+  "en": "A quest can only be turned in where it was taken."
+ },
+ "ui.quest.err_not_ready": {
+  "ru": "Задание ещё не выполнено.",
+  "en": "The quest is not finished yet."
+ },
+ "ui.quest.not_found": {
+  "ru": "Задания нет.",
+  "en": "No such quest."
+ },
+ "ui.quest.gold_unit": {
+  "ru": "золота",
+  "en": "gold"
+ },
+ "ui.quest.reputation_unit": {
+  "ru": "репутация",
+  "en": "reputation"
+ },
+ "ui.quest.town": {
+  "ru": "Город",
+  "en": "Town"
+ },
+ "ui.quest.town_number": {
+  "ru": "Город %d",
+  "en": "Town %d"
+ },
+ "ui.quest.tpl.kill_species.title": {
+  "ru": "Охота на %s",
+  "en": "Hunt: %s"
+ },
+ "ui.quest.tpl.kill_species.text": {
+  "ru": "Разведчики главы доносят: в окрестностях зверьё — %s. Принеси главе доказательство: убить нужно %s.",
+  "en": "The head's scouts report: %s prowl the area outside the walls. Bring the head the proof: %s kills."
+ },
+ "ui.quest.tpl.kill_group.title": {
+  "ru": "Зачистить окрестности",
+  "en": "Clear the outskirts"
+ },
+ "ui.quest.tpl.kill_group.text": {
+  "ru": "Серые сбились в стаи и караулят путников. Положи %d из тех, что в этих землях: %s.",
+  "en": "The Grays have gathered in packs and stalk travellers. Put down %d of the beasts of these lands: %s."
+ },
+ "ui.quest.tpl.kill_target.title": {
+  "ru": "Вожак стаи: %s",
+  "en": "The head of the pack: %s"
+ },
+ "ui.quest.tpl.kill_target.text": {
+  "ru": "Рядом видели вот эту тварь — %s. Она уже уволокла троих. Найди и добей.",
+  "en": "One of these has been seen nearby: %s. The beast already dragged off three. Find it and finish it."
+ },
+ "ui.quest.tpl.gather_herbs.title": {
+  "ru": "Сбор трав",
+  "en": "Herb gathering"
+ },
+ "ui.quest.tpl.gather_herbs.text": {
+  "ru": "Травнику нужно сырьё. Собери в полях %s — потребуется %d — и принеси главе.",
+  "en": "The healer needs material. Gather %s in the fields — %d in all — and bring it to the head."
+ },
+ "ui.quest.tpl.find_relic.title": {
+  "ru": "Найти: %s",
+  "en": "Search for %s"
+ },
+ "ui.quest.tpl.find_relic.text": {
+  "ru": "Старики помнят на заброшенной заставе вот что — %s. Найди и принеси, пока летние дожди не смыли дорогу.",
+  "en": "The elders remember what lies at the old outpost: %s. Find it and bring it back before the summer rains wash the road away."
+ },
+ "ui.quest.tpl.deliver_tome.title": {
+  "ru": "Письмо в %s",
+  "en": "A letter to %s"
+ },
+ "ui.quest.tpl.deliver_tome.text": {
+  "ru": "Отнеси грамоту главе вот этого города — %s. Не вскрывай и не потеряй: за потерянную почту платят отдельно.",
+  "en": "Take the papers to the head of this town - %s. Do not open them and do not lose them: lost mail is paid for separately."
+ },
+ "ui.quest.tpl.urgent_hunt.title": {
+  "ru": "Срочно: %s у ворот",
+  "en": "Urgent: %s at the gates"
+ },
+ "ui.quest.tpl.urgent_hunt.text": {
+  "ru": "%s уже у ворот! Положи %s из них за %d минут, иначе город закроет рынок.",
+  "en": "%s are already at the gates! Put down %s of them within %d minutes or the town closes the market."
+ },
+ "ui.quest.beast.wolf": {
+  "ru": "Волк",
+  "en": "wolf"
+ },
+ "ui.quest.beast.dino": {
+  "ru": "Динозавр",
+  "en": "lizard"
+ },
+ "ui.quest.beast.squirrel": {
+  "ru": "Белка",
+  "en": "mad squirrel"
+ },
+ "ui.quest.beast.bee": {
+  "ru": "Пчела",
+  "en": "swarm of bees"
+ },
+ "ui.quest.beast.bat": {
+  "ru": "Летучая мышь",
+  "en": "bat"
+ },
+ "ui.quest.beast.ghost": {
+  "ru": "Призрак",
+  "en": "ghost"
+ },
+ "ui.quest.beast.dragon": {
+  "ru": "Дракон",
+  "en": "dragon"
+ },
+ "ui.quest.beast.cannibal": {
+  "ru": "Людоед",
+  "en": "ogre"
+ },
+ "ui.quest.beast.troll": {
+  "ru": "Тролль",
+  "en": "troll"
+ },
+ "ui.quest.beast.succubus": {
+  "ru": "Суккуб",
+  "en": "succubus"
+ },
+ "ui.quest.beast_pl.wolf": {
+  "ru": "волков",
+  "en": "wolves"
+ },
+ "ui.quest.beast_pl.dino": {
+  "ru": "динозавров",
+  "en": "lizards"
+ },
+ "ui.quest.beast_pl.squirrel": {
+  "ru": "белок",
+  "en": "squirrels"
+ },
+ "ui.quest.beast_pl.bee": {
+  "ru": "пчёл",
+  "en": "bees"
+ },
+ "ui.quest.beast_pl.bat": {
+  "ru": "летучих мышей",
+  "en": "bats"
+ },
+ "ui.quest.beast_pl.ghost": {
+  "ru": "призраков",
+  "en": "ghosts"
+ },
+ "ui.quest.beast_pl.dragon": {
+  "ru": "драконов",
+  "en": "dragons"
+ },
+ "ui.quest.beast_pl.cannibal": {
+  "ru": "людоедов",
+  "en": "ogres"
+ },
+ "ui.quest.beast_pl.troll": {
+  "ru": "троллей",
+  "en": "trolls"
+ },
+ "ui.quest.beast_pl.succubus": {
+  "ru": "суккубов",
+  "en": "succubi"
+ },
+ "ui.quest.beast_pl_nom.wolf": {
+  "ru": "волки",
+  "en": "wolves"
+ },
+ "ui.quest.beast_pl_nom.dino": {
+  "ru": "динозавры",
+  "en": "lizards"
+ },
+ "ui.quest.beast_pl_nom.squirrel": {
+  "ru": "белки",
+  "en": "squirrels"
+ },
+ "ui.quest.beast_pl_nom.bee": {
+  "ru": "пчёлы",
+  "en": "bees"
+ },
+ "ui.quest.beast_pl_nom.bat": {
+  "ru": "летучие мыши",
+  "en": "bats"
+ },
+ "ui.quest.beast_pl_nom.ghost": {
+  "ru": "призраки",
+  "en": "ghosts"
+ },
+ "ui.quest.beast_pl_nom.dragon": {
+  "ru": "драконы",
+  "en": "dragons"
+ },
+ "ui.quest.beast_pl_nom.cannibal": {
+  "ru": "людоеды",
+  "en": "ogres"
+ },
+ "ui.quest.beast_pl_nom.troll": {
+  "ru": "тролли",
+  "en": "trolls"
+ },
+ "ui.quest.beast_pl_nom.succubus": {
+  "ru": "суккубы",
+  "en": "succubi"
+ },
+ "ui.quest.num.1": {
+  "ru": "один",
+  "en": "one"
+ },
+ "ui.quest.num.2": {
+  "ru": "двое",
+  "en": "two"
+ },
+ "ui.quest.num.3": {
+  "ru": "трое",
+  "en": "three"
+ },
+ "ui.quest.num.4": {
+  "ru": "четверо",
+  "en": "four"
+ },
+ "ui.quest.num.5": {
+  "ru": "пятеро",
+  "en": "five"
+ },
+ "ui.quest.num.6": {
+  "ru": "шестеро",
+  "en": "six"
+ },
+ "ui.quest.num.7": {
+  "ru": "семеро",
+  "en": "seven"
+ },
+ "ui.quest.num.8": {
+  "ru": "восьмеро",
+  "en": "eight"
+ },
+ "ui.quest.num.9": {
+  "ru": "девятеро",
+  "en": "nine"
+ },
+ "ui.quest.num.10": {
+  "ru": "десятеро",
+  "en": "ten"
+ },
+ "ui.quest.num.11": {
+  "ru": "одиннадцать",
+  "en": "eleven"
+ },
+ "ui.quest.num.12": {
+  "ru": "двенадцать",
+  "en": "twelve"
+ },
+ "ui.quest.num.13": {
+  "ru": "тринадцать",
+  "en": "thirteen"
+ },
+ "ui.quest.num.14": {
+  "ru": "четырнадцать",
+  "en": "fourteen"
+ },
+ "ui.quest.num.15": {
+  "ru": "пятнадцать",
+  "en": "fifteen"
+ },
+ "ui.quest.num.16": {
+  "ru": "шестнадцать",
+  "en": "sixteen"
+ },
+ "ui.quest.num.17": {
+  "ru": "семнадцать",
+  "en": "seventeen"
+ },
+ "ui.quest.num.18": {
+  "ru": "восемнадцать",
+  "en": "eighteen"
+ },
+ "ui.quest.num.19": {
+  "ru": "девятнадцать",
+  "en": "nineteen"
+ },
+ "ui.quest.num.20": {
+  "ru": "двадцать",
+  "en": "twenty"
+ },
+ "ui.quest.close": {
+  "ru": "Закрыть",
+  "en": "Close"
+ },
+ "ui.quest.panel_title": {
+  "ru": "КВЕСТЫ",
+  "en": "QUESTS"
+ },
+ "ui.quest.journal_title": {
+  "ru": "ЖУРНАЛ ЗАДАНИЙ",
+  "en": "QUEST JOURNAL"
+ },
+ "ui.quest.offers": {
+  "ru": "ПРЕДЛОЖЕНИЯ",
+  "en": "OFFERS"
+ },
+ "ui.quest.head_of": {
+  "ru": "ГЛАВА %s",
+  "en": "HEAD OF %s"
+ },
+ "ui.quest.taken_count": {
+  "ru": "ВЗЯТЫЕ ЗАДАНИЯ (%d / %d)",
+  "en": "TAKEN QUESTS (%d / %d)"
+ },
+ "ui.quest.gold_total": {
+  "ru": "Золото: %d",
+  "en": "Gold: %d"
+ },
+ "ui.quest.gold_reward": {
+  "ru": "%d золота",
+  "en": "%d gold"
+ },
+ "ui.quest.reputation": {
+  "ru": "репутация %+d",
+  "en": "reputation %+d"
+ },
+ "ui.quest.blueprint_tag": {
+  "ru": "чертёж",
+  "en": "blueprint"
+ },
+ "ui.quest.blueprint_name": {
+  "ru": "Чертёж: %s",
+  "en": "Blueprint: %s"
+ },
+ "ui.quest.difficulty": {
+  "ru": "Сложность: %s",
+  "en": "Difficulty: %s"
+ },
+ "ui.quest.time_left": {
+  "ru": "Осталось: %s",
+  "en": "Time left: %s"
+ },
+ "ui.quest.killed": {
+  "ru": "Убито: %d из %d",
+  "en": "Killed: %d of %d"
+ },
+ "ui.quest.collected": {
+  "ru": "Собрано: %d из %d",
+  "en": "Collected: %d of %d"
+ },
+ "ui.quest.done": {
+  "ru": "Выполнено!",
+  "en": "Done!"
+ },
+ "ui.quest.from_head": {
+  "ru": "У главы: %s",
+  "en": "Taken from the head of %s"
+ },
+ "ui.quest.action_take": {
+  "ru": "Взять",
+  "en": "Take"
+ },
+ "ui.quest.action_turn_in": {
+  "ru": "Сдать",
+  "en": "Turn in"
+ },
+ "ui.quest.action_abandon": {
+  "ru": "Отменить",
+  "en": "Abandon"
+ },
+ "ui.quest.msg_taken": {
+  "ru": "Задание взято.",
+  "en": "Quest taken."
+ },
+ "ui.quest.msg_abandoned": {
+  "ru": "Задание отменено.",
+  "en": "Quest abandoned."
+ },
+ "ui.quest.msg_no_quest": {
+  "ru": "Такого задания нет.",
+  "en": "No such quest."
+ },
+ "ui.quest.msg_disabled": {
+  "ru": "Задания отключены.",
+  "en": "Quests are disabled."
+ },
+ "ui.quest.msg_turned_in": {
+  "ru": "Сдано: %s",
+  "en": "Turned in: %s"
+ },
+ "ui.quest.offers_empty": {
+  "ru": "Главе пока нечего поручить. Заходи позже — работы сменяются.",
+  "en": "The head has nothing to offer here. Come back later — the work rotates."
+ },
+ "ui.quest.active_empty": {
+  "ru": "Нет взятых заданий.",
+  "en": "No quests taken."
  }
 }

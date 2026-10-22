@@ -34,6 +34,10 @@ var regions: Dictionary = {}    # "r-1" -> {"id","name","area_px":Vector2,"citie
 var day := 0                 # номер дня мира
 var global_threat := 0.0     # глобальная угроза 0..1 (растёт со временем)
 var relations := {}          # "fA:fB" -> int (>-100..100), матрица отношений
+## Репутация ГЕРОЯ у фракций (22.10, квесты): "humans" -> int (-100..100).
+## Отличать от relations: там отношения фракций между собой (SIM), здесь —
+## как фракция относится к герою. Награда за квест поднимает это число.
+var hero_reputation := {}
 var hero := {                # «привилегированный» герой: в SIM, но щадится угрозой
 	"name": "Герой", "faction_id": "", "level": 1,
 	"curr_hp": 100, "max_hp": 100, "pos": Vector2.ZERO,
@@ -250,6 +254,31 @@ func _faction_for_archmage(faction_or_race: String) -> Dictionary:
 			return f
 	return {}
 
+## Репутация героя у фракции: "humans" (раса) или "f-1" (id фракции).
+func hero_rep(faction_or_race: String) -> int:
+	if faction_or_race == "":
+		return 0
+	return int(hero_reputation.get(faction_or_race, 0))
+
+
+## Сдвинуть репутацию героя. Возвращает фактический сдвиг (с учётом клампа).
+## Запись в журнал — только для заметных изменений, иначе журнал SIM тонет
+## в строчках «+5 репутации» после каждого квеста.
+func add_hero_reputation(faction_or_race: String, amount: int) -> int:
+	if faction_or_race == "" or amount == 0:
+		return 0
+	var old := hero_rep(faction_or_race)
+	var now := clampi(old + amount, -100, 100)
+	hero_reputation[faction_or_race] = now
+	var delta := now - old
+	if delta != 0 and (absi(delta) >= 10 or now == -100 or now == 100):
+		journal.append({
+			"day": day, "kind": "reputation",
+			"text": "Reputation with %s: %d (%+d)" % [faction_or_race, now, delta],
+		})
+	return delta
+
+
 func new_army(faction_id: String, pos: Vector2 = Vector2.ZERO) -> Dictionary:
 	var id := _id("a")
 	armies[id] = { "id": id, "faction_id": faction_id, "unit_ids": [], "pos": pos, "target": Vector2.ZERO, "owner_player": false }
@@ -295,6 +324,7 @@ func to_dict() -> Dictionary:
 		"armies": armies, "regions": regions,
 		"day": day, "global_threat": global_threat,
 		"relations": relations, "hero": hero, "journal": journal,
+		"hero_reputation": hero_reputation,
 	}
 
 ## Полная сериализация в JSON-безопасную форму. Для записи в файл.
@@ -320,6 +350,7 @@ static func from_dict(d: Dictionary):
 	ws.day = int(d.get("day", 0))
 	ws.global_threat = float(d.get("global_threat", 0.0))
 	ws.relations = d.get("relations", {})
+	ws.hero_reputation = d.get("hero_reputation", {})
 	ws.hero = d.get("hero", {})
 	# journal объявлен как Array[Dictionary]; после JSON это обычный Array,
 	# поэтому пересобираем типизированный, иначе присвоение падает.

@@ -152,7 +152,7 @@ func _test_save_from_live_hero(game) -> void:
 	_check(res.get("data", {}).has("world"), "состояние мира сохранено")
 	_check(int(res.get("data", {}).get("world", {}).get("day", -1)) >= 0,
 		"мир содержит день (%d)" % int(res.get("data", {}).get("world", {}).get("day", -1)))
-	_check((res.get("data", {}).get("quests", null) as Array) != null,
+	_check((res.get("data", {}).get("quests", null) as Dictionary) != null,
 		"блок quests на месте (пустая схема)")
 	# Метаданные для экрана слотов.
 	_check(str(res.get("meta", {}).get("hero_name", "")) == "Тестер",

@@ -5,6 +5,10 @@ class_name AlmMap
 ## текстура растягивается, яркость считается от нормали квада и угла солнца.
 ## Плюс: здания из секции id=4 (структуры) и препятствия из section id=3.
 
+## Смерть Серого на этой карте (22.10). Карта — родитель всех врагов, поэтому
+## сам враг в шину не лезет; QuestSystem подписан сюда один раз.
+signal enemy_died(unit: Enemy)
+
 @export var alm_path: String = ""
 @export var tile_size := 32   # свойство как у CustomMap (для миникарты и др.)
 
@@ -929,6 +933,60 @@ func _read_sidecar(path: String) -> Variant:
 ## Записи: {x, y — клетки, type_id | set, player, hp_max}.
 func get_units() -> Array:
 	return map_units
+
+
+## Подключить врага к событию смерти карты (Game._spawn_monster).
+## Двойной коннект не возможен: сигнал исчезает вместе с узлом.
+func watch_enemy(unit: Enemy) -> void:
+	if unit != null and is_instance_valid(unit) \
+			and not unit.died.is_connected(_on_enemy_died):
+		unit.died.connect(_on_enemy_died)
+
+
+func _on_enemy_died(unit: Enemy) -> void:
+	enemy_died.emit(unit)
+
+
+## Главы городов этой карты: city_id -> {race, cells: [[x,y], ...]}.
+##
+## Квесты (QuestSystem) спрашивают карту, а не sidecar: у карт генератора
+## city_id записан в каждой НПЦ-записи, у военных .alm его нет — тогда глава
+## без города получает стабильный id "c<x>y<y>" (одинаков при каждой загрузке),
+## а офферы такого города есть только у него самого.
+func city_heads() -> Dictionary:
+	var out := {}
+	for rec in map_units:
+		if not (rec is Dictionary):
+			continue
+		var d: Dictionary = rec
+		var is_head := bool(d.get("head", false)) \
+			or str(d.get("role", "")) == "head"
+		if not is_head:
+			continue
+		var cid := str(d.get("city_id", ""))
+		if cid == "":
+			cid = "c%dx%d" % [_cell_x(d), _cell_y(d)]
+		if not out.has(cid):
+			out[cid] = {"race": _race_of_record(d), "cells": []}
+		(out[cid]["cells"] as Array).append([_cell_x(d), _cell_y(d)])
+	return out
+
+
+func _cell_x(d: Dictionary) -> int:
+	return int(d.get("x", 0))
+
+
+func _cell_y(d: Dictionary) -> int:
+	return int(d.get("y", 0))
+
+
+## Раса города по набору НПЦ: "humans"/"ork"/"druid"/"necro".
+func _race_of_record(d: Dictionary) -> String:
+	var set_name := str(d.get("set", ""))
+	if set_name == "" and d.has("type_id"):
+		set_name = UnitDB.set_name_for_id(int(d["type_id"]))
+	var race := MapGenerator.race_of_set(set_name)
+	return race if race != "" else MapGenerator.city_race_for_hero(Game.hero_race)
 
 ## --- Запросы для движения и миникарты ---
 

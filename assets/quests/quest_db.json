@@ -1,0 +1,155 @@
+{
+  "version": 2,
+  "note": "Town head quest templates. Reward numbers are the base for difficulty 1; quests.rep_base/power_base and difficulty_mult below scale them. item_pool - item_db keys a quest item is drawn from; pick - which quest art goes with it (assets/ui/quest/items/). ALL player-visible text is a Loc key (title_key / text_key, assets/locale/ui.json): template JSON never holds Russian or English prose. populate lists the substitution keys in order; populate keys also fix the placeholder kind - numbers go in as %d, texts as %s. The key 'item' is the quest name of the item (quest_item_names), not the shop name: a shop trait like '4.4' must never reach a quest card.",
+  "difficulty_gold": [25, 50, 90],
+  "difficulty_mult": [1.0, 1.8, 3.0],
+  "quest_item_names": {
+    "Herb Green Leaf": {
+      "ru": "трава «Зелёный лист»",
+      "en": "Green Leaf herb",
+      "en_short": "Green Leaf",
+      "ru_short": "Зелёный лист"
+    },
+    "Herb White Flower": {
+      "ru": "трава «Белый цвет»",
+      "en": "White Flower herb",
+      "en_short": "White Flower",
+      "ru_short": "Белый цвет"
+    },
+    "Herb Red Berry": {
+      "ru": "трава «Красная ягода»",
+      "en": "Red Berry herb",
+      "en_short": "Red Berry",
+      "ru_short": "Красная ягода"
+    },
+    "Herb Tall Grass": {
+      "ru": "трава «Высокая трава»",
+      "en": "Tall Grass herb",
+      "en_short": "Tall Grass",
+      "ru_short": "Высокая трава"
+    },
+    "Common bronze Amulet": {
+      "ru": "бронзовый амулет",
+      "en": "bronze amulet",
+      "en_short": "bronze amulet",
+      "ru_short": "бронзовый амулет"
+    },
+    "Common iron Amulet": {
+      "ru": "железный амулет",
+      "en": "iron amulet",
+      "en_short": "iron amulet",
+      "ru_short": "железный амулет"
+    },
+    "Book Fire": {
+      "ru": "книга заклинаний Огня",
+      "en": "tome of Fire",
+      "en_short": "tome of Fire",
+      "ru_short": "книга заклинаний Огня"
+    },
+    "Book Air": {
+      "ru": "книга заклинаний Воздуха",
+      "en": "tome of Air",
+      "en_short": "tome of Air",
+      "ru_short": "книга заклинаний Воздуха"
+    },
+    "Book Astral": {
+      "ru": "книга заклинаний Астрала",
+      "en": "tome of Astral",
+      "en_short": "tome of Astral",
+      "ru_short": "книга заклинаний Астрала"
+    },
+    "Book Earth": {
+      "ru": "книга заклинаний Земли",
+      "en": "tome of Earth",
+      "en_short": "tome of Earth",
+      "ru_short": "книга заклинаний Земли"
+    },
+    "Scroll Bless": {
+      "ru": "свиток «Благословение»",
+      "en": "scroll of Blessing",
+      "en_short": "scroll of Blessing",
+      "ru_short": "свиток «Благословение»"
+    }
+  },
+  "templates": [
+    {
+      "id": "kill_species",
+      "type": "KILL_SPECIES",
+      "title_key": "ui.quest.tpl.kill_species.title",
+      "text_key": "ui.quest.tpl.kill_species.text",
+      "populate": ["species_plural", "count_word"],
+      "count_by_difficulty": [5, 8, 12],
+      "icon": "quest_sword",
+      "weight": 30
+    },
+    {
+      "id": "kill_group",
+      "type": "KILL_GROUP",
+      "title_key": "ui.quest.tpl.kill_group.title",
+      "text_key": "ui.quest.tpl.kill_group.text",
+      "populate": ["count", "species_plural"],
+      "count_by_difficulty": [6, 10, 14],
+      "icon": "quest_armor",
+      "weight": 26
+    },
+    {
+      "id": "kill_target",
+      "type": "KILL_TARGET",
+      "title_key": "ui.quest.tpl.kill_target.title",
+      "text_key": "ui.quest.tpl.kill_target.text",
+      "populate": ["species"],
+      "count_by_difficulty": [1, 1, 1],
+      "icon": "quest_sword",
+      "weight": 16
+    },
+    {
+      "id": "gather_herbs",
+      "type": "GATHER",
+      "title_key": "ui.quest.tpl.gather_herbs.title",
+      "text_key": "ui.quest.tpl.gather_herbs.text",
+      "populate": ["item", "count"],
+      "count_by_difficulty": [4, 6, 8],
+      "item_pool": ["Herb Green Leaf", "Herb White Flower", "Herb Red Berry", "Herb Tall Grass"],
+      "pick": "quest_scroll",
+      "icon": "quest_scroll",
+      "weight": 16
+    },
+    {
+      "id": "find_relic",
+      "type": "FIND_ITEM",
+      "title_key": "ui.quest.tpl.find_relic.title",
+      "text_key": "ui.quest.tpl.find_relic.text",
+      "populate": ["item"],
+      "count_by_difficulty": [1, 1, 1],
+      "item_pool": ["Common bronze Amulet", "Common iron Amulet", "Book Fire", "Book Air"],
+      "pick": "quest_amulet",
+      "icon": "quest_amulet",
+      "cell_dist": [8, 26],
+      "weight": 12,
+      "min_difficulty": 2
+    },
+    {
+      "id": "deliver_tome",
+      "type": "DELIVER",
+      "title_key": "ui.quest.tpl.deliver_tome.title",
+      "text_key": "ui.quest.tpl.deliver_tome.text",
+      "populate": ["city"],
+      "count_by_difficulty": [1, 1, 1],
+      "item_pool": ["Book Astral", "Book Earth", "Scroll Bless"],
+      "pick": "quest_book",
+      "icon": "quest_book",
+      "weight": 14,
+      "tags": ["needs_two_cities"]
+    },
+    {
+      "id": "urgent_hunt",
+      "type": "URGENT",
+      "title_key": "ui.quest.tpl.urgent_hunt.title",
+      "text_key": "ui.quest.tpl.urgent_hunt.text",
+      "populate": ["species_plural", "count_word", "minutes"],
+      "count_by_difficulty": [3, 4, 6],
+      "icon": "quest_sword",
+      "weight": 12
+    }
+  ]
+}

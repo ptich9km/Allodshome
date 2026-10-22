@@ -119,6 +119,27 @@ static func keys() -> Array:
 	return out
 
 
+## Candidate locales in the fallback order: the current one first, then the
+## reference one. Missing entries are reported by loc_smoke, not hidden.
+static func locales_in_use() -> Array:
+	return [_locale, DEFAULT_LOCALE]
+
+
+## Is the key in the locale table at all (any language).
+static func has_key(key: String) -> bool:
+	_ensure_loaded()
+	return key != "" and _table.get(key) is Dictionary
+
+
+## The key in exactly this language ("" when the language has no entry).
+static func text_in(key: String, code: String) -> String:
+	_ensure_loaded()
+	var entry = _table.get(key)
+	if not (entry is Dictionary):
+		return ""
+	return str((entry as Dictionary).get(code, ""))
+
+
 ## Есть ли в таблице все языки — иначе ключ молча откатится на русский.
 static func entry_complete(key: String) -> bool:
 	_ensure_loaded()

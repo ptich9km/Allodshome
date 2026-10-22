@@ -34,7 +34,7 @@ func _seed_save() -> void:
 			"inventory": [], "equipped": {}, "experience": {},
 			"known_spells": {}, "sphere_books": {}, "position": Vector2(0, 0)},
 		"world": {"day": 7, "cities": {}},
-		"quests": [],
+		"quests": {},
 		"meta": {"hero_name": "Тестовый герой", "hero_class": "mage", "day": 7,
 			"stamp": 99},
 	})

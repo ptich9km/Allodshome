@@ -169,7 +169,7 @@ func _payload(tag: String, hp: int) -> Dictionary:
 			"inventory": ["Common iron Long Sword", "Potion Medium Healing"],
 		},
 		"world": { "day": hp, "cities": { "c-1": { "pos": Vector2(10, 20) } } },
-		"quests": [],
+		"quests": {},
 		"meta": { "hero_name": tag, "day": hp },
 	}
 

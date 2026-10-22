@@ -15,6 +15,10 @@ class_name Npc
 @export var damage: int = 0                  # урон стражи (граждане не бьют)
 @export var aggro_radius: float = 190.0      # радиус агро стражи на Серых
 @export var is_archmage: bool = false        # капитан = великий маг (клик → панель)
+## Глава города (22.10): отдельный NPC, держит квесты, над головой —
+## QuestMarker «!»/«?». city_id — id записи _cities генератора ("c0t0").
+@export var is_city_head: bool = false
+@export var city_id: String = ""
 
 var current_hp: int
 var state: String = "idle"                   # idle | move | dying | decay | corpse
@@ -31,6 +35,7 @@ var attack_cooldown := 0.0
 var _impact_timer := -1.0
 var _path: Array = []
 var _repath := 0.0
+var quest_marker: QuestMarker = null
 
 func _ready() -> void:
 	add_to_group("npcs")
@@ -51,6 +56,30 @@ func _ready() -> void:
 	_anim.setup(anim_set)
 	_anim.play(UnitAnim.Anim.IDLE)
 	_pick_new_target()
+	if is_city_head:
+		_make_quest_marker()
+
+
+## Маркер «!»/«?» над головой главы. Вид ставит QuestSystem через
+## Npc.refresh_quest_marker(): сам NPC про квесты не знает.
+func _make_quest_marker() -> void:
+	quest_marker = QuestMarker.new()
+	quest_marker.name = "QuestMarker"
+	var box := UnitDB.sel_box(anim_set)
+	var top := float(box.position.y) if box.size.y > 0 else 0.0
+	quest_marker.set_height_px(maxf(top, 24.0))
+	add_child(quest_marker)
+	refresh_quest_marker()
+
+
+## Пересчитать вид маркера по состоянию квестов города.
+func refresh_quest_marker() -> void:
+	if quest_marker == null or not is_instance_valid(quest_marker):
+		return
+	if QuestSystem.instance == null or city_id == "":
+		quest_marker.set_kind("")
+		return
+	quest_marker.set_kind(QuestSystem.instance.marker_kind_for(city_id))
 
 func _physics_process(delta: float) -> void:
 	if Game.is_paused or _anim == null:
@@ -295,6 +324,8 @@ func take_damage(dmg: int, _attacker: Node2D) -> int:
 	state = "dying"
 	velocity = Vector2.ZERO
 	Game.npcs.erase(self)
+	if quest_marker != null and is_instance_valid(quest_marker):
+		quest_marker.visible = false
 	return dmg
 
 

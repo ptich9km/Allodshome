@@ -13,6 +13,13 @@ class_name Enemy
 ## из генератора карты при спавне; пока пул пуст, враги не спавнятся вовсе.
 @export var anim_set: String = ""
 
+## Смерть врага (22.10): сигнал для квестов (QuestSystem считает охоту).
+## Зверь-цель квеста несёт quest_id — так голова стаи отличается от обычной
+## особи того же набора.
+signal died(unit: Enemy)
+
+var quest_id: String = ""
+
 var current_hp: int
 var state: String = "idle"
 var attack_target: Node2D = null
@@ -95,6 +102,7 @@ func _physics_process(delta):
 					if _corpse_timer > 0.0:
 						_corpse_timer -= delta
 						if _corpse_timer <= 0.0:
+							EventSystem.note_freed()
 							queue_free()
 							return
 		velocity = velocity.move_toward(Vector2.ZERO, GameConfig.getf("movement", "decel") * delta)
@@ -158,6 +166,7 @@ func _physics_process(delta):
 			var flee_direction = Game.safe_dir(target.global_position, global_position)
 			_move_checked(flee_direction, effective_speed() * 1.5, delta)
 			if distance_to_target > deaggro_radius * 1.5:
+				EventSystem.note_freed()
 				queue_free()
 
 	# Анимация монстра по состоянию
@@ -364,6 +373,7 @@ func take_damage(dmg: int, attacker) -> int:
 		SoundDB.play(_unit_sound_at(4))  # смерть
 		# Убираем из списка врагов: герой перестаёт выбирать труп целью
 		Game.enemies.erase(self)
+		EventSystem.note_freed()
 		_drop_loot()
 		state = "dying"
 		attack_target = null
@@ -374,6 +384,7 @@ func take_damage(dmg: int, attacker) -> int:
 		collision_mask = 0
 		if health_bar:
 			health_bar.visible = false  # труп не показывает шкалу
+		died.emit(self)
 	else:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))  # боль
 	return shielded
