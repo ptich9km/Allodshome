@@ -94,6 +94,7 @@ func _test_no_overlap() -> void:
 	if structures.is_empty():
 		_cleanup(base)
 		return
+	_test_guards_on_edges(base)
 
 	# Полные прямоугольники в клетках: x..x+w-1, y-(fh-h)..y+(h-1).
 	var boxes: Array = []
@@ -154,6 +155,36 @@ func _test_no_overlap() -> void:
 		"функциональных зданий (usable) поставлено: %d" % usable)
 
 	_cleanup(base)
+
+
+## Guards stand at the edge of the town (player request 22.10: there were too
+## many in the centre and they got under the hero's feet): every guard post is
+## at least city_radius - 2 cells from the centre, the square (|dx|,|dy| <= 2)
+## stays free for the captain, the head and the citizens.
+func _test_guards_on_edges(base: String) -> void:
+	var npcs := _read_sidecar(base + "/layout.npcs.json", "npcs")
+	_check(npcs.size() > 0, "НПЦ города расставлены: %d" % npcs.size())
+	var guards := 0
+	var edge := MapGenerator.CITY_RADIUS - 2
+	var too_close: Array = []
+	for raw in npcs:
+		var rec: Dictionary = raw
+		# The captain is a guard by role but keeps the square: no city_x in his
+		# record, so the edge rule does not cover him.
+		if str(rec.get("role", "")) != "guard" or not rec.has("city_x"):
+			continue
+		guards += 1
+		var gx := int(rec.get("x", 0))
+		var gy := int(rec.get("y", 0))
+		var cx := int(rec.get("city_x", gx))
+		var cy := int(rec.get("city_y", gy))
+		var d := maxi(absi(gx - cx), absi(gy - cy))
+		if d < edge:
+			too_close.append([gx, gy, d])
+	_check(guards > 0, "стража на постах по краю: %d" % guards)
+	_check(too_close.is_empty(),
+		"стража стоит по краю города (>= %d клеток от центра), нарушений: %d %s"
+			% [edge, too_close.size(), str(too_close.slice(0, 3))])
 
 
 ## Клеток между прямоугольниками; вдоль пересекающейся оси = 0.

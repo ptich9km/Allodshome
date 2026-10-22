@@ -39,7 +39,7 @@ func _finish_section(name: String) -> void:
 	_sections_done[name] = true
 
 const SECTIONS := ["panel", "slot_mapping", "rings", "two_handed",
-	"unequip", "highlight", "stats_bars"]
+	"unequip", "highlight", "slot_hint", "gold", "stats_bars"]
 
 func _run() -> void:
 	var packed: PackedScene = load("res://scenes/main.tscn")
@@ -64,6 +64,8 @@ func _run() -> void:
 	_test_two_handed(player)
 	_test_unequip_slot(ui, player)
 	_test_highlight(ui, player)
+	await _test_slot_hint(ui, player)
+	_test_gold_row(ui, player)
 	await _test_stats_bars(ui, player)
 	_report()
 
@@ -230,6 +232,107 @@ func _test_highlight(ui, player: Player) -> void:
 	_check(bool(inv.call("_item_matches_slot", ItemDB.find("Common iron Long Sword"))),
 		"без подсветки подходит любой предмет")
 	_finish_section("highlight")
+
+# --- 6b. Подсказка пустого слота (жалоба игрока 22.10) ----------------------
+
+## Наведение на пустой слот куклы показывает, ЧТО в него одевается и для
+## какого класса; заполненный — карточку вещи.
+func _test_slot_hint(ui, player: Player) -> void:
+	var inv = ui.get("_inventory_panel")
+	if inv == null or not inv.has_method("_show_slot_card"):
+		_check(false, "панель склада умеет показывать карточку слота")
+		_finish_section("slot_hint")
+		return
+	var slots: Dictionary = inv.get("_equip_slots")
+	player.equipped.erase("head")
+	var cell: Control = (slots["head"] as Dictionary).get("panel")
+	inv.call("_show_slot_card", cell, "head")
+	await process_frame
+	var card: PanelContainer = inv.get("_hover_card")
+	_check(card != null and card.visible, "пустой слот head показывает карточку")
+	var text := _card_text(card)
+	_check(text.contains(ItemDB.slot_title("head")), "карточка называет слот (Шлем): %s" % text)
+	_check(text.contains(ItemDB.slot_fits_text("head", Game.hero_class)),
+		"карточка рассказывает, что одевается в слот: %s" % text)
+	_check(ItemDB.slot_fits_text("weapon", "mage") != ItemDB.slot_fits_text("weapon", "warrior"),
+		"подсказка слота оружия зависит от класса")
+	# Заполненный слот показывает саму вещь, а не подсказку.
+	player.equip_item(ItemDB.find("Common bronze Helm"))
+	inv.call("_show_slot_card", cell, "head")
+	await process_frame
+	_check(_card_text(card).contains("Шлем"),
+		"заполненный слот показывает карточку надетой вещи: %s" % _card_text(card))
+	player.equipped.erase("head")
+	_finish_section("slot_hint")
+
+
+func _card_text(card: PanelContainer) -> String:
+	var out := ""
+	if card == null:
+		return out
+	var box: Node = card.find_child("Box", true, false)
+	if box == null:
+		return out
+	for c in box.get_children():
+		if c is Label:
+			out += str((c as Label).text) + "\n"
+		elif c is HBoxContainer:
+			for cc in c.get_children():
+				if cc is VBoxContainer:
+					for l in cc.get_children():
+						if l is Label:
+							out += str((l as Label).text) + "\n"
+	return out
+
+
+# --- 6c. Золото в шапке: монета без подписи -------------------------------
+
+## Жалоба 22.10: в инвентаре было «Золото: N» текстом без картинки. Теперь —
+## анимированная монета и число.
+func _test_gold_row(ui, player: Player) -> void:
+	var inv = ui.get("_inventory_panel")
+	var header: Node = inv.get_node_or_null("InvRoot/Center/Panel/Margin/Content/Header")
+	_check(header != null, "шапка инвентаря найдена")
+	if header == null:
+		_finish_section("gold")
+		return
+	var coin := header.get_node_or_null("GoldCoin") as TextureRect
+	var gold := header.get_node_or_null("Gold") as Label
+	_check(coin != null, "в шапке есть монета")
+	_check(gold != null, "в шапке есть счётчик золота")
+	if coin == null or gold == null:
+		_finish_section("gold")
+		return
+	player.gold = 4321
+	inv.call("_refresh_inventory_grid")
+	_check(gold.text == "4321", "золото показано числом без подписи (%s)" % gold.text)
+	_check(not gold.text.contains(ItemDB.slot_title("body")), "в числе нет слова Золото")
+	var frames := QuestIcons.coin_frames()
+	if frames.size() > 1:
+		var first := coin.texture
+		inv.call("_tick_gold_coin", QuestIcons.COIN_FRAME_TIME + 0.01)
+		_check(coin.texture != first, "монета анимирована (кадр меняется)")
+	else:
+		_check(false, "кадры анимированной монеты найдены")
+	# Essence of the upgrade: the bag shows the animated art, not the placeholder.
+	player.add_item(CraftDB.ESSENCE_KEY)
+	inv.call("_refresh_inventory_grid")
+	_check(EssenceIcons.has_anim(),
+		"у эссенции 4 кадра анимации (%d)" % EssenceIcons.frames().size())
+	var ess_icon: TextureRect = null
+	for n in inv.find_children("EssenceIcon", "TextureRect", true, false):
+		ess_icon = n as TextureRect
+		break
+	_check(ess_icon != null and ess_icon.texture != null,
+		"эссенция в складе нарисована кадром анимации")
+	if ess_icon != null:
+		var tex0 := ess_icon.texture
+		inv.call("_tick_essence_icons", EssenceIcons.FRAME_TIME + 0.01)
+		_check(ess_icon.texture != tex0, "иконка эссенции в складе анимирована")
+	player.remove_item(CraftDB.ESSENCE_KEY)
+	inv.call("_refresh_inventory_grid")
+	_finish_section("gold")
+
 
 # --- 7. Статы обновлены ------------------------------------------------
 

@@ -25,7 +25,7 @@ signal inventory_changed
 const ICON_SIZE := Vector2(48, 48)
 ## Reward coins in a quest card: the swaying sprite, smaller than the item slot.
 const COIN_SIZE := Vector2(20, 20)
-const COIN_FRAME_TIME := 0.22
+const COIN_FRAME_TIME := QuestIcons.COIN_FRAME_TIME
 ## Panel width: two card columns at 1280x800, the world stays visible at the
 ## edges.
 const PANEL_WIDTH := 1100

@@ -63,6 +63,10 @@ static func icon_for(item: Dictionary) -> String:
 	if glyph != "":
 		return glyph
 	# не снаряжение - берём иконку самого предмета из item_db
+	if ItemDB.is_craft_material(item) and str(item.get("quality", "")) == "Essence":
+		var essence := EssenceIcons.icon()
+		if essence != "":
+			return essence
 	return str(item.get("icon", ""))
 
 

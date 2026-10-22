@@ -44,9 +44,11 @@ func _check(ok: bool, msg: String) -> void:
 	print(("  OK  " if ok else "  FAIL") + " " + msg)
 
 
-func _make_drop(items: Array) -> LootDrop:
+func _make_drop(items: Array, check: bool = true) -> LootDrop:
 	var d := LootDrop.new()
 	d.items = items
+	if check:
+		root.add_child(d)
 	return d
 
 
@@ -107,7 +109,7 @@ func _run() -> void:
 		{"key": armor_key},
 		{"key": weapon_key},
 		{"key": heal_key},
-	])
+	], false)
 	root.add_child(drop)
 	await process_frame
 	var sprites: Array[Sprite2D] = []
@@ -141,6 +143,43 @@ func _run() -> void:
 	# узла-мешка быть не должно: проверяем, что у добычи нет своего _draw мешка
 	_check(not drop.has_method("_draw_bag"), "у добычи нет кодового мешка")
 	_check(drop is LootDrop, "класс называется LootDrop (а не LootBag)")
+
+	print("-- монета на земле анимирована (как в квестах) --")
+	var coins := 0
+	for c4 in drop.get_children():
+		if c4 is CoinAnim:
+			coins += 1
+	_check(coins == 1, "золото на земле — анимированная монета (узлов CoinAnim: %d)" % coins)
+	var coin_node: CoinAnim = null
+	for c5 in drop.get_children():
+		if c5 is CoinAnim:
+			coin_node = c5
+			break
+	if coin_node != null:
+		var frames := QuestIcons.coin_frames()
+		_check(frames.size() > 1, "кадры монеты найдены (%d)" % frames.size())
+		var first_tex := coin_node.texture
+		coin_node._process(QuestIcons.COIN_FRAME_TIME + 0.01)
+		_check(coin_node.texture != first_tex, "кадр монеты на земле меняется со временем")
+		var y0 := coin_node.position.y
+		coin_node._process(0.4)
+		_check(not is_equal_approx(coin_node.position.y, y0), "монета покачивается (как квестовый предмет)")
+
+	print("-- эссенция на земле --")
+	# Essence of the crafting upgrade: the drop shows the animated art frame.
+	_check(EssenceIcons.has_anim(),
+		"кадры эссенции найдены (%d)" % EssenceIcons.frames().size())
+	var ess_icon := LootIcons.icon_for(ItemDB.find(CraftDB.ESSENCE_KEY))
+	_check(ess_icon.contains("essence-"),
+		"эссенция на земле — кадр анимированного арта (%s)" % ess_icon.get_file())
+	var ess_drop := _make_drop([{"key": CraftDB.ESSENCE_KEY}])
+	await process_frame
+	var ess_side := -1.0
+	for c6 in ess_drop.get_children():
+		if c6 is Sprite2D and c6.texture != null:
+			ess_side = c6.texture.get_width()
+	_check(ess_side == 32, "иконка эссенции на земле того же размера, что лут (32 px, %d)" % int(ess_side))
+	ess_drop.queue_free()
 
 	print("-- счётчик золота в HUD --")
 	var packed: PackedScene = load("res://scenes/main.tscn")

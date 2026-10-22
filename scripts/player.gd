@@ -325,6 +325,15 @@ func _apply_hero_save() -> void:
 		var bit := ItemDB.find(str(equipped["body"]))
 		if not bit.is_empty():
 			armor_kind = ItemDB.armor_kind(bit)
+	# Old saves may carry gear of the other class (the class rule is new): keep
+	# it equipped, it is not silently dropped into the bag - equip checks block
+	# any NEW piece of the wrong class, the worn one only gets flagged.
+	for slot in ItemDB.EQUIP_SLOTS:
+		if str(equipped.get(slot, "")) == "":
+			continue
+		var old_it := ItemDB.find(str(equipped[slot]))
+		if not old_it.is_empty() and not ItemDB.allows_class(old_it, Game.hero_class):
+			print("Player: надет предмет чужого класса в слоте %s: %s" % [slot, str(equipped[slot])])
 
 ## Начальный опыт из стартовых навыков (skill -> exp, как у разработчиков:
 ## exp = (1.1^skill - 1) * 1000). Дальше навык растёт от получаемого опыта.
@@ -639,6 +648,8 @@ func _equipped_items() -> Array:
 ## true, если предмет экипирован.
 func equip_item(item: Dictionary) -> bool:
 	if not ItemDB.is_equippable(item):
+		return false
+	if not ItemDB.allows_class(item, Game.hero_class):
 		return false
 	var slot := ItemDB.slot_of(item)
 	if slot == "":

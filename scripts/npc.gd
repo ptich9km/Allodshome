@@ -13,7 +13,7 @@ class_name Npc
 @export var role: String = "citizen"         # citizen | guard
 @export var is_patrol: bool = false          # патруль вокруг поста (стражи)
 @export var damage: int = 0                  # урон стражи (граждане не бьют)
-@export var aggro_radius: float = 190.0      # радиус агро стражи на Серых
+@export var aggro_radius: float = 133.0      # guard aggro on Greys: GameConfig "npc"/"guard_aggro_radius" (-30%)
 @export var is_archmage: bool = false        # капитан = великий маг (клик → панель)
 ## Глава города (22.10): отдельный NPC, держит квесты, над головой —
 ## QuestMarker «!»/«?». city_id — id записи _cities генератора ("c0t0").
@@ -177,7 +177,7 @@ func _pick_new_target() -> void:
 	if alm_map == null:
 		_target = anchor
 		return
-	var rad := 4 if is_patrol else 1   # патруль-страж гуляет по городу, стоящие — на месте
+	var rad := 2 if is_patrol else 1   # patrol walks a little around the post, standing guards stay put
 	for attempt in range(8):
 		var off := Vector2(
 			randf_range(-rad, rad),
@@ -209,8 +209,10 @@ func _guard_combat(delta: float) -> bool:
 		return false
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	var dist := Game.units_range(self, target)
-	# Не уходим далеко от города — граница обороны поста
-	if dist > 380.0:
+	# Defense leash: the guard never leaves its post further than guard_leash.
+	var leash := GameConfig.getf("npc", "guard_leash")
+	var anchor := post if post != Vector2.ZERO else home
+	if dist > leash or global_position.distance_to(anchor) > leash:
 		_impact_timer = -1.0
 		return false
 	velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)

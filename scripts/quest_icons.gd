@@ -29,6 +29,8 @@ const MARK_FRAMES := {"available": 4, "ready": 4}
 ## the HUD counter - LootIcons.gold_icon() is its contract. The animated one
 ## is shown where the coin is seen moving: the reward row of a quest card.
 const COIN_FRAMES := 4
+## Frame step of the swaying coin (seconds). Shared by every coin on screen.
+const COIN_FRAME_TIME := 0.22
 
 ## "pick" of a quest -> quest item icon. One art per class of items.
 const PICK_ICON := {
@@ -80,6 +82,16 @@ static func coin_frames() -> Array:
 			return []
 		out.append(load(path))
 	return out
+
+
+static func coin_frame(index: int) -> Texture2D:
+	## One frame by index, the first frame as the fallback.
+	var path := coin_frame_path(posmod(index, COIN_FRAMES))
+	if path == "":
+		path = coin_frame_path(0)
+	if path == "":
+		return null
+	return load(path) as Texture2D
 
 
 static func coin_icon() -> String:

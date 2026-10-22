@@ -62,6 +62,7 @@ func _run() -> void:
 	_test_weapon_changes_damage()
 	_test_unequip_restores()
 	_test_not_equippable()
+	_test_class_rule()
 	_test_hit_chance_relative()
 	_finish()
 
@@ -221,7 +222,77 @@ func _test_not_equippable() -> void:
 			"щит не надевается на двуручное оружие")
 		_check(not _hero.equipped.has("shield"), "щит не занял слот на двуручнике")
 	# Вернуть одноручное, чтобы герой остался с оружием.
-	_hero.equip_item(ItemDB.find("Common Wood Staff"))
+	_hero.equip_item(ItemDB.find("Common iron Long Sword"))
+
+
+# --- 5b. Правило класса (решение игрока 22.10) --------------------------
+
+## Воин носит металл и оружие (но не посох), маг — только ткань и посохи;
+## амулет, кольца и плащ подходят обоим, лук и арбалет — только воину.
+func _test_class_rule() -> void:
+	const SWORD := "Common iron Long Sword"
+	const BOW := "Common iron Short Bow"
+	const XBOW := "Uncommon steel Crossbow"
+	const STAFF := "Common Wood Staff"
+	const AMULET := "Common bronze Amulet"
+	const CLOAK := "Common Linen Cloak"
+	var ring_key := ""
+	for raw in ItemDB.all():
+		if str((raw as Dictionary).get("type", "")) == "Ring":
+			ring_key = str((raw as Dictionary).get("key", ""))
+			break
+	var keys := [SWORD, BOW, XBOW, STAFF, AMULET, CLOAK, HEAVY_ARMOR, ring_key]
+	for k in keys:
+		_check(not ItemDB.find(str(k)).is_empty(), "в базе есть %s" % k)
+
+	Game.hero_class = "warrior"
+	_check(_hero.equip_item(ItemDB.find(SWORD)), "воин надевает меч")
+	_check(_hero.equip_item(ItemDB.find(BOW)), "воин надевает лук")
+	_check(_hero.equip_item(ItemDB.find(XBOW)), "воин надевает арбалет")
+	_check(_hero.equip_item(ItemDB.find(HEAVY_ARMOR)), "воин надевает металлическую броню")
+	_check(not _hero.equip_item(ItemDB.find("Common Linen Robe")), "воин НЕ надевает тканевую робу")
+	_check(_hero.equip_item(ItemDB.find(AMULET)), "воин надевает амулет")
+	_check(_hero.equip_item(ItemDB.find(CLOAK)), "воин надевает плащ")
+	if ring_key != "":
+		_check(_hero.equip_item(ItemDB.find(ring_key)), "воин надевает кольцо")
+	_check(not _hero.equip_item(ItemDB.find(STAFF)),
+		"воин НЕ надевает посох (раньше надевал)")
+	_check(str(_hero.equipped.get("weapon", "")) != STAFF, "посох не занял слот оружия у воина")
+
+	Game.hero_class = "mage"
+	_hero.equipped.erase("weapon")
+	_hero.equipped.erase("shield")
+	_hero.equipped.erase("body")
+	_check(_hero.equip_item(ItemDB.find(STAFF)), "маг надевает посох")
+	_check(_hero.equip_item(ItemDB.find("Common Linen Robe")), "маг надевает тканевую одежду")
+	_check(_hero.equip_item(ItemDB.find(CLOAK)), "маг надевает плащ")
+	_check(_hero.equip_item(ItemDB.find(AMULET)), "маг надевает амулет")
+	if ring_key != "":
+		_check(_hero.equip_item(ItemDB.find(ring_key)), "маг надевает кольцо")
+	_check(not _hero.equip_item(ItemDB.find(SWORD)), "маг НЕ надевает меч")
+	_check(not _hero.equip_item(ItemDB.find(BOW)), "маг НЕ надевает лук")
+	_check(not _hero.equip_item(ItemDB.find(XBOW)), "маг НЕ надевает арбалет")
+	_check(not _hero.equip_item(ItemDB.find(HEAVY_ARMOR)), "маг НЕ надевает металлическую броню")
+	_check(not _hero.equip_item(ItemDB.find(BUCKLER)), "маг НЕ надевает щит")
+	_check(str(_hero.equipped.get("weapon", "")) == STAFF,
+		"отказы не сбили посох из слота оружия (в слоте %s)" % str(_hero.equipped.get("weapon", "")))
+
+	_check(ItemDB.class_block_text(ItemDB.find(STAFF), "warrior") != "",
+		"подсказка объясняет отказ воину от посоха")
+	_check(ItemDB.class_block_text(ItemDB.find(HEAVY_ARMOR), "mage") != "",
+		"подсказка объясняет отказ магу от металла")
+	_check(ItemDB.allows_class(ItemDB.find("Common Linen Cloak"), "mage"),
+		"плащ подходит магу")
+	_check(ItemDB.class_block_text(ItemDB.find(AMULET), "mage") == "",
+		"амулет — без объяснения отказа (подходит обоим)")
+	_check(ItemDB.slot_fits_text("weapon", "mage").contains("посох"),
+		"пустой слот оружия мага рассказывает про посох")
+
+	# Вернуть воина: дальнейшие проверки — про его экипировку.
+	Game.hero_class = "warrior"
+	_hero.equipped.erase("body")
+	_hero.equipped.erase("cloak")
+	_hero.unequip_slot("weapon")
 
 
 # --- 6. Формула попадания относительная -----------------------------------

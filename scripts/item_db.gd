@@ -32,7 +32,6 @@ const _HANDS_TYPES := ["Bracers", "Plate Bracers", "Scale Gauntlets", "Gauntlets
 const _FEET_TYPES := ["Plate Boots", "Boots", "Shoes", "Chain Boots"]
 const _AMULET_TYPES := ["Amulet"]
 const _RING_TYPES := ["Ring"]
-
 ## Все слоты экипировки героя, в порядке отображения на панели персонажа.
 const EQUIP_SLOTS: Array[String] = [
 	"weapon", "shield", "head", "cloak", "body", "hands", "feet", "amulet", "ring1", "ring2",
@@ -164,15 +163,10 @@ static func armor_kind(item: Dictionary) -> String:
 		return "light"
 	return "heavy"
 
-## Типы, которые нельзя надеть, хотя quality у них обычный.
-## Слиток — сырьё, но slot_of() относит всё не-оружие-не-щит к "armor",
-## поэтому без этого игрок надел бы слиток как броню, а кузнец (он фильтрует
-## инвентарь по is_equippable) переплавлял бы слитки в слитки.
+## Types that cannot be worn even though their quality is a normal one.
 const _INGOT_TYPE := "Ingot"
 
-## Экипируемое ли (не книги/свитки/зелья/квест/слитки/сломанное/ресурсы
-## крафта). Качество — единственный общий барьер для всего, что не является
-## боевой вещью; вторым барьером служит пустой слот у type из is_broken/ресурсов.
+## General gate: not a book/scroll/potion/quest/ingot/broken/craft material.
 static func is_equippable(item: Dictionary) -> bool:
 	var q := str(item.get("quality", ""))
 	if q in NON_GEAR_QUALITY:
@@ -181,14 +175,72 @@ static func is_equippable(item: Dictionary) -> bool:
 		return false
 	return true
 
-## Качества, которые нельзя надеть. Сломанные вещи и ресурсы крафта
-## (ткань/эссенция) - это СЫРЬЁ, а не броня: надетое сломанное не должно
-## менять get_defense()/get_absorption() героя.
+## Non-wearable qualities: broken gear and craft materials are raw stuff.
 const NON_GEAR_QUALITY := [
 	"Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb",
 	"Broken", "Broken Fine", "Broken Rare",
 	"Fabric", "Essence", "Recipe",
 ]
+
+## Class restrictions (22.10 player decision): a warrior wears metal armor
+## and non-magical weapons only, a mage wears cloth (linen) and staves only
+## and carries no shield. Amulets, rings and cloaks fit both classes.
+const CLASS_WARRIOR := "warrior"
+const CLASS_MAGE := "mage"
+const _BOTH_CLASS_SLOTS := ["amulet", "ring", "cloak"]
+
+static func class_of(hero_class: String) -> String:
+	return CLASS_MAGE if hero_class == CLASS_MAGE else CLASS_WARRIOR
+
+## Does the item fit the hero class? Non-gear and unknown slots answer true:
+## this guard only covers the class split, is_equippable stays the general one.
+## Accepts both the abstract slot ("ring", "weapon") and a concrete one
+## ("ring1", "ring2"): callers hand in their own cell name.
+static func allows_class(item: Dictionary, hero_class: String) -> bool:
+	var slot := slot_of(item)
+	var cls := class_of(hero_class)
+	if slot in ["ring1", "ring2"]:
+		slot = "ring"
+	if slot == "" or slot in _BOTH_CLASS_SLOTS:
+		return true
+	if cls == CLASS_MAGE:
+		if slot != "weapon":
+			return armor_kind(item) == "light"
+		return weapon_kind(item) == "staff"
+	if weapon_kind(item) == "staff":
+		return false
+	if slot == "weapon" or slot == "shield":
+		return true
+	return armor_kind(item) == "heavy"
+
+## Why the item does not fit the class (Russian, for cards and hints). "" if it fits.
+static func class_block_text(item: Dictionary, hero_class: String) -> String:
+	if allows_class(item, hero_class):
+		return ""
+	if class_of(hero_class) == CLASS_MAGE:
+		if slot_of(item) == "shield":
+			return "Маг не носит щиты"
+		if slot_of(item) == "weapon":
+			return "Магу подходит только посох"
+		return "Маг носит только ткань"
+	if weapon_kind(item) == "staff":
+		return "Воин не носит посохи"
+	return "Воин носит только металлическую броню"
+
+## What kind of gear the slot takes for the class (Russian, for empty-slot hints).
+static func slot_fits_text(slot: String, hero_class: String) -> String:
+	var mage := class_of(hero_class) == CLASS_MAGE
+	match slot:
+		"weapon": return "Магический посох" if mage else "Оружие (не посох)"
+		"shield": return "Магу щит не подходит" if mage else "Щит"
+		"head": return "Тканевый головной убор или капюшон" if mage else "Металлический шлем"
+		"cloak": return "Плащ или накидка"
+		"body": return "Тканевая роба или платье" if mage else "Металлическая броня"
+		"hands": return "Тканевые или кожаные перчатки" if mage else "Металлические перчатки или наручи"
+		"feet": return "Тканевая обувь" if mage else "Ботинки и сапоги"
+		"amulet": return "Амулет (подходит обоим классам)"
+		"ring1", "ring2": return "Кольцо (подходит обоим классам)"
+	return "—"
 
 ## --- Сломанные вещи и ресурсы крафта (мастерская, 07.10) -----------------
 ## Качество сломанной вещи. "" - если это не сломанная вещь.

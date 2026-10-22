@@ -29,6 +29,10 @@ var _status_label: Label
 var _action_button: Button
 var _list_buttons: Array[Button] = []
 var _selected := -1
+## Essence icons of the open detail: they share one animation tick.
+var _essence_icons: Array[TextureRect] = []
+var _essence_frame := 0
+var _essence_t := 0.0
 
 signal request_refresh
 signal request_inventory_changed
@@ -42,6 +46,28 @@ func setup(p: Player, c: String) -> void:
 func _ready() -> void:
 	_build()
 	refresh()
+	set_process(true)
+
+
+## The essence icons in the detail share one slow sway, like the quest coin.
+func _process(delta: float) -> void:
+	if _essence_icons.is_empty():
+		return
+	_essence_icons = _essence_icons.filter(
+		func(n): return is_instance_valid(n) and n.is_inside_tree())
+	if _essence_icons.is_empty():
+		return
+	var step := EssenceIcons.tick_frame(delta, _essence_t, _essence_frame)
+	_essence_t = float(step["t"])
+	var next := int(step["frame"])
+	if next == _essence_frame:
+		return
+	_essence_frame = next
+	var frames := EssenceIcons.frames()
+	if frames.is_empty():
+		return
+	for icon in _essence_icons:
+		icon.texture = frames[_essence_frame % frames.size()]
 
 
 ## Путь к декору вкладки ("" — нет). Крупная цветная картинка справа.
@@ -404,7 +430,15 @@ func _inventory_items() -> Array:
 func _make_icon(item: Dictionary, box: Vector2) -> TextureRect:
 	var icon := TextureRect.new()
 	var path := str(item.get("icon", ""))
-	if not path.is_empty() and ResourceLoader.exists(path):
+	if str(item.get("quality", "")) == "Essence":
+		# The essence has an animated art: the detail shows its first frame here,
+		# _process sways it like the quest coin.
+		var tex := EssenceIcons.texture()
+		if tex != null:
+			icon.texture = tex
+			icon.name = "EssenceIcon"
+			_essence_icons.append(icon)
+	elif not path.is_empty() and ResourceLoader.exists(path):
 		icon.texture = load(path)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

@@ -105,8 +105,9 @@ func _build_detail(entry: Dictionary) -> void:
 		_detail.add_child(_make_cost_row(ingot_key, int(cost["ingot"])))
 	if int(cost.get("fabric", 0)) > 0:
 		_detail.add_child(_make_cost_row(CraftDB.FABRIC_KEY, int(cost["fabric"])))
-	if int(cost.get("essence", 0)) > 0:
-		_detail.add_child(_make_cost_row(CraftDB.ESSENCE_KEY, int(cost["essence"])))
+	# The essence row is always there (player complaint 22.10: the essence was
+	# invisible on the Fine step and the player never learned the material existed).
+	_detail.add_child(_make_cost_row(CraftDB.ESSENCE_KEY, int(cost.get("essence", 0))))
 	_detail.add_child(_note(tr("Мастер улучшает крафтовые вещи. Навык растёт от улучшений.")))
 
 
@@ -114,6 +115,11 @@ func _make_cost_row(item_key: String, required: int) -> Control:
 	var current := _item_count(item_key)
 	var item := ItemDB.find(item_key)
 	var panel := PanelContainer.new()
+	# The essence is shown even when this step costs none (the Fine step): the 0 of
+	# the row tells the player the material exists and is only needed for Master.
+	if item.is_empty():
+		item = {"name_ru": item_key}
+	panel.name = "CostRow_%s" % item_key.replace(" ", "_")
 	panel.theme_type_variation = &"CraftIngredient"
 	var m := MarginContainer.new()
 	_set_margins(m, UiTheme.SPACE_2, UiTheme.SPACE_1, UiTheme.SPACE_2, UiTheme.SPACE_1)

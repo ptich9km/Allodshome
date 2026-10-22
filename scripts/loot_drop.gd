@@ -46,8 +46,10 @@ func _build_ground_sprites() -> void:
 			continue
 		var path := ""
 		var tier := 0
+		var coin := false
 		if it.has("gold"):
 			path = LootIcons.gold_icon()
+			coin = true
 		elif it.has("key"):
 			var d := ItemDB.find(str(it.get("key", "")))
 			if str(d.get("quality", "")) == "Potion":
@@ -59,13 +61,23 @@ func _build_ground_sprites() -> void:
 			# что именно выпало.
 			tier = CraftVFX.tier_of_item(d)
 		if path != "":
-			slots.append({"path": path, "tier": tier})
+			slots.append({"path": path, "tier": tier, "coin": coin})
 	if slots.is_empty():
 		return
 	_sprite_positions.clear()
 	var total := float(slots.size()) * ICON_PX + float(maxi(0, slots.size() - 1)) * ICON_GAP
 	var start_x := -total * 0.5 + ICON_PX * 0.5
 	for i in slots.size():
+		# Лёгкий разброс по вертикали, чтобы добыча не выглядела «линейкой».
+		var jitter := GROUND_Y + float((i % 2) * 2 - 1)
+		var px := start_x + float(i) * (ICON_PX + ICON_GAP)
+		if bool(slots[i].get("coin", false)):
+			var coin := make_ground_coin()
+			coin.set_layout_position(Vector2(px, jitter))
+			coin.z_index = 1
+			add_child(coin)
+			_sprite_positions.append(Vector2(px, jitter + ICON_PX * 0.5))
+			continue
 		var s := Sprite2D.new()
 		s.texture = load(str(slots[i]["path"]))
 		var tex: Texture2D = s.texture
@@ -73,9 +85,6 @@ func _build_ground_sprites() -> void:
 		# размера текстумы, иначе баночка была бы вдвое крупнее меча.
 		var k := ICON_PX / float(maxi(1, maxi(tex.get_width(), tex.get_height())))
 		s.scale = Vector2(k, k)
-		# Лёгкий разброс по вертикали, чтобы добыча не выглядела «линейкой».
-		var jitter := GROUND_Y + float((i % 2) * 2 - 1)
-		var px := start_x + float(i) * (ICON_PX + ICON_GAP)
 		s.position = Vector2(px, jitter)
 		s.z_index = 1
 		add_child(s)
@@ -88,6 +97,18 @@ func _build_ground_sprites() -> void:
 ## Позиции иконок — нужны для теней в _draw() (тень должна лежать под спрайтом,
 ## а не внутри него, иначе она ездит за иконкой вразнобой).
 var _sprite_positions: Array[Vector2] = []
+
+
+## Side of the world-space coin marker: sized like the other loot icons.
+const COIN_PX := 24.0
+
+
+## Gold coin on the ground: the swaying sprite of the quest reward.
+func make_ground_coin(px: float = COIN_PX) -> CoinAnim:
+	var c := CoinAnim.new()
+	c.name = "CoinAnim"
+	c.setup(px)
+	return c
 
 
 func _process(_delta: float) -> void:

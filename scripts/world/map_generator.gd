@@ -137,7 +137,7 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 # user:// остались бы без них.
 # 29: добавлена суккуб (10 видов). У неё `attack: 0` — фазы удара нет по
 # решению игрока, урон при этом наносится как у всех.
-const GEN_VERSION := 29
+const GEN_VERSION := 30
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -1026,9 +1026,9 @@ func _footprint_fits(tl: Vector2i, w: int, h: int, center: Vector2i) -> bool:
 				return false
 	return true
 
-## НПЦ города: стражи (первые 2 патрульные, остальные на постах), капитан,
-## глава города, жители у магазина/центра. Все стоят; патруль — только
-## первые 2 стража.
+## НПЦ города: стражи (первые 2 патрульные, остальные на постах — по краям
+## города, см. _guard_post_cell), капитан, глава города, жители у площади.
+## Все стоят; патруль — только первые 2 стража.
 ##
 ## Глава (22.10) — отдельный NPC ролью "head": у него квесты и маркер «!»
 ## (scripts/quest_marker.gd). Стоит у площади рядом с капитаном, но на кольце
@@ -1040,9 +1040,9 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i,
 		push_error("MapGenerator: нет CITY_POPULATION для расы '%s' - город останется без NPC" % race)
 		return
 	var posts_taken := {}
-	var guard_offsets: Array = [
-		Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2),
-		Vector2i(2, 2), Vector2i(-2, 2), Vector2i(2, -2), Vector2i(-2, -2),
+	var guard_rings: Array = [
+		Vector2i(city_radius(), city_radius() - 1),
+		Vector2i(city_radius() - 1, city_radius()),
 	]
 	var citizens_offsets: Array = [
 		Vector2i(3, 0), Vector2i(-3, 0), Vector2i(0, 3), Vector2i(0, -3),
@@ -1057,7 +1057,7 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i,
 	if GameConfig.geti("stress", "enabled") != 0:
 		guards_n = GameConfig.geti("stress", "city_guard_count")
 	for i in range(guards_n):
-		var post := _post_cell(center, guard_offsets, posts_taken)
+		var post := _guard_post_cell(center, guard_rings, i, guards_n, posts_taken)
 		if post.x < 0:
 			continue
 		var set_name: String = _pick(rng, pop["guards"])
@@ -1067,7 +1067,7 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i,
 			GameConfig.zonei(_zone, "guard_hp_min"), GameConfig.zonei(_zone, "guard_hp_max"))
 		var dmg := rng.randi_range(
 			GameConfig.zonei(_zone, "guard_damage_min"), GameConfig.zonei(_zone, "guard_damage_max"))
-		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg, city_id))
+		_npcs_out.append(_npc_rec(post, set_name, "guard", i < 2, hp, dmg, city_id, center))
 	# Капитан у площади — он же ВЕЛИКИЙ МАГ города (решение игрока 07.10),
 	# и маг СВОЕЙ расы (09.10): в орк-городе не должен стоятьdruид-маг.
 	var cap := _post_cell(center, [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)], posts_taken)
@@ -1075,6 +1075,9 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i,
 		var cap_rec := _npc_rec(cap, str(pop["captain"]), "guard", false,
 			GameConfig.zonei(_zone, "captain_hp"), GameConfig.zonei(_zone, "captain_damage"),
 			city_id)
+		# The captain keeps the square, the edge rule is about the ordinary guards.
+		cap_rec.erase("city_x")
+		cap_rec.erase("city_y")
 		cap_rec["archmage"] = true
 		_npcs_out.append(cap_rec)
 	# Глава города — квестодатель. Стоит у площади, набор своей расы.
@@ -1097,7 +1100,7 @@ func _place_city_npcs(rng: RandomNumberGenerator, center: Vector2i,
 			continue
 		var set_name: String = _pick(rng, pop["citizens"])
 		_npcs_out.append(_npc_rec(post, set_name, "citizen", false,
-			GameConfig.zonei(_zone, "citizen_hp"), 0, city_id))
+			GameConfig.zonei(_zone, "citizen_hp"), 0, city_id, center))
 
 ## id города для квестов: "c<индекс>t<раса-в-списке>". Индекс — порядок
 ## города в генераторе; суффикс t0.. повторяет расу из CITY_RACES.
@@ -1172,15 +1175,74 @@ func _post_cell(center: Vector2i, offsets: Array, taken: Dictionary) -> Vector2i
 		return c
 	return Vector2i(-1, -1)
 
+## Пост стражи на ВНЕШНЕМ кольце города. Стража стоит по краю (решение
+## игрока 22.10: в центре её было слишком много и она путалась под ногами),
+## а площадь остаётся капитану, главе и жителям. Кандидаты — клетки
+## внутреннего и внешнего кольца овала в порядке обхода по кругу со сдвигом,
+## равномерно по периметру; первым берётся ближайший к выезду (оси N/S/E/W).
+func _guard_post_cell(center: Vector2i, rings: Array, index: int, total: int,
+		taken: Dictionary) -> Vector2i:
+	var cands: Array[Vector2i] = []
+	for ring in rings:
+		var rx := int((ring as Vector2i).x)
+		var ry := int((ring as Vector2i).y)
+		for dy in range(-ry, ry + 1):
+			for dx in range(-rx, rx + 1):
+				var fx := float(dx) / float(maxi(1, rx))
+				var fy := float(dy) / float(maxi(1, ry))
+				if fx * fx + fy * fy > 1.0:
+					continue
+				if absi(dx) < rx - 1 and absi(dy) < ry - 1:
+					continue
+				var c := center + Vector2i(dx, dy)
+				if cands.has(c):
+					continue
+				cands.append(c)
+	if cands.is_empty():
+		return _post_cell(center, [Vector2i(2, 0), Vector2i(-2, 0)], taken)
+	var step := maxi(1, cands.size() / maxi(1, total))
+	for i in range(cands.size()):
+		var c: Vector2i = cands[(index * step + i) % cands.size()]
+		if _guard_post_free(c, center, taken):
+			taken[c] = true
+			return c
+	for c2 in cands:
+		var cc: Vector2i = c2
+		if _guard_post_free(cc, center, taken):
+			taken[cc] = true
+			return cc
+	return Vector2i(-1, -1)
+
+
+## Клетка годится под пост стражи: дорога города, свободна от зданий/декора,
+## не спавн и не портал, не занята другим NPC и не на площади.
+func _guard_post_free(c: Vector2i, center: Vector2i, taken: Dictionary) -> bool:
+	if c.x < 1 or c.y < 1 or c.x >= W - 1 or c.y >= H - 1:
+		return false
+	if _terrain[c.y * W + c.x] != 3:
+		return false
+	if _reserved.has(c) or taken.has(c):
+		return false
+	if c == _spawn_pos or c == _portal_pos:
+		return false
+	return maxi(absi(c.x - center.x), absi(c.y - center.y)) > 2
+
+
 func _npc_rec(post: Vector2i, set_name: String, role: String, patrol: bool,
-		hp: int, dmg: int, city_id: String = "") -> Dictionary:
-	return {
+		hp: int, dmg: int, city_id: String = "",
+		center: Vector2i = Vector2i(-1, -1)) -> Dictionary:
+	var rec := {
 		"x": post.x, "y": post.y, "set": set_name,
 		"role": role, "patrol": patrol,
 		"post": [post.x, post.y],
 		"hp_max": hp, "damage": dmg,
 		"city_id": city_id,
 	}
+	if center.x >= 0 and center.y >= 0:
+		# Town centre: lets the town tests place the guards by distance to it.
+		rec["city_x"] = center.x
+		rec["city_y"] = center.y
+	return rec
 
 ## Этап 8: точки интереса ВНЕ городов.
 ##

@@ -14,6 +14,7 @@ signal inventory_changed
 const EQUIP_SLOT_SIZE := Vector2(54, 54)
 const INV_SLOT := 62
 const INV_GAP := 4
+const GOLD_COIN_SIZE := 20.0
 
 var player: Player
 var _root: MarginContainer
@@ -27,6 +28,13 @@ var _inventory_slots: Array = []
 var _inventory_items: Array = []
 var _hover_card: PanelContainer = null
 var _gold_label: Label
+var _gold_coin: TextureRect = null
+var _gold_frame := 0
+var _gold_anim_t := 0.0
+## Essence icons in the bag: they share one slow sway with the header coin.
+var _essence_icons: Array[TextureRect] = []
+var _essence_frame := 0
+var _essence_t := 0.0
 var _inventory_grid: GridContainer
 var _inventory_scroll: ScrollContainer
 var _stats_box: VBoxContainer
@@ -75,12 +83,49 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_tick_gold_coin(delta)
+	_tick_essence_icons(delta)
 	# Щит/haste живут по времени — обновляем статы, пока окно открыто.
 	_stats_refresh_t += delta
 	if _stats_refresh_t < 0.5:
 		return
 	_stats_refresh_t = 0.0
 	_refresh_stats()
+
+
+## Essence icons of the open bag sway in phase; the list is rebuilt with the grid.
+func _tick_essence_icons(delta: float) -> void:
+	if _essence_icons.is_empty():
+		return
+	_essence_icons = _essence_icons.filter(
+		func(n): return is_instance_valid(n) and n.is_inside_tree())
+	if _essence_icons.is_empty():
+		return
+	var step := EssenceIcons.tick_frame(delta, _essence_t, _essence_frame)
+	_essence_t = float(step["t"])
+	var next := int(step["frame"])
+	if next == _essence_frame:
+		return
+	_essence_frame = next
+	var frames := EssenceIcons.frames()
+	if frames.is_empty():
+		return
+	for icon in _essence_icons:
+		icon.texture = frames[_essence_frame % frames.size()]
+
+
+## Animated gold coin in the header: the same swaying sprite as a quest reward.
+func _tick_gold_coin(delta: float) -> void:
+	if _gold_coin == null or not is_instance_valid(_gold_coin):
+		return
+	_gold_anim_t += delta
+	if _gold_anim_t < QuestIcons.COIN_FRAME_TIME:
+		return
+	_gold_anim_t = 0.0
+	_gold_frame = (_gold_frame + 1) % QuestIcons.COIN_FRAMES
+	var tex := QuestIcons.coin_frame(_gold_frame)
+	if tex != null:
+		_gold_coin.texture = tex
 
 
 func _exit_tree() -> void:
@@ -189,10 +234,21 @@ func _build_ui() -> void:
 	title.text = tr("ИНВЕНТАРЬ")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	_gold_coin = TextureRect.new()
+	_gold_coin.name = "GoldCoin"
+	_gold_coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_gold_coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_gold_coin.custom_minimum_size = Vector2(GOLD_COIN_SIZE, GOLD_COIN_SIZE)
+	_gold_coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_gold_coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_gold_coin.tooltip_text = tr("Золото")
+	_gold_coin.texture = QuestIcons.coin_frame(_gold_frame)
+	header.add_child(_gold_coin)
 	_gold_label = Label.new()
 	_gold_label.name = "Gold"
 	_gold_label.theme_type_variation = &"InvGoldLabel"
 	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_gold_label.tooltip_text = tr("Золото")
 	header.add_child(_gold_label)
 	var close_btn := Button.new()
 	close_btn.name = "Close"
@@ -329,7 +385,6 @@ func _make_equip_slot(slot: String) -> Control:
 	panel.theme_type_variation = &"EquipSlot"
 	panel.custom_minimum_size = EQUIP_SLOT_SIZE
 	panel.focus_mode = Control.FOCUS_ALL
-	panel.tooltip_text = ItemDB.slot_title(slot)
 	var icon := TextureRect.new()
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -390,6 +445,8 @@ func _set_slot_highlight(slot: String) -> void:
 
 
 func _item_matches_slot(item: Dictionary) -> bool:
+	if not ItemDB.allows_class(item, Game.hero_class):
+		return false
 	if _highlight_slot == "":
 		return true
 	return ItemDB.fits_slot(item, _highlight_slot)
@@ -672,6 +729,7 @@ func _refresh_inventory_grid() -> void:
 			s.queue_free()
 	_inventory_slots.clear()
 	_inventory_items.clear()
+	_essence_icons.clear()
 
 	if not is_instance_valid(player):
 		return
@@ -695,7 +753,7 @@ func _refresh_inventory_grid() -> void:
 		_inventory_grid.add_child(lab)
 
 	if _gold_label != null and is_instance_valid(player):
-		_gold_label.text = tr("Золото: %d") % player.gold
+		_gold_label.text = "%d" % player.gold
 
 
 func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
@@ -705,7 +763,8 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 	slot.mouse_filter = Control.MOUSE_FILTER_STOP
 	_attach_item_card(slot, item)
 
-	if _highlight_slot != "" and not _item_matches_slot(item):
+	# Gear of the other class is dimmed: the card explains why it cannot be worn.
+	if not _item_matches_slot(item):
 		slot.modulate = Color(1, 1, 1, 0.30)
 
 	_inventory_grid.add_child(slot)
@@ -713,6 +772,9 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 	_inventory_items.append(item)
 
 	var icon_path := str(item.get("icon", ""))
+	var is_essence := str(item.get("quality", "")) == "Essence" and EssenceIcons.has_anim()
+	if is_essence:
+		icon_path = EssenceIcons.icon()
 	if icon_path != "":
 		var tex = load(icon_path)
 		if tex:
@@ -728,6 +790,10 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			# Свечение уровня крафтовой вещи (обычная - без материала).
 			CraftVFX.apply_to_icon(icon_rect, CraftVFX.tier_of_item(item))
+			if is_essence:
+				icon_rect.name = "EssenceIcon"
+				icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+				_essence_icons.append(icon_rect)
 			slot.add_child(icon_rect)
 
 	if count > 1:
@@ -827,8 +893,11 @@ func _on_item_clicked(item: Dictionary) -> void:
 			inventory_changed.emit()
 		return
 
-	var slot := str(item.get("slot", ""))
+	var slot := ItemDB.slot_of(item)
 	if slot == "shield" and player.two_handed:
+		var dish := ItemDB.find(str(player.equipped.get("weapon", "")))
+		var dish_name := str(dish.get("name_ru", ""))
+		_flash_equip_error("Нужна свободная рука: снимите %s." % dish_name)
 		return
 	if player.equip_item(item):
 		_set_slot_highlight("")
@@ -837,7 +906,19 @@ func _on_item_clicked(item: Dictionary) -> void:
 		_refresh_stats()
 		inventory_changed.emit()
 	else:
+		var why := ItemDB.class_block_text(item, Game.hero_class)
+		if why != "":
+			_flash_equip_error(why)
 		_refresh_inventory_grid()
+
+
+## Message above the HUD when a piece of gear refuses to go on.
+func _flash_equip_error(msg: String) -> void:
+	var ui_host := _ui_host()
+	if ui_host != null and ui_host.has_method("_flash_targeting_error"):
+		ui_host.call("_flash_targeting_error", msg)
+	else:
+		print(msg)
 
 
 # ─────────────────────── Hover cards ───────────────────────
@@ -890,6 +971,9 @@ func _item_card_lines(item: Dictionary) -> Array:
 	if not stats.is_empty():
 		lines.append(" · ".join(stats))
 	lines.append("Вес %.1f · Цена %d" % [float(item.get("weight", 0.0)), int(item.get("price", 0))])
+	var block := ItemDB.class_block_text(item, Game.hero_class)
+	if block != "":
+		lines.append("✖ " + block)
 	return lines
 
 
@@ -897,6 +981,8 @@ func _attach_item_card(cell: Control, item: Dictionary) -> void:
 	if not is_instance_valid(cell) or item.is_empty():
 		return
 	var icon_path := str(item.get("icon", ""))
+	if str(item.get("quality", "")) == "Essence" and EssenceIcons.has_anim():
+		icon_path = EssenceIcons.icon()
 	var qcolor := UiKit.quality_color(str(item.get("quality", "")))
 	var tier := CraftVFX.tier_of_item(item)
 	var hover_key := str(item.get("key", ""))
@@ -944,18 +1030,21 @@ func _attach_slot_card(cell: Control, slot: String) -> void:
 func _show_slot_card(cell: Control, slot: String) -> void:
 	if not is_instance_valid(player):
 		return
+	if _hover_card == null:
+		_hover_card = _ensure_card()
 	var key := str(player.equipped.get(slot, ""))
 	if key == "":
-		_hide_slot_card()
+		# Empty slot: the card tells what kind of gear goes here for this class.
+		var hint: Array = [ItemDB.slot_title(slot),
+			"Сюда одевается: " + ItemDB.slot_fits_text(slot, Game.hero_class)]
+		UiKit.show_hover_card(_hover_card, hint, _hover_at(cell), _hover_bounds())
 		return
 	var it := ItemDB.find(key)
 	if it.is_empty():
 		_hide_slot_card()
 		return
-	if _hover_card == null:
-		_hover_card = _ensure_card()
 	var lines: Array = _item_card_lines(it)
-	lines.append(tr("Слот: %s (клик — снять)") % ItemDB.slot_title(slot))
+	lines.append("Слот: %s (клик — снять)" % ItemDB.slot_title(slot))
 	var icon_path := str(it.get("icon", ""))
 	var qcolor := UiKit.quality_color(str(it.get("quality", "")))
 	UiKit.show_hover_card(_hover_card, lines, _hover_at(cell), _hover_bounds(),

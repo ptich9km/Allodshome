@@ -174,12 +174,52 @@ func _test_structure(panel: WorkshopPanel) -> void:
 				master_has_upgrade = true
 		_check(master_has_upgrade,
 			"мастер видит крафтовую вещь для улучшения (%d элементов)" % master_items.size())
-	# Полка инвентаря есть и заполнена.
+		_test_essence_row(master)
+	# Shop shelf: present and filled.
 	var inv_grid := _find_named(panel, "InvShelf")
 	_check(inv_grid != null, "полка инвентаря мастерской есть")
 	if inv_grid is GridContainer:
 		_check((inv_grid as GridContainer).get_child_count() > 0,
 			"полка инвентаря не пуста")
+
+
+## The essence row of the upgrade cost has an icon (the animated essence art or
+## the item icon while the art is missing) and shows up even on the Fine step,
+## where the cost is 0 (player complaint 22.10).
+func _test_essence_row(master: CraftTab) -> void:
+	var items: Array = master.call("_items")
+	var index := -1
+	for i in items.size():
+		var e: Dictionary = items[i]
+		if str(e.get("mode", "")) != master.RECYCLE_ID \
+				or str(e.get("upgrade", "")).is_empty():
+			continue
+		if index < 0:
+			index = i
+		# Prefer the Fine step: there the cost is 0 and the row used to vanish.
+		if CraftDB.next_tier(e["item"]) == CraftDB.TIER_MASTER:
+			index = i
+			break
+	if index < 0:
+		return
+	master.set("_selected", index)
+	master.call("_build_detail", items[index])
+	var row: Node = _find_named(master, "CostRow_Magic_Essence")
+	_check(row != null, "строка эссенции в стоимости улучшения есть всегда")
+	if row == null:
+		return
+	var icon: TextureRect = null
+	for c in row.find_children("EssenceIcon", "TextureRect", true, false):
+		icon = c as TextureRect
+		break
+	_check(icon != null and icon.texture != null, "у эссенции в крафте есть иконка")
+	_check(EssenceIcons.icon() != "", "иконка эссенции находится (%s)" % EssenceIcons.icon().get_file())
+	_check(EssenceIcons.has_anim(),
+		"у эссенции 4 кадра анимации (%d)" % EssenceIcons.frames().size())
+	if icon == null:
+		return
+	_check(icon.texture.resource_path.ends_with("essence-000.png"),
+		"иконка в крафте — кадр анимированного арта (%s)" % icon.texture.resource_path.get_file())
 
 
 func _find_named(node: Node, name_: String) -> Node:

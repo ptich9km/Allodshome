@@ -533,8 +533,6 @@ static func request_map_by_path(path: String) -> void:
 
 const PLAYER_SPEED: float = 120.0
 const ATTACK_RANGE: float = 40.0
-const AGGRO_RADIUS: float = 150.0
-const DEAGGRO_RADIUS: float = 200.0
 
 const POSTFX_SHADER := """shader_type canvas_item;
 render_mode unshaded, blend_mix;
