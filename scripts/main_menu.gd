@@ -59,6 +59,8 @@ var _fit_root: Control
 
 func _ready() -> void:
 	Loc.load_locale()
+	# Тематический анимированный курсор вместо системной стрелки.
+	add_child(load("res://scripts/cursor_layer.gd").new())
 	_setup_backdrop()
 	_setup_ui_layer()
 	# Тема назначается ПОСЛЕ создания слоя: она должна лежать на Control

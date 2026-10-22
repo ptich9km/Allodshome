@@ -1,0 +1,10 @@
+{
+  "variant": "work",
+  "canvas": 32,
+  "frames": 4,
+  "hotspot": [
+    16,
+    16
+  ],
+  "source": "import\\Cursor\\cursor_work.png"
+}

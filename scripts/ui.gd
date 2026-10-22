@@ -448,13 +448,10 @@ func _refresh_auto_status() -> void:
 		parts.append("бафф: %s → %s" % [Game.auto_buff_tier, Game.auto_buff_targets])
 	lab.text = "Авто: " + (" · ".join(parts) if parts.size() > 0 else "нет (ПКМ по заклинанию)")
 
-# --- Прицеливание (свиток МАГА или заклинание книги): курсор cast/ ---
+# --- Прицеливание (свиток МАГА или заклинание книги) ---
+# Курсор-прицел рисует scripts/cursor_layer.gd (вариант cast) по состоянию
+# Game.pending_spell / Game.pending_scroll; системный курсор прячет он же.
 
-var _cast_cursor: Sprite2D = null
-var _cast_frames: Array = []
-var _cast_frame_t := 0.0
-var _cast_frame_i := 0
-var _invisible_tex: ImageTexture = null
 var _scroll_hint: Label = null
 var _error_hint_timer: SceneTreeTimer = null
 
@@ -468,8 +465,6 @@ func _begin_spell_targeting(name: String) -> void:
 	Game._spell_targeting_frame = Engine.get_process_frames()
 	spells_visible = false              # книга закрывается, остаётся курсор-прицел
 	_update_bottom_panel_visibility()
-	_ensure_cast_cursor()
-	_hide_os_cursor()
 	_update_targeting_hint(name, true)
 	SoundDB.play(7)  # ibook
 
@@ -532,8 +527,6 @@ func _begin_scroll_targeting(item_key: String) -> void:
 	if spell == "" or not is_instance_valid(player):
 		return
 	Game.pending_scroll = {"spell": spell, "item_key": item_key}
-	_ensure_cast_cursor()
-	_hide_os_cursor()
 	_update_targeting_hint(spell, true)
 	SoundDB.play(7)  # ibook
 
@@ -551,49 +544,8 @@ func _cancel_targeting() -> void:
 	Game.pending_scroll = {}
 	Game.pending_spell = {}
 	Game._spell_targeting_frame = -1
-	_restore_os_cursor()
-	if _cast_cursor != null and is_instance_valid(_cast_cursor):
-		_cast_cursor.visible = false
 	if _scroll_hint != null and is_instance_valid(_scroll_hint):
 		_scroll_hint.visible = false
-
-func _ensure_cast_cursor() -> void:
-	if _cast_cursor != null and is_instance_valid(_cast_cursor):
-		return
-	_cast_cursor = Sprite2D.new()
-	_cast_cursor.name = "CastCursor"
-	_cast_cursor.visible = false
-	add_child(_cast_cursor)
-	var dir := DirAccess.open("res://assets/cursors/cast")
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var names: Array = []
-	var fn := dir.get_next()
-	while fn != "":
-		if fn.begins_with("sprites-") and fn.ends_with(".png"):
-			names.append(fn)
-		fn = dir.get_next()
-	dir.list_dir_end()
-	names.sort()
-	_cast_frames.clear()
-	for nm in names:
-		var tex: Variant = load("res://assets/cursors/cast/" + nm)
-		if tex != null:
-			_cast_frames.append(tex)
-	_cast_frame_t = 0.0
-	_cast_frame_i = 0
-
-## Скрыть системный курсор: рисуем свой (анимированный) поверх.
-func _hide_os_cursor() -> void:
-	if _invisible_tex == null:
-		var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
-		img.set_pixel(0, 0, Color(0, 0, 0, 0))
-		_invisible_tex = ImageTexture.create_from_image(img)
-	Input.set_custom_mouse_cursor(_invisible_tex, Input.CURSOR_ARROW, Vector2.ZERO)
-
-func _restore_os_cursor() -> void:
-	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
 
 ## Подсказка над нижними панелями: что применить выбранным свитком/заклинанием
 ## и как отменить/назначить быструю клавишу (как у разработчиков).
@@ -1360,21 +1312,6 @@ func _process(_delta):
 	else:
 		pause_label.visible = false
 
-	# Анимированный курсор-прицел (свиток или заклинание книги) следует за мышью
-	if (not Game.pending_scroll.is_empty() or not Game.pending_spell.is_empty()) and _cast_cursor != null:
-		_cast_cursor.global_position = get_viewport().get_mouse_position()
-		if _cast_frames.size() > 0:
-			_cast_frame_t += _delta
-			if _cast_frame_t >= 0.06:
-				_cast_frame_t = 0.0
-				_cast_frame_i = (_cast_frame_i + 1) % _cast_frames.size()
-				_cast_cursor.texture = _cast_frames[_cast_frame_i]
-			if _cast_cursor.texture == null:
-				_cast_cursor.texture = _cast_frames[0]
-		_cast_cursor.visible = true
-	else:
-		if _cast_cursor != null and is_instance_valid(_cast_cursor):
-			_cast_cursor.visible = false
 	# Обратный отсчёт кулдаунов в книге магии. Раньше кулдаун был только в
 	# тултипе, и игрок спамил клавиши, не понимая, почему заклинание не
 	# срабатывает. Обновляем каждый кадр, но только когда что-то изменилось:
@@ -1501,6 +1438,7 @@ func _clamp_to_walkable(from: Vector2) -> Vector2:
 
 ## Общий обработчик закрытия любой панели: показать героя у здания.
 func _on_panel_closed() -> void:
+	Game.cursor_context = ""   # курсор обратно обычный
 	_shop = null
 	_alchemy = null
 	_school = null
@@ -1543,6 +1481,7 @@ func open_shop() -> void:
 	if _shop != null and is_instance_valid(_shop):
 		return
 	_enter_interior()
+	Game.cursor_context = "buy"   # курсор-монета с кошельком
 	_shop = ShopPanel.new()
 	_shop.setup(player)
 	_shop.closed.connect(_on_panel_closed)
@@ -1598,6 +1537,7 @@ func open_workshop() -> void:
 	if _workshop != null and is_instance_valid(_workshop):
 		return
 	_enter_interior()
+	Game.cursor_context = "work"  # курсор-молот
 	_workshop = WorkshopPanel.new()
 	_workshop.setup(player)
 	_workshop.closed.connect(_on_panel_closed)

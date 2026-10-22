@@ -58,6 +58,10 @@ static var _trauma_t: float = 0.0
 static var action_mode: String = "none"  # none, follow, attack, guard
 static var action_target: Node2D = null
 static var pending_scroll: Dictionary = {}   # прицеливание свитка: {"spell","item_key"}
+## Контекст для тематического курсора (cursor_layer.gd):
+## "" — обычный, "cast" — прицел (по pending_*), "buy" — магазин,
+## "work" — мастерская. Ставится в ui.gd open_shop/open_workshop.
+static var cursor_context: String = ""
 static var pending_spell: Dictionary = {}    # выбор заклинания из книги: {"name"}
 static var hotbar: Dictionary = {}           # быстрый вызов: слот 0..8 (клавиши 1..9) -> имя заклинания
 ## Авто-каст мага (пакет C, 07.10): ПКМ по заклинанию в книге.
@@ -659,6 +663,9 @@ func _setup_post_pass() -> void:
 
 func _ready():  # Инициализация мира и боя
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
+
+	# Тематический анимированный курсор (обычный + прицел, см. cursor_layer.gd).
+	add_child(load("res://scripts/cursor_layer.gd").new())
 
 	# С 21.10: физическая интерполяция проекта (physics/common) заставляет
 	# Camera2D переключаться на physics-процесс и печатать WARNING, если

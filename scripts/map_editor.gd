@@ -42,6 +42,8 @@ var _inspect_msg := ""           # сообщение инспектора (де
 
 
 func _ready() -> void:
+	# Тематический анимированный курсор вместо системной стрелки.
+	add_child(load("res://scripts/cursor_layer.gd").new())
 	camera = Camera2D.new()
 	camera.zoom = Vector2(1, 1)
 	# Камера редактора двигается в _process (idle): при включённой physics-

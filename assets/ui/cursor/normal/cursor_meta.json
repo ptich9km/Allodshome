@@ -1,0 +1,10 @@
+{
+  "variant": "normal",
+  "canvas": 32,
+  "frames": 4,
+  "hotspot": [
+    1,
+    1
+  ],
+  "source": "import\\Cursor\\cursor_normal.png"
+}

@@ -113,6 +113,8 @@ const STAT_TITLES := {
 }
 
 func _ready():
+	# Тематический анимированный курсор вместо системной стрелки.
+	add_child(load("res://scripts/cursor_layer.gd").new())
 	_rebuild_characters()
 	_apply_theme()
 	_setup_background()
