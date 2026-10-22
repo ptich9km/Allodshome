@@ -6,16 +6,24 @@ extends RefCounted
 ## project.godot это approval gate (AGENTS §9.4), а оно тут не нужно:
 ## все методы статические, состояния у класса нет.
 ##
-## Формат: один JSON на слот, user://saves/. Версия в поле "version";
-## загрузка файла новее CURRENT отклоняется целиком, а не «читается как
-## есть» — иначе битые/чужие данные молча портят игровое состояние.
+## Формат (решение игрока 22.10): КАЖДЫЙ слот — своя папка
+## `user://saves/<слот>/` с тремя элементами прогресса:
+##   hero.json    — герой: класс, статы, HP/мана, золото, склад, экипировка,
+##                  навыки, позиция;
+##   map.json     — карта: зона, сид, туман, плюс файлы мира текущей карты
+##                  (`*.alm`, `.npcs.json`, `.structures.json`, `.herbs.json`,
+##                  `.portal.json`, `.spawn.json`, `.nowalk.json`,
+##                  `.allowwalk.json`) — карта ложится в сохранение байт-в-байт,
+##                  поэтому после перезапуска игры это та же самая карта;
+##   process.json — прогресс: мир SIM, события, квесты, метаданные слота
+##                  (имя, класс, уровень, день, время записи).
+## Каждый элемент пишется атомарно (.tmp → flush → rename), прежние версии
+## файлов уходят в `.bak`. При удалении игроком папка становится пустой:
+## остаются только эти три файла, пустые по содержимому.
 ##
-## Атомарность (save-systems): запись идёт в .tmp → flush → переименование.
-## На Windows rename поверх существующего файла ненадёжен, поэтому порядок
-## такой: сначала текущий файл уходит в .bak, потом .tmp становится
-## основным. В любой момент на диске лежит либо целый старый файл, либо
-## целый новый, а .bak страхует битую запись. При откате .bak копируется
-## обратно, поэтому следующая запись снова имеет предыдущую версию.
+## Версия в `version` внутри каждого элемента; элемент новее текущего
+## отклоняется целиком, а не «читается как есть» — иначе битые/чужие данные
+## молча портят игровое состояние.
 
 const DIR := "user://saves/"
 const VERSION := 1
@@ -27,6 +35,25 @@ const VERSION := 1
 ## пока не закроешь игру» — тест перетирал их при закрытии окна).
 ## Тесты и инструменты пишут только в `TEST_DIR` (см. `use_test_dir()`).
 static var _dir := DIR
+
+## Элементы сохранения внутри папки слота.
+const HERO_FILE := "hero.json"
+const MAP_FILE := "map.json"
+const PROCESS_FILE := "process.json"
+const PARTS := [HERO_FILE, MAP_FILE, PROCESS_FILE]
+## Снимок ПРЕДЫДУЩЕГО сохранения слота, взятый ДО перезаписи: полный документ
+## того же вида, что отдаёт `load_slot()` (`{version, meta, data: {hero,
+## map, world, events, quests}}`). Поэлементные `.bak` держат прежние версии
+## отдельных файлов и мир в них разорван по трём элементам — восстановить
+## «предыдущее сохранение» из них можно только склейкой. Снимок целый и
+## пишется файлом, чтобы его мог прочитать и тест, и рука игрока.
+const PREV_FILE := "previous.json"
+## Файлы мира текущей карты: `.alm` и sidecar-ы, которые читает AlmMap
+## (строки/НПЦ/травы/портал/спавн/разметка проходимости).
+const WORLD_SUFFIXES := [
+	".alm", ".npcs.json", ".structures.json", ".herbs.json",
+	".portal.json", ".spawn.json", ".nowalk.json", ".allowwalk.json",
+]
 
 
 ## Переключить хранение слотов на тестовый каталог. Вызывается ТОЛЬКО
@@ -51,105 +78,336 @@ static func ensure_dir() -> void:
 	DirAccess.make_dir_recursive_absolute(_dir)
 
 
+## Папка слота: внутри неё лежат hero.json / map.json / process.json и файлы
+## мира текущей карты.
+static func slot_dir(slot: String) -> String:
+	return _dir + slot + "/"
+
+
+# --- Пути ---
+
+static func part_path(slot: String, part: String) -> String:
+	return slot_dir(slot) + part
+
+
+## Главный файл слота (герой). Прежнее имя одиночного файла сохранения.
 static func slot_path(slot: String) -> String:
-	return _dir + slot + ".json"
+	return part_path(slot, HERO_FILE)
 
 
 static func tmp_path(slot: String) -> String:
-	return _dir + slot + ".json.tmp"
+	return part_path(slot, "hero.json.tmp")
 
 
 static func bak_path(slot: String) -> String:
-	return _dir + slot + ".json.bak"
+	return bak_of(part_path(slot, HERO_FILE))
+
+
+static func prev_path(slot: String) -> String:
+	return part_path(slot, PREV_FILE)
+
+
+static func bak_of(path: String) -> String:
+	return path + ".bak"
 
 
 # --- Запись ---
 
+## Плоский payload старого формата (весь прогресс в одном блоке `data`, без
+## `quests`/`world`) — так писали до 22.10 и так пишут инструменты, которым
+## нужен только герой. Такой payload раскладывается по трём элементам
+## обычным путём: отдельного «старое-карта» в слоте не остаётся.
+static func _is_flat_payload(payload: Dictionary) -> bool:
+	return not (payload.get("quests", null) is Dictionary) \
+		and not (payload.get("world", null) is Dictionary)
+
+
 ## Записать слот. payload — словарь v1 (см. build_payload). Возвращает
 ## сообщение об ошибке или "" при успехе.
+##
+## Порядок: герой → прогресс → карта. Если запись карты упадёт (нет места на
+## диске), в слоте останутся прежние карта и туман, а не полуновое состояние.
 static func save(slot: String, payload: Dictionary) -> String:
-	ensure_dir()
-	var doc := {
-		"version": VERSION,
-		"meta": payload.get("meta", {}),
-		"data": JsonSafe.encode(payload),
-	}
-	var text := JSON.stringify(doc)
-	# 1. Пишем во временный файл и flush'им: без flush данные могут остаться
-	#    в буфере ОС и потеряться при вылете.
-	var f := FileAccess.open(tmp_path(slot), FileAccess.WRITE)
-	if f == null:
-		return "не удалось открыть %s для записи (код %d)" % [tmp_path(slot), FileAccess.get_open_error()]
-	f.store_string(text)
-	f.flush()
-	f.close()
-	# 2. Старый файл -> .bak (старый .bak предварительно убираем).
-	if FileAccess.file_exists(slot_path(slot)):
-		if FileAccess.file_exists(bak_path(slot)):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(bak_path(slot)))
-		var err := DirAccess.rename_absolute(
-			ProjectSettings.globalize_path(slot_path(slot)),
-			ProjectSettings.globalize_path(bak_path(slot)))
-		if err != OK:
-			return "не удалось сделать .bak: %d" % err
-	# 3. .tmp -> основной файл.
-	var err2 := DirAccess.rename_absolute(
-		ProjectSettings.globalize_path(tmp_path(slot)),
-		ProjectSettings.globalize_path(slot_path(slot)))
-	if err2 != OK:
-		return "не удалось переименовать .tmp: %d" % err2
-	# 4. Проверяем, что записанное читается. Если файл побился — откат.
-	if not _reads_ok(slot_path(slot)):
-		restore_from_backup(slot)
-		return "записанный файл не читается, выполнен откат на .bak"
+	if not (payload.get("hero", null) is Dictionary) \
+			or not (payload.get("map", null) is Dictionary):
+		return "сохранение без блоков hero/map"
+	if _is_flat_payload(payload):
+		payload = payload.duplicate()
+		payload["world"] = {"day": int((payload.get("meta", {}) as Dictionary).get("day", 0))}
+		payload["events"] = []
+		payload["quests"] = {}
+	DirAccess.make_dir_recursive_absolute(slot_dir(slot))
+	# Снимок прежнего состояния — ДО первой перезаписи элементов.
+	_snapshot_previous(slot)
+	var meta: Dictionary = payload.get("meta", {})
+	var err := _write_part(slot, HERO_FILE, {"version": VERSION, "meta": meta,
+		"data": JsonSafe.encode(payload.get("hero", {}))})
+	if err != "":
+		return err
+	err = _write_part(slot, PROCESS_FILE, {"version": VERSION, "meta": meta,
+		"data": JsonSafe.encode({
+			"world": payload.get("world", {}),
+			"events": payload.get("events", []),
+			"quests": payload.get("quests", {}),
+			"version": payload.get("version", VERSION),
+		})})
+	if err != "":
+		return err
+	return _save_map(slot, payload)
+
+
+## Карта: описание в map.json и файлы мира рядом с ним (байт-в-байт).
+static func _save_map(slot: String, payload: Dictionary) -> String:
+	var map_info: Dictionary = payload.get("map", {})
+	var err := _write_part(slot, MAP_FILE, {"version": VERSION,
+		"meta": payload.get("meta", {}), "data": JsonSafe.encode(map_info)})
+	if err != "":
+		return err
+	var map_path := str(map_info.get("path", ""))
+	if map_path == "" or not FileAccess.file_exists(map_path):
+		return ""
+	return _mirror_world_files(slot, map_path, str(map_info.get("basename", "")))
+
+
+## Скопировать файлы мира (`.alm` + sidecar-ы) из каталога карты в папку
+## слота под стабильным именем `<basename>.…`; basename записан в map.json.
+static func _mirror_world_files(slot: String, map_path: String, basename: String) -> String:
+	var src_dir := map_path.get_base_dir()
+	var src_base := map_path.get_file().get_basename()
+	var dst_base := basename if basename != "" else src_base
+	var dst_dir := slot_dir(slot)
+	var copied := 0
+	for raw_suffix in WORLD_SUFFIXES:
+		var src: String = src_dir + "/" + src_base + str(raw_suffix)
+		if not FileAccess.file_exists(src):
+			continue
+		var dst: String = dst_dir + dst_base + str(raw_suffix)
+		if not _atomic_copy(src, dst):
+			return "не удалось записать карту %s" % dst.get_file()
+		copied += 1
+	if copied == 0:
+		return "файлы карты не найдены рядом с .alm (%s)" % src_dir
 	return ""
-
-
-static func _reads_ok(path: String) -> bool:
-	if not FileAccess.file_exists(path):
-		return false
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return false
-	var text := f.get_as_text()
-	f.close()
-	var j := JSON.new()
-	return j.parse(text) == OK and j.data is Dictionary
 
 
 # --- Чтение ---
 
-## Прочитать слот. Пустая строка — читать нечего. "version" — файл новее
-## текущего кода. "corrupt" — файл есть, но не читается и .bak не помог.
+## Положить текущее сохранение слота (если оно есть) в `previous.json`.
+## Снимок — то же, что отдаёт `load_slot()`; если слот битый или пустой,
+## снимок не трогаем: лучше старое целое, чем пустое.
+static func _snapshot_previous(slot: String) -> void:
+	var current := load_slot(slot)
+	if current.is_empty() or current.has("error"):
+		return
+	# Снимок перезаписывать НЕЛЬЗЯ, если текущее сохранение читается ТОЛЬКО
+	# из `previous.json` (все элементы сломаны): иначе он перетрётся
+	# зеркалом того же снимка и слот станет невосстановимым.
+	if not _parts_readable(slot):
+		return
+	_write_raw(prev_path(slot), JSON.stringify(JsonSafe.encode({
+		"version": int((current.get("data", {}) as Dictionary).get("version", VERSION)),
+		"meta": current.get("meta", {}),
+		"data": current.get("data", {}),
+	})))
+
+
+## Оба главных элемента слота читаются сами по себе (без снимка).
+static func _parts_readable(slot: String) -> bool:
+	for part in [HERO_FILE, PROCESS_FILE]:
+		var doc := _read_doc(part_path(slot, part))
+		if doc.is_empty() or not (doc.get("data", null) is Dictionary):
+			return false
+	return true
+
+
+## Прочитать слот. Пустой словарь — читать нечего. "version" — элемент
+## новее текущего кода. "corrupt" — файл есть, но не читается, .bak не
+## помог и снимка прежнего сохранения нет.
+## data — сводка v1 (hero/map/world/events/quests), meta — метаданные слота.
 static func load_slot(slot: String) -> Dictionary:
-	var doc := _read_doc(slot_path(slot))
-	if doc.is_empty():
-		# Основной файл не читается. Если .bak есть и читается - чиним
-		# основной файл молча. Раньше условие стояло наоборот, и живой .bak
-		# приводил к "corrupt" вместо восстановления.
-		var backup := _read_doc(bak_path(slot))
-		if backup.is_empty():
-			return {} if not FileAccess.file_exists(slot_path(slot)) else {"error": "corrupt"}
-		_write_raw(slot_path(slot), FileAccess.get_file_as_string(bak_path(slot)))
-		doc = backup
-	return _unwrap(doc, slot)
-
-
-static func _unwrap(doc: Dictionary, slot: String) -> Dictionary:
-	var version := int(doc.get("version", -1))
-	if version < 0:
-		return {"error": "corrupt"}
-	if version > VERSION:
-		# Отказ целиком: лучше «не грузится», чем частично применённое
-		# состояние из будущей версии.
-		return {"error": "version", "file_version": version, "current": VERSION}
-	var data: Variant = doc.get("data", null)
-	if not (data is Dictionary):
-		return {"error": "corrupt"}
-	return {
-		"meta": doc.get("meta", {}),
-		"data": JsonSafe.decode(data) as Dictionary,
+	var hero := _read_part(slot, HERO_FILE)
+	if hero.is_empty() and FileAccess.file_exists(part_path(slot, HERO_FILE)):
+		# Файл есть, а читать его нечем: пробуем снимок прежнего сохранения
+		# и перечитываем — дальше путь один и тот же.
+		if restore_from_previous(slot):
+			hero = _read_part(slot, HERO_FILE)
+	if hero.has("error"):
+		return hero
+	if hero.is_empty():
+		return {"error": "corrupt"} if FileAccess.file_exists(part_path(slot, HERO_FILE)) \
+			else {}
+	var meta: Dictionary = hero.get("meta", {})
+	if meta.is_empty():
+		meta = _read_doc(part_path(slot, MAP_FILE)).get("meta", {})
+	var map_doc := _read_part(slot, MAP_FILE)
+	if map_doc.has("error"):
+		return map_doc
+	# Карта необязательна: старые слоты и ручные сценарии пишут только героя.
+	# Пустой/битый map.json не должен хоронить рабочее сохранение.
+	if map_doc.is_empty():
+		map_doc = {}
+	var proc_doc := _read_part(slot, PROCESS_FILE)
+	if proc_doc.has("error"):
+		return proc_doc
+	var proc: Dictionary = proc_doc.get("data", {})
+	var data := {
+		"version": int(proc.get("version", VERSION)),
+		"map": _decoded(map_doc.get("data", {})),
+		"hero": _decoded(hero.get("data", {})),
+		"world": _decoded(proc.get("world", {})),
+		"events": _decoded(proc.get("events", [])),
+		"quests": proc.get("quests", {}),
 	}
+	return {"meta": meta, "data": data}
+
+
+## Элемент слота пишется через JsonSafe.encode (Vector2/Color → теги `__t`),
+## поэтому при чтении его данные обязаны пройти обратное декодирование.
+## Без этого позиция героя приезжает словарём {"__t": "v2", ...}, и герой
+## после загрузки встаёт на спавн карты.
+static func _decoded(v: Variant) -> Variant:
+	var out: Variant = JsonSafe.decode(v)
+	# Двойные теги: старые слоты держали закодированный блок уже внутри
+	# `data` (JsonSafe.encode(payload) целиком), и decode останавливался на
+	# внешнем слое.
+	if out is Dictionary and (out as Dictionary).has(JsonSafe.TAG):
+		return JsonSafe.decode(out)
+	return out
+
+
+## Записать один элемент атомарно: .tmp → flush → старый в .bak → rename.
+static func _write_part(slot: String, part: String, doc: Dictionary) -> String:
+	var path := part_path(slot, part)
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return "не удалось открыть %s для записи (код %d)" % [tmp, FileAccess.get_open_error()]
+	f.store_string(JSON.stringify(doc))
+	f.flush()
+	f.close()
+	if FileAccess.file_exists(path):
+		_recycle_to_bak(path)
+	var err := DirAccess.rename_absolute(
+		ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+	if err != OK:
+		return "не удалось переименовать %s.tmp: %d" % [path, err]
+	if not _reads_ok(path):
+		if _restore_path_from_bak(path):
+			return "записанный %s не читается, выполнен откат на .bak" % path.get_file()
+		return "%s не читается после записи" % path.get_file()
+	return ""
+
+
+## Текущий файл → .bak; прежний .bak предварительно убирается.
+static func _recycle_to_bak(path: String) -> void:
+	var bak := bak_of(path)
+	if FileAccess.file_exists(bak):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(bak))
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(path),
+		ProjectSettings.globalize_path(bak))
+
+
+## Копия файла с тем же порядком (.tmp → flush → старый в .bak → rename).
+## Копирование поверх самого себя — no-op: без этой проверки файл уезжал бы
+## в `.bak`, а на его месте не оставалось ничего (слот терял карту).
+static func _atomic_copy(src: String, dst: String) -> bool:
+	if src == dst:
+		return FileAccess.file_exists(src)
+	var data := FileAccess.get_file_as_bytes(src)
+	if data.is_empty():
+		return false
+	var tmp := dst + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_buffer(data)
+	f.flush()
+	f.close()
+	if FileAccess.file_exists(dst):
+		_recycle_to_bak(dst)
+	return DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp),
+		ProjectSettings.globalize_path(dst)) == OK
+
+
+## Прочитать элемент слота: документ, {} (файла нет) или {"error": …}.
+static func _read_part(slot: String, part: String) -> Dictionary:
+	var path := part_path(slot, part)
+	var doc := _read_doc(path)
+	if not doc.is_empty():
+		var version := int(doc.get("version", -1))
+		if version > VERSION:
+			return {"error": "version", "file_version": version, "current": VERSION}
+		if not (doc.get("data", null) is Dictionary):
+			return {"error": "corrupt"}
+		return doc
+	if not FileAccess.file_exists(path):
+		return {}
+	# Основной файл есть, но не читается: если .bak читается — чиним молча.
+	var bak := _read_doc(bak_of(path))
+	if bak.is_empty():
+		return {"error": "corrupt"}
+	if int(bak.get("version", -1)) > VERSION:
+		return {"error": "version", "file_version": int(bak.get("version", 0)),
+			"current": VERSION}
+	if not (bak.get("data", null) is Dictionary):
+		return {"error": "corrupt"}
+	_write_raw(path, JSON.stringify(bak))
+	return bak
+
+
+static func _reads_ok(path: String) -> bool:
+	return not _read_doc(path).is_empty()
+
+
+## Откатить слот на .bak. true, если откат выполнен.
+static func restore_from_backup(slot: String) -> bool:
+	for part in PARTS:
+		if _restore_path_from_bak(part_path(slot, part)):
+			return true
+	return false
+
+
+static func _restore_path_from_bak(path: String) -> bool:
+	var bak := bak_of(path)
+	if not FileAccess.file_exists(bak):
+		return false
+	var text := FileAccess.get_file_as_string(bak)
+	if not _is_json(text):
+		return false
+	return _write_raw(path, text)
+
+
+## Сломанный слот → снимок прежнего сохранения.
+##
+## Поэлементный откат по `.bak` не спасает, когда файл испорчен впервые (нет
+## `.bak`) или испорчены все три элемента (чужой процесс писал папку).
+## `previous.json` атомарен и самодостаточен, поэтому если он есть и
+## читается — кладём его содержимое обратно во все три элемента.
+## true — слот восстановлен.
+static func restore_from_previous(slot: String) -> bool:
+	var prev := _read_doc(prev_path(slot))
+	var data: Variant = prev.get("data", null)
+	if not (data is Dictionary) or (data as Dictionary).is_empty():
+		return false
+	var d := data as Dictionary
+	var meta: Dictionary = prev.get("meta", {})
+	var hero_written := _write_part(slot, HERO_FILE, {"version": VERSION, "meta": meta,
+		"data": JsonSafe.encode(d.get("hero", {}))})
+	if hero_written != "":
+		return false
+	_write_part(slot, MAP_FILE, {"version": VERSION, "meta": meta,
+		"data": JsonSafe.encode(d.get("map", {}))})
+	_write_part(slot, PROCESS_FILE, {"version": VERSION, "meta": meta,
+		"data": JsonSafe.encode({
+			"world": d.get("world", {}),
+			"events": d.get("events", []),
+			"quests": d.get("quests", {}),
+			"version": int(d.get("version", VERSION)),
+		})})
+	# Снимок перезаписывать НЕЛЬЗЯ: `previous.json` — последняя версия,
+	# которую не испортили; иначе следующий сбой перетрёт её зеркалом
+	# сломанного слота.
+	return true
 
 
 static func _read_doc(path: String) -> Dictionary:
@@ -168,22 +426,13 @@ static func _read_doc(path: String) -> Dictionary:
 	return j.data as Dictionary
 
 
-## Откатить слот на .bak. true, если откат выполнен.
-static func restore_from_backup(slot: String) -> bool:
-	if not FileAccess.file_exists(bak_path(slot)):
-		return false
-	var text := FileAccess.get_file_as_string(bak_path(slot))
-	if not _is_json(text):
-		return false
-	return _write_raw(slot_path(slot), text)
-
-
 static func _is_json(text: String) -> bool:
 	var j := JSON.new()
 	return j.parse(text) == OK
 
 
 static func _write_raw(path: String, text: String) -> bool:
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return false
@@ -195,31 +444,62 @@ static func _write_raw(path: String, text: String) -> bool:
 
 # --- Список слотов для экрана ---
 
-## Метаданные всех слотов для UI. Не грузит тяжёлые данные, только "meta".
+## Метаданные всех слотов для UI. Не грузит тяжёлые данные: метаданные лежат
+## в каждом элементе слота.
 static func list_slots() -> Array:
 	ensure_dir()
 	var out: Array = []
 	for slot in PLAYER_SLOTS:
-		var doc := _read_doc(slot_path(slot))
-		out.append({
-			"slot": slot,
-			"exists": not doc.is_empty(),
-			"version": int(doc.get("version", -1)),
-			"meta": doc.get("meta", {}),
-		})
-	var auto := _read_doc(slot_path(AUTOSAVE_SLOT))
-	out.append({
-		"slot": AUTOSAVE_SLOT,
-		"exists": not auto.is_empty(),
-		"version": int(auto.get("version", -1)),
-		"meta": auto.get("meta", {}),
-		"auto": true,
-	})
+		out.append(_slot_entry(slot))
+	var auto := _slot_entry(AUTOSAVE_SLOT)
+	auto["auto"] = true
+	out.append(auto)
 	return out
 
 
+static func _slot_entry(slot: String) -> Dictionary:
+	var hero := _read_doc(part_path(slot, HERO_FILE))
+	var proc := _read_doc(part_path(slot, PROCESS_FILE))
+	var exists := (not hero.is_empty() or not proc.is_empty()) and not is_empty_slot(slot)
+	var version := VERSION
+	if not hero.is_empty():
+		version = int(hero.get("version", -1))
+	elif not proc.is_empty():
+		version = int(proc.get("version", -1))
+	return {
+		"slot": slot,
+		"exists": exists,
+		"version": version,
+		"meta": _slot_meta(slot, hero, proc),
+		"path": slot_dir(slot),
+	}
+
+
+static func _slot_meta(slot: String, hero: Dictionary, proc: Dictionary) -> Dictionary:
+	for doc in [hero, proc, _read_doc(part_path(slot, MAP_FILE))]:
+		var meta: Variant = doc.get("meta", {})
+		if meta is Dictionary and not (meta as Dictionary).is_empty():
+			return meta
+	return {"hero_name": slot}
+
+
+## Слот пуст: либо элементов нет, либо в них нет данных (удалённый слот).
+static func is_empty_slot(slot: String) -> bool:
+	for part in PARTS:
+		var path := part_path(slot, part)
+		if not FileAccess.file_exists(path) and not FileAccess.file_exists(bak_of(path)):
+			continue
+		var doc := _read_doc(path)
+		if doc.is_empty():
+			continue
+		var data: Variant = doc.get("data", null)
+		if data is Dictionary and not (data as Dictionary).is_empty():
+			return false
+	return true
+
+
 static func has_autosave() -> bool:
-	return not _read_doc(slot_path(AUTOSAVE_SLOT)).is_empty()
+	return not is_empty_slot(AUTOSAVE_SLOT)
 
 
 ## Самая свежая запись среди всех слотов. "" — сохранять нечего.
@@ -238,6 +518,66 @@ static func newest_slot() -> String:
 	return best
 
 
+# --- Файлы мира слота ---
+
+## Главный файл карты внутри папки слота, "" — карты в слоте нет.
+static func world_map_path(slot: String) -> String:
+	var dir_path := slot_dir(slot)
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return ""
+	var names: Array = []
+	d.list_dir_begin()
+	var fn := d.get_next()
+	while fn != "":
+		if not d.current_is_dir() and fn.ends_with(".alm") and not fn.ends_with(".bak"):
+			names.append(fn)
+		fn = d.get_next()
+	d.list_dir_end()
+	if names.is_empty():
+		return ""
+	names.sort()
+	var map_doc := _read_doc(part_path(slot, MAP_FILE))
+	var base := _basename_of(map_doc.get("data", {}))
+	if base != "" and names.has(base + ".alm"):
+		return dir_path + base + ".alm"
+	return dir_path + str(names[0])
+
+
+## Слот удалён игроком: папка становится пустой — три элемента без данных,
+## файлы мира, `.bak` и снимок прежнего состояния убраны. Сама папка
+## остаётся: она и есть слот.
+static func clear_slot(slot: String) -> void:
+	var dir_path := slot_dir(slot)
+	if not DirAccess.dir_exists_absolute(dir_path):
+		return
+	_remove_files_where(dir_path, func(fn: String) -> bool: return PARTS.has(fn))
+	var empty := {"version": VERSION, "meta": {}, "data": {}}
+	for part in PARTS:
+		_write_raw(part_path(slot, part), JSON.stringify(empty))
+
+
+## Убирает из папки все ФАЙЛЫ (не подкаталоги), для которых keep вернул false.
+## `.tmp` удаляются всегда: после удаления слота от них остаётся мусор.
+static func _remove_files_where(dir_path: String, keep: Callable) -> void:
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return
+	var names: Array = []
+	d.list_dir_begin()
+	var fn := d.get_next()
+	while fn != "":
+		if not d.current_is_dir():
+			names.append(fn)
+		fn = d.get_next()
+	d.list_dir_end()
+	for raw in names:
+		var n := str(raw)
+		if not n.ends_with(".tmp") and keep.call(n):
+			continue
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(dir_path + n))
+
+
 # --- Состав сохранения (v1) ---
 
 ## Собрать payload из живого состояния игры.
@@ -246,10 +586,10 @@ static func newest_slot() -> String:
 ## в hero.party, и без их восстановления из mercenary_db они были бы
 ## мусором в партии. Вернём вместе с ними состав в v2.
 ##
-## map хранится сидом и зоной, а не путём: карта детерминированно
-## пересобирается (MapGenerator.ensure_map), а абсолютный путь к .alm
-## сломал бы сохранение после переноса установки.
-static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary = {}) -> Dictionary:
+## systems — блоки событий/квестов, собранные вызывающим: {"events": Array,
+## "quests": Dictionary}. Без них берутся из узлов-синглтонов, если они есть.
+static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary = {},
+		systems: Dictionary = {}) -> Dictionary:
 	var hero := {
 		"class": Game.hero_class,
 		"gender": Game.hero_gender,
@@ -271,18 +611,27 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"sphere_books": player.sphere_books.duplicate(true),
 		"position": player.global_position,
 	}
+	var map_files := world_files()
+	var events: Variant = systems.get("events", null)
+	if events == null:
+		events = EventSystem.instance.to_payload() if EventSystem.instance != null else []
+	var quests: Variant = systems.get("quests", null)
+	if quests == null:
+		quests = QuestSystem.instance.to_payload() if QuestSystem.instance != null else {}
 	var payload := {
 		"version": VERSION,
 		"map": {
 			"seed": int(Game.map_seed), "zone": str(Game.map_zone),
 			"fog": Game.fog.mask_rle() if Game.fog != null else "",
+			# Карта — целыми файлами в папке слота (решение 22.10), поэтому
+			# сохраняется путь к текущему .alm и его стабильное имя.
+			"path": str(map_files.get("path", "")),
+			"basename": str(map_files.get("basename", "")),
 		},
 		"hero": hero,
 		"world": world_dict,
-		"events": EventSystem.instance.to_payload() if EventSystem.instance != null else [],
-		# Town head quests (22.10): offers, active quests and history are data;
-		# nodes (elite, pickups) are rebuilt by QuestSystem on load.
-		"quests": QuestSystem.instance.to_payload() if QuestSystem.instance != null else {},
+		"events": events,
+		"quests": quests,
 	}
 	var meta := {
 		"hero_name": Game.hero_name,
@@ -300,6 +649,26 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 	return payload
 
 
+## Текущая карта игры: {"path": user:// путь к .alm, "basename": имя}.
+## Карты в файле нет (карта из main.tscn/dev) — пустые строки.
+static func world_files() -> Dictionary:
+	var out := {"path": "", "basename": ""}
+	if Game.pending_map_path != "" and FileAccess.file_exists(Game.pending_map_path):
+		if not Game.pending_map_path.begins_with("res://"):
+			out["path"] = Game.pending_map_path
+			out["basename"] = Game.pending_map_path.get_file().get_basename()
+		return out
+	if Game.map_seed == 0:
+		return out
+	var race := MapGenerator.city_race_for_hero(Game.hero_race)
+	var base := MapGenerator.map_basename(Game.map_seed, Game.map_zone, race)
+	var path := MapGenerator.MAPS_DIR + base + ".alm"
+	if FileAccess.file_exists(path):
+		out["path"] = path
+		out["basename"] = base
+	return out
+
+
 static func _hero_level(player) -> int:
 	var t := 0
 	if player.experience is Dictionary:
@@ -308,14 +677,115 @@ static func _hero_level(player) -> int:
 	return player.exp_to_skill(t)
 
 
+## Подготовить мир слота к загрузке ДО смены сцены: файлы карты из папки
+## слота раскладываются в user://maps/ под стабильным именем, путь кладётся
+## в Game.pending_map_path (он имеет приоритет над сидом). Карты в слоте
+## нет — остаётся путь по сиду, как и было.
+static func restore_map(slot: String) -> void:
+	Game.pending_map_path = ""
+	var src := world_map_path(slot)
+	if src == "":
+		return
+	if not _stage_world_files(slot, src, "save_%s" % slot):
+		push_warning("SaveSystem: карта слота %s не разложена" % slot)
+		return
+	Game.pending_map_path = MapGenerator.MAPS_DIR + "save_%s.alm" % slot
+
+
+## Карта ДРУГОЙ зоны из папки слота (переход через портал после загрузки).
+## Возвращает путь к разложенному `.alm` в user://maps/ или "" — такой зоны в
+## слоте нет, карту строим по сиду.
+##
+## Ищем `<basename слота>_<зона>*.alm`: MapGenerator кладёт в имя и расу
+## города (`map_<сид>_<зона>_<раса>.alm`), поэтому сравниваем по префиксу.
+static func restore_zone_map(slot: String, zone: String) -> String:
+	var dir_path := slot_dir(slot)
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return ""
+	var slot_base := _basename_of(_read_doc(part_path(slot, MAP_FILE)).get("data", {}))
+	if slot_base == "":
+		return world_map_path(slot)
+	# Имя карты — `map_<сид>_<зона>_<раса>`. Слот скармливает все свои зоны,
+	# поэтому совпадать должны сид и раса (имя без частей «зона»), а различать
+	# их — сама зона.
+	var slot_parts := slot_base.split("_")
+	var names: Array = []
+	d.list_dir_begin()
+	var fn := d.get_next()
+	while fn != "":
+		var file_base := fn.get_basename()
+		var parts := file_base.split("_")
+		var same_map := parts.size() >= 4 and slot_parts.size() >= 4 \
+			and parts[0] == slot_parts[0] and parts[1] == slot_parts[1] \
+			and str(parts[parts.size() - 1]) == str(slot_parts[slot_parts.size() - 1])
+		var right_zone := parts.size() >= 3 and str(parts[parts.size() - 2]) == zone
+		if not d.current_is_dir() and not fn.ends_with(".bak") \
+				and fn.ends_with(".alm") and same_map and right_zone:
+			names.append(fn)
+		fn = d.get_next()
+	d.list_dir_end()
+	if names.is_empty():
+		return ""
+	names.sort()
+	var src := dir_path + str(names[0])
+	var dst_base := src.get_file().get_basename()
+	if dst_base == slot_base:
+		dst_base = "save_%s" % slot
+	if not _stage_world_files(slot, src, dst_base):
+		return ""
+	return MapGenerator.MAPS_DIR + dst_base + ".alm"
+
+
+## Положить карту зоны (и её sidecar-ы) в папку слота. Вызывается при
+## переходе между зонами: слот копит карты всех посещённых зон, чтобы
+## `restore_zone_map` нашёл их после перезапуска. Имя — имя самого карты
+## (`map_<сид>_<зона>_<раса>`), чтобы поиск по зоне работал.
+static func store_zone_map(slot: String, map_path: String) -> String:
+	if map_path == "" or not FileAccess.file_exists(map_path):
+		return "карты нет: %s" % map_path
+	return _mirror_world_files(slot, map_path, map_path.get_file().get_basename())
+
+
+## Имя карты из map.json. Сравнивать с именами файлов нельзя в лоб:
+## `data` закодирован JsonSafe, а часть старых слотов писала живой словарь.
+static func _basename_of(map_data: Variant) -> String:
+	var d: Variant = _decoded(map_data)
+	if d is Dictionary:
+		return str((d as Dictionary).get("basename", ""))
+	return ""
+
+
+## Разложить `.alm` и sidecar-ы из папки слота в user://maps/ под именем
+## `dst_base`. true — хотя бы один файл скопирован.
+##
+## Копирование поверх самого себя (карта зоны уже лежит в user://maps/, а слот
+## брал её оттуда) — не ошибка: файл на месте и читается.
+static func _stage_world_files(slot: String, src: String, dst_base: String) -> bool:
+	var dst_dir := MapGenerator.MAPS_DIR
+	DirAccess.make_dir_recursive_absolute(dst_dir)
+	var src_base := src.get_file().get_basename()
+	var copied := 0
+	for raw_suffix in WORLD_SUFFIXES:
+		var from: String = slot_dir(slot) + src_base + str(raw_suffix)
+		if not FileAccess.file_exists(from):
+			continue
+		if _atomic_copy(from, dst_dir + dst_base + str(raw_suffix)):
+			copied += 1
+	return copied > 0
+
+
 ## Применить payload к игре. Вызывать ДО загрузки сцены карты: сначала
-## ставим Game.map_seed/map_zone, потом создаём мир.
+## ставим карту (pending_map_path или сид), потом создаём мир.
 ##
 ## player может быть null - тогда применяются только Game.* (выбор героя на
 ## экране character_select применяет их ДО перехода на игровую сцену, где
 ## игрока ещё нет). Раньше проверка player == null стояла выше блока
 ## Game.hero_*, и весь герой молча терялся.
-static func apply_payload(d: Dictionary, player) -> void:
+##
+## slot — слот, из которого читаем: по нему вход в игру берёт файлы карты из
+## папки сохранения. Без slot карта берётся по сиду.
+static func apply_payload(d: Dictionary, player, slot: String = "") -> void:
 	var map_d: Dictionary = d.get("map", {})
 	Game.map_seed = int(map_d.get("seed", 0))
 	Game.map_zone = str(map_d.get("zone", "mid"))
@@ -327,6 +797,8 @@ static func apply_payload(d: Dictionary, player) -> void:
 	var qd: Variant = d.get("quests", {})
 	Game.pending_quests = (qd as Dictionary).duplicate(true) if qd is Dictionary else {}
 	Game.pending_quests_applied = false
+	if slot != "":
+		restore_map(slot)
 	var h: Dictionary = d.get("hero", {})
 	Game.hero_class = str(h.get("class", Game.hero_class))
 	Game.hero_gender = str(h.get("gender", Game.hero_gender))

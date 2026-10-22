@@ -55,6 +55,9 @@ static var pending_events: Array = []   # saved events, applied by EventSystem
 ## Пусто — новая игра; applied=true — блок уже прочитан (не применяем дважды).
 static var pending_quests: Dictionary = {}
 static var pending_quests_applied: bool = false
+## Slot the running game came from ("" — new game). The slot folder holds the
+## map files, so a zone change reuses its maps instead of regenerating them.
+static var loaded_slot: String = ""
 static var party: Array = []              # наёмники (Mercenary) из таверны
 static var mana_regen_accum: float = 0.0
 static var _trauma: float = 0.0
@@ -1763,18 +1766,39 @@ func travel_to_zone(zone: String) -> void:
 	var seed_value: int = Game.map_seed
 	if seed_value == 0:
 		seed_value = 4242
-	var new_path := MapGenerator.ensure_map(seed_value, zone, MapGenerator.MAPS_DIR)
+	var new_path := _zone_map_path(zone, seed_value)
 	if new_path == "" or not FileAccess.file_exists(new_path):
 		push_error("Не удалось подготовить карту зоны '%s'" % zone)
 		_travelling = false
 		return
 	await _swap_map(new_path, zone)
+	# Папка слота держит карты ВСЕХ посещённых зон (22.10): после перезапуска
+	# игра идёт из слота, и возврат в старую зону не должен рождать карту
+	# с нулевым состоянием мира.
+	if loaded_slot != "":
+		var err := SaveSystem.store_zone_map(loaded_slot, new_path)
+		if err != "":
+			push_warning("SaveSystem: карта зоны '%s' не легла в слот %s: %s" % [zone, loaded_slot, err])
 	_travelling = false
 	print("Переход: зона '%s', карта %s" % [zone, new_path])
 
 
+## Карта зоны для перехода. Если слот, из которого идёт игра, держит эту
+## зону рядом со старым состоянием мира (22.10: карта — целыми файлами в
+## папке сохранения), она возвращается оттуда, а не плодит карту по сиду с
+## новым состоянием мира.
+func _zone_map_path(zone: String, seed_value: int) -> String:
+	if loaded_slot != "":
+		var from_slot := SaveSystem.restore_zone_map(loaded_slot, zone)
+		if from_slot != "":
+			return from_slot
+	return MapGenerator.ensure_map(seed_value, zone, MapGenerator.MAPS_DIR)
+
+
 ## Пересоздать узел Map и переселить на него героя и партию.
-func _swap_map(new_path: String, zone: String) -> void:
+## from_slot — карта пришла из папки этого слота (загрузка игры): тогда точка
+## входа — позиция героя из сейва, а не спавн новой карты.
+func _swap_map(new_path: String, zone: String, from_slot: bool = false) -> void:
 	_clear_world_units()
 	# Зона меняется ДО создания карты: AlmMap._ready и спавн используют
 	# Game.map_zone, и он должен уже совпадать с новой картой.
@@ -1791,10 +1815,34 @@ func _swap_map(new_path: String, zone: String) -> void:
 	add_child(fresh)
 	move_child(fresh, 0)
 	alm_map = fresh
+	if from_slot and load_position_valid:
+		# Позиция из сейва и так лежит в Game — здесь нужен только флаг:
+		# если не найти её в кадре загрузки, герой встанет на спавн
+		# (прошлое поведение).
+		pass
 	await get_tree().process_frame
 	await get_tree().process_frame
-	# Герой и партия — на спавн новой зоны.
-	if alm_map != null and alm_map.has_method("get_spawn_pos"):
+	# Загрузка слота: герой встаёт там, где сохранился (если клетка проходима).
+	if from_slot and load_position_valid:
+		var saved_pos: Vector2 = load_position
+		if alm_map.call("is_walkable_world", saved_pos):
+			player.global_position = saved_pos
+		else:
+			# Клетка сохранилась непроходимой (под зданием/водой): ищем
+			# ближайшую открытую вокруг неё, а не отдаём героя спавну карты.
+			var ts: int = int(alm_map.get("tile_size"))
+			var start := Vector2i(int(saved_pos.x / float(ts)), int(saved_pos.y / float(ts)))
+			var spot: Vector2 = _find_open_spot(start, ts)
+			if spot.x >= 0.0:
+				player.global_position = spot
+			else:
+				var fallback: Vector2 = alm_map.call("get_spawn_pos")
+				if fallback != Vector2.ZERO:
+					player.global_position = fallback
+		player.reset_physics_interpolation()
+		player.stop_movement()
+		Game.clear_load_position()
+	else:
 		var sp: Vector2 = alm_map.call("get_spawn_pos")
 		if sp != Vector2.ZERO:
 			player.global_position = sp
@@ -2031,16 +2079,17 @@ func _load_from_slot(slot: String) -> void:
 	if res.is_empty():
 		_set_menu_status(tr("Слот пуст."))
 		return
-	# Сначала применяем героя и сид карты, потом пересобираем сцену:
-	# AlmMap читает Game.map_seed/map_zone в _ready.
-	SaveSystem.apply_payload(res.get("data", {}), player)
+	# Сначала применяем героя и карту слота, потом пересобираем сцену:
+	# AlmMap читает Game.pending_map_path/map_seed/map_zone в _ready.
+	SaveSystem.apply_payload(res.get("data", {}), player, slot)
+	loaded_slot = slot
 	_restart_scene(slot)
 
 
+## Удаление слота: папка слота становится пустой (решение игрока 22.10),
+## а не исчезает: в ней остаются hero/map/process без данных.
 func _delete_slot(slot: String) -> void:
-	for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	SaveSystem.clear_slot(slot)
 	if _save_menu != null and is_instance_valid(_save_menu):
 		_save_menu.set_status(tr("Слот удалён."))
 		_save_menu._refresh()
@@ -2075,25 +2124,45 @@ func _set_leaving_scene(on: bool) -> void:
 	_leaving_for_quit = on
 
 
-## Пересобрать игру из сохранённого состояния. Мир сначала кладём в
-## WorldBus - иначе новая сцена поднимется со старым сидом, а состояние
-## мира потеряется.
+## Пересобрать игру из сохранённого состояния: мир кладём в WorldBus,
+## карту берём из папки слота и подменяем на живой сцене.
+##
+## change_scene_to_file здесь НЕ подходит: новая Main._ready сбрасывает
+## партию, а главное — осиротевшая корутина старой сцены падала на первом же
+## кадре новой (`data.tree is null`) и точка входа из сейва терялась.
+## Горячая замена карты (_swap_map) героя и партию сохраняет.
 func _restart_scene(slot: String) -> void:
-	# Дерево на паузе не создаёт узлы: смена сцены вернула бы пустой мир.
+	# Дерево на паузе не создаёт узлы: меню сохранений ставит паузу.
 	_menu_release_pause()
+	_restore_world_from_slot(slot)
+	if not is_instance_valid(player) or not is_instance_valid(alm_map):
+		get_tree().change_scene_to_file("res://scenes/main.tscn")
+		return
+	var map_path := SaveSystem.world_map_path(slot)
+	if map_path == "":
+		map_path = _zone_map_path(Game.map_zone, Game.map_seed)
+	if map_path == "" or not FileAccess.file_exists(map_path):
+		push_error("SaveSystem: карта слота '%s' не найдена" % slot)
+		get_tree().change_scene_to_file("res://scenes/main.tscn")
+		return
+	await _swap_map(map_path, Game.map_zone, true)
+
+
+## Мир (SIM-состояние) из слота → WorldBus. Симулятор держит ссылку на
+## СТАРЫЙ WorldState, иначе после загрузки он продолжил бы тикать по
+## прежнему миру, а не по загруженному.
+func _restore_world_from_slot(slot: String) -> void:
 	var res := SaveSystem.load_slot(slot)
 	var data: Dictionary = res.get("data", {})
 	var world_text := JsonSafe.dump(data.get("world", {}))
 	var ws_script: GDScript = load("res://scripts/world/world_state.gd")
 	var restored = ws_script.from_json_text(world_text)
 	var bus = get_node_or_null("/root/WorldBus")
-	if bus != null and "state" in bus and restored != null:
-		bus.state = restored
-		# Симулятор держит ссылку на СТАРЫЙ WorldState, иначе после загрузки
-		# он продолжит тикать по прежнему миру, а не по загруженному.
-		if "sim" in bus and bus.sim != null and "state" in bus.sim:
-			bus.sim.state = restored
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	if bus == null or not ("state" in bus) or restored == null:
+		return
+	bus.state = restored
+	if "sim" in bus and bus.sim != null and "state" in bus.sim:
+		bus.sim.state = restored
 
 
 func _set_menu_status(text: String) -> void:

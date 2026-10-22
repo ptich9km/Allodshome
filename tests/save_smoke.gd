@@ -203,14 +203,16 @@ func _test_slots_and_backups() -> void:
 	# Вторая запись: предыдущая должна уехать в .bak.
 	var err2 := SaveSystem.save("slot_0", _payload("Второй", 20))
 	_check(err2 == "", "вторая запись без ошибки (%s)" % err2)
-	_check(FileAccess.file_exists(SaveSystem.bak_path("slot_0")), ".bak появился после второй записи")
+	_check(FileAccess.file_exists(SaveSystem.bak_path("slot_0")),
+		".bak появился после второй записи")
+	_check(FileAccess.file_exists(SaveSystem.prev_path("slot_0")),
+		"снимок прежнего сохранения появился после второй записи")
 	var r2 := SaveSystem.load_slot("slot_0")
 	_check(str(r2.get("data", {}).get("hero", {}).get("name", "")) == "Второй",
 		"после перезаписи в слоте новое имя")
-	var b := SaveSystem._read_doc(SaveSystem.bak_path("slot_0"))
+	var b := SaveSystem._read_doc(SaveSystem.prev_path("slot_0"))
 	_check(str((b.get("data", {}) as Dictionary).get("hero", {}).get("name", "")) == "Первый",
-		"в .bak лежит ПРЕДЫДУЩАЯ версия, а не текущая")
-
+		"в снимке прежнего сохранения лежит ПРЕДЫДУЩАЯ версия, а не текущая")
 	# Список слотов для экрана. Слотов игрока 6 (с 05.10), а не 3: число
 	# бралось константой и разъехалось с SaveSystem.PLAYER_SLOTS, из-за чего
 	# проверка падала и на чистом master.
@@ -263,8 +265,12 @@ func _test_version_and_corruption() -> void:
 	f2.close()
 	var rc := SaveSystem.load_slot("slot_1")
 	_check(not rc.has("error"), "битый файл восстановлен из .bak")
-	_check(int(rc.get("data", {}).get("world", {}).get("day", -1)) == 4,
-		"прочитан именно .bak (день 4), а не текущий файл")
+	# Мир и прогресс живут в своём элементе слота (решение 22.10): день минувшего
+	# сохранения лежит в process.json.bak, а не в hero.json.bak.
+	var proc_bak: Dictionary = SaveSystem._read_doc(SaveSystem.bak_of(
+		SaveSystem.part_path("slot_1", SaveSystem.PROCESS_FILE)))
+	_check(int((proc_bak.get("data", {}) as Dictionary).get("world", {}).get("day", -1)) == 4,
+		"в снимке прогресса — день 4, а не текущий")
 	_check(SaveSystem._reads_ok(SaveSystem.slot_path("slot_1")),
 		"основной файл после отката снова читается")
 

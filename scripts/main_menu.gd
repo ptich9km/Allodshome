@@ -604,7 +604,9 @@ func _on_load_slot(slot: String) -> void:
 		_flash_overlay_status(Loc.t("ui.load.err_empty"))
 		return
 	var data: Dictionary = res.get("data", {})
-	SaveSystem.apply_payload(data, null)
+	# slot — чтобы карта пришла из папки сохранения (файлы `.alm` + sidecar-ы),
+	# а не перегенерировалась по сиду: перегенерация другим кодом давала другой мир.
+	SaveSystem.apply_payload(data, null, slot)
 	_restore_world(data.get("world", {}))
 	SoundDB.play(2)
 	get_tree().change_scene_to_file(GAME_PATH)

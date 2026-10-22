@@ -20,15 +20,37 @@ static func use_test_dir(path: String = TEST_DIR) -> String:
 	return path
 
 
-## Remove every slot file (.json, .json.bak, .json.tmp) of a directory.
+## Remove every slot of a directory: the slot folders (22.10: a slot is a
+## directory with hero/map/process and the world files) and the flat files
+## of the previous one-file format, if an old test run left them.
 static func wipe(path: String = TEST_DIR) -> void:
 	var dir := path if path.ends_with("/") else path + "/"
 	for raw_slot in SaveSystem.PLAYER_SLOTS + [SaveSystem.AUTOSAVE_SLOT]:
 		var slot := str(raw_slot)
+		_remove_tree(dir + slot)
 		for raw_suffix in [".json", ".json.bak", ".json.tmp"]:
 			var p: String = dir + slot + str(raw_suffix)
 			if FileAccess.file_exists(p):
 				DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+
+
+## Delete a directory with everything inside it.
+static func _remove_tree(path: String) -> void:
+	if not DirAccess.dir_exists_absolute(path):
+		return
+	var d := DirAccess.open(path)
+	if d != null:
+		d.list_dir_begin()
+		var fn := d.get_next()
+		while fn != "":
+			var child := path + "/" + fn
+			if d.current_is_dir():
+				_remove_tree(child)
+			else:
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(child))
+			fn = d.get_next()
+		d.list_dir_end()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 ## True when the saves are kept in the test directory, not in user://saves/.
