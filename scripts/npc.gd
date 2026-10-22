@@ -351,40 +351,18 @@ func _drop_loot() -> void:
 ## портной - одежду в ткань и эссенцию. Если бы все роняли одно и то же,
 ## одна из профессий осталась бы без сырья.
 ##
-## Качество сломанной вещи выбирается весом: обычный мусор падает чаще
-## добротного, а редкий почти не встречается. Порядок - от обычного к
-## редкому, иначе случайный выбор дал бы «редкий» в третьих случаях.
+## Выбор качества (60/25/15) и подбор существующего ключа живут в
+## ItemDB.roll_broken_gear — тот же хелпер зовёт Серый (enemy.gd:_broken_gear),
+## иначе правила НПЦ и Серых разъехались бы молча.
 func _random_gear() -> Dictionary:
 	var categories := ["Armor", "Weapon"] if role == "guard" else ["Garment"]
-	var material := _gear_material()
-	var category: String = categories[randi() % categories.size()]
-	var quality := _roll_broken_quality()
-	var key := ItemDB.broken_key(material, category, quality)
-	if key == "" and ItemDB.has_broken(material, category):
-		# Записи этого качества нет - берём любое, что есть.
-		for q in ItemDB.BROKEN_QUALITIES:
-			key = ItemDB.broken_key(material, category, q)
-			if key != "":
-				break
-	if key == "":
-		return {}
-	return {"key": key}
+	return ItemDB.roll_broken_gear([_gear_material()], categories)
 
 
 ## Металл сломанной вещи по роли. Страж - сталь, горожанин - бронза (то же,
 ## что и до 07.10 в _random_gear).
 func _gear_material() -> String:
 	return "steel" if role == "guard" else "bronze"
-
-
-## Взвешенный выбор качества сломанной вещи: 60 / 25 / 15.
-func _roll_broken_quality() -> String:
-	var roll := randi() % 100
-	if roll < 60:
-		return "Broken"
-	if roll < 85:
-		return "Broken Fine"
-	return "Broken Rare"
 
 
 func _potion_size() -> String:

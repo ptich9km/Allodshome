@@ -6,6 +6,26 @@ class_name UnitDB
 const DB_PATH := "res://assets/units/units_db.json"
 const TICK := 0.05  # множитель тайминга (единицы "тиков" из units.txt)
 
+## Семейства лута в порядке сводки (tests/package_a_smoke.gd).
+const LOOT_FAMILIES := ["beast", "insect", "humanoid", "undead", "monstrous"]
+
+## Семейство лута набора по ВИДУ: запасной путь, если явного поля `loot_family`
+## в units_db.json нет (поле вписано 22.10 тестами/gen_gray_loot_family.py для всех
+## 50 наборов `monsters/*` и имеет приоритет — см. loot_family_of). Вид берётся из
+## арта: img2img-копии `monsters/<вид>_t<N>` (tests/gen_grey_tiers.py) несут ровно тот
+## же вид, что и исходный `monsters/<вид>`. Без этой привязки животное
+## (`monsters/wolf...`) попадало бы в финансовую таблицу `default` и роняло
+## БРОНЮ И ОРУЖИЕ, а решение игрока 07.10 — у зверей снаряжения нет.
+## Ключ берётся только из сегмента ВИДА (`monsters/bee_t3` -> `bee`), а не из
+## всего имени: тир-суффикс отрезается ДО сверки, иначе тиры 2..5 не нашли бы себя.
+const LOOT_BY_SPECIES := {
+	"bat": "beast", "squirrel": "beast", "wolf": "beast",
+	"bee": "insect",
+	"ghost": "undead",
+	"cannibal": "humanoid", "troll": "humanoid",
+	"dino": "monstrous", "dragon": "monstrous", "succubus": "monstrous",
+}
+
 static var _db: Dictionary = {}
 static var _loaded := false
 static var _by_id := {}
@@ -173,9 +193,35 @@ static func tile_size(name: String) -> int:
 	return int(get_set(name).get("tile_size", 1))
 
 ## Семейство для лута: beast | insect | humanoid | undead | monstrous.
-## Читает enemy.gd из assets/config/loot_tables.json. Пусто = default.
+## Пусто = семейство неизвестно (enemy.gd берёт таблицу `default`).
 static func loot_family(name: String) -> String:
 	return str(get_set(name).get("loot_family", ""))
+
+## Таблица лута для жертвы `name` (ключ family из loot_tables.json).
+##
+## Источники по приоритету: явное поле `loot_family` в базе (вписано во все
+## `monsters/*` тестами/gen_gray_loot_family.py), затем вид из LOOT_BY_SPECIES
+## (страховка для новых наборов без поля). Тировый суффикс отрезается до
+## сверки (`monsters/bee_t3` -> `bee`). Городские наборы, герои и пустое имя -> "".
+static func loot_family_of(name: String) -> String:
+	var explicit := str(get_set(name).get("loot_family", ""))
+	if explicit != "":
+		return explicit
+	if name.begins_with("city_") or not name.contains("/"):
+		return ""
+	var short := name.get_file()
+	var tier_at := short.rfind("_t")
+	if tier_at > 0 and short.substr(tier_at + 2).is_valid_int():
+		short = short.substr(0, tier_at)
+	return str(LOOT_BY_SPECIES.get(short, ""))
+
+## Тир набора (1..5), 0 - если тира нет. Тиры Серых записывает
+## tests/gen_grey_tiers_db.py; tests/gray_tier_smoke сверяет поле с суффиксом
+## `_tN` в имени набора. Дроп сломанной вещи выбирает металл ПО ТИРУ
+## (enemy.gd:_broken_gear -> ItemDB.broken_materials), поэтому тир читается
+## здесь, а не разбирается из строки имени в каждом потребителе.
+static func tier(name: String) -> int:
+	return int(get_set(name).get("tier", 0))
 
 ## Босс или дракон? Только они роняют ЦЕЛУЮ вещь вместо сломанной
 ## ([craft] boss_intact_chance).

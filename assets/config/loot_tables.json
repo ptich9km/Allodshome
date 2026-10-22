@@ -1,8 +1,9 @@
 {
-  "comment": "Лут с Серых. Читает enemy.gd:_make_loot. Шансы в %, gold_mult умножает базу золота (4+hp/5). essence_chance добавлен 07.10: магическая эссенция, второй источник наряду с портной, перерабатывающей сломанную одежду. СЛОМАННЫЕ вещи с Серых НЕ падают: сломанное роняют только NPC (npc.gd:_random_gear), потому что только у них есть снаряжение. Целое снаряжение с Серых не убирали - это законный источник металла, и обнуление gear_chance сломало бы package_a_smoke.",
+  "comment": "Лут с Серых. Читает enemy.gd:_make_loot, ключ — семейство вида: явное поле loot_family в units_db.json (вписано 22.10 тестами/gen_gray_loot_family.py), а если его нет — вывод из вида (UnitDB.loot_family_of: волк/мышь — beast, оса — insect...). Шансы в %, gold_mult умножает базу золота (4+hp/5). essence_chance — магическая эссенция, второй источник наряду с портным. С 22.10 снаряжение с Серых падает СЛОМАННЫМ (broken_gear_chance -> enemy.gd:_broken_gear -> ItemDB.roll_broken_gear): целая вещь переплавляется как «целое» (0.8 от рецепта) и обходила выход по качеству, то есть ломала мастерскую. За один труп назначается своя вещь (броня/оружие из металла тира) и, с шансом garment_share, одежда — кузнецу слитки, портному ткань и эссенцию. intact_gear_chance — редкий бонус ЦЕЛОЙ вещи по бюджету силы; у зверей и насекомых снаряжения нет вообще (решение игрока 07.10), поэтому у них оба 0.",
   "beast": {
     "gold_mult": 0.45,
-    "gear_chance": 0,
+    "broken_gear_chance": 0,
+    "intact_gear_chance": 0,
     "potion_chance": 12,
     "herb_chance": 40,
     "essence_chance": 3,
@@ -10,7 +11,8 @@
   },
   "insect": {
     "gold_mult": 0.25,
-    "gear_chance": 0,
+    "broken_gear_chance": 0,
+    "intact_gear_chance": 0,
     "potion_chance": 8,
     "herb_chance": 35,
     "essence_chance": 2,
@@ -18,7 +20,9 @@
   },
   "humanoid": {
     "gold_mult": 1.0,
-    "gear_chance": 35,
+    "broken_gear_chance": 55,
+    "intact_gear_chance": 8,
+    "garment_share": 20,
     "potion_chance": 45,
     "herb_chance": 0,
     "essence_chance": 6,
@@ -26,7 +30,9 @@
   },
   "undead": {
     "gold_mult": 0.7,
-    "gear_chance": 18,
+    "broken_gear_chance": 30,
+    "intact_gear_chance": 4,
+    "garment_share": 10,
     "potion_chance": 8,
     "herb_chance": 0,
     "essence_chance": 12,
@@ -34,7 +40,9 @@
   },
   "monstrous": {
     "gold_mult": 1.15,
-    "gear_chance": 40,
+    "broken_gear_chance": 25,
+    "intact_gear_chance": 0,
+    "garment_share": 0,
     "potion_chance": 28,
     "herb_chance": 5,
     "essence_chance": 10,
@@ -42,7 +50,9 @@
   },
   "default": {
     "gold_mult": 0.6,
-    "gear_chance": 10,
+    "broken_gear_chance": 20,
+    "intact_gear_chance": 0,
+    "garment_share": 10,
     "potion_chance": 20,
     "herb_chance": 15,
     "essence_chance": 5,

@@ -412,10 +412,21 @@ func _relief_here() -> float:
 		return float(map_node.call("relief_at_world", global_position))
 	return 0.0
 
-## Добыча по семейству юнита (loot_tables.json + units_db.loot_family).
+## Добыча по СЕМЕЙСТВУ вида (loot_tables.json + UnitDB.loot_family_of).
 ## Звери/насекомые: золото + трава, БЕЗ оружия/брони (решение игрока 07.10).
+##
+## СНАРЯЖЕНИЕ С 22.10 ПАДАЕТ СЛОМАННЫМ. Причина не в эстетике: целую вещь
+## мастерская переплавляет по выходу «целое» (0.8 от рецепта,
+## CraftDB.INTACT_RECYCLE_MULT), и она обходила выход по качеству сломанной
+## (1/2/4 слитка). Игрок копил целые вещи с Серых и получал слитки мимо
+## качества. Металл сломанной вещи выбирается ПО ТИРУ врага
+## (ItemDB.broken_materials), иначе зверь-новичок ронял бы радий.
+##
+## Вещей ДВЕ: своё снаряжение (броня или оружие) и, с шансом
+## `garment_share`, одежда. Так было до перехода на сломанные вещи, но потом
+## одежда оказалась в той же строке вероятности и стала съедать шанс брони.
 func _make_loot() -> Array:
-	var family := UnitDB.loot_family(anim_set)
+	var family := UnitDB.loot_family_of(anim_set)
 	if family == "":
 		family = "default"
 	var table := _loot_table(family)
@@ -427,15 +438,15 @@ func _make_loot() -> Array:
 		pool.append({"gold": gold})
 	if randi() % 100 < int(table.get("potion_chance", 20)):
 		pool.append({"key": "Potion Medium Healing" if randi() % 2 == 0 else "Potion Mana Regeneration"})
-	if randi() % 100 < int(table.get("gear_chance", 10)):
-		var item := _random_gear()
-		if not item.is_empty():
-			pool.append(item)
-	# Босс и дракон с маленьким шансом роняют ЦЕЛУЮ вещь: сломанное
-	# роняют NPC (у них есть снаряжение), а из Серых лут и так идёт целым.
-	if UnitDB.is_boss(anim_set) \
-			and randi() % 100 < GameConfig.geti("craft", "boss_intact_chance"):
-		var intact := _random_gear()
+	if randi() % 100 < int(table.get("broken_gear_chance", 20)):
+		pool.append_array(_broken_gear(int(table.get("garment_share", 0))))
+	# ЦЕЛАЯ вещь — редкий бонус: у боссов и драконов свой шанс
+	# ([craft] boss_intact_chance), у обычных Серых — intact_gear_chance из
+	# таблицы (у monstrous он 0).
+	var intact_chance := GameConfig.geti("craft", "boss_intact_chance") \
+		if UnitDB.is_boss(anim_set) else int(table.get("intact_gear_chance", 0))
+	if randi() % 100 < intact_chance:
+		var intact := _random_intact_gear()
 		if not intact.is_empty():
 			pool.append(intact)
 	# Магическая эссенция - второй источник наряду с портной (07.10).
@@ -466,8 +477,49 @@ static func _loot_table(family: String) -> Dictionary:
 		t = _loot_tables_cache.get("default", {})
 	return t
 
-## Случайное снаряжение «по силе врага» (бюджет = HP × 12), из настоящей базы.
-func _random_gear() -> Dictionary:
+## Категории и материалы вещей, которые носил Серый, для ItemDB.roll_broken_gear.
+## Пара «снаряжение + возможно одежда»: металл снаряжения — по тиру
+## (_gear_tier), одежда — лён.
+func _gear_options(garment_share: int) -> Array:
+	var own := ItemDB.broken_materials("Armor", _gear_tier())
+	var options: Array = [
+		{"materials": own, "categories": ["Armor", "Weapon"]},
+	]
+	if garment_share > 0 and randi() % 100 < garment_share:
+		options.append({"materials": ItemDB.broken_materials("Garment", _gear_tier()),
+			"categories": ["Garment"]})
+	return options
+
+
+## Сломанные вещи в мешке: качество, металл и подбор ключа — в
+## ItemDB.roll_broken_gear (тот же хелпер зовёт НПЦ, npc.gd:_random_gear).
+func _broken_gear(garment_share: int) -> Array:
+	var out: Array = []
+	for opt in _gear_options(garment_share):
+		var gear := ItemDB.roll_broken_gear(
+			(opt as Dictionary).get("materials", []), (opt as Dictionary).get("categories", []))
+		if not gear.is_empty():
+			out.append(gear)
+	return out
+
+
+## Тир Серого (1..5): поле `tier` набора, а при отсутствии — суффикс `_t<N>`
+## имени. Металл сломанного растёт вместе с тиром (ItemDB.broken_materials):
+## волк тира 1 не должен ронять радий.
+func _gear_tier() -> int:
+	var t := UnitDB.tier(anim_set)
+	if t > 0:
+		return t
+	var short := anim_set.get_file()
+	var at := short.rfind("_t")
+	if at > 0 and short.substr(at + 2).is_valid_int():
+		return int(short.substr(at + 2))
+	return 1
+
+## Случайная ЦЕЛАЯ вещь «по силе врага» (бюджет = HP × 12), из настоящей базы.
+## Только для редкого бонуса (intact_gear_chance / боссы): обычный поток
+## снаряжения с Серых — сломанный (_broken_gear).
+func _random_intact_gear() -> Dictionary:
 	var budget := maxi(20, max_hp * 12)
 	var pool: Array = []
 	for it in ItemDB.all():

@@ -26,9 +26,14 @@ func _run() -> void:
 	_check(lt is Dictionary, "loot_tables парсится")
 	if lt is Dictionary:
 		var d: Dictionary = lt
-		_check(int(d.get("beast", {}).get("gear_chance", -1)) == 0, "beast gear_chance=0")
-		_check(int(d.get("insect", {}).get("gear_chance", -1)) == 0, "insect gear_chance=0")
-		_check(int(d.get("humanoid", {}).get("gear_chance", -1)) > 0, "humanoid gear_chance>0")
+		_check(int(d.get("beast", {}).get("broken_gear_chance", -1)) == 0, "beast broken_gear_chance=0")
+		_check(int(d.get("insect", {}).get("broken_gear_chance", -1)) == 0, "insect broken_gear_chance=0")
+		_check(int(d.get("humanoid", {}).get("broken_gear_chance", -1)) > 0, "humanoid broken_gear_chance>0")
+		# С 22.10 в лут-таблице нет целого снаряжения как основного потока:
+		# gear_chance переименован в broken_gear_chance (целое — только бонус
+		# intact_gear_chance), иначе у Серых копились целые вещи.
+		_check(int(d.get("beast", {}).get("intact_gear_chance", -1)) == 0,
+			"beast intact_gear_chance=0")
 		_check((d.get("beast", {}).get("herbs", []) as Array).size() > 0, "beast имеет травы")
 
 	print("-- loot_family в units_db --")

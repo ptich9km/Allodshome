@@ -245,6 +245,91 @@ static func has_broken(material: String, category: String) -> bool:
 			return true
 	return false
 
+## Фракционные металлы _SMELTABLE (все, кроме общих bronze/iron/steel/gold).
+## Полосы ровно те же, что в _SMELTABLE: Альянс, Орды, Пожинатели, Друиды.
+const FACTION_METALS := [
+	"argentum", "lutetium", "lanthanum", "terbium",
+	"wolfram", "chromium", "cobalt", "titanium",
+	"thorium", "uranium", "plutonium", "radium",
+	"gallium", "yttrium", "promethium", "neodymium",
+]
+
+## Металлы лут-сломанного для категории с учётом ТИРА убитого (1..5).
+##
+## Смысл: сломанное падает с Серых и НПЦ как сырьё для кузницы, поэтому
+## металл должен расти вместе с силой врага, а не выпадать случайно по всей
+## таблице. Иначе волк-новичок ронял бы радий, а переплавка на старте не
+## имела бы смысла. Полосы:
+##   тир <= 0 или <= 2 -> bronze, iron (старт/обучение);
+##   тир 3             -> iron, steel;
+##   тир >= 4          -> steel + фракционные металлы.
+## Одежда мага — только лён (material "Linen" в точном регистре, как в базе).
+static func broken_materials(category: String, tier: int) -> Array:
+	if category == "Garment":
+		return ["Linen"]
+	if tier >= 4:
+		var out: Array = ["steel"]
+		out.append_array(FACTION_METALS)
+		return out
+	if tier == 3:
+		return ["iron", "steel"]
+	return ["bronze", "iron"]
+
+## Взвешенное качество сломанной вещи: 60 / 25 / 15 (обычный мусор падает
+## чаще добротного, редкий — почти нет). Порядок — от обычного к редкому,
+## иначе случайный выбор дал бы «редкий» в трети случаев.
+static func roll_broken_quality() -> String:
+	var roll := randi() % 100
+	if roll < 60:
+		return "Broken"
+	if roll < 85:
+		return "Broken Fine"
+	return "Broken Rare"
+
+## Сопутствующие компоненты переплавки. Сломанная броня — это ещё и ткань под
+## металлом: без неё броня с Серых давала бы только слитки, а портному (рецепты
+## требуют Fabric) нечего было бы брать. Одежда — сплошная ткань
+## (CraftDB.fabric_from_garment = 2). Оружие ткани не даёт
+## (fabric_from_weapon = 0) и оценивается только металлом.
+const SMELT_PARTS := {
+	"Armor": {"fabric": 1},
+	"Weapon": {},
+	"Garment": {"fabric": 2},
+}
+
+## Случайная СЛОМАННАЯ вещь: {"key": ...} или {} если записей нет.
+##
+## Общая точка для всех, кто роняет снаряжение: НПЦ (npc.gd:_random_gear)
+## и Серые (enemy.gd:_random_gear). Раньше каждая копировала выбор качества
+## и подбор металла по роли, и правила успевали разойтись.
+##
+## `materials` — список материалов-кандидатов (политика вызывающего: роль
+## НПЦ или тир Серого), `categories` — какие категории вещи он вообще носит.
+## Сломанная вещь — это же вещь в разобранном виде, поэтому из неё
+## переплавляется не один металл: под металлом брони всегда есть ткань
+## (SMELT_PARTS), иначе ткань в мастерскую приходила бы только от НПЦ.
+## Категория не из SMELT_PARTS — пустой результат, а не молча угаданное.
+## Выбранное качество — взвешенное; если записи этого качества нет, берётся
+## ближайшее существующее, поэтому ключ никогда не указывает в пустоту.
+static func roll_broken_gear(materials: Array, categories: Array) -> Dictionary:
+	if materials.is_empty() or categories.is_empty():
+		return {}
+	var category := str(categories[randi() % categories.size()])
+	if not SMELT_PARTS.has(category):
+		return {}
+	var material := str(materials[randi() % materials.size()])
+	var key := broken_key(material, category, roll_broken_quality())
+	if find(key).is_empty():
+		key = ""
+		for q in BROKEN_QUALITIES:
+			var k := broken_key(material, category, q)
+			if k != "" and not find(k).is_empty():
+				key = k
+				break
+	if key == "":
+		return {}
+	return {"key": key}
+
 ## Металлы, которые переплавляет кузница. Регистр важен: материал в item_db
 ## хранится в нижнем регистре (bronze, terbium...) - так же, как названы файлы
 ## иконок в faction/, faction_w/ и blacksmith/. 20 металлов из faction_palette.json.

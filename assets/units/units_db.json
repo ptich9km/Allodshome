@@ -2609,6 +2609,7 @@
  },
  "monsters/wolf": {
   "name_ru": "Волк",
+  "loot_family": "beast",
   "tier": 1,
   "desc": "Monster wolf, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/wolf",
@@ -2647,6 +2648,7 @@
  },
  "monsters/bee": {
   "name_ru": "Пчела",
+  "loot_family": "insect",
   "tier": 1,
   "desc": "Monster bee, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4. Flies: z=24",
   "folder": "monsters/bee",
@@ -2686,6 +2688,7 @@
  },
  "monsters/dragon": {
   "name_ru": "Дракон",
+  "loot_family": "monstrous",
   "tier": 1,
   "desc": "Monster dragon, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4. Flies: z=40",
   "folder": "monsters/dragon",
@@ -2725,6 +2728,7 @@
  },
  "monsters/dino": {
   "name_ru": "Динозавр",
+  "loot_family": "monstrous",
   "tier": 1,
   "desc": "Monster dino, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dino",
@@ -2763,6 +2767,7 @@
  },
  "monsters/squirrel": {
   "name_ru": "Белка",
+  "loot_family": "beast",
   "tier": 1,
   "desc": "Monster squirrel, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/squirrel",
@@ -2801,6 +2806,7 @@
  },
  "monsters/bat": {
   "name_ru": "Летучая мышь",
+  "loot_family": "beast",
   "tier": 1,
   "desc": "Monster bat, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4. Flies: z=32",
   "folder": "monsters/bat",
@@ -2840,6 +2846,7 @@
  },
  "monsters/ghost": {
   "name_ru": "Призрак",
+  "loot_family": "undead",
   "tier": 1,
   "desc": "Monster ghost, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4. Flies: z=28",
   "folder": "monsters/ghost",
@@ -2879,6 +2886,7 @@
  },
  "monsters/bat_t2": {
   "name_ru": "Свирепая летучая мышь",
+  "loot_family": "beast",
   "tier": 2,
   "desc": "Monster bat tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bat_t2",
@@ -2918,6 +2926,7 @@
  },
  "monsters/bat_t3": {
   "name_ru": "Древняя летучая мышь",
+  "loot_family": "beast",
   "tier": 3,
   "desc": "Monster bat tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bat_t3",
@@ -2957,6 +2966,7 @@
  },
  "monsters/bat_t4": {
   "name_ru": "Легендарная летучая мышь",
+  "loot_family": "beast",
   "tier": 4,
   "desc": "Monster bat tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bat_t4",
@@ -2996,6 +3006,7 @@
  },
  "monsters/bat_t5": {
   "name_ru": "Владыка летучих мышей",
+  "loot_family": "beast",
   "tier": 5,
   "desc": "Monster bat tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bat_t5",
@@ -3035,6 +3046,7 @@
  },
  "monsters/bee_t2": {
   "name_ru": "Свирепая пчела",
+  "loot_family": "insect",
   "tier": 2,
   "desc": "Monster bee tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bee_t2",
@@ -3074,6 +3086,7 @@
  },
  "monsters/bee_t3": {
   "name_ru": "Древняя пчела",
+  "loot_family": "insect",
   "tier": 3,
   "desc": "Monster bee tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bee_t3",
@@ -3113,6 +3126,7 @@
  },
  "monsters/bee_t4": {
   "name_ru": "Легендарная пчела",
+  "loot_family": "insect",
   "tier": 4,
   "desc": "Monster bee tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bee_t4",
@@ -3152,6 +3166,7 @@
  },
  "monsters/bee_t5": {
   "name_ru": "Владыка пчёл",
+  "loot_family": "insect",
   "tier": 5,
   "desc": "Monster bee tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/bee_t5",
@@ -3191,6 +3206,7 @@
  },
  "monsters/dino_t2": {
   "name_ru": "Свирепый динозавр",
+  "loot_family": "monstrous",
   "tier": 2,
   "desc": "Monster dino tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dino_t2",
@@ -3229,6 +3245,7 @@
  },
  "monsters/dino_t3": {
   "name_ru": "Древний динозавр",
+  "loot_family": "monstrous",
   "tier": 3,
   "desc": "Monster dino tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dino_t3",
@@ -3267,6 +3284,7 @@
  },
  "monsters/dino_t4": {
   "name_ru": "Легендарный динозавр",
+  "loot_family": "monstrous",
   "tier": 4,
   "desc": "Monster dino tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dino_t4",
@@ -3305,6 +3323,7 @@
  },
  "monsters/dino_t5": {
   "name_ru": "Владыка динозавров",
+  "loot_family": "monstrous",
   "tier": 5,
   "desc": "Monster dino tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dino_t5",
@@ -3343,6 +3362,7 @@
  },
  "monsters/dragon_t2": {
   "name_ru": "Свирепый дракон",
+  "loot_family": "monstrous",
   "tier": 2,
   "desc": "Monster dragon tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dragon_t2",
@@ -3382,6 +3402,7 @@
  },
  "monsters/dragon_t3": {
   "name_ru": "Древний дракон",
+  "loot_family": "monstrous",
   "tier": 3,
   "desc": "Monster dragon tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dragon_t3",
@@ -3421,6 +3442,7 @@
  },
  "monsters/dragon_t4": {
   "name_ru": "Легендарный дракон",
+  "loot_family": "monstrous",
   "tier": 4,
   "desc": "Monster dragon tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dragon_t4",
@@ -3460,6 +3482,7 @@
  },
  "monsters/dragon_t5": {
   "name_ru": "Владыка драконов",
+  "loot_family": "monstrous",
   "tier": 5,
   "desc": "Monster dragon tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/dragon_t5",
@@ -3499,6 +3522,7 @@
  },
  "monsters/ghost_t2": {
   "name_ru": "Свирепый призрак",
+  "loot_family": "undead",
   "tier": 2,
   "desc": "Monster ghost tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/ghost_t2",
@@ -3538,6 +3562,7 @@
  },
  "monsters/ghost_t3": {
   "name_ru": "Древний призрак",
+  "loot_family": "undead",
   "tier": 3,
   "desc": "Monster ghost tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/ghost_t3",
@@ -3577,6 +3602,7 @@
  },
  "monsters/ghost_t4": {
   "name_ru": "Легендарный призрак",
+  "loot_family": "undead",
   "tier": 4,
   "desc": "Monster ghost tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/ghost_t4",
@@ -3616,6 +3642,7 @@
  },
  "monsters/ghost_t5": {
   "name_ru": "Владыка призраков",
+  "loot_family": "undead",
   "tier": 5,
   "desc": "Monster ghost tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/ghost_t5",
@@ -3655,6 +3682,7 @@
  },
  "monsters/squirrel_t2": {
   "name_ru": "Свирепая белка",
+  "loot_family": "beast",
   "tier": 2,
   "desc": "Monster squirrel tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/squirrel_t2",
@@ -3693,6 +3721,7 @@
  },
  "monsters/squirrel_t3": {
   "name_ru": "Древняя белка",
+  "loot_family": "beast",
   "tier": 3,
   "desc": "Monster squirrel tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/squirrel_t3",
@@ -3731,6 +3760,7 @@
  },
  "monsters/squirrel_t4": {
   "name_ru": "Легендарная белка",
+  "loot_family": "beast",
   "tier": 4,
   "desc": "Monster squirrel tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/squirrel_t4",
@@ -3769,6 +3799,7 @@
  },
  "monsters/squirrel_t5": {
   "name_ru": "Владыка белок",
+  "loot_family": "beast",
   "tier": 5,
   "desc": "Monster squirrel tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/squirrel_t5",
@@ -3807,6 +3838,7 @@
  },
  "monsters/wolf_t2": {
   "name_ru": "Свирепый волк",
+  "loot_family": "beast",
   "tier": 2,
   "desc": "Monster wolf tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/wolf_t2",
@@ -3845,6 +3877,7 @@
  },
  "monsters/wolf_t3": {
   "name_ru": "Древний волк",
+  "loot_family": "beast",
   "tier": 3,
   "desc": "Monster wolf tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/wolf_t3",
@@ -3883,6 +3916,7 @@
  },
  "monsters/wolf_t4": {
   "name_ru": "Легендарный волк",
+  "loot_family": "beast",
   "tier": 4,
   "desc": "Monster wolf tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/wolf_t4",
@@ -3921,6 +3955,7 @@
  },
  "monsters/wolf_t5": {
   "name_ru": "Владыка волков",
+  "loot_family": "beast",
   "tier": 5,
   "desc": "Monster wolf tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/wolf_t5",
@@ -3959,6 +3994,7 @@
  },
  "monsters/cannibal": {
   "name_ru": "Людоед",
+  "loot_family": "humanoid",
   "tier": 1,
   "desc": "Monster cannibal, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/cannibal",
@@ -3997,6 +4033,7 @@
  },
  "monsters/cannibal_t2": {
   "name_ru": "Свирепый людоед",
+  "loot_family": "humanoid",
   "tier": 2,
   "desc": "Monster cannibal tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/cannibal_t2",
@@ -4035,6 +4072,7 @@
  },
  "monsters/cannibal_t3": {
   "name_ru": "Древний людоед",
+  "loot_family": "humanoid",
   "tier": 3,
   "desc": "Monster cannibal tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/cannibal_t3",
@@ -4073,6 +4111,7 @@
  },
  "monsters/cannibal_t4": {
   "name_ru": "Легендарный людоед",
+  "loot_family": "humanoid",
   "tier": 4,
   "desc": "Monster cannibal tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/cannibal_t4",
@@ -4111,6 +4150,7 @@
  },
  "monsters/cannibal_t5": {
   "name_ru": "Владыка людоедов",
+  "loot_family": "humanoid",
   "tier": 5,
   "desc": "Monster cannibal tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/cannibal_t5",
@@ -4149,6 +4189,7 @@
  },
  "monsters/troll": {
   "name_ru": "Тролль",
+  "loot_family": "humanoid",
   "tier": 1,
   "desc": "Monster troll, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/troll",
@@ -4187,6 +4228,7 @@
  },
  "monsters/troll_t2": {
   "name_ru": "Свирепый тролль",
+  "loot_family": "humanoid",
   "tier": 2,
   "desc": "Monster troll tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/troll_t2",
@@ -4225,6 +4267,7 @@
  },
  "monsters/troll_t3": {
   "name_ru": "Древний тролль",
+  "loot_family": "humanoid",
   "tier": 3,
   "desc": "Monster troll tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/troll_t3",
@@ -4263,6 +4306,7 @@
  },
  "monsters/troll_t4": {
   "name_ru": "Легендарный тролль",
+  "loot_family": "humanoid",
   "tier": 4,
   "desc": "Monster troll tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/troll_t4",
@@ -4301,6 +4345,7 @@
  },
  "monsters/troll_t5": {
   "name_ru": "Владыка троллей",
+  "loot_family": "humanoid",
   "tier": 5,
   "desc": "Monster troll tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+attack3+dying4",
   "folder": "monsters/troll_t5",
@@ -4339,6 +4384,7 @@
  },
  "monsters/succubus": {
   "name_ru": "Суккуб",
+  "loot_family": "monstrous",
   "tier": 1,
   "desc": "Monster succubus, Gemini Nano Banana strips, three-quarter east view + mirror, idle1+move4+dying4 (NO ATTACK ANIMATION)",
   "folder": "monsters/succubus",
@@ -4378,6 +4424,7 @@
  },
  "monsters/succubus_t2": {
   "name_ru": "Свирепая суккуб",
+  "loot_family": "monstrous",
   "tier": 2,
   "desc": "Monster succubus tier 2, recoloured variant, three-quarter east view + mirror, idle1+move4+dying4",
   "dirs": 1,
@@ -4417,6 +4464,7 @@
  },
  "monsters/succubus_t3": {
   "name_ru": "Древняя суккуб",
+  "loot_family": "monstrous",
   "tier": 3,
   "desc": "Monster succubus tier 3, recoloured variant, three-quarter east view + mirror, idle1+move4+dying4",
   "dirs": 1,
@@ -4456,6 +4504,7 @@
  },
  "monsters/succubus_t4": {
   "name_ru": "Легендарная суккуб",
+  "loot_family": "monstrous",
   "tier": 4,
   "desc": "Monster succubus tier 4, recoloured variant, three-quarter east view + mirror, idle1+move4+dying4",
   "dirs": 1,
@@ -4495,6 +4544,7 @@
  },
  "monsters/succubus_t5": {
   "name_ru": "Владыка суккубов",
+  "loot_family": "monstrous",
   "tier": 5,
   "desc": "Monster succubus tier 5, recoloured variant, three-quarter east view + mirror, idle1+move4+dying4",
   "dirs": 1,
