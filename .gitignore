@@ -5,6 +5,8 @@
 # Temp/agent scratch
 .qwen/
 .agents/
+.kodik/
+wip/
 
 # OS generated files
 .DS_Store
