@@ -11,10 +11,15 @@ extends SceneTree
 
 const WORLD_SCRIPT := "res://scripts/world/world_state.gd"
 
+## The slots live in a scratch directory: a test run must never touch the
+## saves of the player (`tests/save_sandbox.gd`).
+const Sandbox := preload("res://tests/save_sandbox.gd")
+
 var _fails: Array[String] = []
 var _checks := 0
 
 func _initialize() -> void:
+	Sandbox.use_test_dir()
 	_test_codec_scalars()
 	_test_world_roundtrip()
 	_test_json_is_actually_safe()
@@ -152,11 +157,7 @@ func _test_missing_fields() -> void:
 # --- 5. Слоты, атомарность, .bak ---
 
 func _wipe_saves() -> void:
-	SaveSystem.ensure_dir()
-	for slot in SaveSystem.PLAYER_SLOTS + [SaveSystem.AUTOSAVE_SLOT]:
-		for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
-			if FileAccess.file_exists(p):
-				DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	Sandbox.wipe()
 
 
 func _payload(tag: String, hp: int) -> Dictionary:

@@ -9,6 +9,10 @@ extends SceneTree
 
 const SIZES := [Vector2i(1280, 800), Vector2i(1280, 600)]
 
+## The slots live in a scratch directory: a test run must never touch the
+## saves of the player (`tests/save_sandbox.gd`).
+const Sandbox := preload("res://tests/save_sandbox.gd")
+
 var _fails: Array[String] = []
 
 func _init() -> void:
@@ -25,6 +29,7 @@ func _init() -> void:
 
 ## Временное сохранение, чтобы кнопка «Продолжить» была на экране.
 func _seed_save() -> void:
+	Sandbox.use_test_dir()
 	SaveSystem.ensure_dir()
 	SaveSystem.save("autosave", {
 		"version": SaveSystem.VERSION,

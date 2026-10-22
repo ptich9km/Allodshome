@@ -442,6 +442,9 @@ var _pending_herb: HerbNode = null
 var _pending_archmage: Node2D = null      # капитан-маг, к которому подходим
 var _pending_city_head: Node2D = null     # глава города, к которому подходим
 var _save_menu: SaveMenu = null
+## Сцена уступает место главному меню или процесс завершается (_quit_to_menu/
+## _quit_app): автосейв уже записан, при сносе узла повторять его нельзя.
+var _leaving_for_quit: bool = false
 var _autosave_accum: float = 0.0
 ## Интервал автосейва. 60 с - компромисс: чаще - лишний ввод-вывод, реже -
 ## можно потерять минуты прогресса при аварии. Первый автосейв приходит
@@ -1950,9 +1953,15 @@ func _process_action_mode():
 # игрок, WorldBus с состоянием мира и сцена, которую надо пересобрать.
 
 ## Открыть меню сохранений (Esc). Повторный вызов игнорируется.
+##
+## Пока меню открыто, мир стоит на паузе (жалоба игрока 22.10: «вызвал меню
+## сохранения, сделал сохранение — персонаж бегает»). Пауза ставится и
+## снимается здесь, а не в SaveMenu: меню можно закрыть Esc, «В главное меню»
+## или завершением процесса, и во всех путях снятие должно быть в одном месте.
 func open_save_menu() -> void:
 	if _save_menu != null and is_instance_valid(_save_menu):
 		return
+	_set_menu_pause(true)
 	_save_menu = SaveMenu.new()
 	_save_menu.setup()
 	_save_menu.save_requested.connect(_save_to_slot)
@@ -1960,8 +1969,27 @@ func open_save_menu() -> void:
 	_save_menu.delete_requested.connect(_delete_slot)
 	_save_menu.quit_requested.connect(_quit_to_menu)
 	_save_menu.quit_app_requested.connect(_quit_app)
-	_save_menu.closed.connect(func() -> void: _save_menu = null)
+	_save_menu.closed.connect(func() -> void:
+		_save_menu = null
+		_set_menu_pause(false))
 	add_child(_save_menu)
+
+
+## Мир на паузе, пока открыто меню сохранений. Герой мёртв — дерево уже
+## стоит на паузе по своей причине (player.gd corpse), её не снимаем.
+func _set_menu_pause(on: bool) -> void:
+	if is_instance_valid(player) and player.state in ["dead", "decay", "corpse"]:
+		return
+	Game.is_paused = on
+	get_tree().paused = on
+
+
+## Снять паузу меню на путях, где SaveMenu не испускает closed: «В главное
+## меню», выход из игры, перезагрузка сцены при загрузке слота. Дерево на
+## паузе не создаёт узлы (instantiate в SAFE-режиме вернёт null), поэтому
+## без этого загрузка из меню не пересобрала бы мир.
+func _menu_release_pause() -> void:
+	_set_menu_pause(false)
 
 
 ## Собрать payload из живого состояния. world приходит снаружи, чтобы
@@ -2020,24 +2048,39 @@ func _delete_slot(slot: String) -> void:
 
 func _quit_to_menu() -> void:
 	# Паузу обязательно снять: иначе главное меню откроется в остановленном
-	# дереве — без анимации фона и без реакции на ввод. Игрок жал Пробел (пауза)
-	# и уходил в меню по Esc, а `get_tree().paused` оставалось в true.
+	# дереве — без анимации фона и без реакции на ввод. Меню сохранений ставит
+	# паузу при открытии (22.10), и «В главное меню» не испускает closed.
+	_menu_release_pause()
 	is_paused = false
 	get_tree().paused = false
 	_save_to_slot(SaveSystem.AUTOSAVE_SLOT)
+	_set_leaving_scene(true)
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 
 ## Полный выход из процесса (кнопка «Выйти из игры» в Esc-меню).
 func _quit_app() -> void:
+	_menu_release_pause()
 	_save_to_slot(SaveSystem.AUTOSAVE_SLOT)
+	_set_leaving_scene(true)
 	get_tree().quit()
+
+
+## Сцена уступает место меню или процесс завершается: автосейв при сносе узла
+## больше не нужен. Без этого флага главное меню получало ДВЕ записи
+## автосейва подряд — оно само пишет его при загрузке слота (`main_menu.gd:_on_load_slot`)
+## и героя оно пересобирает только при старте новой игры: вторая запись
+## затирала то, что меню только что записало, старым состоянием сцены.
+func _set_leaving_scene(on: bool) -> void:
+	_leaving_for_quit = on
 
 
 ## Пересобрать игру из сохранённого состояния. Мир сначала кладём в
 ## WorldBus - иначе новая сцена поднимется со старым сидом, а состояние
 ## мира потеряется.
 func _restart_scene(slot: String) -> void:
+	# Дерево на паузе не создаёт узлы: смена сцены вернула бы пустой мир.
+	_menu_release_pause()
 	var res := SaveSystem.load_slot(slot)
 	var data: Dictionary = res.get("data", {})
 	var world_text := JsonSafe.dump(data.get("world", {}))
@@ -2083,9 +2126,17 @@ func _autosave_tick(delta: float) -> void:
 	SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _build_save_payload())
 
 
-## Сохранить при выходе из игры. Вызывается из project.godot
-## (autoload-free), поэтому подписка выполняется в _ready.
+## Сохранить при закрытии окна и при выходе из игры. Вызывается из
+## project.godot (autoload-free), поэтому подписка выполняется здесь.
+## NOTIFICATION_PREDELETE намеренно НЕ используется: этот сигнал приходит
+## на КАЖДУЮ загрузку сцены и перезапуск (_restart_scene), где состояние уже
+## принадлежит новой сцене, а старый игрок уже уступил его сохранению.
+## Пропускается, если сцена сама сохранилась и уступает место меню
+## (см. _set_leaving_scene): иначе автосейв записывался бы дважды.
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
-		if is_instance_valid(player):
-			SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _build_save_payload())
+	if what != NOTIFICATION_WM_CLOSE_REQUEST:
+		return
+	if _leaving_for_quit or not is_inside_tree():
+		return
+	if is_instance_valid(player):
+		SaveSystem.save(SaveSystem.AUTOSAVE_SLOT, _build_save_payload())

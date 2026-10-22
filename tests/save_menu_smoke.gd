@@ -13,6 +13,10 @@ extends SceneTree
 
 const SLOT := "slot_0"
 
+## The slots live in a scratch directory: a test run must never touch the
+## saves of the player (`tests/save_sandbox.gd`).
+const Sandbox := preload("res://tests/save_sandbox.gd")
+
 var _fails: Array[String] = []
 var _checks := 0
 ## Сколько тестов-секций реально отработало. Точнее, чем «ожидаемое число
@@ -20,10 +24,11 @@ var _checks := 0
 ## (уже ломалась: 38 против 40), а молчаливо выпавшая корутина всегда
 ## отнимает целую секцию.
 var _sections_done := 0
-const SECTIONS_TOTAL := 5
+const SECTIONS_TOTAL := 6
 
 
 func _initialize() -> void:
+	Sandbox.use_test_dir()
 	_wipe()
 	_run.call_deferred()
 
@@ -42,6 +47,7 @@ func _run() -> void:
 	await _test_reload_restores(game)
 	await _test_load_position_without_player()
 	await _test_version_rejected(game)
+	await _test_quit_to_menu(game)
 	_wipe()
 	_report()
 
@@ -98,6 +104,14 @@ func _test_menu_opens(game) -> void:
 		"кнопки доступны с клавиатуры/геймпада (%d)" % focusables.size())
 	var focused := _focused_control()
 	_check(focused != null, "при открытии есть начальный фокус")
+	# Мир на паузе, пока меню открыто (жалоба 22.10: персонаж бегал под меню).
+	_check(paused, "открытое меню ставит мир на паузу")
+	_check(Game.is_paused, "флаг Game.is_paused поднят вместе с паузой дерева")
+	var d0: Vector2 = game.get("player").global_position
+	await create_timer(0.3).timeout
+	_check(game.get("player").global_position.is_equal_approx(d0),
+		"герой стоит под открытым меню (сдвиг %s)" % str(
+			game.get("player").global_position - d0))
 
 	# Esc из открытого меню закрывает его, а не открывает второй.
 	_press_esc()
@@ -105,6 +119,8 @@ func _test_menu_opens(game) -> void:
 	await process_frame
 	_check(not _menu_open(game), "Esc из меню закрыл его (второго меню не появилось)")
 	_check(_count_menus(game) == 0, "после закрытия узлов меню в сцене не осталось")
+	_check(not paused, "закрытие меню снимает паузу")
+	_check(not Game.is_paused, "флаг Game.is_paused снят вместе с паузой дерева")
 	_sections_done += 1
 
 
@@ -131,6 +147,7 @@ func _test_save_from_live_hero(game) -> void:
 	await process_frame
 	_check(FileAccess.file_exists(SaveSystem.slot_path(SLOT)), "файл слота создан")
 	_check(str(menu.get("_status").text) != "", "показано подтверждение в меню")
+	_check(paused and _menu_open(game), "после сохранения меню открыто и мир на паузе")
 
 	var res := SaveSystem.load_slot(SLOT)
 	_check(not res.has("error"), "слот читается")
@@ -157,6 +174,7 @@ func _test_save_from_live_hero(game) -> void:
 	# Метаданные для экрана слотов.
 	_check(str(res.get("meta", {}).get("hero_name", "")) == "Тестер",
 		"meta содержит имя героя для списка слотов")
+	menu.close()
 	_sections_done += 1
 
 
@@ -256,6 +274,40 @@ func _test_version_rejected(game) -> void:
 	_sections_done += 1
 
 
+# --- 7. Выход в главное меню: одна запись автосейва ---
+
+## «В главное меню» раньше писало автосейв дважды: сам `_quit_to_menu` и
+## `_notification(PREDELETE)` при сносе сцены. Вторая запись затирала то, что
+## главное меню только что сохранило при загрузке слота (его герой собирается
+## только при старте новой игры). Жалоба 22.10: «сохранения видны, пока не
+## закроешь игру».
+func _test_quit_to_menu(game) -> void:
+	var player = game.get("player")
+	if player == null:
+		_check(false, "игрок на месте для выхода в меню")
+		return
+	player.gold = 777
+	game.call("_quit_to_menu")
+	await process_frame
+	await process_frame
+	_check(not SaveSystem.dir().begins_with(SaveSystem.DIR),
+		"тест работает в песочнице, а не в живых сохранениях (%s)" % SaveSystem.dir())
+	var res := SaveSystem.load_slot(SaveSystem.AUTOSAVE_SLOT)
+	_check(int(res.get("data", {}).get("hero", {}).get("gold", -1)) == 777,
+		"в автосейве именно состояние, которым вышли из игры")
+	_check(not paused, "после выхода в меню дерево не на паузе")
+	# Главное меню появилось — прежняя сцена снесена, `_notification(PREDELETE)`
+	# уже отгремел. Если он тоже сохранял, автосейв сейчас был бы не 777.
+	var menu := current_scene
+	_check(menu != null and menu.name.to_lower().contains("menu"),
+		"главное меню загружено (%s)" % (menu.name if menu != null else "null"))
+	var again := SaveSystem.load_slot(SaveSystem.AUTOSAVE_SLOT)
+	_check(int(again.get("data", {}).get("hero", {}).get("gold", -1)) == 777,
+		"после сноса сцены автосейв не перезаписан второй раз (золото %s)"
+			% str(again.get("data", {}).get("hero", {}).get("gold", -1)))
+	_sections_done += 1
+
+
 # --- вспомогательное ---
 
 func _menu(game):
@@ -301,11 +353,7 @@ func _focused_control() -> Control:
 
 
 func _wipe() -> void:
-	SaveSystem.ensure_dir()
-	for slot in SaveSystem.PLAYER_SLOTS + [SaveSystem.AUTOSAVE_SLOT]:
-		for p in [SaveSystem.slot_path(slot), SaveSystem.bak_path(slot), SaveSystem.tmp_path(slot)]:
-			if FileAccess.file_exists(p):
-				DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	Sandbox.wipe()
 
 
 func _check(cond: bool, label: String) -> void:

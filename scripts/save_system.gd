@@ -19,6 +19,26 @@ extends RefCounted
 
 const DIR := "user://saves/"
 const VERSION := 1
+## Где живут сохранения. Этот каталог НЕ должен трогать ни один прогон тестов
+## или инструментов: все сценарии (headless-тесты, `--path` на ту же
+## установку, копии проекта) используют один и тот же `user://`
+## (`%APPDATA%/Godot/app_userdata/<config/name>`), поэтому тест, трогавший
+## слоты, стирал живые сохранения игрока (жалоба 22.10: «сохранения видны,
+## пока не закроешь игру» — тест перетирал их при закрытии окна).
+## Тесты и инструменты пишут только в `TEST_DIR` (см. `use_test_dir()`).
+static var _dir := DIR
+
+
+## Переключить хранение слотов на тестовый каталог. Вызывается ТОЛЬКО
+## тестами (`tests/save_sandbox.gd`): живые сохранения остаются нетронутыми.
+static func use_test_dir(path: String) -> void:
+	_dir = path if path.ends_with("/") else path + "/"
+	ensure_dir()
+
+
+## Текущий каталог слотов: игровой `user://saves/` или тестовый.
+static func dir() -> String:
+	return _dir
 ## Игровых слотов для меню «Загрузить игру» (решение игрока 05.10: 6).
 const SLOT_COUNT := 6
 const AUTOSAVE_SLOT := "autosave"
@@ -28,19 +48,19 @@ const PLAYER_SLOTS := ["slot_0", "slot_1", "slot_2", "slot_3", "slot_4", "slot_5
 
 
 static func ensure_dir() -> void:
-	DirAccess.make_dir_recursive_absolute(DIR)
+	DirAccess.make_dir_recursive_absolute(_dir)
 
 
 static func slot_path(slot: String) -> String:
-	return DIR + slot + ".json"
+	return _dir + slot + ".json"
 
 
 static func tmp_path(slot: String) -> String:
-	return DIR + slot + ".json.tmp"
+	return _dir + slot + ".json.tmp"
 
 
 static func bak_path(slot: String) -> String:
-	return DIR + slot + ".json.bak"
+	return _dir + slot + ".json.bak"
 
 
 # --- Запись ---

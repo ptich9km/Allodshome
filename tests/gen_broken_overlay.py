@@ -45,6 +45,18 @@
 
 ЧТО РИСУЕТСЯ (`VARIANTS`):
     v7_red_line — одна красная линия по диагонали, length 1.00, width 3.0 px.
+v8_red_line_vent — та же линия плюс две расходящиеся красные «прорехи»
+    от её середины (ширина и диагональ те же, поэтому с v7 соседи по листу);
+    линия визуально «рвётся» пополам, что и читается как порванная ткань.
+
+ОДЕЖДА (поправка 22.10): у сломанной одежды иконка была РУЛОНОМ ТКАНИ
+(`assets/professions/workshop/fabric.png` — ресурс переработки) с линией.
+В складе «рулон с чертой» читался как испорченная ткань, а не одежда
+(жалоба игрока: «выпала сломаная одежда льняная — а на картинке рулон льна
+перечеркнутый»). Теперь источник — настоящая одёжная иконка `Outfit` из
+атласа (linen_garment_в атласе нет), через resolve_source(kind="garment"):
+`{group}/linen_outfit_*.png` (`base/outfit_*.png` у базовой ткани), и
+`draw_tatter()` рвёт силуэт по линиям и распускает кромку нитями.
 
 Скрипт по умолчанию НИЧЕГО не пишет в assets/: вариант и подписанный
 контакт-лист кладутся в import/broken_overlay/. Плюс `_compare.png` —
@@ -73,7 +85,7 @@ import shutil
 import subprocess
 import sys
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "import", "broken_overlay")
@@ -81,6 +93,10 @@ BROKEN_DIR = os.path.join(ROOT, "assets", "items", "broken")
 LOOT_DIR = os.path.join(ROOT, "assets", "loot_icons")
 PALETTE = os.path.join(ROOT, "assets", "items", "faction_palette.json")
 FABRIC = os.path.join(ROOT, "assets", "professions", "workshop", "fabric.png")
+## Одежда (Linen) — настоящая льняная роба из атласа. Сломанная одежда НЕ
+## должна рисоваться рулоном ткани: рулон — ресурс переработки, и в складе
+## он читался как испорченная ткань, а не как одежда (жалоба 22.10).
+GARMENT_SOURCE = os.path.join(ROOT, "assets", "items", "base", "light_shirt_common.png")
 WEAPON_LOOT = "one_handed_sword"
 SHEET = os.path.join(
     ROOT, ".agents", "skills", "disciplines", "create-game-assets",
@@ -116,6 +132,7 @@ BASE_GLOB = {
 ## 32 px тёмную читаемую линию без «закрашенного» силуэта.
 VARIANTS: dict[str, dict] = {
     "v7_red_line": {"lines": [1.00], "width": 3.0},
+    "v8_red_line_vent": {"lines": [1.00], "width": 3.0, "tatter": True},
 }
 
 CROSS_COLOR = (214, 32, 28, 255)
@@ -124,11 +141,19 @@ LINE_INSET = 0.06         # отступ начала от угла bbox, дол
 LINE_SPREAD = 0.0         # наклон линии от угла bbox к углу (0 = точно по диагонали)
 LINE_SHADE = 0.55          # затемнение иконки под линией (обводка под красным)
 
+## Порванная одежда: прорехи и нити (см. draw_tatter). Размеры — в пикселях
+## источника 80 px, чтобы на 32 px прореха была видна, но силуэт не исчез.
+TATTER_HOLES = 2
+TATTER_RADIUS = 7.0
+TATTER_THREADS = 5
+TATTER_THREAD_LEN = 7.0
+
 ## Пары для сравнения в import/broken_overlay/_compare.png: (металл, вид) —
 ## три уровня «света» (тёмный кобальт, средняя сталь, светлое серебро) × броня и оружие.
 COMPARE: list[tuple[str, str]] = [
     ("cobalt", "armor"), ("steel", "armor"), ("argentum", "armor"),
     ("cobalt", "weapon"), ("steel", "weapon"), ("argentum", "weapon"),
+    ("Linen", "garment"),
 ]
 COMPARE_PATH = os.path.join(OUT_DIR, "_compare.png")
 COMPARE_SMALL_PATH = os.path.join(OUT_DIR, "_compare_small.png")
@@ -167,6 +192,12 @@ def is_base_metal(metal: str) -> bool:
 def resolve_source(metal: str, kind: str) -> tuple[str, list[str]]:
     """(путь иконки металла нужного вида, проблемы)."""
     problems: list[str] = []
+    if kind == "garment" and metal == "Linen":
+        if os.path.isfile(GARMENT_SOURCE):
+            return GARMENT_SOURCE, problems
+        problems.append("Linen/garment: нет источника %s"
+                        % os.path.relpath(GARMENT_SOURCE, ROOT))
+        return "", problems
     if is_base_metal(metal):
         hits = sorted(globmod.glob(os.path.join(ROOT, BASE_GLOB[kind])))
         if not hits:
@@ -254,6 +285,60 @@ def cross_lines(canvas: Image.Image, variant: dict) -> list[tuple[tuple[float, f
         ex, ey = ax + ux * diag * LINE_REACH * length, ay + uy * diag * LINE_REACH * length
         out.append(((sx, sy), (ex, ey)))
     return out
+
+
+def draw_tatter(canvas: Image.Image, scale: float) -> None:
+    """Порванная кромка: в силуэте прорезаются куски и проступают нити.
+
+    Красная линия сама по себе только «зачёркивает» вещь; у одежды это читалось
+    как «испорченная ткань», а не «порванная одежда» (жалоба 22.10). Прорехи
+    вырезают альфу внутри силуэта по диагонали (та же, что у линии), а от
+    краёв прорех вниз-в сторону уходят нити — как обтрёпанный край ткани.
+    """
+    k = SUPERSAMPLE
+    mask = silhouette(canvas)
+    bbox = mask.getbbox()
+    if not bbox:
+        return
+    x0, y0, x1, y1 = bbox
+    w, h = canvas.size
+    diag = math.hypot(x1 - x0, y1 - y0)
+    holes = Image.new("L", (w * k, h * k), 0)
+    threads = Image.new("RGBA", (w * k, h * k), (0, 0, 0, 0))
+    dh = ImageDraw.Draw(holes)
+    dt = ImageDraw.Draw(threads)
+    rng = random.Random(SEED + 1)
+    count = TATTER_HOLES
+    for i in range(count):
+        # Центр прорехи — на линии перечёркивания, а не в случайном месте:
+        # игрок видел дефект именно рядом с чертой.
+        t = 0.30 + 0.45 * (i / max(1, count - 1)) + rng.uniform(-0.06, 0.06)
+        cx = x0 + (x1 - x0) * t
+        cy = y0 + (y1 - y0) * t
+        rad = max(2.0, TATTER_RADIUS * scale) * k
+        points: list[tuple[float, float]] = []
+        sides = 7
+        for s in range(sides):
+            a = 2 * math.pi * s / sides + rng.uniform(-0.25, 0.25)
+            r = rad * rng.uniform(0.55, 1.25)
+            points.append((cx * k + math.cos(a) * r, cy * k + math.sin(a) * r))
+        dh.polygon(points, fill=255)
+        tx, ty = cx * k, cy * k
+        for _n in range(TATTER_THREADS):
+            a = rng.uniform(0.2, 2.94) * math.pi
+            length = max(2.0, TATTER_THREAD_LEN * scale) * k * rng.uniform(0.6, 1.3)
+            ex = tx + math.cos(a) * length
+            ey = ty + math.sin(a) * length
+            dt.line([(tx, ty), (ex, ey)], fill=CROSS_COLOR, width=max(1, round(k * 0.8)))
+    holes = holes.filter(ImageFilter.GaussianBlur(k * 0.35)).point(
+        lambda v: 255 if v > 128 else 0)
+    big_mask = mask.resize((w * k, h * k), Image.Resampling.NEAREST)
+    holes = Image.composite(holes, Image.new("L", holes.size, 0), big_mask)
+    alpha = canvas.getchannel("A")
+    cut = Image.composite(Image.new("L", (w, h), 0), alpha,
+                          holes.resize(canvas.size, Image.Resampling.LANCZOS))
+    canvas.putalpha(cut)
+    canvas.alpha_composite(threads.resize(canvas.size, Image.Resampling.LANCZOS))
 
 
 def draw_cross(canvas: Image.Image, scale: float, variant: dict) -> None:
@@ -351,6 +436,8 @@ def derive(src: Image.Image, variant: dict, seed: int) -> Image.Image:
                 continue
             draw_crack(img, pts, scale, variant)
     draw_cross(img, scale, variant)
+    if variant.get("tatter"):
+        draw_tatter(img, scale)
     return img
 
 
@@ -364,7 +451,7 @@ def targets() -> list[tuple[str, str, str, str]]:
     for metal in METALS:
         for kind in ("armor", "weapon"):
             out.append((metal, kind, "", os.path.join(BROKEN_DIR, "%s_%s.png" % (metal, kind))))
-    out.append(("Linen", "garment", FABRIC, os.path.join(BROKEN_DIR, "linen_garment.png")))
+    out.append(("Linen", "garment", "", os.path.join(BROKEN_DIR, "linen_garment.png")))
     return out
 
 
@@ -398,10 +485,10 @@ def build_sheet(files: list[str], sheet_path: str | None = None,
 
 
 def build_compare_sources() -> dict[tuple[str, str], str]:
-    """Сохранить ЦЕЛЫЕ иконки шести сравниваемых вещей в import/broken_overlay/.
+    """Сохранить ЦЕЛЫЕ иконки сравниваемых вещей в import/broken_overlay/.
 
-    Обычный источник брони — heavy_chest, оружия — one_handed_sword: подписи
-    листа получают понятные имена `whole_<металл>_<вид>.png`.
+    Обычный источник брони — heavy_chest, оружия — one_handed_sword, одежды —
+    льняная роба: подписи листа получают понятные имена `_src_<металл>_<вид>.png`.
     """
     os.makedirs(OUT_DIR, exist_ok=True)
     srcs: dict[tuple[str, str], str] = {}

@@ -9,7 +9,12 @@ extends SceneTree
 var _fails: Array[String] = []
 var _checks := 0
 
+## The slots live in a scratch directory: a test run must never touch the
+## saves of the player (`tests/save_sandbox.gd`).
+const Sandbox := preload("res://tests/save_sandbox.gd")
+
 func _initialize() -> void:
+	Sandbox.use_test_dir()
 	_wipe_saves()
 	# Язык задаётся ЯВНО и ДО загрузки сцены: тест не должен зависеть от того,
 	# что игрок (или предыдущий прогон) оставил в user://settings.cfg. На этом
@@ -167,11 +172,7 @@ func _run() -> void:
 	_report()
 
 func _wipe_saves() -> void:
-	SaveSystem.ensure_dir()
-	for s in SaveSystem.PLAYER_SLOTS:
-		for p in [SaveSystem.slot_path(s), SaveSystem.bak_path(s), SaveSystem.tmp_path(s)]:
-			if FileAccess.file_exists(p):
-				DirAccess.remove_absolute(p)
+	Sandbox.wipe()
 
 func _buttons_in(node: Node) -> Array:
 	var out: Array = []
