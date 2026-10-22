@@ -256,16 +256,16 @@ func _unit_sound_at(idx: int) -> int:
 
 ## --- Статы (для Game.unit_*: атака->точность, защита->уклонение) ---
 func get_attack() -> int:
-	return damage / GameConfig.geti("combat", "enemy_attack_dmg_div") \
-		+ max_hp / GameConfig.geti("combat", "enemy_attack_hp_div") \
+	return int(damage / float(GameConfig.geti("combat", "enemy_attack_dmg_div"))) \
+		+ int(max_hp / float(GameConfig.geti("combat", "enemy_attack_hp_div"))) \
 		+ StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	var base := max_hp / GameConfig.geti("combat", "enemy_defense_div")
+	var base := int(max_hp / float(GameConfig.geti("combat", "enemy_defense_div")))
 	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	return max_hp / GameConfig.geti("combat", "enemy_absorption_div")
+	return int(max_hp / float(GameConfig.geti("combat", "enemy_absorption_div")))
 
 func _resist(sphere: String) -> int:
 	return UnitDB.resist_of(anim_set, sphere) + StatusEffects.resist_bonus(self, sphere)
@@ -311,7 +311,7 @@ func _drop_loot() -> void:
 	if drop_script == null:
 		return
 	var pool: Array = []
-	var gold_base := 3 + maxi(1, max_hp / 8)
+	var gold_base := 3 + maxi(1, int(max_hp / 8.0))
 	var gold_mult := GameConfig.getf("economy", "loot_gold_multiplier")
 	pool.append({"gold": int(round(float(gold_base + randi() % maxi(1, gold_base)) * gold_mult))})
 	# жители щедры на зелья, стражей - реже: они вооружены
@@ -438,17 +438,17 @@ func _move_checked(direction: Vector2, speed: float, delta: float) -> void:
 	var can_y := false
 	if alm_map != null and alm_map.has_method("is_walkable_world"):
 		# Разрешаем шаг внутри СВОЕЙ непроходимой клетки (выход из застревания)
-		var here := Vector2i(int(global_position.x) / 32, int(global_position.y) / 32)
+		var here := Vector2i(int(int(global_position.x) / 32.0), int(int(global_position.y) / 32.0))
 		can_step = alm_map.is_walkable_world(global_position + step) \
-			or here == Vector2i(int((global_position.x + step.x) / 32),
-				int((global_position.y + step.y) / 32))
+			or here == Vector2i(int((global_position.x + step.x) / 32.0),
+				int((global_position.y + step.y) / 32.0))
 		if can_step:
 			velocity = velocity.move_toward(wanted, 1100.0 * delta)
 			return
 		can_x = alm_map.is_walkable_world(global_position + Vector2(step.x, 0.0)) \
-			or here == Vector2i(int((global_position.x + step.x) / 32), int(global_position.y / 32))
+			or here == Vector2i(int((global_position.x + step.x) / 32.0), int(global_position.y / 32.0))
 		can_y = alm_map.is_walkable_world(global_position + Vector2(0.0, step.y)) \
-			or here == Vector2i(int(global_position.x / 32), int((global_position.y + step.y) / 32))
+			or here == Vector2i(int(global_position.x / 32.0), int((global_position.y + step.y) / 32.0))
 		# Скольжение по ближайшей к движению оси. Раньше его не было вовсе:
 		# страж, упёршийся в угол, просто останавливался, и патруль мог
 		# зависнуть на месте.

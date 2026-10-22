@@ -415,7 +415,7 @@ func _build_atlas() -> void:
 		8: 7, 9: 7, 10: 7, 11: 7, 12: 7, 13: 7, 14: 7, 15: 7}
 	var loaded := 0
 	for want_key in want:
-		var file_n: int = int(want_key) / 16
+		var file_n: int = int(int(want_key) / 16.0)
 		var variant: int = int(want_key) % 16
 		if variant >= int(vmax_by_file.get(file_n, 16)):
 			continue
@@ -426,7 +426,7 @@ func _build_atlas() -> void:
 		var tex: Texture2D = load(path)
 		var img: Image = tex.get_image()
 		img.convert(Image.FORMAT_RGBA8)
-		var nrows: int = img.get_height() / TILE
+		var nrows: int = int(img.get_height() / float(TILE))
 		for row in range(nrows):
 			var key := "f%d-v%d-r%d" % [file_n, variant, row]
 			# Дублей быть не может: want уникален по (файл, вариант),
@@ -455,7 +455,7 @@ func _build_atlas() -> void:
 		var key: String = cells[idx][0]
 		var cimg: Image = cells[idx][1]
 		var cx := idx % 64
-		var cy := idx / 64
+		var cy := int(idx / 64.0)
 		atlas.blit_rect(cimg, Rect2i(0, 0, TILE, TILE), Vector2i(cx * TILE, cy * TILE))
 		# UV inset ±0.5 px to avoid sampling at cell boundaries (grid seams)
 		var u0 := float(cx * TILE) / atlas_w + half_px
@@ -789,8 +789,8 @@ func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> voi
 func get_spawn_pos() -> Vector2:
 	var anchor := _load_spawn_anchor()
 	if anchor.x >= 0:
-		return Vector2(anchor.x * TILE + TILE / 2, anchor.y * TILE + TILE / 2)
-	return Vector2(map_width * TILE / 2, map_height * TILE / 2)
+		return Vector2(anchor.x * TILE + TILE / 2.0, anchor.y * TILE + TILE / 2.0)
+	return Vector2(map_width * TILE / 2.0, map_height * TILE / 2.0)
 
 ## Выбор карты при старте. Порядок:
 ##  1. Явно запрошенный путь (Game.pending_map_path) — редактор карт, загрузка сохранения.
@@ -933,7 +933,7 @@ func get_units() -> Array:
 ## --- Запросы для движения и миникарты ---
 
 func _cell_of(pos: Vector2) -> Vector2i:
-	return Vector2i(int(pos.x) / TILE, int(pos.y) / TILE)
+	return Vector2i(int(int(pos.x) / float(TILE)), int(int(pos.y) / float(TILE)))
 
 func height_at_tile(tx: int, ty: int) -> int:
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
@@ -947,15 +947,15 @@ func height_at_world(pos: Vector2) -> int:
 	return int(round(relief_at_world(pos)))
 
 func flag_at_world(pos: Vector2) -> int:
-	var tx := int(pos.x) / TILE
-	var ty := int(pos.y) / TILE
+	var tx := int(int(pos.x) / float(TILE))
+	var ty := int(int(pos.y) / float(TILE))
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return AlmLoader.TileFlag.BARRIER
 	return AlmLoader.classify(_hflags[ty * map_width + tx])
 
 func is_walkable_world(pos: Vector2) -> bool:
-	var tx := int(pos.x) / TILE
-	var ty := int(pos.y) / TILE
+	var tx := int(int(pos.x) / float(TILE))
+	var ty := int(int(pos.y) / float(TILE))
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return false
 	# Ручная разметка «Нельзя пройти» (редактор) — приоритет над автоматикой
@@ -993,8 +993,8 @@ func is_walkable_world(pos: Vector2) -> bool:
 ## Множитель скорости по текстуре клетки (WalkTable, как у разработчиков:
 ## скорость = 8 / цена прохода). Дорога быстрее травы, песок/горы медленнее.
 func speed_factor_at_world(pos: Vector2) -> float:
-	var tx := int(pos.x) / TILE
-	var ty := int(pos.y) / TILE
+	var tx := int(int(pos.x) / float(TILE))
+	var ty := int(int(pos.y) / float(TILE))
 	if tx < 0 or ty < 0 or tx >= map_width or ty >= map_height:
 		return 1.0
 	return WalkTable.speed_at(_hflags[ty * map_width + tx], _terrain[ty * map_width + tx])
@@ -1065,7 +1065,7 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 		for d in _DIRS_4:
 			var n := goal + d
 			if _cell_walkable(n):
-				var dist := from_world.distance_squared_to(Vector2(n.x * TILE + TILE / 2, n.y * TILE + TILE / 2))
+				var dist := from_world.distance_squared_to(Vector2(n.x * TILE + TILE / 2.0, n.y * TILE + TILE / 2.0))
 				if best_d < 0.0 or dist < best_d:
 					best_d = dist
 					best = n
@@ -1165,7 +1165,7 @@ func find_path(from_world: Vector2, to_world: Vector2) -> Array:
 		return []
 	var out: Array = []
 	for cell in cells:
-		out.append(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
+		out.append(Vector2(cell.x * TILE + TILE / 2.0, cell.y * TILE + TILE / 2.0))
 	return out
 
 
@@ -1179,7 +1179,7 @@ func _heuristic(a: Vector2i, b: Vector2i) -> float:
 	return float(maxi(absi(a.x - b.x), absi(a.y - b.y)))
 
 func _cell_walkable(cell: Vector2i) -> bool:
-	return is_walkable_world(Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2))
+	return is_walkable_world(Vector2(cell.x * TILE + TILE / 2.0, cell.y * TILE + TILE / 2.0))
 
 ## Ближайшая проходимая клетка (спираль радиуса r) или (-1,-1).
 func _nearest_walkable(cell: Vector2i, r: int) -> Vector2i:

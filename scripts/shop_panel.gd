@@ -314,7 +314,7 @@ func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
 	return lines
 
 func _sell_price(price: int) -> int:
-	return maxi(1, price / maxi(1, GameConfig.geti("economy", "sell_price_div")))
+	return maxi(1, int(price / float(maxi(1, GameConfig.geti("economy", "sell_price_div")))))
 
 func _update_layout() -> void:
 	pass
@@ -409,7 +409,7 @@ func _build_sell_list() -> Array[Button]:
 			entries.append({
 				"item": ItemDB.find(item_key),
 				"count": int(seen[item_key]),
-				"price": maxi(1, int(ItemDB.find(item_key).get("price", 0)) / 2),
+				"price": maxi(1, int(int(ItemDB.find(item_key).get("price", 0)) / 2.0)),
 			})
 	entries.sort_custom(func(a: Dictionary, b: Dictionary): return int(a["price"]) < int(b["price"]))
 	var buttons: Array[Button] = []

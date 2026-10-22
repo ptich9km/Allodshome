@@ -95,7 +95,7 @@ func _ensure_light() -> void:
 ## этого визуал врал про то, какие клетки накрывает зона.
 func snap_to_grid() -> void:
 	var c := Vector2i(floor(global_position.x / TILE), floor(global_position.y / TILE))
-	var first := c - Vector2i(cells.x / 2, cells.y / 2)
+	var first := c - Vector2i(int(cells.x / 2.0), int(cells.y / 2.0))
 	global_position = Vector2(
 		float(first.x) * TILE + float(cells.x) * TILE * 0.5,
 		float(first.y) * TILE + float(cells.y) * TILE * 0.5)
@@ -131,7 +131,7 @@ func pixel_size() -> Vector2:
 ## snap_to_grid() центр зоны для чётного числа клеток стоит ТОЧНО НА ГРАНИЦЕ
 ## клеток, и floor() сдвигал бы всю зону на одну клетку.
 func center_cell() -> Vector2i:
-	return first_cell() + Vector2i(cells.x / 2, cells.y / 2)
+	return first_cell() + Vector2i(int(cells.x / 2.0), int(cells.y / 2.0))
 
 
 ## Левая верхняя клетка зоны — напрямую из геометрии, без привязки к центру.

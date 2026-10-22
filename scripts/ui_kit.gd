@@ -318,7 +318,7 @@ static func wire_grid_focus(buttons: Array[Button], columns: int) -> void:
 	if columns <= 0 or buttons.is_empty():
 		return
 	for index in range(buttons.size()):
-		var row := index / columns
+		var row := int(index / float(columns))
 		var column := index % columns
 		var left: Button = buttons[row * columns + maxi(column - 1, 0)]
 		var right: Button = buttons[mini(row * columns + mini(column + 1, columns - 1),
@@ -442,7 +442,7 @@ static func _ignore_mouse_recursive(node: Node) -> void:
 ## Заполнить карточку строками и показать у точки (локальные координаты parent).
 ## tier — уровень крафтовой вещи (CraftVFX.TIER_*), -1 = без свечения.
 static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
-		bounds: Vector2, icon_path: String = "", quality_color: Color = Color(-1, -1, -1, -1),
+		bounds: Vector2, icon_path: String = "", tint: Color = Color(-1, -1, -1, -1),
 		tier: int = -1) -> void:
 	if card == null or not is_instance_valid(card):
 		return
@@ -451,9 +451,9 @@ static func show_hover_card(card: PanelContainer, lines: Array, at: Vector2,
 		return
 	clear(box)
 
-	if quality_color.r >= 0.0:
+	if tint.r >= 0.0:
 		var style: StyleBoxFlat = card.get_theme_stylebox("panel").duplicate()
-		style.border_color = quality_color
+		style.border_color = tint
 		card.add_theme_stylebox_override("panel", style)
 
 	if icon_path != "":

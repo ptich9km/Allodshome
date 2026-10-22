@@ -81,7 +81,7 @@ func _build() -> void:
 		return  # папки нет — не рисуем
 	# Полных блоков: floor. Неполный хвост (church 50 при grid 20, bridge3 36 при 24)
 	# — частичная анимация — показываем только базу (без лишних фаз).
-	_blocks = maxi(1, int(max_frame) / maxi(grid, 1))
+	_blocks = maxi(1, int(int(max_frame) / float(maxi(grid, 1))))
 	if max_frame % grid != 0:
 		_blocks = 1  # частичная анимация: статичная база
 	# Ограничение по DB phases (чтобы не показывать лишние кадры, например у колодцев)

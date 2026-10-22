@@ -213,12 +213,12 @@ static func shield_armor_values(caster: Node2D, effect: Dictionary) -> Dictionar
 	if caster != null:
 		power = Game.spell_power(caster, "Astral")
 	var def := int(10 + astral * 0.6 + power * 0.4)
-	var ab := int(body / 8 + astral * 0.3)
+	var ab := int(int(body / 8.0) + astral * 0.3)
 	var duration := 30.0 + float(astral) * 2.0
 	# База из БД (amount/duration) — не ниже формулы, если задана явно.
 	var db_amount := int(effect.get("amount", 0))
 	if db_amount > 0:
-		def = maxi(def, db_amount + astral / 2)
+		def = maxi(def, db_amount + int(astral / 2.0))
 	var db_dur := float(effect.get("duration", 0.0))
 	if db_dur > 0.0:
 		duration = maxf(duration, db_dur)

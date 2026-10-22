@@ -285,7 +285,7 @@ func _advance_rotation(delta: float) -> void:
 		return
 
 	var diff := wrapi(target_dir - dir, 0, FULL_DIRS)
-	var step := 1 if diff <= FULL_DIRS / 2 else -1
+	var step := 1 if diff <= int(FULL_DIRS / 2.0) else -1
 	dir = wrapi(dir + step, 0, FULL_DIRS)
 
 	# Скелет пересобирается ТОЛЬКО при смене ракурса. Первая версия дёргала

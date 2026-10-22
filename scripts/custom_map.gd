@@ -31,7 +31,7 @@ static func _under_pack(type: int, tex: int) -> int:
 	return type * 256 + maxi(0, tex)
 
 static func _under_type(v: int) -> int:
-	return v / 256 if v >= 0 else -1
+	return int(v / 256.0) if v >= 0 else -1
 
 static func _under_tex(v: int) -> int:
 	return v % 256 if v >= 0 else -1
@@ -334,7 +334,7 @@ func _alm_cat_for(tile: int) -> int:
 func _alm_spec_for(tile: int) -> Dictionary:
 	var n := AlmLoader.tile_file(tile)
 	return {
-		"file": n / 16 + 1,
+		"file": int(n / 16.0) + 1,
 		"variant": n % 16,
 		"row": AlmLoader.tile_frame(tile),
 	}
@@ -627,7 +627,7 @@ func _rebuild_entities() -> void:
 		var cy := int(o.get("cy", 0))
 		var x: float = rec.get("x", 0.0)
 		var y: float = rec.get("y", 0.0)
-		s.position = Vector2(x * TILE + TILE / 2 - cx * sc, y * TILE + TILE - cy * sc)
+		s.position = Vector2(x * TILE + TILE / 2.0 - cx * sc, y * TILE + TILE - cy * sc)
 		npcs_root.add_child(s)
 
 ## Создать (или обновить) спрайт объекта на клетке.
@@ -644,7 +644,7 @@ func _ensure_map_object(cell: Vector2i, obj_name: String) -> void:
 		anchor = Vector2(int(o.get("cx", 0)), int(o.get("cy", 0)))
 	mo.setup(obj_name, cell, TILE, anchor, 0, false)  # редактор: без анимации
 	# Точка якоря (cx,cy) спрайта = центр-низ клетки (объект "стоит" на клетке)
-	mo.position = Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE)
+	mo.position = Vector2(cell.x * TILE + TILE / 2.0, cell.y * TILE + TILE)
 	objects_root.add_child(mo)
 	map_objects[cell] = mo
 
@@ -691,7 +691,7 @@ func _fit_in_cell(img: Image) -> Image:
 	resized.resize(nw, nh, Image.INTERPOLATE_BILINEAR)
 	var out := Image.create_empty(TILE, TILE, false, Image.FORMAT_RGBA8)
 	out.fill(Color(0, 0, 0, 0))
-	out.blit_rect(resized, Rect2i(0, 0, nw, nh), Vector2i((TILE - nw) / 2, TILE - nh))
+	out.blit_rect(resized, Rect2i(0, 0, nw, nh), Vector2i(int((TILE - nw) / 2.0), TILE - nh))
 	return out
 
 func _load_tile_region(file_idx: int, variant: int, row: int, color_hex: String = "") -> Image:
@@ -712,7 +712,7 @@ func _load_tile_region(file_idx: int, variant: int, row: int, color_hex: String 
 		var fallback := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
 		return fallback
 	var img2: Image = tex.get_image()
-	var nrows: int = img2.get_height() / 32
+	var nrows: int = int(img2.get_height() / 32.0)
 	var r := clampi(row, 0, nrows - 1)
 	var cell: Image = img2.get_region(Rect2i(0, r * 32, 32, 32))
 	cell.convert(Image.FORMAT_RGBA8)
@@ -726,7 +726,7 @@ func export_alm_tiles(original_tiles: PackedInt32Array = PackedInt32Array()) -> 
 	for i in range(map_width * map_height):
 		var t := tiles[i]
 		if t >= 0 and t <= 6:
-			var cell := Vector2i(i % map_width, i / map_width)
+			var cell := Vector2i(i % map_width, int(i / float(map_width)))
 			var spec := texture_spec_at(cell)
 			out[i] = AlmLoader.tile_from_spec(spec)
 		elif t >= 7 and under_tiles[i] >= 0:
@@ -750,15 +750,15 @@ func export_alm_tiles(original_tiles: PackedInt32Array = PackedInt32Array()) -> 
 ## Мировая позиция спавна героя (тип 7) или центр карты если не задан.
 func get_spawn_pos() -> Vector2:
 	if spawn_cell.x >= 0:
-		return Vector2(spawn_cell.x * TILE + TILE / 2, spawn_cell.y * TILE + TILE / 2)
-	return Vector2(map_width * TILE / 2, map_height * TILE / 2)
+		return Vector2(spawn_cell.x * TILE + TILE / 2.0, spawn_cell.y * TILE + TILE / 2.0)
+	return Vector2(map_width * TILE / 2.0, map_height * TILE / 2.0)
 
 ## Найти клетку спавна (тип 7) — первая встреченная.
 func _refresh_spawn() -> void:
 	spawn_cell = Vector2i(-1, -1)
 	for i in range(tiles.size()):
 		if tiles[i] == 7:
-			spawn_cell = Vector2i(i % map_width, i / map_width)
+			spawn_cell = Vector2i(i % map_width, int(i / float(map_width)))
 			break
 
 func save_map(path: String) -> bool:
@@ -801,7 +801,7 @@ func flag_at_world(pos: Vector2) -> int:
 	return AlmLoader.TileFlag.GROUND
 
 func is_walkable_world(pos: Vector2) -> bool:
-	var cell := Vector2i(int(pos.x) / TILE, int(pos.y) / TILE)
+	var cell := Vector2i(int(int(pos.x) / float(TILE)), int(int(pos.y) / float(TILE)))
 	var t := tile_id_at(cell)
 	if t < 0 or t >= TYPE_WALKABLE.size():
 		return false

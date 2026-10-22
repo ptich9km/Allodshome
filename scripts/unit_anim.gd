@@ -105,7 +105,7 @@ func _advance_rotation(delta: float) -> void:
 		return
 	_rot_acc = 0.0
 	var diff := wrapi(target_dir - dir, 0, FULL_DIRS)
-	var step := 1 if diff <= FULL_DIRS / 2 else -1
+	var step := 1 if diff <= int(FULL_DIRS / 2.0) else -1
 	dir = wrapi(dir + step, 0, FULL_DIRS)
 	_apply_frame()
 	if dir == target_dir:

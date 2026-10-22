@@ -762,16 +762,16 @@ func _spawn_player_on_walkable():
 		player.reset_physics_interpolation()
 		return
 	# 2) Запасной вариант — проходимый тайл от центра
-	var cx := mw / 2
-	var cy := mh / 2
+	var cx := int(mw / 2.0)
+	var cy := int(mh / 2.0)
 	for r in range(0, 20):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				var tx := cx + dx
 				var ty := cy + dy
 				var ts: int = int(alm_map.get("tile_size"))
-				var wx := tx * ts + ts / 2
-				var wy := ty * ts + ts / 2
+				var wx := tx * ts + ts / 2.0
+				var wy := ty * ts + ts / 2.0
 				if alm_map.call("is_walkable_world", Vector2(wx, wy)):
 					player.global_position = Vector2(wx, wy)
 					player.reset_physics_interpolation()
@@ -847,7 +847,7 @@ func _spawn_npc(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 ## клетки в мировых координатах или Vector2(-1,-1), если в радиусе 6 нет места.
 func _find_open_spot(start: Vector2i, ts: int) -> Vector2:
 	if _is_open_spot(start.x, start.y):
-		return Vector2(start.x * ts + ts / 2, start.y * ts + ts / 2)
+		return Vector2(start.x * ts + ts / 2.0, start.y * ts + ts / 2.0)
 	for r in range(1, 7):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
@@ -856,14 +856,14 @@ func _find_open_spot(start: Vector2i, ts: int) -> Vector2:
 				var tx := start.x + dx
 				var ty := start.y + dy
 				if _is_open_spot(tx, ty):
-					return Vector2(tx * ts + ts / 2, ty * ts + ts / 2)
+					return Vector2(tx * ts + ts / 2.0, ty * ts + ts / 2.0)
 	return Vector2(-1, -1)
 
 ## Клетка проходима и имеет >=2 проходимых соседей (не закуток).
 func _is_open_spot(tx: int, ty: int) -> bool:
 	var ts: int = alm_map.tile_size
-	var wx: int = tx * ts + ts / 2
-	var wy: int = ty * ts + ts / 2
+	var wx: int = tx * ts + int(ts / 2.0)
+	var wy: int = ty * ts + int(ts / 2.0)
 	if not alm_map.is_walkable_world(Vector2(wx, wy)):
 		return false
 	var open_neighbors := 0
@@ -872,7 +872,7 @@ func _is_open_spot(tx: int, ty: int) -> bool:
 		var ny: int = ty + d.y
 		if nx < 0 or ny < 0 or nx >= alm_map.map_width or ny >= alm_map.map_height:
 			continue
-		if alm_map.is_walkable_world(Vector2(nx * ts + ts / 2, ny * ts + ts / 2)):
+		if alm_map.is_walkable_world(Vector2(nx * ts + ts / 2.0, ny * ts + ts / 2.0)):
 			open_neighbors += 1
 	return open_neighbors >= 2
 
@@ -976,7 +976,7 @@ func handle_click(world_position: Vector2):
 
 	# Клик по зданию (функциональному или декоративному): всегда к двери.
 	# Функциональное — при подходе меню + герой «внутри»; декоративное — только подход.
-	var cell := Vector2i(int(world_position.x) / 32, int(world_position.y) / 32)
+	var cell := Vector2i(int(int(world_position.x) / 32.0), int(int(world_position.y) / 32.0))
 	if alm_map != null and alm_map.has_method("structure_at"):
 		var s: Dictionary = alm_map.call("structure_at", cell)
 		if not s.is_empty():
@@ -1124,7 +1124,7 @@ func _door_point(s: Dictionary) -> Vector2:
 	var th := int(def.get("tile_height", 1))
 	var x := int(s.get("ax", 0))
 	var y := int(s.get("ay", 0))
-	var base := Vector2i(x + fw / 2, y + th)
+	var base := Vector2i(x + int(fw / 2.0), y + th)
 	for r in range(3):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
@@ -1644,7 +1644,7 @@ func _check_portal() -> void:
 	if cells.is_empty():
 		return
 	var TILE: int = 32
-	var cell := Vector2i(int(player.global_position.x) / TILE, int(player.global_position.y) / TILE)
+	var cell := Vector2i(int(int(player.global_position.x) / float(TILE)), int(int(player.global_position.y) / float(TILE)))
 	for pc in cells:
 		if cell == pc:
 			_on_portal_enter()
@@ -1823,8 +1823,8 @@ func _gray_respawn_cell() -> Vector2i:
 	var mh: int = int(alm_map.get("map_height"))
 	if mw <= 0 or mh <= 0:
 		return Vector2i(-1, -1)
-	var px := int(player.global_position.x / 32)
-	var py := int(player.global_position.y / 32)
+	var px := int(player.global_position.x / 32.0)
+	var py := int(player.global_position.y / 32.0)
 	for _i in range(80):
 		var c := Vector2i(randi_range(2, mw - 3), randi_range(2, mh - 3))
 		if absi(c.x - px) < min_d or absi(c.y - py) < min_d:

@@ -222,7 +222,7 @@ func _load_penalty() -> float:
 	var load := get_load()
 	if load <= cap:
 		return 1.0
-	return clampf(cap / load, 0.5, 1.0)
+	return clampf(cap / float(load), 0.5, 1.0)
 
 ## Магия героя: выученные заклинания (книги) и заряды свитков.
 ## known_spells: "Fire_Ball" -> {"charges": -1} — выучено навсегда (маг, из книги);
@@ -527,10 +527,10 @@ func _calc_max_mana() -> int:
 	return 10 + spirit * 4        # Spirit -> мана (по манифесту); spirit=10 -> 50
 
 func _calc_hp_regen() -> int:
-	return 1 + body / 5           # реген HP от Body
+	return 1 + int(body / 5.0)           # реген HP от Body
 
 func _calc_mana_regen() -> int:
-	return 1 + spirit / 10        # реген маны от Spirit
+	return 1 + int(spirit / 10.0)        # реген маны от Spirit
 
 func _calc_speed() -> float:
 	# Скорость героя по формуле оригинала (UnityAllods MapHuman):
@@ -584,20 +584,20 @@ func get_damage_max() -> int:
 ## Кулак / без оружия: строго ниже любого экипируемого клинка.
 func unarmed_damage_min() -> int:
 	var sk := _weapon_skill_for_damage()
-	return maxi(1, body / 6 + sk / 20)
+	return maxi(1, int(body / 6.0) + int(sk / 20.0))
 
 
 func unarmed_damage_max() -> int:
-	return unarmed_damage_min() + maxi(1, body / 10)
+	return unarmed_damage_min() + maxi(1, int(body / 10.0))
 
 func get_attack() -> int:
 	# to_hit оружия идёт в атаку (шанс попадания), а не выбрасывается.
 	var w := _equipped_item("weapon")
-	return agility / 2 + blade_skill / 10 \
+	return int(agility / 2.0) + int(blade_skill / 10.0) \
 		+ int(w.get("to_hit", 0)) + StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	var base := agility / 2 + body / 4    # Agility -> уклонение/защита
+	var base := int(agility / 2.0) + int(body / 4.0)    # Agility -> уклонение/защита
 	# Все надетые части (броня, шлем, плащ, перчатки, сапоги, амулеты, кольца,
 	# щит) дают свой defence, и он берётся ПОЛНОСТЬЮ. Атрибуты — база, вещи — поверх.
 	var bonus := 0
@@ -610,7 +610,7 @@ func get_defense() -> int:
 
 func get_absorption() -> int:
 	# Поглощение (в оригинале — отдельная характеристика брони): сумма по всем частям.
-	var a := body / 4
+	var a := int(body / 4.0)
 	for it in _equipped_items():
 		a += int(it.get("absorption", 0))
 	a += StatusEffects.shield_armor_absorption(self)
@@ -693,11 +693,11 @@ func unequip_slot(slot: String) -> bool:
 	return true
 
 func get_sight() -> int:
-	return 6 + agility / 3                 # по манифесту
+	return 6 + int(agility / 3.0)                 # по манифесту
 
 ## Урон магии: Mind -> сила заклинаний (см. Game.spell_power — единая формула).
 func get_magic_power() -> int:
-	return mind / 2
+	return int(mind / 2.0)
 
 ## Сопротивление стихии в процентах = дух (в оригинале Spirit даёт
 ## сопротивление) + навык сферы + временные баффы Protection_from_*.
@@ -707,13 +707,13 @@ func _sphere_protection(sphere: String) -> int:
 	# (у Common Leather Mail magcap=3, у тяжёлой брони — 150).
 	var gear := int(_equipped_item("body").get("magcap", 0)) \
 		+ int(_equipped_item("weapon").get("magcap", 0))
-	return spirit + skill / 10 + gear / 10 + StatusEffects.resist_bonus(self, sphere)
+	return spirit + int(skill / 10.0) + int(gear / 10.0) + StatusEffects.resist_bonus(self, sphere)
 
 func get_protection_fire() -> int: return _sphere_protection("Fire")
 func get_protection_water() -> int: return _sphere_protection("Water")
 func get_protection_air() -> int: return _sphere_protection("Air")
 func get_protection_earth() -> int: return _sphere_protection("Earth")
-func get_protection_astral() -> int: return spirit / 2 + StatusEffects.resist_bonus(self, "Astral")  # астрал почти не защищается
+func get_protection_astral() -> int: return int(spirit / 2.0) + StatusEffects.resist_bonus(self, "Astral")  # астрал почти не защищается
 
 ## Текущий набор анимаций по экипировке ("heroes/swordsman_").
 ##
@@ -1231,7 +1231,7 @@ func attack_enemy(delta):
 				attack_cooldown = GameConfig.getf("combat", "attack_cooldown")
 				# Без маны посох бьёт как слабое физическое оружие
 				if not Game.debug_magic and has_mana and current_mana < GameConfig.geti("magic", "staff_mana_cost"):
-					Game.deal_damage(attack_target, maxi(1, get_damage_min() / 2), "physical", "", self)
+					Game.deal_damage(attack_target, maxi(1, int(get_damage_min() / 2.0)), "physical", "", self)
 					_sound_weapon_attack()
 					return
 				if Game.is_miss(self, attack_target):

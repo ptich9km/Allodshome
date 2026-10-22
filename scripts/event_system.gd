@@ -147,10 +147,10 @@ func _event_cell(map: Node) -> Vector2i:
 	if mw <= 0 or mh <= 0:
 		return Vector2i(-1, -1)
 	var hero_cell := Vector2i(
-		int(Game.hero.global_position.x) / tile,
-		int(Game.hero.global_position.y) / tile)
-	var dmin := GameConfig.geti("events", "spawn_min_dist") / tile
-	var dmax := GameConfig.geti("events", "spawn_max_dist") / tile
+		int(int(Game.hero.global_position.x) / float(tile)),
+		int(int(Game.hero.global_position.y) / float(tile)))
+	var dmin := int(GameConfig.geti("events", "spawn_min_dist") / float(tile))
+	var dmax := int(GameConfig.geti("events", "spawn_max_dist") / float(tile))
 	for _attempt in range(120):
 		var ang := randf() * TAU
 		var dist := float(randi_range(dmin, dmax))
@@ -308,8 +308,9 @@ func _abstract_tick() -> void:
 func _first_alive(ev: Dictionary, key: String) -> Enemy:
 	for u in ev[key]:
 		# Каст на ОСВОБОЖДЁННОМ объекте бросает «Trying to cast a freed
-		# object» — сначала проверка по Variant, потом каст.
-		if u is Object and is_instance_valid(u) == false:
+		# object», а `u is Object` на freed-инстансе — ту же ошибку;
+		# is_instance_valid() принимает Variant и безопасен для freed.
+		if is_instance_valid(u) == false:
 			continue
 		var e: Enemy = u as Enemy
 		if e != null and is_instance_valid(e) \

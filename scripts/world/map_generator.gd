@@ -1363,8 +1363,8 @@ func _place_herbs(rng: RandomNumberGenerator) -> void:
 	var target_count: int = int(HERB_TARGET_COUNTS.get(_zone, 26))
 	var herb_index := rng.randi() % HERB_ITEMS.size()
 	var regions_filled := 0
-	var region_width := W / herb_region_grid()
-	var region_height := H / herb_region_grid()
+	var region_width := int(W / float(herb_region_grid()))
+	var region_height := int(H / float(herb_region_grid()))
 	for region_y in range(herb_region_grid()):
 		for region_x in range(herb_region_grid()):
 			var min_x := region_x * region_width + 2
@@ -1489,8 +1489,8 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 	var regions_used := {}
 	for k in _gray_cells.keys():
 		var p := str(k).split(",")
-		regions_used["%d,%d" % [int(p[0]) * GRAY_REGION_GRID / W,
-			int(p[1]) * GRAY_REGION_GRID / H]] = true
+		regions_used["%d,%d" % [int(int(p[0]) * GRAY_REGION_GRID / float(W)),
+			int(int(p[1]) * GRAY_REGION_GRID / float(H))]] = true
 	print("GRAY: %d/%d клеток=%d регионов=%d/%d" % [
 		placed, count, _gray_cells.size(), regions_used.size(),
 		GRAY_REGION_GRID * GRAY_REGION_GRID])
@@ -1502,8 +1502,8 @@ func _place_greys(rng: RandomNumberGenerator) -> void:
 ## Без второй попытки регионы без дорог и леса оставались пустыми: замер
 ## 03.10 давал 3 региона из 9.
 func _gray_anchor_in_region(rng: RandomNumberGenerator, reg: Vector2i) -> Vector2i:
-	var rw := W / GRAY_REGION_GRID
-	var rh := H / GRAY_REGION_GRID
+	var rw := int(W / float(GRAY_REGION_GRID))
+	var rh := int(H / float(GRAY_REGION_GRID))
 	var x0 := reg.x * rw
 	var y0 := reg.y * rh
 	var fallback := Vector2i(-1, -1)
@@ -1795,16 +1795,16 @@ func _a_star(start: Vector2i, goal: Vector2i, rng: RandomNumberGenerator) -> Arr
 			var out: Array = []
 			var c := cur
 			while c != gk:
-				var cc: Vector2i = Vector2i(c % W, c / W)
+				var cc: Vector2i = Vector2i(c % W, int(c / float(W)))
 				out.push_front(cc)
 				c = int(came.get(c, gk))
 			out.push_front(start)
 			return out
-		var cp: Vector2i = Vector2i(cur % W, cur / W)
+		var cp: Vector2i = Vector2i(cur % W, int(cur / float(W)))
 		# Направление, с которого пришли (для штрафа за поворот)
 		var dir_from_prev := Vector2i(0, 0)
 		if came.has(cur):
-			var prev_p: Vector2i = Vector2i(int(came[cur]) % W, int(came[cur]) / W)
+			var prev_p: Vector2i = Vector2i(int(came[cur]) % W, int(int(came[cur]) / float(W)))
 			dir_from_prev = cp - prev_p
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var np: Vector2i = cp + d
@@ -1893,7 +1893,7 @@ func _place_terrain(n: int) -> void:
 	# Для каждой клетки — ближайшая опорная точка
 	for i in range(n):
 		var x: float = float(i % W)
-		var y: float = float(i / W)
+		var y: float = float(int(i / float(W)))
 		var elev: float = (elev_noise.get_noise_2d(x, y) + 1.0) * 0.5
 		field[i] = elev
 

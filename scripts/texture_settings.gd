@@ -280,7 +280,7 @@ func _file_rows(file_idx: int) -> int:
 	var tex: Variant = load(path)
 	if tex == null:
 		return 1
-	return int(tex.get_height()) / 32
+	return int(int(tex.get_height()) / 32.0)
 
 func _refresh_variants() -> void:
 	if active_file == 0:

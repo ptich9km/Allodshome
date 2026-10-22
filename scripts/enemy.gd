@@ -228,8 +228,8 @@ func _can_step(step: Vector2) -> bool:
 		return true
 	var next := global_position + step
 	return bool(map_node.is_walkable_world(next)) \
-		or Vector2i(int(global_position.x) / 32, int(global_position.y) / 32) \
-			== Vector2i(int(next.x) / 32, int(next.y) / 32)
+		or Vector2i(int(int(global_position.x) / 32.0), int(int(global_position.y) / 32.0)) \
+			== Vector2i(int(int(next.x) / 32.0), int(int(next.y) / 32.0))
 
 ## Цель боя: игрок (приоритет; в агро или в погоне — до deaggro) или
 ## ближайший страж-НПЦ города в радиусе агро.
@@ -298,16 +298,16 @@ func _chase_move(delta: float, target: Node2D) -> void:
 ## поглощение->броня, защиты -> защита от стихий (для магии).
 
 func get_attack() -> int:
-	return damage / GameConfig.geti("combat", "enemy_attack_dmg_div") \
-		+ max_hp / GameConfig.geti("combat", "enemy_attack_hp_div") \
+	return int(damage / float(GameConfig.geti("combat", "enemy_attack_dmg_div"))) \
+		+ int(max_hp / float(GameConfig.geti("combat", "enemy_attack_hp_div"))) \
 		+ StatusEffects.stat_flat(self, "attack")
 
 func get_defense() -> int:
-	var base := max_hp / GameConfig.geti("combat", "enemy_defense_div")
+	var base := int(max_hp / float(GameConfig.geti("combat", "enemy_defense_div")))
 	return int(round((base + StatusEffects.stat_flat(self, "defense")) * StatusEffects.defense_mult(self)))
 
 func get_absorption() -> int:
-	return max_hp / GameConfig.geti("combat", "enemy_absorption_div")
+	return int(max_hp / float(GameConfig.geti("combat", "enemy_absorption_div")))
 
 ## Сопротивление стихии — из данных набора (assets/units/units_db.json, поле
 ## "resist"). Раньше было max_hp/60, из-за чего босс с большим HP становился
@@ -331,7 +331,7 @@ func effective_sight() -> int:
 
 ## Обзор в клетках (влияет на радиус агро — как просили: «обзор -> агро»).
 func get_sight() -> int:
-	return maxi(1, int(move_speed / 8.0) + max_hp / 60)
+	return maxi(1, int(move_speed / 8.0) + int(max_hp / 60.0))
 
 ## Единая точка входящего урона: вызывается из Game.deal_damage
 ## (там уже применены промах, поглощение брони и защиты стихий).
@@ -421,7 +421,7 @@ func _make_loot() -> Array:
 	var table := _loot_table(family)
 	var pool: Array = []
 	var gold_mult := float(table.get("gold_mult", 0.6)) * GameConfig.getf("economy", "loot_gold_multiplier")
-	var gold_base := 4 + max_hp / 5
+	var gold_base := 4 + int(max_hp / 5.0)
 	var gold := int(round(float(gold_base + randi() % gold_base) * gold_mult))
 	if gold > 0:
 		pool.append({"gold": gold})

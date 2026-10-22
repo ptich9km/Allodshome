@@ -252,7 +252,7 @@ func state_at_world(pos: Vector2) -> int:
 	var tile := 32
 	if map_node != null and is_instance_valid(map_node):
 		tile = int(map_node.get("tile_size"))
-	return state_at(Vector2i(int(pos.x) / tile, int(pos.y) / tile))
+	return state_at(Vector2i(int(int(pos.x) / float(tile)), int(int(pos.y) / float(tile))))
 
 ## Юнит вне видимой клетки не тикает и не рисуется (enemy.gd/npc.gd).
 func blocks_process(pos: Vector2) -> bool:
@@ -271,8 +271,8 @@ func _physics_process(_delta: float) -> void:
 		return
 	var tile := int(map_node.get("tile_size"))
 	var cell := Vector2i(
-		int(Game.hero.global_position.x) / tile,
-		int(Game.hero.global_position.y) / tile)
+		int(int(Game.hero.global_position.x) / float(tile)),
+		int(int(Game.hero.global_position.y) / float(tile)))
 	if cell == _last_cell:
 		return
 	_last_cell = cell

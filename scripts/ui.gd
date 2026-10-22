@@ -12,7 +12,6 @@ class_name GameUI
 
 var show_coords := GameConfig.geti("debug", "show_coords") != 0
 var cmd_buttons: Array = []
-var _stats_toggle_btn: Button = null
 
 var minimap_camera: Camera2D
 var alm_map = null
@@ -263,8 +262,8 @@ func _set_cooldown_visual(b: Button, left: float, total: float) -> void:
 
 ## Тултип заклинания. Раньше показывал только имя/сферу/заряды/ману —
 ## было невозможно понять, что заклинание делает и насколько оно далеко.
-func _spell_tooltip(name: String, title: String, sphere: String, charges: int, mana: int) -> String:
-	var spell := SpellDB.get_spell(name)
+func _spell_tooltip(spell_name: String, title: String, sphere: String, charges: int, mana: int) -> String:
+	var spell := SpellDB.get_spell(spell_name)
 	var lines: Array = [title, "Сфера: " + sphere]
 	if charges > 0:
 		lines.append("Зарядов: %d" % charges)
@@ -274,9 +273,9 @@ func _spell_tooltip(name: String, title: String, sphere: String, charges: int, m
 	# Урон или лечение с учётом силы магии героя
 	var base := int(spell.get("damage", 0))
 	if base > 0:
-		lines.append("Урон: %d" % Game.spell_damage(player, name, SpellDB.sphere_of(name), base))
+		lines.append("Урон: %d" % Game.spell_damage(player, spell_name, SpellDB.sphere_of(spell_name), base))
 	elif base < 0:
-		lines.append("Лечение: %d" % Game.spell_damage(player, name, SpellDB.sphere_of(name), -base))
+		lines.append("Лечение: %d" % Game.spell_damage(player, spell_name, SpellDB.sphere_of(spell_name), -base))
 
 	var area := float(spell.get("area", 0))
 	if area > 0.0:
@@ -284,12 +283,12 @@ func _spell_tooltip(name: String, title: String, sphere: String, charges: int, m
 	var rng_range := float(spell.get("range", 0))
 	if rng_range > 0.0:
 		lines.append("Дальность: %.0f м" % (rng_range / 32.0))
-	if SpellDB.cooldown_of(name) > 0.0:
-		lines.append("Кулдаун: %.1f с" % SpellDB.cooldown_of(name))
-	if SpellDB.cast_time_of(name) > 0.0:
-		lines.append("Подготовка: %.2f с" % SpellDB.cast_time_of(name))
+	if SpellDB.cooldown_of(spell_name) > 0.0:
+		lines.append("Кулдаун: %.1f с" % SpellDB.cooldown_of(spell_name))
+	if SpellDB.cast_time_of(spell_name) > 0.0:
+		lines.append("Подготовка: %.2f с" % SpellDB.cast_time_of(spell_name))
 
-	var eff := SpellDB.effects_of(name)
+	var eff := SpellDB.effects_of(spell_name)
 	if not eff.is_empty():
 		lines.append("Эффекты: " + ", ".join(_effect_labels(eff)))
 	return "\n".join(lines)
@@ -973,7 +972,7 @@ func _world_hover_target() -> Array:
 
 ## Здание: structure_at по клетке + соседние (футпринт 3×3 не всегда покрывает
 ## точку клика, если хитбокс шире одной клетки).
-func _structure_at_world(cell: Vector2i, world: Vector2, ts: int) -> Dictionary:
+func _structure_at_world(cell: Vector2i, _world: Vector2, _ts: int) -> Dictionary:
 	if alm_map == null or not alm_map.has_method("structure_at"):
 		return {}
 	var direct: Dictionary = alm_map.structure_at(cell)
@@ -1305,8 +1304,9 @@ func update_ui(p: Player, delta: float = 0.0):
 		lines += "Мышь: %d, %d px\n" % [int(mouse.x), int(mouse.y)]
 		if alm_map:
 			var ts: int = alm_map.tile_size
-			var tc := Vector2i(int(p.global_position.x) / ts, int(p.global_position.y) / ts)
-			var mc := Vector2i(int(world.x) / ts, int(world.y) / ts)
+			var ts_f := float(ts)
+			var tc := Vector2i(floori(p.global_position.x / ts_f), floori(p.global_position.y / ts_f))
+			var mc := Vector2i(floori(world.x / ts_f), floori(world.y / ts_f))
 			lines += "Клетка героя: %d, %d\n" % [tc.x, tc.y]
 			lines += "Клетка мыши: %d, %d\n" % [mc.x, mc.y]
 			var walk_h: bool = alm_map.is_walkable_world(p.global_position)
@@ -1349,7 +1349,7 @@ func update_ui(p: Player, delta: float = 0.0):
 
 var _spell_button_names: Array = []
 
-func cast_ability(index: int):
+func cast_ability(_index: int):
 	# Больше не используется (кнопки кастуют через _cast_spell_button)
 	pass
 
@@ -1396,7 +1396,7 @@ func _update_cooldowns() -> void:
 		if shown == _cd_shown.get(spell_name, -1):
 			continue
 		_cd_shown[spell_name] = shown
-		_set_cooldown_visual(b, left, SpellDB.cooldown_of(name))
+		_set_cooldown_visual(b, left, SpellDB.cooldown_of(spell_name))
 
 func toggle_spells():
 	spells_visible = !spells_visible
