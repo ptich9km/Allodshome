@@ -70,6 +70,13 @@ import/items_atlas/_dbg_*
 import/items_atlas/_sliced/
 import/loot_icons_derived/
 
+# Контакт-листы курсора и диагностика нарезки (tests/extract_cursor_frames.py,
+# tests/gen_cursor_strip.py) — выход dev-инструмента, пересоздаётся одной командой.
+assets/ui/cursor/*_contact_sheet*.png
+import/Cursor/compare_*
+import/Cursor/_proto_*.png
+import/Cursor/*_preview.png
+
 # API keys (never commit)
 .kodik_key
 *.kodik_key
