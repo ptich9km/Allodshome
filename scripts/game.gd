@@ -1815,6 +1815,10 @@ func _swap_map(new_path: String, zone: String, from_slot: bool = false) -> void:
 	add_child(fresh)
 	move_child(fresh, 0)
 	alm_map = fresh
+	# Узел Map новый, а UI переживает подмену: без перепривязки миникарта
+	# продолжала рисовать кэш прежней карты.
+	if is_instance_valid(ui) and ui.has_method("rebind_map"):
+		ui.rebind_map()
 	if from_slot and load_position_valid:
 		# Позиция из сейва и так лежит в Game — здесь нужен только флаг:
 		# если не найти её в кадре загрузки, герой встанет на спавн
@@ -2138,6 +2142,12 @@ func _restart_scene(slot: String) -> void:
 	if not is_instance_valid(player) or not is_instance_valid(alm_map):
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
+	# Слот мог быть записан ДРУГИМ персонажем (класс/пол/раса/портрет):
+	# узел Player живёт в этой сцене и сам не пересобирается, поэтому
+	# перечитываем его класс-зависимое состояние до спавна юнитов карты:
+	# тогда и город соберётся с расой нового героя.
+	if player.has_method("reload_hero_state"):
+		player.reload_hero_state()
 	var map_path := SaveSystem.world_map_path(slot)
 	if map_path == "":
 		map_path = _zone_map_path(Game.map_zone, Game.map_seed)
@@ -2146,6 +2156,27 @@ func _restart_scene(slot: String) -> void:
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
 	await _swap_map(map_path, Game.map_zone, true)
+	# HUD после подмены героя: книга магии (у воина/мага разные панели),
+	# золото и видимость нижней панели.
+	_refresh_ui_after_hero_swap()
+
+
+## Обновить HUD после загрузки слота другого персонажа. Панели (инвентарь,
+## магазин и т.п.) создаются заново при каждом открытии и читают Game.*,
+## но уже открытые в момент загрузки показывали бы героя другого класса —
+## их закрываем (меню сохранений и так ставит игру на паузу).
+func _refresh_ui_after_hero_swap() -> void:
+	if is_instance_valid(player):
+		Game.hero = player
+	# ui — @onready-типизированная ссылка на узел UI.
+	if not is_instance_valid(ui):
+		return
+	ui.close_all_panels()
+	ui.rebind_map()
+	ui.refresh_spell_book()
+	ui._update_gold(int(player.gold) if is_instance_valid(player) else 0)
+	ui._update_bottom_panel_visibility()
+	ui.refresh_inventory()
 
 
 ## Мир (SIM-состояние) из слота → WorldBus. Симулятор держит ссылку на

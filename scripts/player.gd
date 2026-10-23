@@ -287,29 +287,7 @@ func _ready():
 
 ## Применить Game.hero_save (загрузка сейва) вместо стартового набора.
 func _apply_hero_save() -> void:
-	var hs: Dictionary = Game.hero_save
-	gold = int(hs.get("gold", 0))
-	inventory = []
-	var inv: Variant = hs.get("inventory", [])
-	if inv is Array:
-		for k in inv:
-			inventory.append(str(k))
-	equipped = {}
-	var eq: Variant = hs.get("equipped", {})
-	if eq is Dictionary:
-		equipped = (eq as Dictionary).duplicate(true)
-	known_spells = {}
-	var ks: Variant = hs.get("known_spells", {})
-	if ks is Dictionary:
-		known_spells = (ks as Dictionary).duplicate(true)
-	sphere_books = {}
-	var sb: Variant = hs.get("sphere_books", {})
-	if sb is Dictionary:
-		sphere_books = (sb as Dictionary).duplicate(true)
-	experience = {}
-	var exp: Variant = hs.get("experience", {})
-	if exp is Dictionary:
-		experience = (exp as Dictionary).duplicate(true)
+	_restore_from_hero_save()
 	# Пересобрать визуал/атаку по экипировке из сейва (не стартовой).
 	# weapon — это КИН анимации (sword/staff/...), а не type из item_db
 	# ("Long Sword"); иначе UnitAnim.setup("heroes/Long Sword") и герой невидим.
@@ -334,6 +312,97 @@ func _apply_hero_save() -> void:
 		var old_it := ItemDB.find(str(equipped[slot]))
 		if not old_it.is_empty() and not ItemDB.allows_class(old_it, Game.hero_class):
 			print("Player: надет предмет чужого класса в слоте %s: %s" % [slot, str(equipped[slot])])
+
+
+## Голова/склад/экипировка/опыт/навыки из Game.hero_save — без пересчёта
+## анимации и статов: их делает вызывающий (см. reload_hero_state).
+func _restore_from_hero_save() -> void:
+	var hs: Dictionary = Game.hero_save
+	gold = int(hs.get("gold", 0))
+	inventory = []
+	var inv: Variant = hs.get("inventory", [])
+	if inv is Array:
+		for k in inv:
+			inventory.append(str(k))
+	equipped = {}
+	var eq: Variant = hs.get("equipped", {})
+	if eq is Dictionary:
+		equipped = (eq as Dictionary).duplicate(true)
+	known_spells = {}
+	var ks: Variant = hs.get("known_spells", {})
+	if ks is Dictionary:
+		known_spells = (ks as Dictionary).duplicate(true)
+	sphere_books = {}
+	var sb: Variant = hs.get("sphere_books", {})
+	if sb is Dictionary:
+		sphere_books = (sb as Dictionary).duplicate(true)
+	experience = {}
+	var exp: Variant = hs.get("experience", {})
+	if exp is Dictionary:
+		experience = (exp as Dictionary).duplicate(true)
+
+
+## Перечитать класс-зависимое состояние героя на ЖИВОМ узле (загрузка слота
+## другого персонажа из Esc-меню).
+##
+## Раньше загрузка слота меняла только Game.hero_* и содержимое склада, а узел
+## Player оставался прежним: новый герой-маг бегал спрайтом воина и не имел
+## маны (жалоба 23.10). Раньше это маскировал change_scene — теперь мир
+## подменяется на месте, и всё, что зависит от класса, надо пересобрать явно.
+##
+## Снаряжение чужого класса (старый сейв) остаётся надетым, но помечается:
+## правила класса изменились позже, чем писались эти сейвы.
+func reload_hero_state() -> void:
+	var hs: Dictionary = Game.hero_save
+	if not hs.is_empty():
+		_restore_from_hero_save()
+	has_mana = Game.hero_class == "mage"
+	max_hp = int(hs.get("max_hp", _calc_max_hp()))
+	max_mana = int(hs.get("max_mana", _calc_max_mana()))
+	current_hp = clampi(int(hs.get("current_hp", max_hp)), 0, maxi(1, max_hp))
+	current_mana = clampi(int(hs.get("current_mana", max_mana)), 0, maxi(1, max_mana))
+	weapon = "unarmed"
+	two_handed = false
+	has_shield = false
+	if equipped.has("weapon"):
+		var wit := ItemDB.find(str(equipped["weapon"]))
+		if not wit.is_empty():
+			weapon = ItemDB.weapon_kind(wit)
+			two_handed = ItemDB.is_two_handed(wit)
+	if equipped.has("shield"):
+		has_shield = true
+	if equipped.has("body"):
+		var bit := ItemDB.find(str(equipped["body"]))
+		if not bit.is_empty():
+			armor_kind = ItemDB.armor_kind(bit)
+	for slot in ItemDB.EQUIP_SLOTS:
+		if str(equipped.get(slot, "")) == "":
+			continue
+		var old_it := ItemDB.find(str(equipped[slot]))
+		if not old_it.is_empty() and not ItemDB.allows_class(old_it, Game.hero_class):
+			print("Player: надет предмет чужого класса в слоте %s: %s" % [slot, str(equipped[slot])])
+	if not experience.is_empty():
+		_levels_from_experience()
+	move_speed = _calc_speed()
+	# Набор анимации зависит от класса, пола и расы — спрайт обязан
+	# переключиться на нового героя.
+	_ensure_sprite()
+	# Полоса здоровья создаётся один раз с тогдашними max_hp/has_mana:
+	# у мага из сейва должна появиться мана, у воина — исчезнуть.
+	if health_bar != null and is_instance_valid(health_bar):
+		health_bar.max_hp = maxi(1, max_hp)
+		health_bar.max_mana = maxi(1, max_mana)
+		if health_bar.has_mana != has_mana:
+			health_bar.has_mana = has_mana
+			# Узел снимается с родителя сразу, а не в конце кадра: иначе
+			# add_child новой полосы в том же кадре увидел бы два узла.
+			remove_child(health_bar)
+			health_bar.queue_free()
+			health_bar = null
+			_create_health_bar()
+		health_bar.update_bars(current_hp, current_mana)
+	if has_method("refresh_animation"):
+		refresh_animation()
 
 ## Начальный опыт из стартовых навыков (skill -> exp, как у разработчиков:
 ## exp = (1.1^skill - 1) * 1000). Дальше навык растёт от получаемого опыта.
@@ -897,10 +966,14 @@ func _create_health_bar():
 	add_child(health_bar)
 
 func _ensure_sprite():
-	var old_sprite = get_node_or_null("Sprite")
-	if old_sprite:
-		old_sprite.queue_free()
-
+	# Старая анимация снимается с родителя ДО add_child новой: обе зовутся
+	# "UnitAnim". queue_free() освобождает узел только в конце кадра, и
+	# загрузка слота другого героя (reload_hero_state) оставляла прежний
+	# спрайт (воин) стоять поверх нового (маг).
+	for child in get_children():
+		if child is UnitAnimBase:
+			remove_child(child)
+			child.queue_free()
 	_anim = _make_anim_backend(anim_set_name())
 	_anim.name = "UnitAnim"
 	add_child(_anim)

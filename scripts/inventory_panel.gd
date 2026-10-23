@@ -343,6 +343,10 @@ func _build_hover_card() -> void:
 
 # ─────────────────────── Экипировка 1×1 ───────────────────────
 
+## Портрет для куклы инвентаря.
+static func portrait_path() -> String:
+	return Game.hero_portrait_path()
+
 func _build_equipment_area(parent: VBoxContainer) -> void:
 	var row := HBoxContainer.new()
 	row.name = "EquipRow"
@@ -362,7 +366,7 @@ func _build_equipment_area(parent: VBoxContainer) -> void:
 	row.add_child(right_col)
 
 	_doll = TextureRect.new()
-	var doll_path := Game.hero_portrait_path()
+	var doll_path := portrait_path()
 	_doll.texture = load(doll_path) if ResourceLoader.exists(doll_path) else null
 	_doll.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_doll.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

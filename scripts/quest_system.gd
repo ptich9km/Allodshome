@@ -362,8 +362,9 @@ func _quest_cell(rng: RandomNumberGenerator, tpl: Dictionary) -> Array:
 		if cell.x < 2 or cell.y < 2 or cell.x >= mw - 2 or cell.y >= mh - 2:
 			continue
 		var pos := Vector2(float((cell.x + 0.5) * tile), float((cell.y + 0.5) * tile))
-		if map.has_method("is_walkable_world") and not bool(map.call("is_walkable_world", pos)):
-			continue
+		if map != null and map.has_method("is_walkable_world"):
+			if not bool(map.call("is_walkable_world", pos)):
+				continue
 		return [cell.x, cell.y]
 	return []
 
@@ -945,8 +946,9 @@ func _spawn_cell(hint: Vector2i) -> Vector2i:
 		if cell.x < 2 or cell.y < 2 or cell.x >= mw - 2 or cell.y >= mh - 2:
 			continue
 		var pos := Vector2(float((cell.x + 0.5) * tile), float((cell.y + 0.5) * tile))
-		if map.has_method("is_walkable_world") and not bool(map.call("is_walkable_world", pos)):
-			continue
+		if map != null and map.has_method("is_walkable_world"):
+			if not bool(map.call("is_walkable_world", pos)):
+				continue
 		return cell
 	return hint
 
@@ -977,6 +979,8 @@ func _spawn_elite(q: Dictionary, cell: Vector2i) -> void:
 	e.quest_id = str(q.get("id", ""))
 	scene.add_child(e)
 	Game.enemies.append(e)
+	if map == null:
+		return
 	if map.has_method("watch_enemy"):
 		map.call("watch_enemy", e)
 

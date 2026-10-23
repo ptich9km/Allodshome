@@ -20,12 +20,12 @@ var player: Player
 var minimap_image: Image
 var minimap_texture: ImageTexture
 var _minimap_base: Image = null   # кэш террейна+зданий (P3): не перерисовываем каждый тик
+var _minimap_map_id := 0          # id карты, для которой собран _minimap_base
 var _minimap_size := Vector2.ZERO
 var _minimap_timer := 0.0
 var _fog_img: Image = null        # кэш тумана для миникарты (19.10)
 var _fog_dirty := true
 const MINIMAP_INTERVAL := 0.25
-
 func setup_ui(p: Player):
 	player = p
 
@@ -1046,6 +1046,18 @@ func _update_minimap(delta: float) -> void:
 		_minimap_timer = MINIMAP_INTERVAL
 		_draw_minimap()
 
+## Перепривязать миникарту к текущей карте. Сцена и узел UI живут дольше
+## одной карты (`_swap_map` при загрузке слота/портале создаёт новый узел
+## Map), поэтому кэш террейна и тумана обнуляется: иначе после загрузки
+## слота на миникарте оставалась карта прежней игры.
+func rebind_map() -> void:
+	alm_map = get_tree().get_first_node_in_group("alm_map")
+	_minimap_base = null
+	_minimap_map_id = 0
+	_fog_img = null
+	_fog_dirty = true
+	_minimap_timer = 0.0
+
 func _draw_minimap():
 	if not alm_map or not is_instance_valid(player):
 		return
@@ -1083,7 +1095,13 @@ func _draw_minimap():
 	var fog_on := Game.fog != null and Game.fog.enabled
 
 	# P3: террейн+здания кэшируются; каждый тик только копируем базу + точки.
+	# Кэш привязан к id карты: _swap_map подменяет узел Map, и без этого
+	# проверка «размер тот же» оставляла старый биом (жалоба 23.10).
+	var map_id: int = alm_map.get_instance_id()
+	if _minimap_base != null and _minimap_map_id != map_id:
+		_minimap_base = null
 	if _minimap_base == null or _minimap_base.get_width() != w or _minimap_base.get_height() != h:
+		_minimap_map_id = map_id
 		_minimap_base = Image.create(w, h, false, Image.FORMAT_RGBA8)
 		_minimap_base.fill(MINIMAP_BG)
 		for ty in range(mh):
@@ -1453,6 +1471,17 @@ func _on_panel_closed() -> void:
 	_archmage = null
 	_quests = null
 	_exit_interior()
+
+## Закрыть все открытые панели-интерьеры (загрузка слота другого героя:
+## открытая кукла показывала бы класс/склад прежнего персонажа).
+func close_all_panels() -> void:
+	var panels: Array = [_shop, _alchemy, _school, _inn, _workshop,
+		_inventory_panel, _archmage, _quests]
+	for p in panels:
+		if not is_instance_valid(p):
+			continue
+		p.close()
+	_on_panel_closed()
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
