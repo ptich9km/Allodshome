@@ -164,6 +164,12 @@ func _run() -> void:
 	# 6. Модель A: надетое не дублируется в складе.
 	await _model_a_equip_hides_from_storage(player, inv)
 
+	# 7. Широкое окно и много предметов: прокрутка не должна включаться.
+	await _check_no_scroll_with_many_items(player, inv)
+
+	# 8. Маг: в таблице на две строки больше (10 навыков/сопротивлений).
+	await _check_mage_layout(player, inv)
+
 	_report()
 
 
@@ -211,6 +217,100 @@ func _model_a_equip_hides_from_storage(player, inv: Node) -> void:
 
 func _frame() -> void:
 	await process_frame
+	await process_frame
+
+
+## 30 разных предметов — типичный склад середины игры. При 13 колонках это
+## три ряда; окно 960×640 должно показать их без вертикальной прокрутки.
+## Проверяем именно полосу прокрутки, а не наличие ScrollContainer: он
+## остаётся страховкой и не рисует полосу, когда содержимое влезает.
+func _check_no_scroll_with_many_items(player, inv: Node) -> void:
+	var added := 0
+	for entry in ItemDB.all():
+		var key := str((entry as Dictionary).get("key", ""))
+		if key == "":
+			continue
+		player.inventory.append(key)
+		added += 1
+		if added >= 30:
+			break
+	inv.call("_refresh_inventory_grid")
+	for i in range(4):
+		await process_frame
+
+	var grid = inv.get("_inventory_grid")
+	var scroll = inv.get("_inventory_scroll")
+	var stats_scroll = inv.get("_stats_scroll")
+	if not (grid is GridContainer) or not (scroll is ScrollContainer):
+		_check(false, "склад и скролл доступны для замера")
+		return
+	if not (stats_scroll is ScrollContainer):
+		_check(false, "скролл статов доступен для замера")
+		return
+
+	var vbar: VScrollBar = (scroll as ScrollContainer).get_v_scroll_bar()
+	var stat_bar: VScrollBar = (stats_scroll as ScrollContainer).get_v_scroll_bar()
+
+	_check((grid as GridContainer).columns >= 10,
+		"колонки считаются от ширины окна (%d)" % (grid as GridContainer).columns)
+	_check(vbar.max_value <= vbar.page + 1.0,
+		"склад без прокрутки при 30 предметах (max=%.0f page=%.0f)" % [vbar.max_value, vbar.page])
+	_check(stat_bar.max_value <= stat_bar.page + 1.0,
+		"статы без прокрутки (max=%.0f page=%.0f)" % [stat_bar.max_value, stat_bar.page])
+	# Таблица статов не должна вылезать из своей колонки по ширине.
+	var stats_col = inv.get("_stats_col")
+	var stats_box = inv.get("_stats_box")
+	var grid_min := 0.0
+	if stats_box != null:
+		# Самая широкая из сеток (атрибуты), а не первая попавшаяся.
+		for child in (stats_box as Node).get_children():
+			if child is GridContainer:
+				grid_min = max(grid_min,
+					(child as GridContainer).get_combined_minimum_size().x)
+	if stats_col is Control and grid_min > 0.0:
+		_check(grid_min <= (stats_col as Control).size.x + 1.0,
+			"таблица статов влезает по ширине (%.0f <= %.0f)" % [
+				grid_min, (stats_col as Control).size.x])
+
+	# Жизнь и мана — отдельный блок, а не строка внутри атрибутов.
+	var hp_lab = inv.get("_hp_label")
+	var mp_lab = inv.get("_mp_label")
+	var body_lab = (inv.get("_stat_labels") as Dictionary).get("body")
+	if hp_lab is Label and mp_lab is Label and body_lab is Label:
+		var hp_grid: Node = (hp_lab as Node).get_parent().get_parent()
+		var mp_grid: Node = (mp_lab as Node).get_parent().get_parent()
+		var body_grid: Node = (body_lab as Node).get_parent().get_parent()
+		_check(hp_grid == mp_grid, "жизнь и мана в одном блоке")
+		_check(hp_grid != body_grid, "жизнь/мана отдельно от атрибутов")
+	# Колонки + отступы не должны вылезать за ширину скролла.
+	var need_width: float = (grid as GridContainer).columns * 62.0 \
+		+ ((grid as GridContainer).columns - 1) * 4.0
+	_check(need_width <= (scroll as ScrollContainer).size.x + 1.0,
+		"сетка склада влезает по ширине (%.0f <= %.0f)" % [
+			need_width, (scroll as ScrollContainer).size.x])
+
+
+## Маг показывает 10 строк навыков вместо 5, то есть на две строки больше.
+## Таблица не должна отбирать у склада столько, чтобы тот начал прокручиваться.
+func _check_mage_layout(player, inv: Node) -> void:
+	var prev_class := Game.hero_class
+	Game.hero_class = "mage"
+	inv.call("_setup_stats_area")
+	for i in range(8):
+		await process_frame
+
+	var grid = inv.get("_inventory_grid")
+	var scroll = inv.get("_inventory_scroll")
+	var stats_scroll = inv.get("_stats_scroll")
+	var vbar: VScrollBar = (scroll as ScrollContainer).get_v_scroll_bar()
+	var stat_bar: VScrollBar = (stats_scroll as ScrollContainer).get_v_scroll_bar()
+	_check(stat_bar.max_value <= stat_bar.page + 1.0,
+		"маг: статы без прокрутки (max=%.0f page=%.0f)" % [stat_bar.max_value, stat_bar.page])
+	_check(vbar.max_value <= vbar.page + 1.0,
+		"маг: склад без прокрутки (max=%.0f page=%.0f)" % [vbar.max_value, vbar.page])
+
+	Game.hero_class = prev_class
+	inv.call("_setup_stats_area")
 	await process_frame
 
 ## Несколько реальных ключей из item_db.

@@ -217,11 +217,44 @@ All five icons are the SAME size, stand on the SAME horizontal line, and every
 frame has the same vertical proportions.
 """ + LAYOUT_TAIL.format(layout=LAYOUT_GRID)
 
+# --- HUD command icons: inventory / follow / attack / guard / stop -------------
+# Five buttons under the minimap are 32 px and show an icon instead of a word
+# (player decision 23.10: the text row was 248 px wide in a 175 px column).
+CMD_ICON_PROMPT = """PURPOSE, read this first: you are drawing ONE SPRITESHEET STRIP of FIVE
+SEPARATE HUD COMMAND ICONS for a 2D fantasy tactical RPG video game. The game
+cuts the five icons apart and puts each one into a small 32x32 button under the
+minimap, so every icon must be recognizable by silhouette alone at that size,
+and the five must look like ONE matching icon set painted by the same artist.
+
+The five objects, LEFT to RIGHT in this exact order:
+1. INVENTORY: a single leather belt SATCHEL with a flap, a small iron buckle and
+   a short strap, seen slightly from the front;
+2. FOLLOW: two heavy BOOT PRINTS on the ground, one behind the other, pointing
+   the same way (the track of someone walking ahead);
+3. ATTACK: a single straight SWORD pointing up, silver blade, dark crossguard,
+   leather grip - one weapon, not a pile of weapons;
+4. GUARD: a round wooden SHIELD with an iron rim and a riveted boss in the
+   middle, seen face-on;
+5. STOP: a broad X made of two crossed iron bars with worn forged edges
+   (the universal "halt / cancel" sign), nothing else.
+
+UNIFORM SET: all five icons share the SAME hand-painted fantasy style, the SAME
+warm dark iron and amber colour accents, the SAME heavy dark outline, and the
+SAME visual weight. They are flat icon art, not 3D renders, not tied to a
+perspective scene. No frame around an icon, no badge, no circle, no plate behind
+the object - each object IS the whole icon and floats free.
+
+READABILITY: bold simple silhouette, thick shapes, no thin filigree, no tiny
+details, no text, no letters, no numbers. Each icon fills about the same share
+of its own cell and must still be readable when shrunk to 32 pixels.
+""" + LAYOUT_TAIL.format(layout=LAYOUT_GRID)
+
 PROMPTS = {
 	"marks_available": MARKS_AVAILABLE_PROMPT,
 	"marks_ready": MARKS_READY_PROMPT,
 	"coin": COIN_PROMPT,
 	"items": ITEMS_PROMPT,
+	"cmd_icons": CMD_ICON_PROMPT,
 }
 
 # Expected object count, minimal gap and the motion kind by variant.
@@ -230,6 +263,8 @@ LAYOUT = {
 	"marks_ready": {"count": 4, "gap": MIN_GAP, "spin": True},
 	"coin": {"count": 4, "gap": MIN_GAP, "spin": False, "sway": True},
 	"items": {"count": 5, "gap": MIN_GAP, "spin": False},
+	"cmd_icons": {"count": 5, "gap": 10, "spin": False, "merge_at": 1,
+				  "width_tol": 130},
 }
 
 
@@ -289,7 +324,7 @@ def humanness(a, fg, runs):
 
 
 def preflight(path, count=4, min_gap=MIN_GAP, check_human=True, spin=False,
-			  sway=False):
+			  sway=False, merge_at=None, width_tol=60):
 	"""Check a raw sheet. Returns (ok, report lines).
 
 	spin - the objects turn about their own vertical axis, so the WIDTH of a
@@ -301,6 +336,11 @@ def preflight(path, count=4, min_gap=MIN_GAP, check_human=True, spin=False,
 	tops and the bottoms legally move and only the CENTRES must stay on one
 	horizontal line while the HORIZONTAL width stays the same (the coin does
 	not travel and does not change size).
+	merge_at - the model may draw ONE icon as two separate shapes (the two boot
+	prints of "follow"). If the sheet has count+1 objects, the objects at
+	merge_at and merge_at+1 are treated as one icon.
+	width_tol - how much icon widths may differ. Icons of different shapes
+	(sword vs shield vs bag) are not equal in width by design.
 	"""
 	a = np.array(Image.open(path).convert("RGB")).astype(np.int32)
 	bgm = magenta_mask(a)
@@ -314,8 +354,14 @@ def preflight(path, count=4, min_gap=MIN_GAP, check_human=True, spin=False,
 	ok_bg = bg_pixels.size > 0 and bg_spread < 26
 
 	runs = _column_runs(fg, 1 if count == 1 else 3)
+	merged = False
+	if merge_at is not None and len(runs) == count + 1 and 0 <= merge_at < len(runs) - 1:
+		runs[merge_at] = (runs[merge_at][0], runs[merge_at + 1][1])
+		del runs[merge_at + 1]
+		merged = True
 	gaps = [runs[i + 1][0] - runs[i][1] - 1 for i in range(len(runs) - 1)]
-	rep.append(f"objects: {len(runs)}, gaps: {gaps if gaps else '-'}")
+	rep.append(f"objects: {len(runs)}" + (" (two shapes merged into one icon)" if merged else "")
+			   + f", gaps: {gaps if gaps else '-'}")
 	ok_figs = len(runs) == count
 	ok_gaps = (not gaps) or min(gaps) >= min_gap
 
@@ -354,8 +400,8 @@ def preflight(path, count=4, min_gap=MIN_GAP, check_human=True, spin=False,
 		ok_size = bool(sizes) and drift <= COIN_CENTRE_TOL \
 			and spread <= COIN_WIDTH_TOL and min(sizes) >= 8
 	else:
-		rep.append(f"object widths: {sizes}, spread {spread}px (norm <= 60)")
-		ok_size = bool(sizes) and spread <= 60
+		rep.append(f"object widths: {sizes}, spread {spread}px (norm <= {width_tol})")
+		ok_size = bool(sizes) and spread <= width_tol
 
 	ok_bg_and = ok_bg and ok_figs and ok_gaps and ok_edge and ok_size
 	ok_human = True
@@ -383,7 +429,9 @@ def main():
 	lay = LAYOUT[args.variant]
 	if args.check:
 		ok, _ = preflight(args.check, lay["count"], lay["gap"],
-						  spin=lay["spin"], sway=lay.get("sway", False))
+						  spin=lay["spin"], sway=lay.get("sway", False),
+						  merge_at=lay.get("merge_at"),
+						  width_tol=lay.get("width_tol", 60))
 		return 0 if ok else 1
 
 	sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -398,7 +446,8 @@ def main():
 	print(f"background normalization: {n} pixels repainted")
 	print("preflight:")
 	ok, _ = preflight(str(out), lay["count"], lay["gap"], spin=lay["spin"],
-					  sway=lay.get("sway", False))
+					  sway=lay.get("sway", False), merge_at=lay.get("merge_at"),
+					  width_tol=lay.get("width_tol", 60))
 	return 0 if ok else 2
 
 

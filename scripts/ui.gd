@@ -26,6 +26,10 @@ var _minimap_timer := 0.0
 var _fog_img: Image = null        # кэш тумана для миникарты (19.10)
 var _fog_dirty := true
 const MINIMAP_INTERVAL := 0.25
+## Кнопки HUD у миникарты: колонка 175 px, пять кнопок по 32 px = 168 px.
+## С текстом минимум был 248 px и ряд уезжал за правый край экрана (23.10).
+const HUD_CMD_SIZE := 32
+const HUD_CMD_ICON_DIR := "res://assets/ui/hud/cmd/"
 func setup_ui(p: Player):
 	player = p
 
@@ -630,33 +634,55 @@ func _setup_action_buttons():
 	# Компакт-ряд у миникарты. Статы теперь в инвентаре — кнопки «Статы» нет.
 	var inv_btn := Button.new()
 	inv_btn.name = "InvBtn"
-	inv_btn.text = "Инв."
 	inv_btn.theme_type_variation = &"HudCmd"
-	inv_btn.custom_minimum_size = Vector2(48, 28)
+	inv_btn.custom_minimum_size = Vector2(HUD_CMD_SIZE, HUD_CMD_SIZE)
 	inv_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inv_btn.focus_mode = Control.FOCUS_ALL
 	inv_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	inv_btn.tooltip_text = "Инвентарь (I)"
+	_apply_cmd_icon(inv_btn, "inventory", "Инв")
 	inv_btn.pressed.connect(open_inventory_panel)
 	hud_cmd_row.add_child(inv_btn)
 
 	var cmd_labels := ["След.", "Атак.", "Охр.", "Стоп"]
+	# Короткие подписи — ТОЛЬКО запасной вариант, если PNG не на месте: кнопка
+	# 32 px, полная подпись в неё не влезает. Смысл сохраняет tooltip.
+	var cmd_short := ["Сл", "Ат", "Ох", "Ст"]
 	var cmd_modes := ["follow", "attack", "guard", "stop"]
+	var cmd_icons := ["follow", "attack", "guard", "stop"]
 	for i in range(cmd_labels.size()):
 		var b := Button.new()
 		b.name = "Cmd%d" % i
-		b.text = cmd_labels[i]
-		b.custom_minimum_size = Vector2(48, 28)
+		b.custom_minimum_size = Vector2(HUD_CMD_SIZE, HUD_CMD_SIZE)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.theme_type_variation = &"HudCmd"
 		b.focus_mode = Control.FOCUS_ALL
 		b.tooltip_text = cmd_labels[i]
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_apply_cmd_icon(b, cmd_icons[i], cmd_short[i])
 		hud_cmd_row.add_child(b)
 		cmd_buttons.append(b)
 		b.pressed.connect(func(): _set_action_mode(cmd_modes[i]))
 	coords_label.visible = false
 	_set_action_mode(Game.action_mode if Game.action_mode != "" else "follow")
+
+
+## Иконка HUD-кнопки. Подпись остаётся запасным вариантом: если PNG нет
+## (новая машина/сборка без арта), кнопка не становится пустой.
+func _apply_cmd_icon(button: Button, icon_name: String, fallback_text: String) -> void:
+	var path := "%s%s.png" % [HUD_CMD_ICON_DIR, icon_name]
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is Texture2D:
+			tex = res
+	if tex == null:
+		button.text = fallback_text
+		return
+	button.text = ""
+	button.icon = tex
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _set_action_mode(mode: String):
 	for i in range(cmd_buttons.size()):
@@ -1067,10 +1093,12 @@ func _draw_minimap():
 	if mw == 0:
 		return
 
-	# Размер рисунка = высота MinimapRect (165px), квадрат чтобы не растягивать
+	# Рисунок квадратный, но вписываем его в МЕНЬШУЮ сторону рамки: раньше
+	# сторона бралась по высоте, а рамка уже её по ширине, и картинка
+	# вылезала за границы панели на 4 px (23.10).
 	var msize: Vector2 = minimap_rect.size
-	var h := int(msize.y)
-	var w := h  # квадрат
+	var h := int(min(msize.x, msize.y))
+	var w := h
 	if h <= 0:
 		return
 
@@ -1084,9 +1112,9 @@ func _draw_minimap():
 		var tex_rect := minimap_rect.get_node_or_null("MinimapTex")
 		if tex_rect:
 			tex_rect.offset_left = (msize.x - w) / 2.0
-			tex_rect.offset_top = 0.0
+			tex_rect.offset_top = (msize.y - h) / 2.0
 			tex_rect.offset_right = tex_rect.offset_left + w
-			tex_rect.offset_bottom = float(h)
+			tex_rect.offset_bottom = tex_rect.offset_top + h
 
 	var ptx: int = int(player.global_position.x) / alm_map.tile_size
 	var pty: int = int(player.global_position.y) / alm_map.tile_size

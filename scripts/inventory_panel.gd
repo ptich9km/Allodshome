@@ -14,6 +14,15 @@ signal inventory_changed
 const EQUIP_SLOT_SIZE := Vector2(54, 54)
 const INV_SLOT := 62
 const INV_GAP := 4
+## Склад занимает всю ширину окна: колонки считаются от неё, а не заданы
+## шестёркой. Иначе ~530 px ширины пустовали, а предметы уходили вниз и
+## включали вертикальный скролл (жалоба игрока 23.10).
+const INV_MIN_COLUMNS := 6
+const INV_MAX_COLUMNS := 14
+## Запас под вертикальный скроллбар. Вычитаем ВСЕГДА, даже когда полосы нет:
+## иначе при её появлении ширина меняется, число колонок пересчитывается и
+## раскладка «мигает» между 13 и 14 колонками.
+const INV_SCROLLBAR_RESERVE := 12.0
 const GOLD_COIN_SIZE := 20.0
 
 var player: Player
@@ -265,7 +274,12 @@ func _build_ui() -> void:
 	top.name = "Top"
 	top.alignment = BoxContainer.ALIGNMENT_BEGIN
 	top.add_theme_constant_override("separation", UiTheme.SPACE_5)
-	top.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	top.size_flags_vertical = Control.SIZE_FILL
+	# Статам нужна ровно их высота, складу — весь остаток. Раньше оба были
+	# EXPAND и делили остаток поровну: у склада оставалось 156 px на 194 px
+	# трёх рядов и включался вертикальный скролл (жалоба игрока 23.10).
+	# ScrollContainer статов сообщает минимум по содержимому, поэтому top
+	# без EXPAND получает именно столько, сколько нужно таблице.
 	content.add_child(top)
 
 	var equip_col := VBoxContainer.new()
@@ -286,12 +300,12 @@ func _build_ui() -> void:
 	equip_col.add_child(_hero_name)
 	_build_equipment_area(equip_col)
 
-	# Статы: шире (520), без EXPAND_FILL — иначе инвариант 06.10 (тест).
-	# Скролл остаётся узким запасом, но при 520 и двухколоночной сетке
-	# воин/маг влезают без прокрутки на 960×640.
+	# Статы: 560 по ширине, без EXPAND_FILL — иначе инвариант 06.10 (тест).
+	# 560 = 928 доступной ширины - 340 куклы - 24 зазора. При 4 ячейках в ряд
+	# таблица укладывается в 9 строк (у мага) вместо 15 и не прокручивается.
 	var stats_col := VBoxContainer.new()
 	stats_col.name = "StatsCol"
-	stats_col.custom_minimum_size = Vector2(520, 0)
+	stats_col.custom_minimum_size = Vector2(560, 0)
 	stats_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	stats_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_stats_col = stats_col
@@ -318,7 +332,10 @@ func _build_ui() -> void:
 	stats_margin.add_child(_stats_scroll)
 	_stats_box = VBoxContainer.new()
 	_stats_box.name = "StatsBox"
-	_stats_box.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	# 2 px, а не 4: четыре ячейки в ряд дают 8–9 строк, и плотность секций
+	# освобождает складу ~20 px — этого хватает, чтобы три ряда (33 предмета)
+	# влезли без прокрутки при высоте окна 640.
+	_stats_box.add_theme_constant_override("separation", 2)
 	_stats_box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_stats_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_stats_scroll.add_child(_stats_box)
@@ -493,12 +510,20 @@ func _setup_stats_area() -> void:
 	_stat_labels.clear()
 
 	# Имя — в EquipCol над куклой, не здесь (вариант A).
+	#
+	# Жизнь и мана — отдельным блоком НАД атрибутами. В общей сетке они
+	# попадали в один ряд с Силой и Ловкостью, и статы читались вперемешку
+	# (жалоба игрока 23.10). Ширина 2 ячейки, потому что значения длинные
+	# («120 / 120»), а цвет уже отделяет их от нейтральных атрибутов.
+	_stats_grid(_stats_box, [
+		["Жизнь:", "hp", _HP_COLOR],
+		["Мана:", "mp", _MP_COLOR],
+	], 2)
+
 	_section_header(tr("АТРИБУТЫ"))
 	_stats_grid(_stats_box, [
 		["Сила:", "body", _VALUE_COLOR],
-		["Жизнь:", "hp", _HP_COLOR],
 		["Ловкость:", "agility", _VALUE_COLOR],
-		["Мана:", "mp", _MP_COLOR],
 		["Разум:", "mind", _VALUE_COLOR],
 		["Дух:", "spirit", _VALUE_COLOR],
 	])
@@ -591,10 +616,13 @@ func _section_header(title: String, value: String = "", title_only: bool = false
 	return t
 
 
-## Сетка 2 столбика: ярлык фикс, значение natural — без разлёта к краю.
-func _stats_grid(parent: VBoxContainer, rows: Array) -> void:
+## Сетка статов: по умолчанию четыре ячейки в ряд. Две не влезали по высоте
+## (13–15 строк) и включали прокрутку, хотя по ширине 560 px запас был большой.
+## columns=2 нужен блоку «Жизнь/Мана»: там длинные значения и их всего два.
+## Длинные подписи («Сопр. воздуху:») задают естественный минимум ячейки.
+func _stats_grid(parent: VBoxContainer, rows: Array, columns: int = 4) -> void:
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = columns
 	grid.add_theme_constant_override("h_separation", UiTheme.SPACE_3)
 	grid.add_theme_constant_override("v_separation", 0)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -717,12 +745,30 @@ func _build_inventory_area(parent: VBoxContainer) -> void:
 
 	var grid := GridContainer.new()
 	grid.name = "InvGrid"
-	grid.columns = 6
+	grid.columns = INV_MIN_COLUMNS
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", INV_GAP)
 	grid.add_theme_constant_override("v_separation", INV_GAP)
 	scroll.add_child(grid)
 	_inventory_grid = grid
+	# Ширина склада меняется вместе с окном (stretch aspect=expand): держим
+	# число колонок в соответствии с ней.
+	scroll.resized.connect(_fit_inventory_columns)
+	call_deferred("_fit_inventory_columns")
+
+
+## Подогнать число колонок склада под фактическую ширину области.
+func _fit_inventory_columns() -> void:
+	if _inventory_grid == null or _inventory_scroll == null:
+		return
+	var width := _inventory_scroll.size.x - INV_SCROLLBAR_RESERVE
+	if width <= 0.0:
+		return
+	var cols := int(floor((width + INV_GAP) / float(INV_SLOT + INV_GAP)))
+	cols = clampi(cols, INV_MIN_COLUMNS, INV_MAX_COLUMNS)
+	if _inventory_grid.columns == cols:
+		return
+	_inventory_grid.columns = cols
 
 
 func _refresh_inventory_grid() -> void:

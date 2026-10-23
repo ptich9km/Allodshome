@@ -118,6 +118,7 @@ func _check_hud_buttons() -> void:
 	_check(cmd_buttons.size() >= 4, "командные кнопки созданы (%d)" % cmd_buttons.size())
 	_check(ui.get_node_or_null("HudSide") != null, "HudSide у миникарты есть")
 	_check(ui.get_node_or_null("StatsPanel") == null, "StatsPanel удалён (статы в инвентаре)")
+	_check_hud_row_geometry(ui)
 	var themed := 0
 	for b in cmd_buttons:
 		if b is Button:
@@ -138,6 +139,52 @@ func _check_hud_buttons() -> void:
 			"кнопка «Статы»: variation HudCmd")
 	game.queue_free()
 	await process_frame
+
+
+## Ряд кнопок у миникарты: колонка 175 px, значит и ряд не должен быть шире,
+## иначе последние кнопки уезжают за правый край экрана (жалоба 23.10).
+func _check_hud_row_geometry(ui: Node) -> void:
+	var row := ui.get_node_or_null("HudSide/HudCmdRow") as HBoxContainer
+	var side := ui.get_node_or_null("HudSide") as Control
+	var mrect := ui.get_node_or_null("MinimapPanel/MinimapMargin/MinimapRect") as Control
+	_check(row != null and side != null, "ряд кнопок и колонка HUD существуют")
+	if row == null or side == null:
+		return
+	_check(side.size.x >= 100.0, "HudSide получил ширину (%.0f)" % side.size.x)
+	_check(row.size.x <= side.size.x + 1.0,
+		"ряд кнопок не шире колонки (%.0f <= %.0f)" % [row.size.x, side.size.x])
+	var view_width := row.get_viewport_rect().size.x
+	var outside := 0
+	var empty := 0
+	var with_icon := 0
+	for node in row.get_children():
+		if not (node is Button):
+			continue
+		var b := node as Button
+		if b.icon != null:
+			with_icon += 1
+		if b.icon == null and str(b.text).strip_edges() == "":
+			empty += 1
+		var r := b.get_global_rect()
+		if r.position.x < -0.5 or r.end.x > view_width + 0.5:
+			outside += 1
+	_check(outside == 0, "все кнопки HUD внутри экрана (снаружи: %d)" % outside)
+	_check(empty == 0, "у каждой кнопки HUD есть иконка или подпись")
+	# Если арт импортирован — кнопки обязаны использовать иконки, а не текст.
+	if ResourceLoader.exists("res://assets/ui/hud/cmd/inventory.png"):
+		_check(with_icon == 5, "все 5 кнопок HUD с иконками (%d)" % with_icon)
+	# Картинка миникарты не должна вылезать за свою рамку.
+	if mrect != null:
+		var tex := mrect.get_node_or_null("MinimapTex") as Control
+		_check(tex != null, "MinimapTex создан")
+		if tex != null:
+			var t := tex.get_global_rect()
+			var m := mrect.get_global_rect()
+			var inside := t.position.x >= m.position.x - 0.5 \
+				and t.position.y >= m.position.y - 0.5 \
+				and t.end.x <= m.end.x + 0.5 and t.end.y <= m.end.y + 0.5
+			_check(inside, "миникарта внутри рамки (%.0f×%.0f в %.0f×%.0f)" % [
+				t.size.x, t.size.y, m.size.x, m.size.y])
 
 
 # --- 1. Шрифты ---

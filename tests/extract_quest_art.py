@@ -63,6 +63,12 @@ ITEM_NAMES = ["quest_sword", "quest_amulet", "quest_armor", "quest_scroll",
 			  "quest_book"]
 ITEM_CANVAS = 32
 ITEM_CONTENT = 28
+# HUD command icons (23.10): five buttons under the minimap. Order matches
+# gen_quest_art.CMD_ICON_PROMPT and scripts/ui.gd::_setup_action_buttons.
+CMD_DIR = REPO / "assets" / "ui" / "hud" / "cmd"
+CMD_NAMES = ["inventory", "follow", "attack", "guard", "stop"]
+CMD_CANVAS = 32
+CMD_CONTENT = 28
 # The crimson plate the model painted inside the frames of the items sheet
 # (measured on import/Quest/quest_items.png: about 171, 6, 96; the lit corners
 # give a red channel up to 230).
@@ -238,6 +244,48 @@ def process_items(src):
 		  f"contact sheet {sheet_path}")
 
 
+def cmd_column_runs(img):
+	"""5 icons, or 6 shapes when "follow" is drawn as two separate boot prints.
+
+	The prompt order is fixed (inventory, follow, attack, guard, stop), so with
+	six runs the second and the third are the two prints of the one "follow"
+	icon and are merged into a single crop.
+	"""
+	fg = fg_mask(img)
+	active = fg.sum(axis=0) >= 3
+	runs, start = [], -1
+	for x, v in enumerate(active):
+		if v and start < 0:
+			start = x
+		elif not v and start >= 0:
+			runs.append((start, x - 1))
+			start = -1
+	if start >= 0:
+		runs.append((start, len(active) - 1))
+	if len(runs) == len(CMD_NAMES) + 1:
+		runs[1] = (runs[1][0], runs[2][1])
+		del runs[2]
+	if len(runs) != len(CMD_NAMES):
+		raise SystemExit(f"{len(runs)} shapes, expected {len(CMD_NAMES)} - "
+						 f"sheet rejected")
+	return runs
+
+
+def process_cmd_icons(src):
+	"""5 HUD icons -> assets/ui/hud/cmd/<name>.png (32x32, centred)."""
+	img = Image.open(src).convert("RGB")
+	runs = cmd_column_runs(img)
+	CMD_DIR.mkdir(parents=True, exist_ok=True)
+	frames = []
+	for name, (x0, x1) in zip(CMD_NAMES, runs):
+		fr = cut_object(img, x0, x1, CMD_CANVAS, CMD_CONTENT)
+		fr.save(CMD_DIR / f"{name}.png")
+		frames.append(fr)
+	sheet_path = sheet(frames, CMD_CANVAS, CMD_DIR / "_cmd_icons_sheet.png")
+	print(f"cmd_icons: {len(CMD_NAMES)} icons -> {CMD_DIR}, "
+		  f"contact sheet {sheet_path}")
+
+
 def process_coin(src):
 	"""4 sway phases -> coin/gold_coin-NNN.png.
 
@@ -280,7 +328,8 @@ def process_coin(src):
 def main():
 	ap = argparse.ArgumentParser()
 	ap.add_argument("--variant", required=True,
-					choices=("marks_available", "marks_ready", "items", "coin"))
+					choices=("marks_available", "marks_ready", "items", "coin",
+							 "cmd_icons"))
 	ap.add_argument("--src", default="")
 	args = ap.parse_args()
 	src = Path(args.src) if args.src else SRC / f"quest_{args.variant}.png"
@@ -288,6 +337,8 @@ def main():
 		raise SystemExit(f"no source sheet: {src}")
 	if args.variant == "items":
 		process_items(src)
+	elif args.variant == "cmd_icons":
+		process_cmd_icons(src)
 	elif args.variant == "coin":
 		process_coin(src)
 	else:
