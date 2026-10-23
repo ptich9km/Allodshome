@@ -438,7 +438,7 @@ func _on_slot_clicked(slot: String) -> void:
 	if key != "":
 		# unequip_slot сам возвращает ключ в склад (модель A, player.gd).
 		if player.unequip_slot(slot):
-			SoundDB.play(6)
+			SoundDB.play("ui.error")
 			_set_slot_highlight("")
 			_refresh_inventory_grid()
 			_refresh_equipment()
@@ -914,7 +914,7 @@ func _on_item_clicked(item: Dictionary) -> void:
 		if not _magic_double_click(item_key):
 			return
 		if player.learn_book(item_key):
-			SoundDB.play(7)
+			SoundDB.play("ui.book_open")
 			_refresh_inventory_grid()
 			_refresh_equipment()
 			inventory_changed.emit()
@@ -934,7 +934,7 @@ func _on_item_clicked(item: Dictionary) -> void:
 		var host := _ui_host()
 		if host != null and host.has_method("_begin_scroll_targeting"):
 			host._begin_scroll_targeting(item_key)
-		SoundDB.play(7)
+		SoundDB.play("ui.book_open")
 		return
 	if quality == "Potion":
 		if player.use_potion(item_key):

@@ -59,6 +59,7 @@ var _fit_root: Control
 
 func _ready() -> void:
 	Loc.load_locale()
+	MusicDB.play.call_deferred("music.menu")
 	# Тематический анимированный курсор вместо системной стрелки.
 	add_child(load("res://scripts/cursor_layer.gd").new())
 	_setup_backdrop()
@@ -365,7 +366,7 @@ func _setup_footer() -> void:
 # === Смена языка ===
 
 func _on_language_pressed(code: String) -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	Loc.set_locale(code)
 	Loc.save_locale()
 	# Пересобираем подписи на месте: перезапуск ради смены языка неуместен.
@@ -465,27 +466,27 @@ func _unhandled_input(event: InputEvent) -> void:
 # === Действия ===
 
 func _on_new_game() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	get_tree().change_scene_to_file(CHAR_SELECT_PATH)
 
 
 func _on_load_game() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	_open_overlay("ui.menu.load_game", _build_load_body)
 
 
 func _on_mods() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	_open_overlay("ui.menu.mods", _build_mods_body)
 
 
 func _on_network() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	_open_overlay("ui.menu.network", _build_network_body)
 
 
 func _on_about() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	_open_overlay("ui.menu.about", _build_about_body)
 
 
@@ -493,7 +494,7 @@ func _on_about() -> void:
 ## `CanvasLayer` со своим затемнением и своя панель. Так его можно переиспользовать
 ## из игры (Esc -> Настройки) без копирования вёрстки.
 func _on_settings() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	if _settings != null and is_instance_valid(_settings):
 		return
 	# Главное меню прячется целиком, а не закрывается затемнением: игрок просил
@@ -520,7 +521,7 @@ func _on_settings_closed() -> void:
 
 
 func _on_quit_pressed() -> void:
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	_quit_confirm = true
 	_open_overlay("ui.quit.title", _build_quit_body)
 
@@ -608,7 +609,7 @@ func _on_load_slot(slot: String) -> void:
 	# а не перегенерировалась по сиду: перегенерация другим кодом давала другой мир.
 	SaveSystem.apply_payload(data, null, slot)
 	_restore_world(data.get("world", {}))
-	SoundDB.play(2)
+	SoundDB.play("ui.confirm")
 	get_tree().change_scene_to_file(GAME_PATH)
 
 

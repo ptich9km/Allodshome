@@ -627,7 +627,7 @@ func _buy_item(key: String, price: int) -> void:
 		return
 	player.gold -= price
 	player.add_item(key)
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	inventory_changed.emit()
 	_refresh()
 	print("Куплено: " + key)
@@ -636,7 +636,7 @@ func _sell_item(key: String, price: int) -> void:
 	if not is_instance_valid(player) or not player.remove_item(key):
 		return
 	player.gold += price
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	inventory_changed.emit()
 	_refresh()
 	print("Продано: " + key)
@@ -645,7 +645,9 @@ func _talk() -> void:
 	if not is_instance_valid(_merchant_label):
 		return
 	var lines: Array = MERCHANT_LINES.duplicate()
-	_merchant_label.text = tr("Торговец: «%s»") % str(lines[randi() % lines.size()])
+	var idx := randi() % lines.size()
+	_merchant_label.text = tr("Торговец: «%s»") % str(lines[idx])
+	SoundDB.play("voice.npc.merchant.%d" % (idx + 1))
 
 func _input(event: InputEvent) -> void:
 	if UiKit.esc_pressed(event):

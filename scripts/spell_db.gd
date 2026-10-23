@@ -137,7 +137,7 @@ static func validate() -> Array:
 	var errs: Array = []
 	for name in all_spell_names():
 		var o: Dictionary = _db[name]
-		if int(o.get("sound", 0)) <= 0:
+		if str(o.get("sound", "")) == "":
 			errs.append("%s: нет звука" % name)
 		if str(o.get("ru", "")) == "":
 			errs.append("%s: нет ru" % name)
@@ -161,9 +161,9 @@ static func sphere_of(name: String) -> String:
 static func projectile_folder(name: String) -> String:
 	return str(get_spell(name).get("projectile", ""))
 
-## Звук заклинания (ID из assets/audio/sound_index.json; 0 = нет/не задан).
-static func sound_of(name: String) -> int:
-	return int(get_spell(name).get("sound", 0))
+## Звук заклинания (ключ SoundDB; "" = нет/не задан).
+static func sound_of(name: String) -> String:
+	return str(get_spell(name).get("sound", ""))
 
 ## Иконка магии Книги Магии: assets/spells/{snake}.png (ChatGPT, 31 шт.).
 ## index — позиция в BOOK_SPELLS (0..23).

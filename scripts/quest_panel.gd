@@ -633,7 +633,7 @@ func _on_accept(quest_id: String) -> void:
 		return
 	var err := qs.accept(city_id, quest_id)
 	_status.text = err if err != "" else Loc.t("ui.quest.msg_taken")
-	SoundDB.play(1 if err == "" else 7)
+	SoundDB.play("ui.confirm" if err == "" else "ui.error")
 	inventory_changed.emit()
 	_refresh()
 

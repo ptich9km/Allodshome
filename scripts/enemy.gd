@@ -390,8 +390,8 @@ func take_damage(dmg: int, attacker) -> int:
 	return shielded
 
 ## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
-func _unit_sound_at(idx: int) -> int:
-	return SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx)
+func _unit_sound_at(idx: int) -> String:
+	return str(SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx))
 
 func _drop_loot():
 	# Мешок убран (03.10): игрок сразу видит, что именно выпало. Класс переименован

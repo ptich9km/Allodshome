@@ -251,7 +251,7 @@ func _train(field: String) -> void:
 	# set_skill_field, а не player.set: он пишет И поле, И опыт. Раньше здесь
 	# был player.set, из-за чего покупка не переживала загрузку сейва.
 	player.set_skill_field(field, level + 1)
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	_refresh()
 	print("Навык %s -> %d" % [field, level + 1])
 

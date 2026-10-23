@@ -261,7 +261,7 @@ func _recycle(entry: Dictionary) -> String:
 			player.add_item(CraftDB.ESSENCE_KEY)
 		given.append("%s ×%d" % [tr("Магическая эссенция"), int(y["essence"])])
 	player.gain_skill_exp(str(CraftDB.SKILL_OF.get(craft, "")), CraftDB.xp_for_recycle())
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	return tr("Переработано: %s") % ", ".join(given)
 
 
@@ -298,7 +298,7 @@ func _craft(recipe: Dictionary) -> String:
 		return tr("Рецепт без результата")
 	player.add_item(out_key)
 	player.gain_skill_exp(str(CraftDB.SKILL_OF.get(craft, "")), CraftDB.xp_for_craft(tier))
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	var prefix := tr("Создано: %s") % str(out.get("name_ru", out_key))
 	if tier == CraftDB.TIER_MASTER:
 		return prefix + tr(" — мастерская вещь!")

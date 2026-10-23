@@ -311,8 +311,8 @@ func _chase_move(delta: float, target: Node2D) -> void:
 		_anim.advance(delta)
 
 ## Звуковой ID юнита по позиции массива Sound (attack/pain1/pain2/death).
-func _unit_sound_at(idx: int) -> int:
-	return SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx)
+func _unit_sound_at(idx: int) -> String:
+	return str(SoundDB.sound_at(UnitDB.unit_sound(anim_set), idx))
 
 ## --- Статы (для Game.unit_*: атака->точность, защита->уклонение) ---
 func get_attack() -> int:
@@ -354,7 +354,7 @@ func take_damage(dmg: int, _attacker: Node2D) -> int:
 		SoundDB.play_pain(UnitDB.unit_sound(anim_set))
 		return dmg
 	current_hp = 0
-	SoundDB.play(240)  # units\dead1
+	SoundDB.play("combat.death")
 	_drop_loot()
 	state = "dying"
 	velocity = Vector2.ZERO

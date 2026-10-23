@@ -82,3 +82,10 @@ import/Cursor/*_preview.png
 # API keys (never commit)
 .kodik_key
 *.kodik_key
+
+# Скачанные исходники звуков (CC0-паки); в репо идут только выбранные файлы
+import/audio_src/
+
+# Ключ KodikRouter для аудио-моделей (в git не идёт)
+.kodik_audio_key
+

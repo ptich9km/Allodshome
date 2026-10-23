@@ -496,7 +496,7 @@ static func upgrade_item(player: Player, key: String) -> String:
 		return "Нечего улучшать"
 	player.add_item(out_key)
 	player.gain_skill_exp(SKILL_OF.get(MASTER, ""), xp_for_craft(t))
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	var name := str(ItemDB.find(out_key).get("name_ru", out_key))
 	if t == TIER_MASTER:
 		return "Мастерская вещь: %s" % name

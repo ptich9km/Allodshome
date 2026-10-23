@@ -88,7 +88,7 @@ func explode() -> void:
 	var radius := spell_area if is_aoe else 30.0
 
 	SpellVFX.impact_burst(global_position, sphere, is_aoe)
-	SoundDB.play(513)
+	SoundDB.play("magic.fire.bolt")
 
 	# Числа урона и вспышка рисуются в Game.deal_damage — здесь молча,
 	# чтобы они не дублировались (раньше рисовались и тут, и в enemy.gd).

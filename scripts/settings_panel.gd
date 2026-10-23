@@ -375,13 +375,40 @@ func _build_audio_tab() -> void:
 	var mute := _make_toggle("ui.settings.mute", Settings.muted(), _on_mute)
 	_make_row("ui.settings.mute", "", mute)
 
-	# Заглушка объявлена честно: отдельных шин Music/SFX в проекте нет.
-	var stub := Label.new()
-	stub.theme_type_variation = &"SetStub"
-	stub.text = Loc.t("ui.settings.stub_audio")
-	stub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stub.custom_minimum_size = Vector2(480, 0)
-	_body.add_child(stub)
+	_body.add_child(_volume_row("ui.settings.music_volume", "music", Settings.music_volume()))
+	_body.add_child(_volume_row("ui.settings.sfx_volume", "sfx", Settings.sfx_volume()))
+	_body.add_child(_volume_row("ui.settings.voice_volume", "voice", Settings.voice_volume()))
+
+
+## Строка ползунка для отдельной шины: `kind` = music|sfx|voice.
+func _volume_row(label_key: String, kind: String, value: float) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UiTheme.SPACE_3)
+	var lab := Label.new()
+	lab.theme_type_variation = &"SetRowLabel"
+	lab.text = Loc.t(label_key)
+	lab.custom_minimum_size = Vector2(230, 0)
+	row.add_child(lab)
+	var minus := Button.new()
+	minus.theme_type_variation = &"SetValueBtn"
+	minus.text = "-"
+	minus.custom_minimum_size = Vector2(40, 30)
+	minus.pressed.connect(_on_bus_volume_step.bind(kind, -0.1))
+	row.add_child(minus)
+	var val := Label.new()
+	val.name = "Vol_" + kind
+	val.theme_type_variation = &"SetRowValue"
+	val.text = "%d%%" % int(round(value * 100.0))
+	val.custom_minimum_size = Vector2(80, 0)
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(val)
+	var plus := Button.new()
+	plus.theme_type_variation = &"SetValueBtn"
+	plus.text = "+"
+	plus.custom_minimum_size = Vector2(40, 30)
+	plus.pressed.connect(_on_bus_volume_step.bind(kind, 0.1))
+	row.add_child(plus)
+	return row
 
 
 func _build_input_tab() -> void:
@@ -441,6 +468,26 @@ func _on_volume_step(delta: float) -> void:
 	var val := _body.find_child("MasterVolume", true, false)
 	if val is Label:
 		(val as Label).text = "%d%%" % int(round(Settings.master_volume() * 100.0))
+
+
+## Громкость отдельной шины (music/sfx/voice). UI и Ambient идут следом:
+## UI — от эффектов, Ambient — от музыки (SoundDB.apply_volumes).
+func _on_bus_volume_step(kind: String, delta: float) -> void:
+	var value := 0.0
+	if kind == "music":
+		Settings.set_music_volume(Settings.music_volume() + delta)
+		value = Settings.music_volume()
+	elif kind == "sfx":
+		Settings.set_sfx_volume(Settings.sfx_volume() + delta)
+		value = Settings.sfx_volume()
+	else:
+		Settings.set_voice_volume(Settings.voice_volume() + delta)
+		value = Settings.voice_volume()
+	Settings.save()
+	SoundDB.ensure_buses()
+	var val := _body.find_child("Vol_" + kind, true, false)
+	if val is Label:
+		(val as Label).text = "%d%%" % int(round(value * 100.0))
 
 
 func _on_ui_scale_step(delta: float) -> void:

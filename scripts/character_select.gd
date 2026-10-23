@@ -115,6 +115,7 @@ const STAT_TITLES := {
 func _ready():
 	# Тематический анимированный курсор вместо системной стрелки.
 	add_child(load("res://scripts/cursor_layer.gd").new())
+	MusicDB.play.call_deferred("music.menu")
 	_rebuild_characters()
 	_apply_theme()
 	_setup_background()
@@ -205,7 +206,7 @@ func _on_race_pressed(race_id: String) -> void:
 	if selected >= CHARACTERS.size():
 		selected = 0
 	_select(selected)
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 
 
 func _on_style_pressed() -> void:
@@ -214,7 +215,7 @@ func _on_style_pressed() -> void:
 	_rebuild_characters()
 	_refresh_card_images()
 	_select(selected)
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 
 
 func _refresh_card_images() -> void:
@@ -296,7 +297,7 @@ func _on_continue(slot: String) -> void:
 	if err != "":
 		push_warning("Сохранение %s не загружено: %s" % [slot, err])
 		return
-	SoundDB.play(2)
+	SoundDB.play("ui.confirm")
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 
@@ -671,7 +672,7 @@ func _select(idx: int) -> void:
 		var desc: Label = _cards[i].get_node_or_null("Desc")
 		if desc:
 			desc.text = CHARACTERS[i]["desc"] if i == idx else ""
-	SoundDB.play(1)  # click00 — выбор персонажа
+	SoundDB.play("ui.click")  # click00 — выбор персонажа
 	# При смене пола — новое греческое имя
 	if name_input.text == "" or _name_idx >= 0:
 		_random_name()
@@ -708,7 +709,7 @@ func _start_game() -> void:
 	# Серые, портал на выход в "mid". Раньше зона не передавалась и подставлялся
 	# дефолт "mid" — профиль новичка был написан, но недостижим из игры.
 	Game.new_random_map("start")
-	SoundDB.play(2)  # click_ok
+	SoundDB.play("ui.confirm")  # click_ok
 	# Карта 96x96 генерируется в фоне на отдельном экране с полосой прогресса:
 	# раньше main.tscn открывался с чёрной паузой на генерацию.
 	get_tree().change_scene_to_file("res://scenes/loading.tscn")

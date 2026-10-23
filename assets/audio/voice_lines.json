@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "comment": "Реплики озвучиваются KodikRouter (ElevenLabs v3). Текст с тегами — только для модели; в игре показывается subtitle. Ключи совпадают с sound_db.json.",
+  "model": "elevenlabs/eleven-v3",
+  "gain_db": -2.0,
+  "lines": [
+    {
+      "key": "voice.npc.merchant.1",
+      "voice": "george",
+      "text": "[gruff, matter-of-fact] Снаряжение дорожает с каждой новой стражей у ворот.",
+      "subtitle": "Снаряжение дорожает с каждой новой стражей у ворот."
+    },
+    {
+      "key": "voice.npc.merchant.2",
+      "voice": "george",
+      "text": "[dry, amused] Зелья всегда пригодятся: герои тоже умеют получать раны.",
+      "subtitle": "Зелья всегда пригодятся: герои тоже умеют получать раны."
+    },
+    {
+      "key": "voice.npc.merchant.3",
+      "voice": "george",
+      "text": "[skeptical, slow] Магические книги есть только у тех, кто действительно читает магию.",
+      "subtitle": "Магические книги есть только у тех, кто действительно читает магию."
+    },
+    {
+      "key": "voice.npc.merchant.4",
+      "voice": "george",
+      "text": "[calm, confiding] Не торопись: хорошая броня окупается после второй вылазки.",
+      "subtitle": "Не торопись: хорошая броня окупается после второй вылазки."
+    },
+    {
+      "key": "voice.npc.inn.1",
+      "voice": "george",
+      "text": "[tired, low] Говорят, на севере всё больше диких зверей... Охрана у ворот не справляется.",
+      "subtitle": "Говорят, на севере всё больше диких зверей... Охрана у ворот не справляется."
+    },
+    {
+      "key": "voice.npc.inn.2",
+      "voice": "george",
+      "text": "[matter-of-fact] В школе тренировок берут золотом за каждую ступень. Дорого, но быстро.",
+      "subtitle": "В школе тренировок берут золотом за каждую ступень. Дорого, но быстро."
+    },
+    {
+      "key": "voice.npc.inn.3",
+      "voice": "george",
+      "text": "[quiet, warning] Торговец в лавке скупает всё, что принесёшь из-за стен. Вещи — по полцены.",
+      "subtitle": "Торговец в лавке скупает всё, что принесёшь из-за стен. Вещи — по полцены."
+    },
+    {
+      "key": "voice.npc.inn.4",
+      "voice": "george",
+      "text": "[thoughtful] Маги говорят, что настоящая сила — в книгах стихий. Остальным остаются свитки.",
+      "subtitle": "Маги говорят, что настоящая сила — в книгах стихий. Остальным остаются свитки."
+    },
+    {
+      "key": "voice.npc.inn.5",
+      "voice": "george",
+      "text": "[lower, uneasy] Слышал, за воротами люди пропадают. Особенно те, кто идёт без отряда.",
+      "subtitle": "Слышал, за воротами люди пропадают. Особенно те, кто идёт без отряда."
+    },
+    {
+      "key": "voice.npc.inn.6",
+      "voice": "george",
+      "text": "[dry] Хороший наёмник стоит своих денег: сам себе и убийца, и щит.",
+      "subtitle": "Хороший наёмник стоит своих денег: сам себе и убийца, и щит."
+    },
+    {
+      "key": "voice.hero.male.attack.1",
+      "voice": "george",
+      "text": "[short, sharp shout] Есть!",
+      "subtitle": "Есть!"
+    },
+    {
+      "key": "voice.hero.male.attack.2",
+      "voice": "george",
+      "text": "[grunt of effort] Держись!",
+      "subtitle": "Держись!"
+    },
+    {
+      "key": "voice.hero.male.attack.3",
+      "voice": "george",
+      "text": "[breathless, through teeth] Не сейчас.",
+      "subtitle": "Не сейчас."
+    },
+    {
+      "key": "voice.hero.male.pain.1",
+      "voice": "george",
+      "text": "[pained grunt] Ах ты...",
+      "subtitle": "Ах ты..."
+    },
+    {
+      "key": "voice.hero.male.pain.2",
+      "voice": "george",
+      "text": "[short hiss] Больновато.",
+      "subtitle": "Больновато."
+    },
+    {
+      "key": "voice.hero.male.death.1",
+      "voice": "george",
+      "text": "[fading, rasping] ...не так я это представлял.",
+      "subtitle": "...не так я это представлял."
+    },
+    {
+      "key": "voice.hero.female.attack.1",
+      "voice": "bella",
+      "text": "[short, sharp shout] Есть!",
+      "subtitle": "Есть!"
+    },
+    {
+      "key": "voice.hero.female.attack.2",
+      "voice": "bella",
+      "text": "[fierce] Держись!",
+      "subtitle": "Держись!"
+    },
+    {
+      "key": "voice.hero.female.attack.3",
+      "voice": "bella",
+      "text": "[breathless, through teeth] Не сейчас.",
+      "subtitle": "Не сейчас."
+    },
+    {
+      "key": "voice.hero.female.pain.1",
+      "voice": "bella",
+      "text": "[pained grunt] Ах ты...",
+      "subtitle": "Ах ты..."
+    },
+    {
+      "key": "voice.hero.female.pain.2",
+      "voice": "bella",
+      "text": "[short hiss] Больновато.",
+      "subtitle": "Больновато."
+    },
+    {
+      "key": "voice.hero.female.death.1",
+      "voice": "bella",
+      "text": "[fading, rasping] ...не так я это представлял.",
+      "subtitle": "...не так я это представляла."
+    }
+  ]
+}

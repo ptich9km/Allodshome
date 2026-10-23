@@ -55,6 +55,7 @@ static var pending_events: Array = []   # saved events, applied by EventSystem
 ## Пусто — новая игра; applied=true — блок уже прочитан (не применяем дважды).
 static var pending_quests: Dictionary = {}
 static var pending_quests_applied: bool = false
+static var _hit_sfx_ms: int = 0          # троттл звука попадания (единая точка урона)
 ## Slot the running game came from ("" — new game). The slot folder holds the
 ## map files, so a zone change reuses its maps instead of regenerating them.
 static var loaded_slot: String = ""
@@ -238,6 +239,15 @@ static func deal_damage(target: Node2D, dmg: int, kind: String, sphere: String, 
 	# в projectile.gd и enemy.gd, и показывали сырое, а не фактическое значение.
 	DamageNumber.show_at(target.global_position, final, "damage")
 	SpellVFX.hit_flash(target)
+	# Физический удар озвучиваем в единой точке урона: так звук получают и
+	# герой, и наёмники, и стычки NPC, а не только те ветки, где его не забыли.
+	if kind != "magic":
+		var now := Time.get_ticks_msec()
+		if now - _hit_sfx_ms > 55:
+			_hit_sfx_ms = now
+			var hit_key := "combat.hit.armor" if unit_absorption(target) >= 8 \
+				else "combat.hit.flesh"
+			SoundDB.play(hit_key, -4.0)
 	if kind == "magic" and is_instance_valid(attacker):
 		_apply_vampirism(attacker, final)
 	return final
@@ -721,6 +731,7 @@ func _setup_post_pass() -> void:
 
 func _ready():  # Инициализация мира и боя
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
+	MusicDB.play.call_deferred("music.explore")
 
 	# Тематический анимированный курсор (обычный + прицел, см. cursor_layer.gd).
 	add_child(load("res://scripts/cursor_layer.gd").new())
@@ -1205,7 +1216,7 @@ func _harvest_herb(herb: HerbNode) -> void:
 	player.add_item(herb.item_key)
 	if is_instance_valid(ui):
 		ui.refresh_inventory()
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	print("Собрана трава: %s" % herb.item_key)
 
 ## Великий маг города (капитан) под курсором.

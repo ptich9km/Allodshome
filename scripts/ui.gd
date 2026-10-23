@@ -470,7 +470,7 @@ func _begin_spell_targeting(name: String) -> void:
 	spells_visible = false              # книга закрывается, остаётся курсор-прицел
 	_update_bottom_panel_visibility()
 	_update_targeting_hint(name, true)
-	SoundDB.play(7)  # ibook
+	SoundDB.play("ui.book_open")  # ibook
 
 ## Заклинание применено по цели (вызывает Game). Сброс режима + обновление книги.
 func _finish_spell_targeting() -> void:
@@ -532,7 +532,7 @@ func _begin_scroll_targeting(item_key: String) -> void:
 		return
 	Game.pending_scroll = {"spell": spell, "item_key": item_key}
 	_update_targeting_hint(spell, true)
-	SoundDB.play(7)  # ibook
+	SoundDB.play("ui.book_open")  # ibook
 
 ## Свиток применён по цели (вызывает Game). Сброс режима + обновление книги.
 func _finish_scroll_targeting() -> void:

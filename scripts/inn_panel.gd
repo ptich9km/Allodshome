@@ -372,8 +372,10 @@ func _talk() -> void:
 	if not is_instance_valid(_talk_label):
 		return
 	var lines: Array = TALK_LINES.duplicate()
-	var line := str(lines[randi() % lines.size()])
+	var idx := randi() % lines.size()
+	var line := str(lines[idx])
 	_talk_label.text = tr("Рекрутер: «%s»") % line
+	SoundDB.play("voice.npc.inn.%d" % (idx + 1))
 
 func _hostile_note(set_name: String) -> String:
 	return tr("мирный") if not UnitDB.is_hostile(set_name) else tr("дикий")
@@ -402,7 +404,7 @@ func _hire(candidate: Dictionary) -> void:
 	else:
 		add_child(mercenary)
 	Game.party.append(mercenary)
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	var set_name := str(candidate["set"])
 	for index in range(_candidates.size() - 1, -1, -1):
 		if str(_candidates[index].get("set", "")) == set_name:

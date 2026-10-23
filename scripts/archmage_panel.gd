@@ -399,7 +399,7 @@ func _do_stake(kind: String) -> void:
 			return
 		player.remove_item(key)
 	var tier_delta: int = bus.state.add_archmage_power(Game.hero_race, amount)
-	SoundDB.play(6)
+	SoundDB.play("ui.error")
 	if tier_delta > 0:
 		_status_label.text = tr("Маг окреп (ступень +%d)." % tier_delta)
 	elif tier_delta < 0:

@@ -144,7 +144,7 @@ func _collect() -> void:
 	for k in got_items:
 		print("+%s" % k)
 	if got_gold > 0 or not got_items.is_empty():
-		SoundDB.play(1)  # click00
+		SoundDB.play("ui.click")  # click00
 		_notify_ui()
 	queue_free()
 

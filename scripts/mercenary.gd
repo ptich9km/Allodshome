@@ -80,7 +80,6 @@ func _physics_process(delta: float) -> void:
 			if is_instance_valid(_pending_target) and Game.enemies.has(_pending_target) \
 					and not Game.is_miss(self, _pending_target):
 				Game.deal_damage(_pending_target, damage, "physical", "", self)
-				SoundDB.play(5)
 			_pending_target = null
 		return
 	if target != null:
@@ -159,7 +158,7 @@ func take_damage(dmg: int, _attacker: Node2D) -> int:
 	current_hp -= dmg
 	if current_hp <= 0:
 		current_hp = 0
-		SoundDB.play(4)
+		SoundDB.play("combat.death")
 		Game.party.erase(self)
 		velocity = Vector2.ZERO
 		state = "dying"

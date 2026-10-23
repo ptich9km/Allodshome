@@ -90,7 +90,9 @@ ui/          — UI-сцены и скрипты
 | `scripts/mercenary.gd` | наёмники: атака через `Game.*`, `take_damage`, `lifespan` |
 | `scripts/projectile.gd` | снаряды (магия/область): урон через `Game.deal_damage(_area)` |
 | `scripts/unit.gd`, `unit_db.gd` | база юнитов (статы монстров/героев) |
-| `scripts/spell_db.gd` | заклинания (сферы/магия), `sphere_of(spell_name)` |
+| `scripts/spell_db.gd` | заклинания (сферы/магия), `sphere_of(spell_name)`, `sound_of(name)` → ключ SoundDB |
+| `scripts/sound_db.gd` | `SoundDB`: именованные ключи из `assets/audio/sound_db.json`, шины Music/SFX/UI/Voice/Ambient, пул плееров; числовых ID больше нет |
+| `scripts/music_db.gd` | `MusicDB`: один активный трек с кроссфейдом, луп, узлы в корне дерева (переживают смену сцены); база — `assets/audio/music_db.json` |
 | `scripts/ui.gd`, `scripts/character_select.gd` | UI; для мага — панель сфер вместо навыков оружия |
 | `scripts/transition_editor.gd` | визуальный редактор переходов terrain (в редакторе карт) |
 | `scripts/world/world_state.gd`, `world_bus.gd`, `world_sim.gd` | Слой-2, SIM-мир |
@@ -307,6 +309,10 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 | `lighting_smoke.gd` | три слоя света, `BG_CANVAS`, hdr_2d применён, пост-пасс под HUD, свет по сфере, частицы без интерполяции |
 | `character_select_ui_smoke.gd` | экран героя: контейнеры, тема, фокус, весь интерфейс внутри окна 1280×800 и 1280×600 |
 | `runtime_errors_smoke.gd` | прогон живой игры ~8 с (ходьба, Esc, склад) — ошибки ловит командная строка |
+| `audio_smoke.gd` | звук: индекс `sound_db.json`, файлы грузятся, ключи из кода и `spells_db.json` существуют, шины валидны, числовых ID нет |
+| `gen_audio_db.py` | сборка `assets/audio/sfx/{ui,combat,magic}` + `sound_db.json` из CC0-паков `import/audio_src/`; `--check` сверяет источники |
+| `gen_voice_kodik.py` | озвучка реплик KodikRouter (ElevenLabs v3) по `assets/audio/voice_lines.json` + вставка ключей `voice.*` в индекс; `--list`, `--force` |
+| `gen_music_ogg.py` | WAV-мастера `import/audio_src/music/` → OGG q4 в `assets/audio/music/`; `--check`, `--ffmpeg` |
 | `material_migration_smoke.gd` | миграция материалов: 0 старых имён в 4 полях, 152 предмета, 4 поля согласованы |
 | `craft_items_smoke.gd` | мастерская: полнота сломанных вещей, инварианты 17 полей, разделение кузнец/портной, сумма и монотонность шансов уровней, одна текстура на три уровня, **атомарность потребления рецепта**, кривая навыка |
 | `workshop_ui_smoke.gd` | мастерская: две вкладки, разделение по ремеслу, переработка и крафт end-to-end, живой фокус после `refresh()` |
@@ -553,6 +559,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 
 ### Индекс записей
 
+- 23.10 (звук) — звук без Аллодов: CC0-библиотека, именованные ключи, шины, 22 реплики и 8 треков музыки
 - 23.10 (позже 4) — инвентарь без прокрутки, иконки HUD, миникарта в рамке
 - 23.10 (позже 3) — портал: прибытие к парному, окно «покинуть карту», лента мира F3, статичные жители
 - 23.10 (позже 2) — экран загрузки мира, поток генерации, фикс BFS порталов

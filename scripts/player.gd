@@ -592,7 +592,7 @@ func use_potion(item_key: String) -> bool:
 	current_hp = mini(max_hp, current_hp + heal)
 	if max_mana > 0:
 		current_mana = mini(max_mana, current_mana + mana)
-	SoundDB.play(11)
+	SoundDB.play("magic.heal")
 	return true
 
 # --- Производные характеристики (связи из оригинального main.txt) ---
@@ -1380,21 +1380,30 @@ func _update_facing_mouse(delta: float) -> void:
 	if _anim is UnitAnim:
 		(_anim as UnitAnim)._advance_rotation(delta)
 
-## Звук удара оружием героя (Sfx100-160: units\sword|axe|club|bow|cbow|pike|sling).
+## Звук удара оружием героя (ключи SoundDB: swing/weapon/bow).
 func _sound_weapon_attack() -> void:
-	var id := 0
+	var key := "combat.swing.light"
 	match weapon:
-		"sword": id = 100
-		"axe": id = 110
-		"club": id = 120
-		"bow": id = 130
-		"xbow": id = 140
-		"pike": id = 150
-		"staff": id = 160
+		"sword": key = "combat.weapon.sword"
+		"axe": key = "combat.weapon.axe"
+		"club": key = "combat.weapon.blunt"
+		"bow": key = "combat.bow"
+		"xbow": key = "combat.bow"
+		"pike": key = "combat.swing.heavy"
+		"staff": key = "combat.swing.light"
 		_:
-			var s := UnitDB.unit_sound(anim_set_name())
-			id = SoundDB.sound_at(s, 0)
-	SoundDB.play(id)
+			var s := str(SoundDB.sound_at(UnitDB.unit_sound(anim_set_name()), 0))
+			if s != "":
+				key = s
+	SoundDB.play(key)
+	# Короткий выкрик — не на каждый удар, иначе превращается в кашу.
+	if randf() < 0.3:
+		_hero_voice("attack", randi_range(1, 3))
+
+## Реплика героя: пол выбирает набор голоса (george / bella).
+func _hero_voice(kind: String, idx: int) -> void:
+	var set_name := "female" if str(Game.hero_gender) == "female" else "male"
+	SoundDB.play("voice.hero.%s.%s.%d" % [set_name, kind, idx])
 
 ## Мана за удар посохом (магический сферный удар).
 
@@ -1408,11 +1417,11 @@ func magic_damage(base: int, sphere: String) -> int:
 ## Звук сферы для удара посохом (не полного заклинания).
 func _play_sphere_sound(sphere: String) -> void:
 	match sphere:
-		"Fire": SoundDB.play(512)
-		"Water": SoundDB.play(518)
-		"Air": SoundDB.play(528)
-		"Earth": SoundDB.play(540)
-		"Astral": SoundDB.play(556)
+		"Fire": SoundDB.play("magic.fire.bolt")
+		"Water": SoundDB.play("magic.ice.bolt")
+		"Air": SoundDB.play("magic.lightning")
+		"Earth": SoundDB.play("magic.earth.bolt")
+		"Astral": SoundDB.play("magic.heal")
 
 ## Активная сфера мага (для удара посохом/панели сфер): сфера стартовой книги,
 ## иначе первая уже изученная. Fallback — Fire (на старте всегда есть книга сферы).
@@ -1594,18 +1603,18 @@ func apply_scroll_to_target_point(name: String, point: Vector2) -> bool:
 	_apply_spell_experience(str(spell.get("sphere", "")))
 	return true
 
-## Звук заклинания (magic\*.wav): из поля sound базы, по сфере на запас.
+## Звук заклинания: ключ из базы, по сфере на запас.
 func _play_spell_sound(name: String, sphere: String) -> void:
-	var sid := SpellDB.sound_of(name)
-	if sid <= 0:
+	var key := SpellDB.sound_of(name)
+	if key == "":
 		match sphere:
-			"Fire": sid = 512    # fireball
-			"Water": sid = 518   # icemissile
-			"Air": sid = 528     # lightning
-			"Earth": sid = 546   # pearth
-			"Astral": sid = 556  # heal
-	if sid > 0:
-		SoundDB.play(sid)
+			"Fire": key = "magic.fire.bolt"
+			"Water": key = "magic.ice.bolt"
+			"Air": key = "magic.lightning"
+			"Earth": key = "magic.earth.bolt"
+			"Astral": key = "magic.heal"
+	if key != "":
+		SoundDB.play(key)
 
 ## Общий порядок применения заклинания (книга на панели ИЛИ свиток с прицелом).
 ## Раньше здесь было 5 веток, и 8 разных «баффов» сводились к одному щиту.
@@ -1943,7 +1952,7 @@ func _raise_dead(target_position: Vector2, spell_name: String) -> void:
 	Game.enemies.erase(best)
 	best.queue_free()
 	SpellVFX.aura_ring(m, SpellDB.sphere_of(spell_name), "buff")
-	SoundDB.play(552)
+	SoundDB.play("magic.animate_dead")
 
 
 ## Свет (Astral, self): мягкая светлая сфера вокруг героя на несколько секунд.
@@ -1963,7 +1972,7 @@ func _cast_summon() -> void:
 	m.position = global_position + Vector2(30, 6)
 	get_tree().current_scene.add_child(m)
 	Game.party.append(m)
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	print("Призыв: союзный монстр")
 
 ## Телепорт к точке (в пределах карты).
@@ -2247,9 +2256,9 @@ func take_damage(damage: int, _attacker: Node2D) -> int:
 	damage = Game.shield_reduce(self, damage)
 	if damage <= 0:
 		SpellVFX.shield_hit(self)
+		SoundDB.play("combat.hit.shield", -6.0)
 		return 0
 	current_hp -= damage
-	SoundDB.play_pain([0, 0, 220, 221, 240])  # боль человека (easy1/easy2)
 	# Невидимость срывается уроном, подготовка заклинания — прерывается
 	StatusEffects.break_invisibility(self)
 	_cancel_casting()
@@ -2259,7 +2268,9 @@ func take_damage(damage: int, _attacker: Node2D) -> int:
 		state = "dead"
 		_path.clear()
 		Game.player_target = global_position
-		SoundDB.play(240)  # units\dead1
+		_hero_voice("death", 1)
 		if health_bar:
 			health_bar.visible = false
+	elif randf() < 0.45:
+		_hero_voice("pain", randi_range(1, 2))
 	return damage

@@ -1,0 +1,829 @@
+{
+  "version": 1,
+  "keys": {
+    "combat.body_fall": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/body_fall_01.ogg",
+        "combat/body_fall_02.ogg"
+      ]
+    },
+    "combat.bow": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.05,
+      "files": [
+        "combat/bow_01.wav",
+        "combat/bow_02.wav",
+        "combat/bow_03.wav"
+      ]
+    },
+    "combat.death": {
+      "bus": "SFX",
+      "gain_db": -3.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "combat/death_01.ogg",
+        "combat/death_02.ogg"
+      ]
+    },
+    "combat.hit.armor": {
+      "bus": "SFX",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/hit_armor_01.ogg",
+        "combat/hit_armor_02.ogg",
+        "combat/hit_armor_03.ogg",
+        "combat/hit_armor_04.ogg",
+        "combat/hit_armor_05.ogg"
+      ]
+    },
+    "combat.hit.flesh": {
+      "bus": "SFX",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/hit_flesh_01.ogg",
+        "combat/hit_flesh_02.ogg",
+        "combat/hit_flesh_03.ogg",
+        "combat/hit_flesh_04.ogg",
+        "combat/hit_flesh_05.ogg",
+        "combat/hit_flesh_06.ogg"
+      ]
+    },
+    "combat.hit.magic": {
+      "bus": "SFX",
+      "gain_db": -3.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/hit_magic_01.ogg",
+        "combat/hit_magic_02.ogg",
+        "combat/hit_magic_03.ogg",
+        "combat/hit_magic_04.ogg",
+        "combat/hit_magic_05.ogg"
+      ]
+    },
+    "combat.hit.shield": {
+      "bus": "SFX",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/hit_shield_01.ogg",
+        "combat/hit_shield_02.ogg",
+        "combat/hit_shield_03.ogg",
+        "combat/hit_shield_04.ogg",
+        "combat/hit_shield_05.ogg"
+      ]
+    },
+    "combat.hit.wood": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.05,
+      "files": [
+        "combat/hit_wood_01.ogg",
+        "combat/hit_wood_02.ogg",
+        "combat/hit_wood_03.ogg"
+      ]
+    },
+    "combat.miss": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.06,
+      "files": [
+        "combat/miss_01.wav",
+        "combat/miss_02.wav",
+        "combat/miss_03.wav",
+        "combat/miss_04.wav"
+      ]
+    },
+    "combat.swing.heavy": {
+      "bus": "SFX",
+      "gain_db": -3.0,
+      "pitch_jitter": 0.06,
+      "files": [
+        "combat/swing_heavy_01.wav",
+        "combat/swing_heavy_02.wav",
+        "combat/swing_heavy_03.wav",
+        "combat/swing_heavy_04.wav",
+        "combat/swing_heavy_05.wav"
+      ]
+    },
+    "combat.swing.light": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.06,
+      "files": [
+        "combat/swing_light_01.wav",
+        "combat/swing_light_02.wav",
+        "combat/swing_light_03.wav",
+        "combat/swing_light_04.wav"
+      ]
+    },
+    "combat.weapon.axe": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/weapon_axe_01.ogg",
+        "combat/weapon_axe_02.ogg"
+      ]
+    },
+    "combat.weapon.blunt": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/weapon_blunt_01.ogg",
+        "combat/weapon_blunt_02.ogg",
+        "combat/weapon_blunt_03.ogg"
+      ]
+    },
+    "combat.weapon.sword": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "combat/weapon_sword_01.ogg",
+        "combat/weapon_sword_02.ogg",
+        "combat/weapon_sword_03.ogg"
+      ]
+    },
+    "magic.acid.stream": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "magic/acid_stream_01.ogg",
+        "magic/acid_stream_02.ogg",
+        "magic/acid_stream_03.ogg"
+      ]
+    },
+    "magic.air.ward": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/air_ward_01.ogg",
+        "magic/air_ward_02.ogg"
+      ]
+    },
+    "magic.animate_dead": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/animate_dead_01.ogg",
+        "magic/animate_dead_02.ogg"
+      ]
+    },
+    "magic.bless": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/bless_01.wav",
+        "magic/bless_02.wav",
+        "magic/bless_03.wav"
+      ]
+    },
+    "magic.blizzard": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/blizzard_01.ogg",
+        "magic/blizzard_02.ogg"
+      ]
+    },
+    "magic.control_spirit": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/control_spirit_01.ogg",
+        "magic/control_spirit_02.ogg"
+      ]
+    },
+    "magic.curse": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/curse_01.ogg",
+        "magic/curse_02.ogg"
+      ]
+    },
+    "magic.curse.stone": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/curse_stone_01.ogg",
+        "magic/curse_stone_02.ogg"
+      ]
+    },
+    "magic.darkness": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/darkness_01.ogg",
+        "magic/darkness_02.ogg"
+      ]
+    },
+    "magic.diamond.dust": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "magic/diamond_dust_01.ogg",
+        "magic/diamond_dust_02.ogg",
+        "magic/diamond_dust_03.ogg"
+      ]
+    },
+    "magic.drain": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/drain_01.ogg",
+        "magic/drain_02.ogg"
+      ]
+    },
+    "magic.earth.bolt": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/earth_bolt_01.ogg",
+        "magic/earth_bolt_02.ogg",
+        "magic/earth_bolt_03.ogg"
+      ]
+    },
+    "magic.earth.wall": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/earth_wall_01.ogg",
+        "magic/earth_wall_02.ogg"
+      ]
+    },
+    "magic.earth.ward": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/earth_ward_01.ogg",
+        "magic/earth_ward_02.ogg"
+      ]
+    },
+    "magic.fire.arrow": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "magic/fire_arrow_01.ogg",
+        "magic/fire_arrow_02.ogg"
+      ]
+    },
+    "magic.fire.bolt": {
+      "bus": "SFX",
+      "gain_db": -3.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/fire_bolt_01.ogg",
+        "magic/fire_bolt_02.ogg"
+      ]
+    },
+    "magic.fire.wall": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/fire_wall_01.ogg",
+        "magic/fire_wall_02.ogg"
+      ]
+    },
+    "magic.fire.ward": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/fire_ward_01.ogg",
+        "magic/fire_ward_02.ogg"
+      ]
+    },
+    "magic.haste": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/haste_01.ogg",
+        "magic/haste_02.ogg"
+      ]
+    },
+    "magic.heal": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/heal_01.ogg",
+        "magic/heal_02.wav",
+        "magic/heal_03.wav",
+        "magic/heal_04.wav"
+      ]
+    },
+    "magic.ice.bolt": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/ice_bolt_01.ogg",
+        "magic/ice_bolt_02.ogg"
+      ]
+    },
+    "magic.invisibility": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/invisibility_01.ogg",
+        "magic/invisibility_02.ogg"
+      ]
+    },
+    "magic.light": {
+      "bus": "SFX",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/light_01.ogg",
+        "magic/light_02.ogg"
+      ]
+    },
+    "magic.lightning": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/lightning_01.ogg",
+        "magic/lightning_02.ogg"
+      ]
+    },
+    "magic.poison.cloud": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "magic/poison_cloud_01.ogg",
+        "magic/poison_cloud_02.ogg",
+        "magic/poison_cloud_03.ogg"
+      ]
+    },
+    "magic.prismatic": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/prismatic_01.ogg",
+        "magic/prismatic_02.ogg"
+      ]
+    },
+    "magic.shield": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/shield_01.ogg",
+        "magic/shield_02.ogg",
+        "magic/shield_03.ogg"
+      ]
+    },
+    "magic.slow": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/slow_01.ogg",
+        "magic/slow_02.ogg"
+      ]
+    },
+    "magic.summon": {
+      "bus": "SFX",
+      "gain_db": -4.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "magic/summon_01.ogg",
+        "magic/summon_02.ogg"
+      ]
+    },
+    "magic.teleport": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.02,
+      "files": [
+        "magic/teleport_01.wav",
+        "magic/teleport_02.ogg"
+      ]
+    },
+    "magic.water.ward": {
+      "bus": "SFX",
+      "gain_db": -5.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "magic/water_ward_01.ogg",
+        "magic/water_ward_02.ogg",
+        "magic/water_ward_03.ogg"
+      ]
+    },
+    "ui.back": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "ui/back_01.ogg",
+        "ui/back_02.ogg",
+        "ui/back_03.ogg",
+        "ui/back_04.ogg"
+      ]
+    },
+    "ui.book_open": {
+      "bus": "UI",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.02,
+      "files": [
+        "ui/book_open_01.ogg"
+      ]
+    },
+    "ui.click": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "ui/click_01.ogg",
+        "ui/click_02.ogg",
+        "ui/click_03.ogg",
+        "ui/click_04.ogg",
+        "ui/click_05.ogg",
+        "ui/click_06.ogg"
+      ]
+    },
+    "ui.coins": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "ui/coins_01.ogg",
+        "ui/coins_02.ogg",
+        "ui/coins_03.ogg",
+        "ui/coins_04.ogg"
+      ]
+    },
+    "ui.complete": {
+      "bus": "UI",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.02,
+      "files": [
+        "ui/complete_01.ogg",
+        "ui/complete_02.ogg",
+        "ui/complete_03.ogg",
+        "ui/complete_04.ogg"
+      ]
+    },
+    "ui.confirm": {
+      "bus": "UI",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "ui/confirm_01.ogg",
+        "ui/confirm_02.ogg",
+        "ui/confirm_03.ogg",
+        "ui/confirm_04.ogg"
+      ]
+    },
+    "ui.craft": {
+      "bus": "UI",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "ui/craft_01.ogg",
+        "ui/craft_02.ogg",
+        "ui/craft_03.ogg"
+      ]
+    },
+    "ui.equip": {
+      "bus": "UI",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "ui/equip_01.wav",
+        "ui/equip_02.wav",
+        "ui/equip_03.wav",
+        "ui/equip_04.wav",
+        "ui/equip_05.wav"
+      ]
+    },
+    "ui.error": {
+      "bus": "UI",
+      "gain_db": -6.0,
+      "pitch_jitter": 0.02,
+      "files": [
+        "ui/error_01.ogg",
+        "ui/error_02.ogg",
+        "ui/error_03.ogg",
+        "ui/error_04.ogg"
+      ]
+    },
+    "ui.fail": {
+      "bus": "UI",
+      "gain_db": -7.0,
+      "pitch_jitter": 0.02,
+      "files": [
+        "ui/fail_01.ogg",
+        "ui/fail_02.ogg",
+        "ui/fail_03.ogg",
+        "ui/fail_04.ogg"
+      ]
+    },
+    "ui.hover": {
+      "bus": "UI",
+      "gain_db": -11.0,
+      "pitch_jitter": 0.05,
+      "files": [
+        "ui/hover_01.ogg",
+        "ui/hover_02.ogg",
+        "ui/hover_03.ogg",
+        "ui/hover_04.ogg",
+        "ui/hover_05.ogg",
+        "ui/hover_06.ogg"
+      ]
+    },
+    "ui.message_in": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "ui/message_in_01.ogg",
+        "ui/message_in_02.ogg",
+        "ui/message_in_03.ogg",
+        "ui/message_in_04.ogg"
+      ]
+    },
+    "ui.message_out": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "ui/message_out_01.ogg",
+        "ui/message_out_02.ogg",
+        "ui/message_out_03.ogg",
+        "ui/message_out_04.ogg"
+      ]
+    },
+    "ui.notify": {
+      "bus": "UI",
+      "gain_db": -8.0,
+      "pitch_jitter": 0.03,
+      "files": [
+        "ui/notify_01.ogg",
+        "ui/notify_02.ogg",
+        "ui/notify_03.ogg",
+        "ui/notify_04.ogg"
+      ]
+    },
+    "ui.page": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "ui/page_01.ogg",
+        "ui/page_02.ogg",
+        "ui/page_03.ogg",
+        "ui/page_04.ogg"
+      ]
+    },
+    "ui.scroll": {
+      "bus": "UI",
+      "gain_db": -11.0,
+      "pitch_jitter": 0.05,
+      "files": [
+        "ui/scroll_01.ogg",
+        "ui/scroll_02.ogg",
+        "ui/scroll_03.ogg",
+        "ui/scroll_04.ogg",
+        "ui/scroll_05.ogg"
+      ]
+    },
+    "ui.unequip": {
+      "bus": "UI",
+      "gain_db": -9.0,
+      "pitch_jitter": 0.04,
+      "files": [
+        "ui/unequip_01.wav",
+        "ui/unequip_02.wav",
+        "ui/unequip_03.wav"
+      ]
+    },
+    "voice.npc.merchant.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_merchant_1.mp3"
+      ],
+      "subtitle": "Снаряжение дорожает с каждой новой стражей у ворот."
+    },
+    "voice.npc.merchant.2": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_merchant_2.mp3"
+      ],
+      "subtitle": "Зелья всегда пригодятся: герои тоже умеют получать раны."
+    },
+    "voice.npc.merchant.3": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_merchant_3.mp3"
+      ],
+      "subtitle": "Магические книги есть только у тех, кто действительно читает магию."
+    },
+    "voice.npc.merchant.4": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_merchant_4.mp3"
+      ],
+      "subtitle": "Не торопись: хорошая броня окупается после второй вылазки."
+    },
+    "voice.npc.inn.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_inn_1.mp3"
+      ],
+      "subtitle": "Говорят, на севере всё больше диких зверей... Охрана у ворот не справляется."
+    },
+    "voice.npc.inn.2": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_inn_2.mp3"
+      ],
+      "subtitle": "В школе тренировок берут золотом за каждую ступень. Дорого, но быстро."
+    },
+    "voice.npc.inn.3": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_inn_3.mp3"
+      ],
+      "subtitle": "Торговец в лавке скупает всё, что принесёшь из-за стен. Вещи — по полцены."
+    },
+    "voice.npc.inn.4": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_inn_4.mp3"
+      ],
+      "subtitle": "Маги говорят, что настоящая сила — в книгах стихий. Остальным остаются свитки."
+    },
+    "voice.npc.inn.5": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_inn_5.mp3"
+      ],
+      "subtitle": "Слышал, за воротами люди пропадают. Особенно те, кто идёт без отряда."
+    },
+    "voice.npc.inn.6": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/npc_inn_6.mp3"
+      ],
+      "subtitle": "Хороший наёмник стоит своих денег: сам себе и убийца, и щит."
+    },
+    "voice.hero.male.attack.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_male_attack_1.mp3"
+      ],
+      "subtitle": "Есть!"
+    },
+    "voice.hero.male.attack.2": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_male_attack_2.mp3"
+      ],
+      "subtitle": "Держись!"
+    },
+    "voice.hero.male.attack.3": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_male_attack_3.mp3"
+      ],
+      "subtitle": "Не сейчас."
+    },
+    "voice.hero.male.pain.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_male_pain_1.mp3"
+      ],
+      "subtitle": "Ах ты..."
+    },
+    "voice.hero.male.pain.2": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_male_pain_2.mp3"
+      ],
+      "subtitle": "Больновато."
+    },
+    "voice.hero.male.death.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_male_death_1.mp3"
+      ],
+      "subtitle": "...не так я это представлял."
+    },
+    "voice.hero.female.attack.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_female_attack_1.mp3"
+      ],
+      "subtitle": "Есть!"
+    },
+    "voice.hero.female.attack.2": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_female_attack_2.mp3"
+      ],
+      "subtitle": "Держись!"
+    },
+    "voice.hero.female.attack.3": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_female_attack_3.mp3"
+      ],
+      "subtitle": "Не сейчас."
+    },
+    "voice.hero.female.pain.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_female_pain_1.mp3"
+      ],
+      "subtitle": "Ах ты..."
+    },
+    "voice.hero.female.pain.2": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_female_pain_2.mp3"
+      ],
+      "subtitle": "Больновато."
+    },
+    "voice.hero.female.death.1": {
+      "bus": "Voice",
+      "gain_db": -2.0,
+      "pitch_jitter": 0.0,
+      "files": [
+        "voice/hero_female_death_1.mp3"
+      ],
+      "subtitle": "...не так я это представляла."
+    }
+  }
+}

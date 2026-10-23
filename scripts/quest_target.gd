@@ -56,7 +56,7 @@ func _process(delta: float) -> void:
 func _collect() -> void:
 	if item_key != "" and Game.hero != null and is_instance_valid(Game.hero):
 		Game.hero.add_item(item_key)
-	SoundDB.play(1)
+	SoundDB.play("ui.click")
 	picked.emit(self, item_key)
 	queue_free()
 

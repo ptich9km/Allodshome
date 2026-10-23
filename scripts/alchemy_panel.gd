@@ -303,7 +303,7 @@ func _create_selected() -> void:
 	var output_key := str(recipe.get("output", ""))
 	for _count in range(int(recipe.get("output_count", 1))):
 		player.add_item(output_key)
-	SoundDB.play(9)
+	SoundDB.play("ui.craft")
 	inventory_changed.emit()
 	_status_label.text = tr("Создано: %s") % str(recipe.get("name_ru", output_key))
 	_refresh()

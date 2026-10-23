@@ -787,7 +787,7 @@ func _grant(q: Dictionary) -> String:
 			Game.hero.add_item(scroll)
 			var item := ItemDB.find(scroll)
 			parts.append(str(item.get("name_ru", scroll)))
-	SoundDB.play(6)
+	SoundDB.play("ui.error")
 	return ", ".join(parts)
 
 

@@ -262,7 +262,8 @@ static func shoot_offset(name: String) -> Array:
 		return raw
 	return []
 
-## Звуки юнита [атака, ?, ?, смерть, ...] — ID из sfx (assets/audio/sfx/monsters|magic).
+## Звуки юнита [атака, ?, боль1, боль2, смерть] — ключи sound_db.json
+## (например "voice.monster.wolf.attack"). Пустой массив = юнит молчит.
 static func unit_sound(name: String) -> Array:
 	var o := get_set(name)
 	var raw: Variant = o.get("sound", null)

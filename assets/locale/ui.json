@@ -200,6 +200,18 @@
   "ru": "Общая громкость",
   "en": "Master volume"
  },
+ "ui.settings.music_volume": {
+  "ru": "Громкость музыки",
+  "en": "Music volume"
+ },
+ "ui.settings.sfx_volume": {
+  "ru": "Громкость эффектов",
+  "en": "Effects volume"
+ },
+ "ui.settings.voice_volume": {
+  "ru": "Громкость голосов",
+  "en": "Voice volume"
+ },
  "ui.settings.mute": {
   "ru": "Без звука",
   "en": "Mute"
@@ -221,8 +233,8 @@
   "en": "Changes apply immediately."
  },
  "ui.settings.hint_1": {
-  "ru": "Отдельные музыка и эффекты появятся вместе с аудио-шинами.",
-  "en": "Separate music and effects buses will come with audio buses."
+  "ru": "Музыка, эффекты и голоса регулируются отдельными ползунками.",
+  "en": "Music, effects and voice have separate volume controls."
  },
  "ui.settings.hint_2": {
   "ru": "Нажмите кнопку действия, затем новую клавишу. Esc отменяет.",
@@ -231,10 +243,6 @@
  "ui.settings.stub_video": {
   "ru": "Качество картинки (сглаживание, тени, свечение) — заглушка: переключается только на старте игры.",
   "en": "Graphics quality (anti-aliasing, shadows, glow) is a stub: it can only change on startup."
- },
- "ui.settings.stub_audio": {
-  "ru": "Музыка и отдельная громкость эффектов — заглушка: в проекте одна шина Master.",
-  "en": "Music and a separate effects volume are stubs: the project has a single Master bus."
  },
  "ui.settings.press_key": {
   "ru": "Нажмите новую клавишу…",

@@ -120,6 +120,35 @@ static func master_volume_db() -> float:
 	return linear_to_db(master_volume())
 
 
+const DEFAULT_MUSIC_VOLUME := 0.7
+const DEFAULT_SFX_VOLUME := 0.8
+const DEFAULT_VOICE_VOLUME := 0.9
+
+
+static func music_volume() -> float:
+	return clampf(getf("audio", "music_volume", DEFAULT_MUSIC_VOLUME), 0.0, 1.0)
+
+
+static func set_music_volume(v: float) -> void:
+	set_value("audio", "music_volume", clampf(v, 0.0, 1.0))
+
+
+static func sfx_volume() -> float:
+	return clampf(getf("audio", "sfx_volume", DEFAULT_SFX_VOLUME), 0.0, 1.0)
+
+
+static func set_sfx_volume(v: float) -> void:
+	set_value("audio", "sfx_volume", clampf(v, 0.0, 1.0))
+
+
+static func voice_volume() -> float:
+	return clampf(getf("audio", "voice_volume", DEFAULT_VOICE_VOLUME), 0.0, 1.0)
+
+
+static func set_voice_volume(v: float) -> void:
+	set_value("audio", "voice_volume", clampf(v, 0.0, 1.0))
+
+
 # --- Видео ---
 
 static func fullscreen() -> bool:

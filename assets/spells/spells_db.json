@@ -14,7 +14,7 @@
       "super": "res://assets/spells/fire_arrow.png"
     },
     "kind": "attack",
-    "sound": 510,
+    "sound": "magic.fire.arrow",
     "cooldown": 0.8,
     "cast_time": 0.35,
     "projectile_speed": 420,
@@ -43,7 +43,7 @@
       "super": "res://assets/spells/fire_ball.png"
     },
     "kind": "area",
-    "sound": 512,
+    "sound": "magic.fire.bolt",
     "cooldown": 2.0,
     "cast_time": 0.55,
     "projectile_speed": 300,
@@ -76,7 +76,7 @@
       "super": "res://assets/spells/wall_of_fire.png"
     },
     "kind": "wall",
-    "sound": 90,
+    "sound": "magic.fire.wall",
     "cooldown": 8.0,
     "cast_time": 0.7,
     "projectile_speed": 0,
@@ -105,7 +105,7 @@
       "super": "res://assets/spells/protection_from_fire.png"
     },
     "kind": "buff",
-    "sound": 516,
+    "sound": "magic.fire.ward",
     "cooldown": 6.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -141,7 +141,7 @@
       "super": "res://assets/spells/ice_missile.png"
     },
     "kind": "attack",
-    "sound": 518,
+    "sound": "magic.ice.bolt",
     "cooldown": 1.0,
     "cast_time": 0.4,
     "projectile_speed": 380,
@@ -176,7 +176,7 @@
       "super": "res://assets/spells/poison_cloud.png"
     },
     "kind": "area",
-    "sound": 520,
+    "sound": "magic.poison.cloud",
     "cooldown": 4.0,
     "cast_time": 0.6,
     "projectile_speed": 240,
@@ -218,7 +218,7 @@
       "super": "res://assets/spells/blizzard.png"
     },
     "kind": "area",
-    "sound": 523,
+    "sound": "magic.blizzard",
     "cooldown": 6.0,
     "cast_time": 0.7,
     "projectile_speed": 240,
@@ -259,7 +259,7 @@
       "super": "res://assets/spells/protection_from_water.png"
     },
     "kind": "buff",
-    "sound": 524,
+    "sound": "magic.water.ward",
     "cooldown": 6.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -295,7 +295,7 @@
       "super": "res://assets/spells/acid_stream.png"
     },
     "kind": "attack",
-    "sound": 526,
+    "sound": "magic.acid.stream",
     "cooldown": 2.0,
     "cast_time": 0.5,
     "projectile_speed": 340,
@@ -331,7 +331,7 @@
       "super": "res://assets/spells/lightning.png"
     },
     "kind": "attack",
-    "sound": 528,
+    "sound": "magic.lightning",
     "cooldown": 2.0,
     "cast_time": 0.45,
     "projectile_speed": 600,
@@ -360,7 +360,7 @@
       "super": "res://assets/spells/prismatic_spray.png"
     },
     "kind": "area",
-    "sound": 530,
+    "sound": "magic.prismatic",
     "cooldown": 3.0,
     "cast_time": 0.6,
     "projectile_speed": 0,
@@ -389,7 +389,7 @@
       "super": "res://assets/spells/invisibility.png"
     },
     "kind": "buff",
-    "sound": 532,
+    "sound": "magic.invisibility",
     "cooldown": 12.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -424,7 +424,7 @@
       "super": "res://assets/spells/protection_from_air.png"
     },
     "kind": "buff",
-    "sound": 534,
+    "sound": "magic.air.ward",
     "cooldown": 6.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -460,7 +460,7 @@
       "super": "res://assets/spells/darkness.png"
     },
     "kind": "debuff",
-    "sound": 536,
+    "sound": "magic.darkness",
     "cooldown": 10.0,
     "cast_time": 0.5,
     "projectile_speed": 0,
@@ -495,7 +495,7 @@
       "super": "res://assets/spells/stone_missile.png"
     },
     "kind": "attack",
-    "sound": 540,
+    "sound": "magic.earth.bolt",
     "cooldown": 1.2,
     "cast_time": 0.4,
     "projectile_speed": 400,
@@ -528,7 +528,7 @@
       "super": "res://assets/spells/wall_of_earth.png"
     },
     "kind": "wall",
-    "sound": 542,
+    "sound": "magic.earth.wall",
     "cooldown": 8.0,
     "cast_time": 0.7,
     "projectile_speed": 0,
@@ -557,7 +557,7 @@
       "super": "res://assets/spells/stone_curse.png"
     },
     "kind": "debuff",
-    "sound": 544,
+    "sound": "magic.curse.stone",
     "cooldown": 6.0,
     "cast_time": 0.5,
     "projectile_speed": 0,
@@ -596,7 +596,7 @@
       "super": "res://assets/spells/protection_from_earth.png"
     },
     "kind": "buff",
-    "sound": 546,
+    "sound": "magic.earth.ward",
     "cooldown": 6.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -632,7 +632,7 @@
       "super": "res://assets/spells/diamond_dust.png"
     },
     "kind": "area",
-    "sound": 540,
+    "sound": "magic.diamond.dust",
     "cooldown": 3.0,
     "cast_time": 0.6,
     "projectile_speed": 0,
@@ -661,7 +661,7 @@
       "super": "res://assets/spells/bless.png"
     },
     "kind": "buff",
-    "sound": 548,
+    "sound": "magic.bless",
     "cooldown": 5.0,
     "cast_time": 0.4,
     "projectile_speed": 0,
@@ -697,7 +697,7 @@
       "super": "res://assets/spells/haste.png"
     },
     "kind": "buff",
-    "sound": 550,
+    "sound": "magic.haste",
     "cooldown": 10.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -732,7 +732,7 @@
       "super": "res://assets/spells/heal.png"
     },
     "kind": "heal",
-    "sound": 556,
+    "sound": "magic.heal",
     "cooldown": 1.5,
     "cast_time": 0.45,
     "projectile_speed": 0,
@@ -761,7 +761,7 @@
       "super": "res://assets/spells/drain_life.png"
     },
     "kind": "attack",
-    "sound": 560,
+    "sound": "magic.drain",
     "cooldown": 2.0,
     "cast_time": 0.4,
     "projectile_speed": 360,
@@ -795,7 +795,7 @@
       "super": "res://assets/spells/shield.png"
     },
     "kind": "self",
-    "sound": 562,
+    "sound": "magic.shield",
     "cooldown": 10.0,
     "cast_time": 0.35,
     "projectile_speed": 0,
@@ -830,7 +830,7 @@
       "super": "res://assets/spells/summon.png"
     },
     "kind": "self",
-    "sound": 558,
+    "sound": "magic.summon",
     "cooldown": 20.0,
     "cast_time": 0.6,
     "projectile_speed": 0,
@@ -859,7 +859,7 @@
       "super": "res://assets/spells/animate_dead.png"
     },
     "kind": "raise",
-    "sound": 552,
+    "sound": "magic.animate_dead",
     "cooldown": 15.0,
     "cast_time": 0.8,
     "projectile_speed": 0,
@@ -893,7 +893,7 @@
       "super": "res://assets/spells/teleport.png"
     },
     "kind": "self",
-    "sound": 554,
+    "sound": "magic.teleport",
     "cooldown": 8.0,
     "cast_time": 0.25,
     "projectile_speed": 0,
@@ -922,7 +922,7 @@
       "super": "res://assets/spells/curse.png"
     },
     "kind": "debuff",
-    "sound": 564,
+    "sound": "magic.curse",
     "cooldown": 4.0,
     "cast_time": 0.4,
     "projectile_speed": 0,
@@ -957,7 +957,7 @@
       "super": "res://assets/spells/slow.png"
     },
     "kind": "debuff",
-    "sound": 566,
+    "sound": "magic.slow",
     "cooldown": 4.0,
     "cast_time": 0.35,
     "projectile_speed": 0,
@@ -992,7 +992,7 @@
       "super": "res://assets/spells/light.png"
     },
     "kind": "self",
-    "sound": 538,
+    "sound": "magic.light",
     "cooldown": 12.0,
     "cast_time": 0.3,
     "projectile_speed": 0,
@@ -1021,7 +1021,7 @@
       "super": "res://assets/spells/control_spirit.png"
     },
     "kind": "debuff",
-    "sound": 552,
+    "sound": "magic.control_spirit",
     "cooldown": 8.0,
     "cast_time": 0.6,
     "projectile_speed": 0,
