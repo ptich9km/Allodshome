@@ -1,7 +1,7 @@
 ---
 description: Архитектор. Используй для проектирования архитектуры, разбора требований в модули, выбора формул и структур данных, а также для code review. Выдаёт TDD перед реализацией.
 mode: subagent
-model: opencode/space-bunny-free
+model: opencode-go/beam-free
 permission:
   edit: deny
   bash: allow

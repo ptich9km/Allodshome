@@ -709,7 +709,9 @@ func _start_game() -> void:
 	# дефолт "mid" — профиль новичка был написан, но недостижим из игры.
 	Game.new_random_map("start")
 	SoundDB.play(2)  # click_ok
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	# Карта 96x96 генерируется в фоне на отдельном экране с полосой прогресса:
+	# раньше main.tscn открывался с чёрной паузой на генерацию.
+	get_tree().change_scene_to_file("res://scenes/loading.tscn")
 
 ## Школа по умолчанию, если склонность не трогали: первая сфера с навыком >= 20
 ## в пресете; иначе — Огонь.

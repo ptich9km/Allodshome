@@ -510,14 +510,60 @@ static var pending_map_path: String = ""
 ## Сид карты новой игры. 0 = карта не запрошена, AlmMap берёт запасной путь из main.tscn
 ## (детерминированный dev-режим и автотесты — им случайная карта мешала бы).
 static var map_seed: int = 0
-static var map_zone: String = "mid"   # start | mid | hard | faction
+static var map_zone: String = "mid"   # start | mid | hard | faction (ТИР сектора)
+## Сид мира 4x3 и текущий сектор ("s41"). map_seed выводится из них.
+static var world_seed: int = 0
+static var map_sector: String = ""
+## Новую игру открыли через loading.tscn: main должен показать оверлей,
+## пока идёт расселение и прогрев, а не мигать пустой картой.
+static var startup_loading: bool = false
+
+static func _world_map() -> GDScript:
+	return load("res://scripts/world/world_map.gd") as GDScript
+
+## Сид конкретного сектора от сида мира.
+static func sector_seed(sector_id: String) -> int:
+	if sector_id == "":
+		return map_seed
+	var bus := _world_bus_static()
+	var st: Dictionary = {}
+	if bus != null and bus.state != null:
+		st = bus.state.sector_state(sector_id)
+	if not st.is_empty() and int(st.get("seed", 0)) != 0:
+		return int(st.get("seed", 0))
+	return int(_world_map().seed_of(world_seed, sector_id))
+
+
+## Автолоад по имени класса в headless-скрипте не резолвится (проверено
+## 23.10: "Identifier not found: WorldBus"). Берём узел из дерева.
+static func _world_bus_static() -> Node:
+	var loop := Engine.get_main_loop()
+	if loop == null or not (loop is SceneTree):
+		return null
+	var scene := loop as SceneTree
+	if scene.root == null:
+		return null
+	return scene.root.get_node_or_null("WorldBus")
+
+
+func _world_bus() -> Node:
+	if not is_inside_tree():
+		return null
+	return get_tree().root.get_node_or_null("WorldBus")
 
 ## Новая карта со случайным сидом. Вызывается из character_select перед стартом.
+## zone может быть тиром (start/mid/hard/faction) или id сектора ("s41").
 static func new_random_map(zone: String = "mid") -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	map_seed = rng.randi()
-	map_zone = zone
+	world_seed = rng.randi()
+	if world_seed == 0:
+		world_seed = 4242
+	var wm := _world_map()
+	var sector := zone if wm.has(zone) else str(wm.sector_for_tier(zone))
+	map_sector = sector
+	map_zone = str(wm.tier_of(sector)) if sector != "" else zone
+	map_seed = int(wm.seed_of(world_seed, sector)) if sector != "" else rng.randi()
 	pending_map_path = ""
 	clear_load_position()
 	clear_hero_save()
@@ -526,6 +572,8 @@ static func new_random_map(zone: String = "mid") -> void:
 static func request_map_by_seed(seed_value: int, zone: String = "mid") -> void:
 	map_seed = seed_value
 	map_zone = zone
+	map_sector = ""
+	world_seed = 0
 	pending_map_path = ""
 	clear_load_position()
 	clear_hero_save()
@@ -534,6 +582,7 @@ static func request_map_by_seed(seed_value: int, zone: String = "mid") -> void:
 static func request_map_by_path(path: String) -> void:
 	pending_map_path = path
 	map_seed = 0
+	map_sector = ""
 	clear_load_position()
 	clear_hero_save()
 
@@ -699,6 +748,12 @@ func _ready():  # Инициализация мира и боя
 		return
 
 	# Спавним игрока на проходимом тайле в центре карты
+	_ensure_world_state()
+	# Свежая сцена начинает ленту с одной строки прибытия: после загрузки
+	# сохранения не должно оставаться болтовни прошлой сессии.
+	var wf = load("res://scripts/world/world_feed.gd")
+	wf.clear()
+	wf.post("world", Loc.f("ui.feed.arrival", [_sector_name(Game.map_sector)]))
 	_spawn_player_on_walkable()
 	Game.hero = player
 	Game.party.clear()
@@ -714,7 +769,12 @@ func _ready():  # Инициализация мира и боя
 	_sep_grid.clear()
 	_sep_grid_frame = -1
 	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
-	_spawn_map_units()
+	if Game.startup_loading:
+		Game.startup_loading = false
+		_show_loading(Loc.t("ui.loading.assembly"))
+		_spawn_map_units(Callable(self, "_on_startup_spawned"))
+	else:
+		_spawn_map_units()
 
 	# Fog of war + dynamic events (19.10): nodes find the map via group.
 	var fog_node := FogOfWar.new()
@@ -747,6 +807,7 @@ func _ready():  # Инициализация мира и боя
 
 	if ui:
 		ui.setup_ui(player)
+	_setup_world_feed()
 
 	_select_ring = SelectRing.new()
 	_select_ring.name = "SelectRing"
@@ -798,8 +859,10 @@ func _spawn_player_on_walkable():
 
 ## Спавн НПЦ/монстров из данных карты: .alm секция units (type_id) или
 ## sidecar .npcs.json (set). Агрессия — UnitDB.is_hostile (монстры palette=5).
-func _spawn_map_units() -> void:
+func _spawn_map_units(done: Callable = Callable()) -> void:
 	if alm_map == null or not alm_map.has_method("get_units"):
+		if done.is_valid():
+			done.call()
 		return
 	var recs: Array = alm_map.call("get_units")
 	var spawned := 0
@@ -820,7 +883,29 @@ func _spawn_map_units() -> void:
 		else:
 			_spawn_npc(set_name, open_pos, rec)
 		spawned += 1
+		# Пачки: 190 НПЦ за один кадр давали заметный всплеск после перехода.
+		# Оверлей загрузки в это время ещё висит, полоса идёт 60..95%.
+		if spawned % 24 == 0:
+			_on_spawn_batch(spawned, recs.size())
+			await get_tree().process_frame
 	print("Карта: спавн юнитов %d" % spawned)
+	_on_spawn_batch(recs.size(), recs.size())
+	if done.is_valid():
+		done.call()
+
+
+func _on_spawn_batch(spawned: int, total: int) -> void:
+	if _loading_view == null or not is_instance_valid(_loading_view):
+		return
+	var frac := float(spawned) / float(maxi(1, total))
+	_loading_view.set_progress(int(60.0 + 35.0 * frac), Loc.t("ui.loading.assembly"))
+
+
+## После стартового расселения: пара кадров на шейдеры и снятие оверлея.
+func _on_startup_spawned() -> void:
+	for _i in 3:
+		await get_tree().process_frame
+	_hide_loading()
 
 func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var e := Enemy.new()
@@ -900,6 +985,9 @@ func _is_open_spot(tx: int, ty: int) -> bool:
 	return open_neighbors >= 2
 
 func _input(event):
+	# Окно портала само обрабатывает Esc (Esc = «Остаться»).
+	if _portal_confirm != null and is_instance_valid(_portal_confirm):
+		return
 	# Прицеливание (свиток или заклинание книги): ПКМ или ESC отменяет.
 	# Свиток НЕ тратится, мана/заряд НЕ списываются.
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -992,6 +1080,12 @@ func _input(event):
 			and not event.ctrl_pressed:
 		if ui and not ui.is_editor_open():
 			ui.open_quests()
+
+	# Карта мира по M (23.10)
+	if event is InputEventKey and event.pressed and event.keycode == KEY_M \
+			and not event.ctrl_pressed:
+		if ui:
+			ui.open_world_map()
 
 func handle_click(world_position: Vector2):
 	# Герой мёртв (падение/разложение) — управление не работает
@@ -1700,6 +1794,17 @@ func _process(delta):
 	_check_portal()
 
 
+## F3-лента мира: сектор/владелец/FPS, события SIM, болтовня НПЦ. F3
+## добавляет технические цифры. Размеры — доли вьюпорта.
+func _setup_world_feed() -> void:
+	if _world_feed_panel != null and is_instance_valid(_world_feed_panel):
+		return
+	var script: GDScript = load("res://scripts/world_feed_panel.gd")
+	_world_feed_panel = script.new()
+	_world_feed_panel.setup()
+	add_child(_world_feed_panel)
+
+
 ## Регенерация героя раз в секунду: HP = 1 + Body/5, мана = 1 + Spirit/10.
 func _regen_hero(delta: float) -> void:
 	if not is_instance_valid(player):
@@ -1718,27 +1823,104 @@ func _regen_hero(delta: float) -> void:
 		DamageNumber.show_at(player.global_position, gain, "mana")
 
 func _check_portal() -> void:
-	# Проверка: игрок на клетке портала?
 	if not is_instance_valid(player) or not is_instance_valid(alm_map):
 		return
-	var cells: Array = alm_map.call("get_portal_cells")
-	if cells.is_empty():
+	if _travelling or (_portal_confirm != null and is_instance_valid(_portal_confirm)):
 		return
 	var TILE: int = 32
 	var cell := Vector2i(int(int(player.global_position.x) / float(TILE)), int(int(player.global_position.y) / float(TILE)))
+	var portal := _portal_at(cell)
+	if portal.is_empty():
+		# Сошёл с портала — снова можно спрашивать.
+		_portal_armed = true
+		_portal_prompt_cell = Vector2i(-1, -1)
+		return
+	if not _portal_armed:
+		return
+	if _portal_prompt_cell == cell:
+		return
+	_portal_prompt_cell = cell
+	_show_portal_confirm(portal)
+
+
+## Портал под клеткой: новый формат с адресом или старый sidecar без адреса.
+func _portal_at(cell: Vector2i) -> Dictionary:
+	var portals: Array = alm_map.call("get_portals") if alm_map.has_method("get_portals") else []
+	for raw in portals:
+		if raw is Dictionary and Vector2i((raw as Dictionary).get("cell", Vector2i(-1, -1))) == cell:
+			return raw as Dictionary
+	var cells: Array = alm_map.call("get_portal_cells")
 	for pc in cells:
 		if cell == pc:
-			_on_portal_enter()
-			return
+			return {"cell": cell, "to": "", "dir": ""}
+	return {}
 
-func _on_portal_enter() -> void:
-	# Заглушка была: «телепорт обратно на спавн», то есть портал в никуда.
-	# Теперь портал ведёт в следующую зону маршрута.
+
+## Мировая позиция портала, который ведёт обратно в from_sector. Прибытие
+## через портал ставит героя сюда, а не на спавн у города.
+func _arrival_portal_pos(from_sector: String) -> Vector2:
+	if from_sector == "" or not is_instance_valid(alm_map):
+		return Vector2(-1, -1)
+	var portals: Array = alm_map.call("get_portals") if alm_map.has_method("get_portals") else []
+	var ts: int = int(alm_map.get("tile_size"))
+	for raw in portals:
+		if not (raw is Dictionary):
+			continue
+		var rec: Dictionary = raw as Dictionary
+		if str(rec.get("to", "")) != from_sector:
+			continue
+		var cell: Vector2i = rec.get("cell", Vector2i(-1, -1))
+		if cell.x < 0:
+			continue
+		return Vector2(cell.x * ts + ts / 2.0, cell.y * ts + ts / 2.0)
+	return Vector2(-1, -1)
+
+
+func _sector_name(sector_id: String) -> String:
+	if sector_id == "":
+		return Loc.t("ui.portal.unknown")
+	var wm := Game._world_map()
+	var info: Dictionary = wm.sector(sector_id)
+	if info.is_empty():
+		return sector_id
+	var key := str(info.get("name_key", ""))
+	if key == "":
+		return sector_id
+	var text := Loc.t(key)
+	return sector_id if text == key else text
+
+
+func _show_portal_confirm(portal: Dictionary) -> void:
+	if _portal_confirm != null and is_instance_valid(_portal_confirm):
+		return
+	_portal_pause_before = get_tree().paused
+	get_tree().paused = true
+	var script: GDScript = load("res://scripts/portal_confirm.gd")
+	_portal_confirm = script.new()
+	_portal_confirm.setup(_sector_name(Game.map_sector), _sector_name(str(portal.get("to", ""))))
+	_portal_confirm.answered.connect(_on_portal_answer.bind(portal))
+	add_child(_portal_confirm)
+
+
+func _on_portal_answer(travel: bool, portal: Dictionary) -> void:
+	_portal_confirm = null
+	get_tree().paused = _portal_pause_before
+	if not travel:
+		return
+	_portal_prompt_cell = Vector2i(-1, -1)
+	_on_portal_enter(str(portal.get("to", "")))
+
+func _on_portal_enter(target_sector: String = "") -> void:
+	if target_sector != "":
+		# Автосейв ДО смены сектора: иначе после телепортации точка «до портала» потеряна.
+		autosave_now()
+		travel_to_sector(target_sector)
+		return
+	# Старая карта без адреса: цепочка start -> mid -> hard.
 	var next_zone := str(PORTAL_CHAIN.get(Game.map_zone, ""))
 	if next_zone == "":
 		print("Портал из зоны '%s' ведёт в никуда — конец маршрута" % Game.map_zone)
 		return
-	# Автосейв ДО смены зоны: иначе после телепортации точка «до портала» потеряна.
 	autosave_now()
 	travel_to_zone(next_zone)
 
@@ -1748,39 +1930,195 @@ func _on_portal_enter() -> void:
 const PORTAL_CHAIN := {"start": "mid", "mid": "hard"}
 
 var _travelling := false
+var _world_feed_panel = null
+## Портал: после прибытия не срабатывает, пока герой не сойдёт с клетки.
+var _portal_armed := true
+## Клетка, где уже спросили: стоя на ней, повторно не спрашиваем.
+var _portal_prompt_cell := Vector2i(-1, -1)
+var _portal_confirm = null
+var _portal_pause_before := false
 
-## Переход в другую зону через портал.
-##
-## Почему ГОРЯЧАЯ ЗАМЕНА карты, а не change_scene_to_file: смена сцены
-## вызывает Main._ready, который делает `Game.party.clear()`, а золото и
-## инвентарь живут на узле Player. То есть переход через сцену уничтожил бы
-## отряд и снаряжение — это и было признано непригодным при исследовании.
-## Узел Map — обычный Node2D, его можно пересоздать, а герой, партия и HUD
-## остаются живы.
+# --- Экран загрузки перехода (23.10) -----------------------------------------
+var _loading_layer: CanvasLayer = null
+var _loading_view: Control = null
+var _loading_job = null
+var _loading_thread: Thread = null
+var _loading_start_ms := 0
+
+
+func _show_loading(title: String) -> void:
+	if _loading_layer != null and is_instance_valid(_loading_layer):
+		return
+	_loading_layer = CanvasLayer.new()
+	_loading_layer.name = "LoadOverlay"
+	_loading_layer.layer = 60
+	add_child(_loading_layer)
+	var view_script: GDScript = load("res://scripts/loading_view.gd")
+	_loading_view = view_script.new()
+	_loading_view.setup(title)
+	_loading_view.back_requested.connect(_hide_loading)
+	_loading_layer.add_child(_loading_view)
+	_loading_start_ms = Time.get_ticks_msec()
+
+
+func _hide_loading() -> void:
+	if _loading_layer != null and is_instance_valid(_loading_layer):
+		_loading_layer.queue_free()
+	_loading_layer = null
+	_loading_view = null
+	_loading_job = null
+	_loading_thread = null
+
+
+func _tick_loading() -> void:
+	if _loading_job == null or _loading_view == null or not is_instance_valid(_loading_view):
+		return
+	var snap: Dictionary = _loading_job.snapshot()
+	_loading_view.set_progress(int(snap.get("percent", 0)),
+		Loc.t("ui.loading.phase.%d" % clampi(int(snap.get("phase", 0)), 0, 12)))
+
+
+func _thread_generate_sector(seed_value: int, tier: String, sector: String, size: int,
+		ns: Array, relief: String, race: String, job) -> String:
+	return MapGenerator.ensure_map(seed_value, tier, MapGenerator.MAPS_DIR, race,
+		sector, size, ns, relief, job)
+
+
+## Переход по тиру — совместимая обёртка (тесты, старые вызовы).
 func travel_to_zone(zone: String) -> void:
-	if _travelling:
+	var wm := Game._world_map()
+	if wm.has(zone):
+		travel_to_sector(zone)
+		return
+	var sector := str(wm.sector_for_tier(zone))
+	if sector == "":
+		push_error("Переход: нет сектора для тира '%s'" % zone)
+		return
+	travel_to_sector(sector)
+
+
+## Переход в соседний сектор по адресу портала (мир 4x3).
+func travel_to_sector(sector_id: String) -> void:
+	if _travelling or sector_id == "":
 		return
 	if not is_instance_valid(player):
 		return
-	_travelling = true
-	var seed_value: int = Game.map_seed
-	if seed_value == 0:
-		seed_value = 4242
-	var new_path := _zone_map_path(zone, seed_value)
-	if new_path == "" or not FileAccess.file_exists(new_path):
-		push_error("Не удалось подготовить карту зоны '%s'" % zone)
-		_travelling = false
+	var wm := Game._world_map()
+	if not wm.has(sector_id):
+		push_error("Переход: неизвестный сектор '%s'" % sector_id)
 		return
-	await _swap_map(new_path, zone)
-	# Папка слота держит карты ВСЕХ посещённых зон (22.10): после перезапуска
-	# игра идёт из слота, и возврат в старую зону не должен рождать карту
-	# с нулевым состоянием мира.
+	_travelling = true
+	_ensure_world_state()
+	var was_paused := get_tree().paused
+	get_tree().paused = true
+	var info: Dictionary = wm.sector(sector_id)
+	var tier := str(info.get("tier", "hard"))
+	var seed_value := Game.sector_seed(sector_id)
+	var from_sector := Game.map_sector
+	_save_sector_fog(from_sector)
+
+	# Генерация — в фоне, с полосой прогресса. Карта 192x192 после фикса BFS
+	# занимает ~1.5 с, но и это не должно выглядеть зависанием.
+	_show_loading(Loc.t("ui.loading.travel"))
+	GameConfig.load_all()
+	UnitDB.ensure_loaded()
+	StructureDB.ensure_loaded()
+	var job = load("res://scripts/world/map_load_job.gd").new()
+	_loading_job = job
+	var race := MapGenerator.city_race_for_hero(Game.hero_race)
+	var ns: Array = wm.neighbors(sector_id)
+	var size := int(info.get("size", 192))
+	var relief := str(info.get("relief", ""))
+	var new_path := ""
+	# Посещённый сектор берём из папки слота: карта уже с построенным миром и
+	# не должна перегенерироваться по сиду.
 	if loaded_slot != "":
-		var err := SaveSystem.store_zone_map(loaded_slot, new_path)
-		if err != "":
-			push_warning("SaveSystem: карта зоны '%s' не легла в слот %s: %s" % [zone, loaded_slot, err])
+		new_path = SaveSystem.restore_zone_map(loaded_slot, sector_id)
+		if new_path != "":
+			_loading_view.set_progress(100, 12)
+	if new_path == "":
+		_loading_thread = Thread.new()
+		var err := _loading_thread.start(_thread_generate_sector.bind(seed_value, tier,
+			sector_id, size, ns, relief, race, job))
+		if err != OK:
+			_loading_view.set_error(Loc.t("ui.loading.error_start"))
+			_travelling = false
+			get_tree().paused = was_paused
+			return
+		while _loading_thread.is_alive():
+			_tick_loading()
+			await get_tree().process_frame
+		new_path = str(_loading_thread.wait_to_finish())
+	if new_path == "" or not FileAccess.file_exists(new_path):
+		_loading_view.set_error(Loc.t("ui.loading.error_travel"))
+		_travelling = false
+		get_tree().paused = was_paused
+		return
+
+	await _swap_map(new_path, tier, false, sector_id, from_sector)
+	Game.map_sector = sector_id
+	Game.map_zone = tier
+	Game.map_seed = seed_value
+	var wf = load("res://scripts/world/world_feed.gd")
+	wf.post("you", Loc.f("ui.feed.travel", [_sector_name(from_sector), _sector_name(sector_id)]))
+	var bus := _world_bus()
+	if bus != null and bus.state != null and not bus.state.sectors.is_empty():
+		bus.state.discover_sector(sector_id)
+	_apply_sector_fog(sector_id)
+	# Папка слота держит карты ВСЕХ посещённых секторов (22.10): после перезапуска
+	# игра идёт из слота, и возврат не должен рождать карту с нулевым миром.
+	if loaded_slot != "":
+		var store_err := SaveSystem.store_zone_map(loaded_slot, new_path)
+		if store_err != "":
+			push_warning("SaveSystem: карта сектора '%s' не легла в слот %s: %s" % [sector_id, loaded_slot, store_err])
+
+	# Прогрев: шейдеры и первые кадры карты компилируются/рисуются под оверлеем.
+	while Time.get_ticks_msec() - _loading_start_ms < 600:
+		await get_tree().process_frame
+	for _i in 3:
+		await get_tree().process_frame
+	_hide_loading()
+	get_tree().paused = was_paused
 	_travelling = false
-	print("Переход: зона '%s', карта %s" % [zone, new_path])
+	print("Переход: сектор '%s' (%s), карта %s" % [sector_id, tier, new_path])
+
+
+## Подготовить текущий мир 4x3, если его ещё нет (новая игра / dev-карта).
+func _ensure_world_state() -> void:
+	var bus := _world_bus()
+	if bus == null or bus.state == null:
+		return
+	if bus.state.sectors.is_empty() or int(bus.state.world_seed) != int(Game.world_seed):
+		var start_owner := MapGenerator.city_race_for_hero(Game.hero_race)
+		bus.state.init_world(Game.world_seed, start_owner)
+
+
+## Карта сектора для перехода: сначала из слота (посещённый сектор), потом из
+## Туман текущего сектора уезжает в состояние мира перед сменой карты.
+func _save_sector_fog(sector_id: String) -> void:
+	var bus := _world_bus()
+	if sector_id == "" or Game.fog == null or bus == null or bus.state == null:
+		return
+	if not bus.state.sectors.has(sector_id):
+		return
+	var rle := Game.fog.mask_rle()
+	var s: Dictionary = bus.state.sectors[sector_id]
+	s["fog"] = rle
+	bus.state.sectors[sector_id] = s
+
+
+## Туман нового сектора: пересобрать маску под размер карты и применить.
+func _apply_sector_fog(sector_id: String) -> void:
+	var bus := _world_bus()
+	if sector_id == "" or Game.fog == null or bus == null or bus.state == null:
+		return
+	var s: Dictionary = bus.state.sector_state(sector_id)
+	Game.fog._setup()
+	var rle := str(s.get("fog", ""))
+	if rle != "":
+		Game.fog.apply_rle(rle)
+	else:
+		Game.pending_fog_rle = ""
 
 
 ## Карта зоны для перехода. Если слот, из которого идёт игра, держит эту
@@ -1798,11 +2136,14 @@ func _zone_map_path(zone: String, seed_value: int) -> String:
 ## Пересоздать узел Map и переселить на него героя и партию.
 ## from_slot — карта пришла из папки этого слота (загрузка игры): тогда точка
 ## входа — позиция героя из сейва, а не спавн новой карты.
-func _swap_map(new_path: String, zone: String, from_slot: bool = false) -> void:
+func _swap_map(new_path: String, zone: String, from_slot: bool = false,
+		sector: String = "", arrival_from: String = "") -> void:
 	_clear_world_units()
 	# Зона меняется ДО создания карты: AlmMap._ready и спавн используют
 	# Game.map_zone, и он должен уже совпадать с новой картой.
 	Game.map_zone = zone
+	if sector != "":
+		Game.map_sector = sector
 	Game.pending_map_path = new_path
 	if is_instance_valid(alm_map):
 		remove_child(alm_map)
@@ -1826,8 +2167,11 @@ func _swap_map(new_path: String, zone: String, from_slot: bool = false) -> void:
 		pass
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_portal_armed = true
+	_portal_prompt_cell = Vector2i(-1, -1)
 	# Загрузка слота: герой встаёт там, где сохранился (если клетка проходима).
 	if from_slot and load_position_valid:
+		_portal_armed = false
 		var saved_pos: Vector2 = load_position
 		if alm_map.call("is_walkable_world", saved_pos):
 			player.global_position = saved_pos
@@ -1847,17 +2191,23 @@ func _swap_map(new_path: String, zone: String, from_slot: bool = false) -> void:
 		player.stop_movement()
 		Game.clear_load_position()
 	else:
-		var sp: Vector2 = alm_map.call("get_spawn_pos")
-		if sp != Vector2.ZERO:
-			player.global_position = sp
-			player.reset_physics_interpolation()
-			player.stop_movement()
+		var arrival := _arrival_portal_pos(arrival_from)
+		if arrival.x >= 0.0:
+			player.global_position = arrival
+			_portal_armed = false
+			_portal_prompt_cell = Vector2i(-1, -1)
+		else:
+			var sp: Vector2 = alm_map.call("get_spawn_pos")
+			if sp != Vector2.ZERO:
+				player.global_position = sp
+		player.reset_physics_interpolation()
+		player.stop_movement()
 	for m in Game.party:
 		var unit: Node2D = m as Node2D
 		if is_instance_valid(unit):
 			unit.global_position = player.global_position + Vector2(32, 0)
 			unit.reset_physics_interpolation()
-	_spawn_map_units()
+	await _spawn_map_units()
 	if camera != null and is_instance_valid(player):
 		camera.position = player.camera_focus()
 		camera.make_current()
@@ -2155,7 +2505,8 @@ func _restart_scene(slot: String) -> void:
 		push_error("SaveSystem: карта слота '%s' не найдена" % slot)
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
-	await _swap_map(map_path, Game.map_zone, true)
+	await _swap_map(map_path, Game.map_zone, true, Game.map_sector)
+	_apply_sector_fog(Game.map_sector)
 	# HUD после подмены героя: книга магии (у воина/мага разные панели),
 	# золото и видимость нижней панели.
 	_refresh_ui_after_hero_swap()

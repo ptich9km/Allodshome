@@ -1202,7 +1202,7 @@ func _draw_minimap_markers(w: int, h: int, mw: int, mh: int) -> void:
 	var sx := float(w) / float(mw)
 	var sy := float(h) / float(mh)
 	var blink := (Time.get_ticks_msec() / 400) % 2 == 0
-	for m in MinimapMarkers.instance.all_for(Game.map_seed, Game.map_zone):
+	for m in MinimapMarkers.instance.all_for(Game.map_seed, Game.map_zone, Game.map_sector):
 		var cx := int(int(m["cell_x"]) * sx)
 		var cy := int(int(m["cell_y"]) * sy)
 		var col: Color
@@ -1395,6 +1395,7 @@ var _school: SchoolPanel = null
 var _inn: InnPanel = null
 var _archmage: ArchmagePanel = null
 var _quests: QuestPanel = null
+var _world_map = null
 var _workshop: WorkshopPanel = null
 var _inventory_panel: InventoryPanel = null
 var _interior_pos := Vector2.ZERO   # позиция героя перед входом в здание
@@ -1476,7 +1477,7 @@ func _on_panel_closed() -> void:
 ## открытая кукла показывала бы класс/склад прежнего персонажа).
 func close_all_panels() -> void:
 	var panels: Array = [_shop, _alchemy, _school, _inn, _workshop,
-		_inventory_panel, _archmage, _quests]
+		_inventory_panel, _archmage, _quests, _world_map]
 	for p in panels:
 		if not is_instance_valid(p):
 			continue
@@ -1485,7 +1486,7 @@ func close_all_panels() -> void:
 
 ## Открыта ли какая-то панель-интерьер (клики не должны двигать героя по карте).
 func is_editor_open() -> bool:
-	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_workshop) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage) or is_instance_valid(_quests)
+	return is_instance_valid(_shop) or is_instance_valid(_alchemy) or is_instance_valid(_school) or is_instance_valid(_inn) or is_instance_valid(_workshop) or is_instance_valid(_inventory_panel) or is_instance_valid(_archmage) or is_instance_valid(_quests) or is_instance_valid(_world_map)
 
 ## Курсор над каким-либо элементом интерфейса (панель/кнопка/книга/инвентарь)?
 ## Клик по UI не должен читаться как движение/атака по карте.
@@ -1607,6 +1608,22 @@ func open_quests(city_id: String = "") -> void:
 	_quests.closed.connect(_on_panel_closed)
 	_quests.inventory_changed.connect(_on_inventory_changed)
 	add_child(_quests)
+
+
+## Карта мира 4x3 (23.10). Хоткей M, повторное нажатие закрывает.
+## Переход только порталами: здесь нет fast travel.
+func open_world_map() -> void:
+	if _world_map != null and is_instance_valid(_world_map):
+		_world_map.close()
+		return
+	if is_editor_open():
+		close_all_panels()
+	_enter_interior()
+	var wm_script: GDScript = load("res://scripts/world_map_panel.gd")
+	_world_map = wm_script.new()
+	_world_map.setup()
+	_world_map.closed.connect(_on_panel_closed)
+	add_child(_world_map)
 
 func _update_gold(amount: int) -> void:
 	if is_instance_valid(hud_gold_label):

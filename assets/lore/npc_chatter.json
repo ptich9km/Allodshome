@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "comment": "Мирная болтовня НПЦ для ленты мира. Реплики выбираются по расе и роли; темп задаёт панель, не этот файл.",
+  "generic": [
+    {"ru": "Слышал, у восточных ворот опять кто-то видел тень. Или это был повар.", "en": "They say someone saw a shadow by the east gate again. Or it was the cook."},
+    {"ru": "Если найдёшь лишний слиток — неси кузнецу. Он умеет делать вид, что это редкий металл.", "en": "Find a spare ingot? Take it to the smith. He can pretend it is rare metal."},
+    {"ru": "Дождь третий день. Говорят, друиды довольны, а сапожник — нет.", "en": "Third day of rain. The druids are happy, the shoemaker is not."},
+    {"ru": "Не бери зелье без запаха. Потом будешь объяснять страже, почему ты зелёный.", "en": "Do not take a potion with no smell. You will explain to the guard why you are green."},
+    {"ru": "На рынке опять считали слитки дважды. Один раз — до обеда, один — после.", "en": "The market counted ingots twice again. Once before lunch, once after."},
+    {"ru": "Хороший меч стоит дорого. Хорошая история о мече — ещё дороже.", "en": "A good sword is expensive. A good story about a sword costs more."},
+    {"ru": "Если карта поменяла хозяина, не спорь с флагом. Флаг уже договорился.", "en": "If the map changed hands, do not argue with the flag. The flag already agreed."},
+    {"ru": "Я не трус. Я просто очень внимательно отношусь к стрелам.", "en": "I am not a coward. I am just very attentive to arrows."}
+  ],
+  "humans": [
+    {"ru": "Порядок держится на дорогах. И на тех, кто их чинит после дождя.", "en": "Order rests on roads. And on those who fix them after rain."},
+    {"ru": "Капитан говорит, граница спокойна. Капитан говорит это каждый вторник.", "en": "The captain says the border is quiet. The captain says that every Tuesday."},
+    {"ru": "Светит — да. Греет — не обязательно.", "en": "It shines, yes. Whether it warms is another matter."}
+  ],
+  "ork": [
+    {"ru": "Сожгу. Что угодно сожгу. Но сначала посчитаю, сколько своих осталось.", "en": "I will burn it. Anything. But first I count how many of ours are left."},
+    {"ru": "Чужое не отдадим. Своё тем более.", "en": "We will not give away what is not ours. Less so what is."},
+    {"ru": "Кузнец говорит, металл устал. Металл не устаёт. Кузнец устаёт.", "en": "The smith says the metal is tired. Metal does not get tired. Smiths do."}
+  ],
+  "druid": [
+    {"ru": "Земля помнит. Мы просто настаиваем.", "en": "The earth remembers. We simply insist."},
+    {"ru": "Тише. Здесь уже растёт.", "en": "Quiet. Something is already growing here."},
+    {"ru": "Не спеши. Даже камень когда-нибудь сдвинется. Просто не сегодня.", "en": "Do not hurry. Even a stone will move someday. Just not today."}
+  ],
+  "necro": [
+    {"ru": "Мёртвые не уходят. Они ждут, когда их позовут.", "en": "The dead do not leave. They wait to be called."},
+    {"ru": "Называй как хочешь. Счёт всё равно веду я.", "en": "Call it what you like. I keep the count."},
+    {"ru": "Свеча горит ровно. Значит, никто не врёт.", "en": "The candle burns steady. That means no one is lying."}
+  ],
+  "roles": {
+    "guard": [
+      {"ru": "Стой ровно. Если что — я первый побегу за подмогой.", "en": "Stand still. If anything happens, I will be the first to run for help."},
+      {"ru": "Ночью у ворот тихо. Днём — тоже тихо, но подозрительно.", "en": "It is quiet at the gate at night. In the day it is quiet too, but suspiciously so."},
+      {"ru": "Я бы проверил тебя, но ты выглядишь занятым.", "en": "I would search you, but you look busy."}
+    ],
+    "citizen": [
+      {"ru": "Говорят, глава города платит за новости быстрее, чем за работу.", "en": "They say the head pays for news faster than for work."},
+      {"ru": "Если увидишь мага — не спрашивай про погоду. Он ответит.", "en": "If you meet the mage, do not ask about the weather. He will answer."},
+      {"ru": "Раньше тут была дорога. Теперь тут лужа с амбициями.", "en": "There used to be a road here. Now it is a puddle with ambitions."}
+    ],
+    "head": [
+      {"ru": "Работа есть. Оплата — как договоримся. Обычно — как я скажу.", "en": "There is work. Payment is negotiable. Usually as I say."},
+      {"ru": "Не приноси мне слухи вместо голов. Слухи я и сам слышу.", "en": "Do not bring me rumours instead of heads. I hear rumours myself."}
+    ]
+  },
+  "guides": [
+    {"ru": "Ты в городе. Загляни к главе — у него всегда есть работа.", "en": "You are in town. Visit the head — he always has work."},
+    {"ru": "Великий маг стоит в центре. Говорят, он слушает, если принести что-то полезное.", "en": "The great mage stands in the centre. They say he listens if you bring something useful."},
+    {"ru": "Не проходи мимо главы города. Даже если он делает вид, что не заметил.", "en": "Do not walk past the town head. Even if he pretends not to notice."},
+    {"ru": "Заблудился? Спроси стражу. Они не кусаются. Обычно.", "en": "Lost? Ask the guard. They do not bite. Usually."}
+  ]
+}

@@ -85,6 +85,14 @@ func _setup() -> void:
 	width = w
 	height = h
 	_last_cell = Vector2i(-1, -1)
+	# Карта сменилась (портал), и размер мог измениться (96 -> 128):
+	# ImageTexture.update() с другой размерностью падает, поэтому текстуру
+	# пересоздаём, а не обновляем.
+	_img = null
+	_tex = null
+	mini_img = null
+	if _layer != null:
+		_layer.texture = null
 	mask.resize(width * height)
 	mask.fill(STATE_BLACK if enabled else STATE_VISIBLE)
 	_build_layer()

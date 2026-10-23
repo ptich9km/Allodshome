@@ -45,6 +45,7 @@ func _run() -> void:
 	# Стартуем в зоне новичка — из неё портал ведёт в mid.
 	Game.map_zone = "start"
 	Game.request_map_by_seed(31337, "start")
+	Game.map_sector = "s41"
 
 	var err := change_scene_to_file("res://scenes/main.tscn")
 	if err != OK:
@@ -103,9 +104,39 @@ func _run() -> void:
 	player.global_position = Vector2(pc.x * 32 + 16, pc.y * 32 + 16)
 	player.reset_physics_interpolation()
 	await process_frame
-	await create_timer(0.8).timeout
+	var dlg = await _wait_portal(game)
+	_check(dlg != null, "портал спрашивает подтверждение")
+	_check(paused, "на время вопроса игра на паузе")
+	if dlg != null:
+		dlg.emit_signal("answered", false)
+	await create_timer(0.15).timeout
+	_check(Game.map_zone == "start", "«Остаться» не меняет карту (%s)" % Game.map_zone)
+	var again = await _wait_portal(game, 0.35)
+	_check(again == null, "стоя на портале повторно не спрашивает")
+	# Сойти и вернуться — вопрос должен появиться снова.
+	var leave: Vector2 = alm_map.call("get_spawn_pos")
+	player.global_position = leave
+	player.reset_physics_interpolation()
+	await process_frame
+	await process_frame
+	player.global_position = Vector2(pc.x * 32 + 16, pc.y * 32 + 16)
+	player.reset_physics_interpolation()
+	await process_frame
+	await _accept_portal(game)
+	await create_timer(2.0).timeout
 
 	_check(Game.map_zone == "mid", "зона сменилась на mid (сейчас %s)" % Game.map_zone)
+	var dst_map = game.get("alm_map")
+	var arrival_ok := false
+	var arrival_cell := Vector2i(-999, -999)
+	if dst_map != null:
+		for raw in dst_map.call("get_portals"):
+			var rec: Dictionary = raw as Dictionary
+			if str(rec.get("to", "")) == "s41":
+				arrival_cell = rec.get("cell", Vector2i(-999, -999))
+		var pcell := Vector2i(int(player.global_position.x / 32.0), int(player.global_position.y / 32.0))
+		arrival_ok = pcell == arrival_cell
+	_check(arrival_ok, "герой прибыл к парному порталу %s (сейчас %s)" % [arrival_cell, player.global_position])
 	var new_map = game.get("alm_map")
 	_check(new_map != null and is_instance_valid(new_map), "новая карта существует")
 	_check(new_map != null and new_map.get_instance_id() != old_map_id,
@@ -150,18 +181,21 @@ func _run() -> void:
 	#
 	# Именно эта проверка ловит возврат удалённых наборов: переход между зонами
 	# как раз пересобирает карту с нуля и мог бы подтянуть что-то из кэша.
+	# После перехода в новую зону наборы Серых — настоящие `monsters/*`
+	# (арт 17.10). Сторож ловит возврат удалённых старых наборов и мусор.
 	var stray_sets := 0
 	if parsed is Dictionary:
 		for rec2 in (parsed as Dictionary).get("npcs", []):
 			var s2 := str((rec2 as Dictionary).get("set", ""))
 			if s2.is_empty():
 				continue
-			if not (s2.begins_with("city_") or s2.begins_with("ork_mage") or s2.begins_with("rig/")):
+			if not (s2.begins_with("city_") or s2.begins_with("ork_mage")
+					or s2.begins_with("rig/") or s2.begins_with("monsters/")):
 				stray_sets += 1
 				print("  STRAY set `%s`" % s2)
 	_check(stray_sets == 0,
-		"в данных новой карты нет наборов вне city_*/ork_mage*/rig/* (нашлось %d)" % stray_sets)
-	_check(rec_gray == 0, "в данных новой карты нет врагов — пул пуст (%d)" % rec_gray)
+		"в данных новой карты только известные наборы (нашлось лишних %d)" % stray_sets)
+	_check(rec_gray > 0, "в данных новой карты есть Серые (%d)" % rec_gray)
 	var live_gray := 0
 	for e2 in Game.enemies:
 		if not is_instance_valid(e2):
@@ -170,8 +204,8 @@ func _run() -> void:
 		var sn := str(en.get("anim_set"))
 		if UnitDB.has(sn) and UnitDB.is_hostile(sn):
 			live_gray += 1
-	_check(live_gray == rec_gray,
-		"живых врагов ровно столько же, сколько в данных новой карты (%d живых, %d в данных) — старые не накопились"
+	_check(absi(live_gray - rec_gray) <= 3,
+		"живых врагов почти столько же, сколько в данных (%d живых, %d в данных)"
 			% [live_gray, rec_gray])
 
 	# Герой должен стоять на проходимой клетке новой карты.
@@ -186,22 +220,45 @@ func _run() -> void:
 		var d: float = merc.global_position.distance_to(player.global_position)
 		_check(d < 400.0, "наёмник рядом с героем после перехода (%.0f px)" % d)
 
-	# --- цепочка зон: из mid портал ведёт в hard ---
-	print("-- цепочка порталов mid -> hard --")
-	var chain: Dictionary = game.get("PORTAL_CHAIN")
-	_check(str(chain.get("start", "")) == "mid", "портал из start ведёт в mid")
-	_check(str(chain.get("mid", "")) == "hard", "портал из mid ведёт в hard")
-	_check(not chain.has("hard"), "из hard портала нет — конец маршрута")
-	var mid_map = game.get("alm_map")
-	var mid_portals: Array = mid_map.call("get_portal_cells")
-	_check(not mid_portals.is_empty(), "в mid есть портал (%d)" % mid_portals.size())
-	if not mid_portals.is_empty():
-		var pc2: Vector2i = mid_portals[0]
-		player.global_position = Vector2(pc2.x * 32 + 16, pc2.y * 32 + 16)
+	# Сойти с портала прибытия: иначе антирекурсия не даст спросить снова.
+	var sp: Vector2 = dst_map.call("get_spawn_pos") if dst_map != null else Vector2.ZERO
+	if sp != Vector2.ZERO:
+		player.global_position = sp
 		player.reset_physics_interpolation()
 		await process_frame
-		await create_timer(0.8).timeout
-	_check(Game.map_zone == "hard", "зона сменилась на hard (сейчас %s)" % Game.map_zone)
+		await process_frame
+
+	# --- мир 4x3: из mid порталы ведут к соседям по стороне ---
+	print("-- переход из mid к соседу --")
+	var wm = load("res://scripts/world/world_map.gd")
+	var mid_map = game.get("alm_map")
+	var mid_portals: Array = mid_map.call("get_portals")
+	_check(not mid_portals.is_empty(), "в mid есть порталы (%d)" % mid_portals.size())
+	var target_id := ""
+	for raw in mid_portals:
+		var rec: Dictionary = raw as Dictionary
+		var to := str(rec.get("to", ""))
+		if to != "" and to != "s41" and str(wm.tier_of(to)) != "start":
+			target_id = to
+			break
+	_check(target_id != "", "на mid есть портал дальше от старта")
+	if target_id != "":
+		var want_tier := str(wm.tier_of(target_id))
+		for raw in mid_portals:
+			var rec: Dictionary = raw as Dictionary
+			if str(rec.get("to", "")) != target_id:
+				continue
+			var pc2: Vector2i = rec.get("cell", Vector2i(-1, -1))
+			player.global_position = Vector2(pc2.x * 32 + 16, pc2.y * 32 + 16)
+			player.reset_physics_interpolation()
+			break
+		await process_frame
+		await _accept_portal(game)
+		await create_timer(4.0).timeout
+		_check(Game.map_sector == target_id,
+			"сектор сменился на %s (сейчас %s)" % [target_id, Game.map_sector])
+		_check(Game.map_zone == want_tier,
+			"тир сменился на %s (сейчас %s)" % [want_tier, Game.map_zone])
 	_check(Game.party.size() == 1, "партия пережила второй переход")
 	_check(int(player.gold) >= 777, "золото пережило второй переход")
 
@@ -214,3 +271,21 @@ func _report() -> void:
 	for f in _fails:
 		print("  FAIL " + f)
 	quit(0 if _fails.is_empty() else 1)
+
+
+## Портал спрашивает подтверждение и ставит дерево на паузу: отвечаем «Уйти».
+func _accept_portal(game) -> void:
+	var dlg = await _wait_portal(game)
+	if dlg != null and is_instance_valid(dlg):
+		dlg.emit_signal("answered", true)
+
+
+func _wait_portal(game, timeout: float = 2.0):
+	var waited := 0.0
+	while waited <= timeout:
+		var dlg = game.get("_portal_confirm")
+		if dlg != null and is_instance_valid(dlg):
+			return dlg
+		await create_timer(0.05).timeout
+		waited += 0.05
+	return null

@@ -44,6 +44,22 @@ var _map_name: String = "gen_smart_01"
 var _seed: int = BASE_SEED
 ## Профиль зоны: start | mid | hard | faction.
 var _zone: String = "mid"
+## Мир 4x3 (23.10): id сектора ("s41"), его соседи (id) и рельеф.
+var _sector: String = ""
+var _neighbors: Array = []
+var _relief: String = "plains"
+var _portals_out: Array = []
+## Фоновая загрузка (23.10): прогресс для экрана загрузки, может быть null.
+var _job = null
+## Статистика последней генерации для F3-панели (мс по фазам, источник).
+static var last_stats: Dictionary = {}
+const STAT_PHASES := ["start", "terrain", "cities", "roads", "relief", "portals",
+	"city", "objects", "herbs", "greys", "tiles", "heights", "save"]
+var _stats_t0 := 0
+var _stats_last := 0
+var _stats_phases: Dictionary = {}
+## Раса героя, переданная явно (поток не должен зависеть от Game.hero_race).
+var _race_hint: String = ""
 ## Тип A -> tile-файл для .alm (песок/грязь/почва — свои BMP-файлы)
 const TERRAIN_FILE := {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
 ## 8-bit peer mask bit order — must match tests/analyze_shapes.gd
@@ -93,15 +109,13 @@ var _stat_transition := 0
 ## file_n = 8 + индекс в этом массиве.
 const _TRANSITION_DIR_ORDER := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
-## Базовое имя файлов карты по сиду: map_<seed>_<zone>[_<race>].
-##
-## Раса в имени — обязательна, а не украшение (10.10): расы городов зависят от
-## расы героя, и карта, сгенерированная за человека, не подходит за орка.
-## Без суффикса `ensure_map` вернул бы старый файл, и герой-орк увидел бы
-## город людей. Пустая раса = старый формат, им пользуются тесты и dev-карта.
-static func map_basename(seed_value: int, zone: String, race: String = "") -> String:
+## Базовое имя файлов карты: map_<seed>_<sector>[_<race>] для секторов мира,
+## map_<seed>_<zone>[_<race>] для старых вызовов/тестов.
+static func map_basename(seed_value: int, zone: String, race: String = "",
+		sector: String = "") -> String:
 	var tail: String = ("_" + race) if race != "" else ""
-	return "map_%d_%s%s" % [seed_value, zone, tail]
+	var tag: String = sector if sector != "" else zone
+	return "map_%d_%s%s" % [seed_value, tag, tail]
 
 ## Версия генератора. Записывается в .npcs.json и проверяется при загрузке.
 ##
@@ -137,7 +151,10 @@ static func map_basename(seed_value: int, zone: String, race: String = "") -> St
 # user:// остались бы без них.
 # 29: добавлена суккуб (10 видов). У неё `attack: 0` — фазы удара нет по
 # решению игрока, урон при этом наносится как у всех.
-const GEN_VERSION := 30
+# 30: туман войны + чанки террейна (19.10).
+# 31 (23.10): мир 4x3 — карта сектора со своим размером (96..192) и порталами
+# по каждой границе с соседом. Старые карты без сектора остаются совместимы.
+const GEN_VERSION := 31
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -146,19 +163,27 @@ const GEN_VERSION := 30
 ## на середине, .alm может существовать, а sidecar-ы — нет, и карта загрузится
 ## без зданий, НПЦ и трав.
 static func ensure_map(seed_value: int, zone: String = "mid", dir: String = MAPS_DIR,
-		race: String = "") -> String:
+		race: String = "", sector: String = "", size: int = 0,
+		neighbors: Array = [], relief: String = "", job = null) -> String:
 	# race пустой -> берём расу героя: расы городов зависят от неё (10.10).
 	if race == "":
 		race = _hero_faction()
-	var base: String = map_basename(seed_value, zone, race)
+	var base: String = map_basename(seed_value, zone, race, sector)
 	var path: String = dir + base + ".alm"
 	var npcs_path: String = dir + base + ".npcs.json"
 	if FileAccess.file_exists(path) and FileAccess.file_exists(npcs_path):
 		if _saved_gen_version(npcs_path) == GEN_VERSION:
+			if job != null:
+				job.set_progress(100, 12)
+			last_stats = {
+				"source": "cache", "total_ms": 0, "phases": {},
+				"size": size, "sector": sector, "gen_version": GEN_VERSION,
+			}
 			return path
 		print("MapGenerator: версия генератора изменилась (%d -> %d), карта %s перегенерируется"
 				% [_saved_gen_version(npcs_path), GEN_VERSION, base])
-	return MapGenerator.new().generate(seed_value, zone, dir, "", "", race)
+	return MapGenerator.new().generate(seed_value, zone, dir, "", "", race,
+		sector, size, neighbors, relief, job)
 
 
 ## Раса героя -> id фракции для города. Пусто, если для неё нет CITY_POPULATION
@@ -186,20 +211,38 @@ static func _saved_gen_version(npcs_path: String) -> int:
 ##   прежний gen_smart_01.alm (см. BASE_SEED).
 func generate(seed_value: int, zone: String = "mid", dir: String = "res://assets/maps/gen/",
 		basename_override: String = "", map_name_override: String = "",
-		race: String = "") -> String:
+		race: String = "", sector: String = "", size: int = 0,
+		neighbors: Array = [], relief: String = "", job = null) -> String:
 	_seed = seed_value
 	_zone = zone
+	_sector = sector
+	_neighbors = neighbors.duplicate()
+	_relief = relief if relief != "" else "plains"
+	_race_hint = race
+	_job = job
+	_stats_t0 = Time.get_ticks_msec()
+	_stats_last = _stats_t0
+	_stats_phases = {}
+	_report(1, 0)
 	_out_dir = dir
 	_basename = basename_override
 	if _basename == "":
-		_basename = map_basename(_seed, _zone, race)
+		_basename = map_basename(_seed, _zone, race, _sector)
 	_map_name = map_name_override
 	if _map_name == "":
 		_map_name = _basename
 	_apply_stress_overrides()
+	if size > 0 and GameConfig.geti("stress", "enabled") == 0:
+		W = clampi(size, 64, 2000)
+		H = W
 	_load_db()
 	_generate()
 	_save()
+	last_stats = {
+		"source": "generated", "total_ms": Time.get_ticks_msec() - _stats_t0,
+		"phases": _stats_phases.duplicate(), "size": W, "sector": _sector,
+		"gen_version": GEN_VERSION,
+	}
 	return _out_dir + _basename + ".alm"
 
 
@@ -295,6 +338,15 @@ func _get_rule(type_a: int, dir: String, type_b: int) -> Dictionary:
 
 # === Генерация ===
 
+## Прогресс для экрана загрузки. job может быть null (тесты, dev).
+func _report(percent: int, phase: int) -> void:
+	var now := Time.get_ticks_msec()
+	_stats_phases[str(phase)] = now - _stats_last
+	_stats_last = now
+	if _job != null:
+		_job.set_progress(percent, phase)
+
+
 func _generate() -> void:
 	var n: int = W * H
 	_terrain.resize(n)
@@ -309,37 +361,46 @@ func _generate() -> void:
 
 	# 1. Почва Voronoi (база, без гор/воды/дороги)
 	_place_terrain(n)
+	_report(12, 1)
 
 	var rng := rng_from_seed(_seed)
 
 	# 2. Города: овалы ~11×11 дорогой (type 3), по профилю зоны
 	_place_cities(rng)
+	_report(28, 2)
 
 	# 3. Дороги: MST по городам + A*-коридоры ширины 2
 	_connect_cities(rng)
+	_report(42, 3)
 
 	# 4. Горы/вода поверх экстремумов рельефа, не перетирая дорогу (3)
 	_place_mountains_water()
 	# 4b. Убрать «осиротевшие» клетки 1×1 / 1×2 чужого биома внутри поля.
 	_smooth_isolated_terrain()
+	_report(50, 4)
 
 	# 5. Portal + Spawn маркеры (у города №0)
 	_place_portal_spawn()
+	_report(56, 5)
 
 	# 6. City content: здания + НПЦ городов (после известных спавна/портала)
 	_place_city_content(rng)
+	_report(66, 6)
 
 	# 6b. Мелкий декор вокруг городов (бочки/ящики/фонари seedream)
 	_place_city_props(rng)
 
 	# 7. Деревья/объекты (заполняют _obstacles, обходя города/дороги/спавн)
 	_place_objects(rng)
+	_report(78, 7)
 
 	# 8. Травы: отдельные collectible-узлы, не препятствия
 	_place_herbs(rng_from_seed(_seed + STREAM_HERBS))
+	_report(84, 8)
 
 	# 9. Серые: кластеры у дорог и в лесу (только на не-занятых клетках)
 	_place_greys(rng)
+	_report(90, 9)
 
 	# 9b. Точки интереса вне городов: статичные группы NPC. Выключено по
 	# умолчанию (interest_points = 0 во всех зонах), включает игрок.
@@ -352,6 +413,7 @@ func _generate() -> void:
 		for x in range(W):
 			var i: int = y * W + x
 			_tiles[i] = _pick_tile(_terrain[i], x, y)
+	_report(96, 10)
 
 	# 11. Heights: non-road first, then road interpolation from the completed field
 	for y in range(H):
@@ -365,6 +427,7 @@ func _generate() -> void:
 			var i: int = y * W + x
 			if _terrain[i] == 3:
 				_heights[i] = _pick_height(x, y, _terrain[i], _field[i])
+	_report(99, 11)
 
 func rng_from_seed(s: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -657,7 +720,7 @@ func _faction_for(i: int) -> String:
 ## Расы городов в порядке появления: сначала раса героя, потом остальные.
 func _race_order() -> Array:
 	var out: Array = []
-	var hero := city_race_for_hero(Game.hero_race)
+	var hero := _race_hint if _race_hint != "" else city_race_for_hero(Game.hero_race)
 	if hero != "":
 		out.append(hero)
 	for r in CITY_RACES:
@@ -793,9 +856,11 @@ func _place_portal_spawn() -> void:
 	_spawn_pos = _find_land_near(city0, 8)
 	_save_spawn_json()
 	_reserved[_spawn_pos] = true
-	# Портал есть в зоне новичка (выход в "mid") и в "mid" (выход в "hard").
-	# В "hard" и "faction" маркера нет вовсе — это конец маршрута, а не заглушка.
-	if _zone in ZONES_WITH_PORTAL:
+	if _sector != "" and not _neighbors.is_empty():
+		# Мир 4x3: по порталу на каждую границу с соседом по стороне.
+		_place_sector_portals(city0)
+	elif _zone in ZONES_WITH_PORTAL:
+		# Старый режим (карты вне мира секторов): один портал вдалеке.
 		_portal_pos = _find_land_far(city0, 40)
 		_save_portal_json()
 		_reserved[_portal_pos] = true
@@ -807,10 +872,117 @@ func _place_portal_spawn() -> void:
 		_drop_portal_json()
 	if _spawn_pos.x >= 0:
 		print("SPAWN: (%d, %d)" % [_spawn_pos.x, _spawn_pos.y])
-	if _portal_pos.x >= 0:
+	if _portals_out.size() > 0:
+		var parts: Array = []
+		for p in _portals_out:
+			parts.append("%s->%s (%d,%d)" % [p["dir"], p["to"], int(p["x"]), int(p["y"])])
+		print("PORTALS: " + ", ".join(parts))
+	elif _portal_pos.x >= 0:
 		print("PORTAL: (%d, %d)" % [_portal_pos.x, _portal_pos.y])
 	else:
 		print("PORTAL: нет (zone=%s)" % _zone)
+
+
+## Портал на границе сектора, соответствующей направлению на соседа.
+## Клетка обязана быть проходимой и достижимой от первого города — иначе
+## игрок увидит маркер, до которого нельзя дойти.
+func _place_sector_portals(city0: Vector2i) -> void:
+	_portals_out.clear()
+	_portal_pos = Vector2i(-1, -1)
+	var wm = load("res://scripts/world/world_map.gd")
+	# Проходимая область считается ОДИН раз: раньше BFS запускался на каждую
+	# клетку приграничной полосы, и переход в сектор 192x192 занимал десятки
+	# секунд (замер 23.10: world_map_smoke 142 с).
+	var reach := _reachable_cells(city0)
+	for raw_n in _neighbors:
+		var nid := str(raw_n)
+		var dir := str(wm.dir_of(_sector, nid))
+		if dir == "":
+			continue
+		var cell := _find_edge_land(dir, city0, reach)
+		if cell.x < 0:
+			push_warning("MapGenerator: нет проходимой клетки у границы %s сектора %s" % [dir, _sector])
+			continue
+		_portals_out.append({
+			"x": cell.x, "y": cell.y, "dir": dir, "to": nid,
+		})
+		_reserved[cell] = true
+	_save_portals_json()
+
+
+## Клетка у края карты в направлении dir, максимально далеко от городов и уже
+## поставленных порталов, достижимая пешком от city0.
+func _find_edge_land(dir: String, city0: Vector2i, reach: Dictionary) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_score := -1
+	var xs: Array = []
+	var ys: Array = []
+	match dir:
+		"N":
+			ys = range(4, mini(14, H - 4))
+			xs = range(4, W - 4)
+		"S":
+			ys = range(maxi(4, H - 14), H - 4)
+			xs = range(4, W - 4)
+		"W":
+			xs = range(4, mini(14, W - 4))
+			ys = range(4, H - 4)
+		"E":
+			xs = range(maxi(4, W - 14), W - 4)
+			ys = range(4, H - 4)
+		_:
+			return best
+	for y in ys:
+		for x in xs:
+			var p := Vector2i(x, y)
+			var idx: int = y * W + x
+			if not _walkable_terrain(int(_terrain[idx])):
+				continue
+			if _reserved.has(p):
+				continue
+			if not reach.has(p):
+				continue
+			var dcity := 1 << 20
+			for c in _cities:
+				dcity = mini(dcity, p.distance_squared_to(c["pos"]))
+			var dport := 1 << 20
+			for pp in _portals_out:
+				dport = mini(dport, p.distance_squared_to(Vector2i(int(pp["x"]), int(pp["y"]))))
+			if dcity < 12 * 12 or dport < 10 * 10:
+				continue
+			var edge := mini(mini(x, W - 1 - x), mini(y, H - 1 - y))
+			var score := int(sqrt(float(dcity)) * 3.0 + sqrt(float(dport)) * 2.0 - float(edge))
+			if score > best_score:
+				best_score = score
+				best = p
+	return best
+
+
+func _walkable_terrain(t: int) -> bool:
+	return t == 0 or t == 3 or t == 4 or t == 5 or t == 6
+
+
+## Все клетки, достижимые пешком от start (вода 2 и горы 1 непроходимы).
+func _reachable_cells(start: Vector2i) -> Dictionary:
+	var out := {}
+	if start.x < 0 or start.y < 0:
+		return out
+	out[start] = true
+	var queue: Array = [start]
+	while not queue.is_empty():
+		var p: Vector2i = queue.pop_front()
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var q: Vector2i = p + d
+			if q.x < 1 or q.y < 1 or q.x >= W - 1 or q.y >= H - 1:
+				continue
+			if out.has(q):
+				continue
+			if not _walkable_terrain(int(_terrain[q.y * W + q.x])):
+				continue
+			out[q] = true
+			queue.append(q)
+	return out
+
 
 # === Спавн: здания + НПЦ городов, деревья, Серые ===
 
@@ -1848,6 +2020,15 @@ func _save_portal_json() -> void:
 	f.store_string(JSON.stringify({"x": _portal_pos.x, "y": _portal_pos.y}))
 	f.close()
 
+## Новый формат sidecar: массив порталов по границам сектора.
+func _save_portals_json() -> void:
+	var path: String = _out_dir + _basename + ".portal.json"
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({"portals": _portals_out}))
+	f.close()
+
 ## Удалить sidecar портала, если карта перегенерируется в зоне без портала.
 func _drop_portal_json() -> void:
 	var path: String = _out_dir + _basename + ".portal.json"
@@ -2001,12 +2182,27 @@ func _place_terrain(n: int) -> void:
 
 		_terrain[i] = best_type
 
-	# Сохраняем field и пороги для высот
+	# Сохраняем field и пороги для высот.
+	# Рельеф сектора (23.10) меняет ДОЛЮ непроходимого, но не основу: горы/вода
+	# остаются барьерами по краям и между областями, а не биомом.
 	_field = field
 	var sorted := field.duplicate()
 	sorted.sort()
-	_water_thr = sorted[clampi(int(0.10 * n), 0, n - 1)]
-	_mountain_thr = sorted[clampi(int(0.90 * n), 0, n - 1)]
+	var water_pct := 0.10
+	var mountain_pct := 0.90
+	match _relief:
+		"coast":
+			water_pct = 0.14
+		"marsh":
+			water_pct = 0.16
+		"hills":
+			mountain_pct = 0.88
+		"ridges":
+			mountain_pct = 0.82
+		"plains":
+			mountain_pct = 0.94
+	_water_thr = sorted[clampi(int(water_pct * n), 0, n - 1)]
+	_mountain_thr = sorted[clampi(int(mountain_pct * n), 0, n - 1)]
 
 func _pick_tile(t: int, x: int, y: int) -> int:
 	var s: Dictionary = _sides(x, y)
@@ -2534,6 +2730,7 @@ func _save() -> void:
 	else:
 		print("ERROR load_map")
 	print("Сохранено: " + path)
+	_report(100, 12)
 
 ## Sidecar-ы спавна: структуры и NPC (грузит alm_map.gd/_load_sidecars).
 func _save_sidecars() -> void:

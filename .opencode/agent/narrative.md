@@ -1,7 +1,7 @@
 ---
 description: Геймдизайнер-сценарист. Используй для нарративного дизайна, лора, диалогов NPC, квестов и случайных встреч. Пишет ТОЛЬКО в assets/lore/** и docs/lore/**, никогда не трогает .gd-код.
 mode: subagent
-model: opencode/space-bunny-free
+model: opencode-go/beam-free
 permission:
   edit:
     "*": deny

@@ -50,6 +50,7 @@ var active: Array[Dictionary] = []    # taken quests (STATE_ACTIVE/READY)
 var history: Array[Dictionary] = []   # closed: feed the journal and save
 var targets: Array[Dictionary] = []   # material targets lying on the map
 var _rotation_seed := -1              # map the current offers belong to
+var _rotation_sector := ""            # sector the current offers belong to
 var _bus: Node = null
 var _next_id := 1
 var _map: Node = null                 # map we listen to for enemy deaths
@@ -111,11 +112,11 @@ func _day() -> int:
 func _tick_rotation() -> void:
 	var map: Node = get_tree().get_first_node_in_group("alm_map")
 	_bind_map(map)
-	if Game.map_seed != _rotation_seed:
+	if Game.map_seed != _rotation_seed or Game.map_sector != _rotation_sector:
 		_refresh_all_cities()
 		return
 	for city_id in offers_by_city.keys():
-		ensure_city(str(city_id))
+		ensure_city(_city_from_key(str(city_id)))
 
 
 func _disconnect_map() -> void:
@@ -134,6 +135,7 @@ func _on_enemy_died(unit: Enemy) -> void:
 ## Full reset and rebuild of the offers of every town on the current map.
 func _refresh_all_cities() -> void:
 	_rotation_seed = Game.map_seed
+	_rotation_sector = Game.map_sector
 	# A saved journal is applied ONCE: after that the rotation lives on its own.
 	# Applied BEFORE the generic clear - apply_payload() brings back the offers
 	# and the taken quests of the save.
@@ -159,9 +161,10 @@ func _refresh_all_cities() -> void:
 func ensure_city(city_id: String) -> void:
 	if city_id == "" or GameConfig.geti("quests", "enabled") == 0:
 		return
+	var key := _key(city_id)
 	var day := _day()
 	var rotation := _rotation_index(city_id)
-	var cur: Array = offers_by_city.get(city_id, [])
+	var cur: Array = offers_by_city.get(key, [])
 	var stale := cur.is_empty()
 	for off in cur:
 		if day >= int(off.get("expires_day", day)) and int(off.get("rotation", "-1")) != rotation:
@@ -173,6 +176,7 @@ func ensure_city(city_id: String) -> void:
 
 
 func _regenerate(city_id: String) -> void:
+	var key := _key(city_id)
 	var rotation := _rotation_index(city_id)
 	var rng := _city_rng(city_id, rotation)
 	var difficulty := _city_difficulty(city_id)
@@ -183,7 +187,7 @@ func _regenerate(city_id: String) -> void:
 	var out: Array[Dictionary] = []
 	# Offers of the CURRENT rotation survive the re-roll (an abandoned quest
 	# comes back to them); they are not excluded either.
-	for old in offers_by_city.get(city_id, []):
+	for old in offers_by_city.get(key, []):
 		if int(old.get("rotation", -1)) == rotation:
 			out.append(old)
 			excluded.erase(str(old.get("template", "")))
@@ -197,7 +201,7 @@ func _regenerate(city_id: String) -> void:
 			break
 		out.append(q)
 		excluded.append(str(tpl.get("id", "")))
-	offers_by_city[city_id] = out
+	offers_by_city[key] = out
 	offers_changed.emit(city_id)
 
 
@@ -215,12 +219,25 @@ func _rotation_end_day(city_id: String) -> int:
 	return (_rotation_index(city_id) + 1) * ttl
 
 
-## Seed: map + zone + town + rotation. Deterministic, so loading a save on the
-## same day gives exactly the same offers, and asking again on the same day
-## keeps them (a taken or abandoned quest must not re-roll the whole set).
+## Offers are stored per sector: city ids ("c0t0") repeat on every map, so the
+## bare id would mix two towns of different maps.
+func _key(city_id: String) -> String:
+	if Game.map_sector == "":
+		return city_id
+	return "%s|%s" % [Game.map_sector, city_id]
+
+
+func _city_from_key(key: String) -> String:
+	var pos := key.find("|")
+	return key.substr(pos + 1) if pos >= 0 else key
+
+
+## То же, что _city_rng, но с сектором: две карты одного тира не должны
+## выдавать одинаковый набор офферов.
 func _city_rng(city_id: String, rotation: int) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("%d|%s|%s|%d" % [Game.map_seed, Game.map_zone, city_id, rotation])
+	rng.seed = hash("%d|%s|%s|%s|%d" % [Game.map_seed, Game.map_zone,
+		Game.map_sector, city_id, rotation])
 	return rng
 
 
@@ -228,8 +245,10 @@ func _city_rng(city_id: String, rotation: int) -> RandomNumberGenerator:
 func _held_template_ids(city_id: String) -> Array:
 	var out: Array = []
 	for a in active:
+		if str(a.get("sector", "")) != Game.map_sector:
+			continue
 		out.append(str(a.get("template", "")))
-	for old in offers_by_city.get(city_id, []):
+	for old in offers_by_city.get(_key(city_id), []):
 		out.append(str(old.get("template", "")))
 	return out
 
@@ -262,6 +281,7 @@ func _make_quest(tpl: Dictionary, rng: RandomNumberGenerator, city_id: String,
 	q["template"] = str(tpl.get("id", ""))
 	q["type"] = type
 	q["city_id"] = city_id
+	q["sector"] = Game.map_sector
 	var reward := _reward_for(q, rng)
 	q["gold"] = int(reward.get("gold", 0))
 	q["rep"] = int(reward.get("rep", 0))
@@ -579,7 +599,7 @@ func _city_difficulty(city_id: String) -> int:
 func offers_for(city_id: String) -> Array[Dictionary]:
 	ensure_city(city_id)
 	var out: Array[Dictionary] = []
-	for o in offers_by_city.get(city_id, []):
+	for o in offers_by_city.get(_key(city_id), []):
 		out.append(o)
 	return out
 
@@ -587,7 +607,8 @@ func offers_for(city_id: String) -> Array[Dictionary]:
 func active_for_city(city_id: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for a in active:
-		if str(a.get("city_id", "")) == city_id:
+		if str(a.get("city_id", "")) == city_id \
+				and str(a.get("sector", "")) == Game.map_sector:
 			out.append(a)
 	return out
 
@@ -647,7 +668,7 @@ func accept(city_id: String, quest_id: String) -> String:
 	if active.size() >= GameConfig.geti("quests", "max_active"):
 		return Loc.t("ui.quest.err_full")
 	var idx := -1
-	var list: Array = offers_by_city.get(city_id, [])
+	var list: Array = offers_by_city.get(_key(city_id), [])
 	for i in range(list.size()):
 		if str((list[i] as Dictionary).get("id", "")) == quest_id:
 			idx = i
@@ -703,11 +724,11 @@ func _return_to_offers(q: Dictionary) -> void:
 	var rotation := _rotation_index(city_id)
 	q["rotation"] = rotation
 	q["expires_day"] = _rotation_end_day(city_id)
-	var list: Array = offers_by_city.get(city_id, [])
+	var list: Array = offers_by_city.get(_key(city_id), [])
 	q["state"] = "offer"
 	q["progress"] = 0
 	list.append(q)
-	offers_by_city[city_id] = list
+	offers_by_city[_key(city_id)] = list
 	_regenerate(city_id)
 
 
@@ -1043,6 +1064,7 @@ func to_payload() -> Dictionary:
 		offs[str(city_id)] = (offers_by_city[city_id] as Array).duplicate(true)
 	return {
 		"seed": int(Game.map_seed), "zone": str(Game.map_zone),
+		"sector": str(Game.map_sector),
 		"offers": offs,
 		"active": active.duplicate(true),
 		"history": history.duplicate(true),
@@ -1070,6 +1092,7 @@ func apply_payload(p: Dictionary) -> void:
 		history.append((raw as Dictionary).duplicate(true))
 	_next_id = maxi(1, int(p.get("next_id", 1)))
 	_rotation_seed = int(p.get("seed", Game.map_seed))
+	_rotation_sector = str(p.get("sector", Game.map_sector))
 	# Elites and pickups are nodes, not data: rebuild them from the records.
 	for q in active:
 		_materialize(q)
@@ -1105,9 +1128,9 @@ func debug_add_offer(city_id: String, template_id: String) -> Dictionary:
 	var q := _make_quest(tpl, rng, city_id, race, 2, rev)
 	if q.is_empty():
 		return {}
-	var list: Array = offers_by_city.get(city_id, [])
+	var list: Array = offers_by_city.get(_key(city_id), [])
 	list.append(q)
-	offers_by_city[city_id] = list
+	offers_by_city[_key(city_id)] = list
 	offers_changed.emit(city_id)
 	return q
 

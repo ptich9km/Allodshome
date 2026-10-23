@@ -68,6 +68,7 @@ var world_sort: Node2D          # общий y-sort: препятствия + з
 var _structure_hits: Array = [] # хитбоксы зданий {x0,x1,y0,y1,picture,type_id}
 var _structure_nav: Array = []   # навигационные футпринты зданий
 var _portal_cells: Array = []   # координаты порталов (Vector2i)
+var _portals: Array = []        # [{cell:Vector2i, to:String, dir:String}] — мир 4x3
 var _spawn_cell: Vector2i = Vector2i(-1, -1)
 var _portal_markers: Array = [] # PortalMarker instances
 var _spawn_marker: Node2D = null
@@ -809,9 +810,19 @@ func _resolve_map_path() -> void:
 		alm_path = requested
 		return
 	if Game.map_seed != 0:
-		var generated: String = MapGenerator.ensure_map(Game.map_seed, Game.map_zone)
+		var generated: String = ""
+		if Game.map_sector != "":
+			var wm = load("res://scripts/world/world_map.gd")
+			var info: Dictionary = wm.sector(Game.map_sector)
+			generated = MapGenerator.ensure_map(Game.map_seed, Game.map_zone,
+				MapGenerator.MAPS_DIR, "", Game.map_sector,
+				int(info.get("size", 192)), wm.neighbors(Game.map_sector),
+				str(info.get("relief", "")))
+		else:
+			generated = MapGenerator.ensure_map(Game.map_seed, Game.map_zone)
 		if generated != "" and FileAccess.file_exists(generated):
-			print("AlmMap: карта по сиду %d (%s): %s" % [Game.map_seed, Game.map_zone, generated])
+			print("AlmMap: карта по сиду %d (%s/%s): %s" % [Game.map_seed,
+				Game.map_zone, Game.map_sector, generated])
 			alm_path = generated
 			return
 		push_warning("AlmMap: не удалось получить карту по сиду %d" % Game.map_seed)
@@ -854,8 +865,22 @@ func _load_portal_spawn() -> void:
 			var json: Variant = JSON.parse_string(f.get_as_text())
 			f.close()
 			if json is Dictionary:
-				var pp := Vector2i(int(json.get("x", -1)), int(json.get("y", -1)))
-				if pp.x >= 0:
+				var records: Array = []
+				if (json as Dictionary).has("portals"):
+					records = (json as Dictionary).get("portals", []) as Array
+				else:
+					# Старый формат: один портал {x,y} без адреса.
+					records = [json]
+				for raw in records:
+					if not (raw is Dictionary):
+						continue
+					var rec: Dictionary = raw as Dictionary
+					var pp := Vector2i(int(rec.get("x", -1)), int(rec.get("y", -1)))
+					if pp.x < 0:
+						continue
+					var to := str(rec.get("to", ""))
+					var dir := str(rec.get("dir", ""))
+					_portals.append({"cell": pp, "to": to, "dir": dir})
 					_portal_cells.append(pp)
 					var pm2 := preload("res://scripts/portal_marker.gd").new()
 					pm2.setup(pp, "portal")
@@ -865,6 +890,10 @@ func _load_portal_spawn() -> void:
 
 func get_portal_cells() -> Array:
 	return _portal_cells
+
+## Порталы сектора: [{cell, to, dir}]. Пустой to — старый sidecar без адреса.
+func get_portals() -> Array:
+	return _portals
 
 func get_spawn_cell() -> Vector2i:
 	return _spawn_cell

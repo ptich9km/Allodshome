@@ -1,7 +1,7 @@
 ---
 description: Исследователь мод-среды. Используй, чтобы разобраться, как устроены моды в X4: Foundations / X Rebirth (Egosoft) и что из этого переносимо в нашу Godot-игру. Только чтение и веб — никаких правок кода.
 mode: subagent
-model: opencode/space-bunny-free
+model: opencode-go/beam-free
 permission:
   edit: deny
   bash: deny

@@ -1,7 +1,7 @@
 ---
 description: QA-инженер. Используй для написания и прогона тестов, поиска багов, проверки edge-cases и ревью. Никогда не чинит код — только находит и документирует дефекты.
 mode: subagent
-model: opencode/space-bunny-free
+model: opencode-go/beam-free
 permission:
   edit: deny
   bash: allow

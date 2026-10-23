@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "comment": "Карта мира 4x3. col/row 1-based, tier: start|mid|hard|faction. base - проходимая основа, relief - непроходимые черты.",
+  "start": "s41",
+  "center": "s22",
+  "sectors": {
+    "s11": {"col": 1, "row": 1, "tier": "hard",    "size": 160, "base": "soil",  "relief": "ridges", "name_key": "ui.world_map.s11"},
+    "s21": {"col": 2, "row": 1, "tier": "faction", "size": 192, "base": "grass", "relief": "hills",  "name_key": "ui.world_map.s21", "capital": true},
+    "s31": {"col": 3, "row": 1, "tier": "mid",     "size": 128, "base": "mud",   "relief": "marsh",  "name_key": "ui.world_map.s31"},
+    "s41": {"col": 4, "row": 1, "tier": "start",   "size": 96,  "base": "grass", "relief": "coast",  "name_key": "ui.world_map.s41"},
+
+    "s12": {"col": 1, "row": 2, "tier": "faction", "size": 192, "base": "sand",  "relief": "coast",  "name_key": "ui.world_map.s12", "capital": true},
+    "s22": {"col": 2, "row": 2, "tier": "hard",    "size": 160, "base": "soil",  "relief": "ridges", "name_key": "ui.world_map.s22"},
+    "s32": {"col": 3, "row": 2, "tier": "faction", "size": 192, "base": "grass", "relief": "hills",  "name_key": "ui.world_map.s32", "capital": true},
+    "s42": {"col": 4, "row": 2, "tier": "mid",     "size": 128, "base": "sand",  "relief": "ridges", "name_key": "ui.world_map.s42"},
+
+    "s13": {"col": 1, "row": 3, "tier": "hard",    "size": 160, "base": "mud",   "relief": "marsh",  "name_key": "ui.world_map.s13"},
+    "s23": {"col": 2, "row": 3, "tier": "faction", "size": 192, "base": "soil",  "relief": "hills",  "name_key": "ui.world_map.s23", "capital": true},
+    "s33": {"col": 3, "row": 3, "tier": "hard",    "size": 160, "base": "soil",  "relief": "ridges", "name_key": "ui.world_map.s33"},
+    "s43": {"col": 4, "row": 3, "tier": "hard",    "size": 160, "base": "soil",  "relief": "ridges", "name_key": "ui.world_map.s43"}
+  }
+}

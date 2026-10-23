@@ -21,14 +21,15 @@ func _init() -> void:
 
 ## Добавить маркер. seed/zone - к какой карте он относится.
 ## ttl_seconds - жизнь в реальных секундах (день мира в живой игре не тикает).
-func add(kind: int, cell: Vector2i, ttl_seconds: float, seed_value: int, zone: String) -> int:
+func add(kind: int, cell: Vector2i, ttl_seconds: float, seed_value: int, zone: String,
+		sector: String = "") -> int:
 	var id := _next_id
 	_next_id += 1
 	_items.append({
 		"id": id, "kind": kind,
 		"cell_x": cell.x, "cell_y": cell.y,
 		"ttl_left": ttl_seconds,
-		"seed": seed_value, "zone": zone,
+		"seed": seed_value, "zone": zone, "sector": sector,
 	})
 	changed.emit()
 	return id
@@ -53,11 +54,14 @@ func tick_life(delta: float) -> void:
 		changed.emit()
 
 ## Маркеры текущей карты.
-func all_for(seed_value: int, zone: String) -> Array[Dictionary]:
+func all_for(seed_value: int, zone: String, sector: String = "") -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for it in _items:
-		if int(it["seed"]) == seed_value and str(it["zone"]) == zone:
-			out.append(it)
+		if int(it["seed"]) != seed_value or str(it["zone"]) != zone:
+			continue
+		if sector != "" and str(it.get("sector", "")) != sector:
+			continue
+		out.append(it)
 	return out
 
 ## Полная зачистка (смена карты).

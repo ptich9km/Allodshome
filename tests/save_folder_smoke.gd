@@ -59,19 +59,21 @@ func _run() -> void:
 	_check(map_path.begins_with(SaveSystem.slot_dir(SLOT)),
 		"карта загружена из папки слота (%s)" % map_path)
 
-	# Переход в другую зону: карта новой зоны ложится в тот же слот.
-	var old_zone := Game.map_zone
+	# Переход в другой сектор: карта нового сектора ложится в тот же слот.
+	var old_sector := Game.map_sector
 	await game.call("travel_to_zone", "mid")
 	await create_timer(1.2).timeout
 	_check(Game.map_zone == "mid", "зона сменилась на mid (%s)" % Game.map_zone)
-	var zone_map := SaveSystem.restore_zone_map(SLOT, "mid")
-	# Карта новой зоны уже лежит в user://maps/ (игра только что на ней), поэтому
-	# restore_zone_map возвращает путь на месте — важно, что он есть и читается.
+	var new_sector := Game.map_sector
+	_check(new_sector != "", "сектор определён (%s)" % new_sector)
+	var zone_map := SaveSystem.restore_zone_map(SLOT, new_sector)
+	# Карта нового сектора уже лежит в user://maps/ (игра только что на ней),
+	# поэтому restore_zone_map возвращает путь на месте — важно, что он есть.
 	_check(zone_map != "" and FileAccess.file_exists(zone_map),
-		"карта новой зоны лежит в папке слота (%s)" % zone_map)
-	var back_map := SaveSystem.restore_zone_map(SLOT, old_zone)
+		"карта нового сектора лежит в папке слота (%s)" % zone_map)
+	var back_map := SaveSystem.restore_zone_map(SLOT, old_sector)
 	_check(back_map != "" and FileAccess.file_exists(back_map),
-		"карта прежней зоны (%s) осталась в слоте (%s)" % [old_zone, back_map])
+		"карта прежнего сектора (%s) осталась в слоте (%s)" % [old_sector, back_map])
 	_check(is_instance_valid(player), "герой пережил переход между зонами")
 
 	# Загрузка слота ДРУГОГО персонажа прямо из игры (жалоба 23.10): воин
@@ -152,6 +154,7 @@ func _start_game() -> void:
 		"vitality": 20, "spirit": 10, "luck": 5}
 	Game.map_seed = 4242
 	Game.map_zone = "start"
+	Game.map_sector = "s41"
 	Game.loaded_slot = ""
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)

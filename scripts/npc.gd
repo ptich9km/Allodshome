@@ -35,6 +35,10 @@ var attack_cooldown := 0.0
 var _impact_timer := -1.0
 var _path: Array = []
 var _repath := 0.0
+## Бюджет A*: не больше 2 запросов пути за физический кадр на всю карту.
+## Без него десяток патрульных в городе мог запускать поиск в один кадр.
+static var _path_frame := -1
+static var _path_calls := 0
 var quest_marker: QuestMarker = null
 
 func _ready() -> void:
@@ -58,6 +62,12 @@ func _ready() -> void:
 	_pick_new_target()
 	if is_city_head:
 		_make_quest_marker()
+	# Жители — статичная декорация города: не патрулируют, не ищут путь и не
+	# тикают физику. Именно их толпа давала просадку при входе в город.
+	if role == "citizen":
+		velocity = Vector2.ZERO
+		_waiting = true
+		set_physics_process(false)
 
 
 ## Маркер «!»/«?» над головой главы. Вид ставит QuestSystem через
@@ -84,10 +94,12 @@ func refresh_quest_marker() -> void:
 func _physics_process(delta: float) -> void:
 	if Game.is_paused or _anim == null:
 		return
-	# P5: далеко от героя — спим (патруль/бой не тикаем).
+	# P5: далеко от героя — спим (патруль/бой не тикаем). Стража просыпается
+	# позже жителей: город компактный, и 1600 px держало в работе всю стражу.
 	if Game.hero != null and is_instance_valid(Game.hero) \
 			and state != "dying" and state != "decay" and state != "corpse":
-		if global_position.distance_squared_to(Game.hero.global_position) > 1600.0 * 1600.0:
+		var sleep_r := 1100.0 if role == "guard" else 1600.0
+		if global_position.distance_squared_to(Game.hero.global_position) > sleep_r * sleep_r:
 			velocity = Vector2.ZERO
 			return
 	# Туман войны (19.10): вне видимой клетки житель не тикает и не рисуется.
@@ -132,6 +144,12 @@ func _physics_process(delta: float) -> void:
 	if role == "guard" and damage > 0 and _guard_combat(delta):
 		return
 
+	# Непатрульная стража стоит у поста: никаких случайных прогулок и A*.
+	if not is_patrol:
+		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
+		_anim.play(UnitAnim.Anim.IDLE)
+		return
+
 	if _waiting:
 		_pause_timer -= delta
 		if _pause_timer <= 0.0:
@@ -147,7 +165,7 @@ func _physics_process(delta: float) -> void:
 			_repath -= delta
 			if _repath <= 0.0:
 				_repath = 1.5 + randf() * 1.0
-				if alm_map != null and alm_map.has_method("find_path"):
+				if _can_pathfind() and alm_map != null and alm_map.has_method("find_path"):
 					_path = alm_map.find_path(global_position, _target)
 		if not _path.is_empty():
 			var wp: Vector2 = _path[0]
@@ -172,6 +190,17 @@ func _physics_process(delta: float) -> void:
 		_anim.play(UnitAnim.Anim.IDLE)
 
 ## Случайная проходимая точка у поста (патрульный — шире, остальные стоят).
+func _can_pathfind() -> bool:
+	var f := Engine.get_physics_frames()
+	if f != _path_frame:
+		_path_frame = f
+		_path_calls = 0
+	if _path_calls >= 2:
+		return false
+	_path_calls += 1
+	return true
+
+
 func _pick_new_target() -> void:
 	var anchor := post if post != Vector2.ZERO else home
 	if alm_map == null:
@@ -312,6 +341,10 @@ func get_protection_astral() -> int: return _resist("Astral")
 func take_damage(dmg: int, _attacker: Node2D) -> int:
 	if state == "dying" or state == "decay" or state == "corpse":
 		return 0
+	# Потревоженный житель просыпается: иначе смерть/разложение стояли бы
+	# статичным кадром (физика у жителей выключена ради города).
+	if role == "citizen" and not is_physics_processing():
+		set_physics_process(true)
 	dmg = Game.shield_reduce(self, dmg)
 	if dmg <= 0:
 		SpellVFX.shield_hit(self)

@@ -622,6 +622,7 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"version": VERSION,
 		"map": {
 			"seed": int(Game.map_seed), "zone": str(Game.map_zone),
+			"world_seed": int(Game.world_seed), "sector": str(Game.map_sector),
 			"fog": Game.fog.mask_rle() if Game.fog != null else "",
 			# Карта — целыми файлами в папке слота (решение 22.10), поэтому
 			# сохраняется путь к текущему .alm и его стабильное имя.
@@ -661,7 +662,8 @@ static func world_files() -> Dictionary:
 	if Game.map_seed == 0:
 		return out
 	var race := MapGenerator.city_race_for_hero(Game.hero_race)
-	var base := MapGenerator.map_basename(Game.map_seed, Game.map_zone, race)
+	var base := MapGenerator.map_basename(Game.map_seed, Game.map_zone, race,
+		Game.map_sector)
 	var path := MapGenerator.MAPS_DIR + base + ".alm"
 	if FileAccess.file_exists(path):
 		out["path"] = path
@@ -706,22 +708,18 @@ static func restore_zone_map(slot: String, zone: String) -> String:
 	var slot_base := _basename_of(_read_doc(part_path(slot, MAP_FILE)).get("data", {}))
 	if slot_base == "":
 		return world_map_path(slot)
-	# Имя карты — `map_<сид>_<зона>_<раса>`. Слот скармливает все свои зоны,
-	# поэтому совпадать должны сид и раса (имя без частей «зона»), а различать
-	# их — сама зона.
-	var slot_parts := slot_base.split("_")
+	# Имя карты — `map_<сид>_<сектор>_<раса>` (или старый `_<зона>_`).
+	# Сектор/зона — отдельный токен имени: сид у соседних секторов свой, поэтому
+	# сравнивать «сид и расу» нельзя, а уникален здесь именно сектор.
 	var names: Array = []
 	d.list_dir_begin()
 	var fn := d.get_next()
 	while fn != "":
 		var file_base := fn.get_basename()
 		var parts := file_base.split("_")
-		var same_map := parts.size() >= 4 and slot_parts.size() >= 4 \
-			and parts[0] == slot_parts[0] and parts[1] == slot_parts[1] \
-			and str(parts[parts.size() - 1]) == str(slot_parts[slot_parts.size() - 1])
-		var right_zone := parts.size() >= 3 and str(parts[parts.size() - 2]) == zone
+		var right_zone := parts.has(zone)
 		if not d.current_is_dir() and not fn.ends_with(".bak") \
-				and fn.ends_with(".alm") and same_map and right_zone:
+				and fn.ends_with(".alm") and right_zone:
 			names.append(fn)
 		fn = d.get_next()
 	d.list_dir_end()
@@ -789,6 +787,8 @@ static func apply_payload(d: Dictionary, player, slot: String = "") -> void:
 	var map_d: Dictionary = d.get("map", {})
 	Game.map_seed = int(map_d.get("seed", 0))
 	Game.map_zone = str(map_d.get("zone", "mid"))
+	Game.world_seed = int(map_d.get("world_seed", 0))
+	Game.map_sector = str(map_d.get("sector", ""))
 	# Туман и события (19.10): применяются узлами после сборки карты.
 	Game.pending_fog_rle = str(map_d.get("fog", ""))
 	Game.pending_events = (d.get("events", []) as Array).duplicate(true)

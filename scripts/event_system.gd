@@ -83,7 +83,7 @@ func _check_map_changed() -> void:
 	var map: Node = get_tree().get_first_node_in_group("alm_map")
 	if map == null:
 		return
-	var key := "%d:%s:%d:%d" % [Game.map_seed, Game.map_zone,
+	var key := "%d:%s:%s:%d:%d" % [Game.map_seed, Game.map_zone, Game.map_sector,
 		int(map.get("map_width")), int(map.get("map_height"))]
 	if key == _map_key:
 		return
@@ -151,7 +151,7 @@ func _attach_marker(ev: Dictionary, ttl: float) -> void:
 		return
 	var cell := Vector2i(int(ev["cell_x"]), int(ev["cell_y"]))
 	ev["marker_id"] = MinimapMarkers.instance.add(MinimapMarkers.Kind.BATTLE,
-		cell, ttl, Game.map_seed, Game.map_zone)
+		cell, ttl, Game.map_seed, Game.map_zone, Game.map_sector)
 
 ## Клетка события: проходимая, 400-900 px от героя, вне городов (структур).
 func _event_cell(map: Node) -> Vector2i:
@@ -401,6 +401,7 @@ func to_payload() -> Array:
 			"ttl_left": float(ev["ttl_left"]),
 			"set_a": str(ev["set_a"]), "set_b": str(ev["set_b"]),
 			"seed": int(Game.map_seed), "zone": str(Game.map_zone),
+			"sector": str(Game.map_sector),
 		})
 	return out
 
@@ -409,7 +410,8 @@ func apply_payload(list: Array) -> void:
 	for d in list:
 		var rec: Dictionary = d as Dictionary
 		if int(rec.get("seed", -1)) != Game.map_seed \
-				or str(rec.get("zone", "")) != Game.map_zone:
+				or str(rec.get("zone", "")) != Game.map_zone \
+				or str(rec.get("sector", "")) != Game.map_sector:
 			continue
 		_respawn_event(rec)
 

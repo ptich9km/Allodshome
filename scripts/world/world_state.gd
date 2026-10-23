@@ -44,6 +44,17 @@ var hero := {                # «привилегированный» герой
 }
 var journal: Array[Dictionary] = []   # журнал событий мира (день, вид, текст)
 
+# --- Карта мира 4x3 (23.10) ---------------------------------------------------
+## Сид мира: из него выводятся сиды всех 12 секторов (WorldMap.seed_of).
+var world_seed := 0
+## "s41" -> {col,row,tier,base,relief,size,seed,owner,capital_of,discovered,fog,outposts}
+var sectors: Dictionary = {}
+## "o-s41-0" -> {sector,cell,owner,locked,capture_faction,capture_progress,build_progress,built}
+## Механика захвата — следующий этап; поле заведено сразу, чтобы сейв не мигрировать.
+var outposts: Dictionary = {}
+
+const WORLD_CAPITAL_FACTIONS: Array = ["humans", "ork", "necro", "druid"]
+
 # --- Служебное ----------------------------------------------------------------
 static var primer := "мир"
 
@@ -304,6 +315,88 @@ func get_army(a: String) -> Dictionary:
 func get_region(r: String) -> Dictionary:
 	return regions.get(r, {})
 
+# --- Мир 4x3: инициализация и доступ -----------------------------------------
+
+## Собрать состояние 12 секторов по сиду мира. Вызывается один раз для новой
+## игры; загруженный сейв приходит уже готовым через from_dict().
+## start_owner — фракция расы героя (city-раса), владелец стартового сектора.
+func init_world(seed_value: int, start_owner: String = "") -> void:
+	world_seed = seed_value
+	sectors.clear()
+	outposts.clear()
+	var wm = load("res://scripts/world/world_map.gd")
+	var ids: Array = wm.ids()
+	var caps: Array = wm.capital_ids()
+	var factions: Array = WORLD_CAPITAL_FACTIONS.duplicate()
+	_shuffle_with_seed(factions, seed_value ^ 0x5F3759DF)
+	var cap_faction := {}
+	for i in range(caps.size()):
+		if i < factions.size():
+			cap_faction[str(caps[i])] = str(factions[i])
+	var start_id := str(wm.start_id())
+	var start_neighbors: Array = wm.neighbors(start_id)
+	for raw_id in ids:
+		var id := str(raw_id)
+		var s: Dictionary = wm.sector(id)
+		var owner := ""
+		var capital_of := ""
+		if cap_faction.has(id):
+			owner = str(cap_faction[id])
+			capital_of = owner
+		elif id == start_id:
+			owner = start_owner
+		var discovered := 0
+		if id == start_id:
+			discovered = 2
+		elif start_neighbors.has(id):
+			discovered = 1
+		sectors[id] = {
+			"col": int(s.get("col", 0)),
+			"row": int(s.get("row", 0)),
+			"tier": str(s.get("tier", "hard")),
+			"base": str(s.get("base", "soil")),
+			"relief": str(s.get("relief", "plains")),
+			"size": int(s.get("size", 192)),
+			"seed": int(wm.seed_of(seed_value, id)),
+			"owner": owner,
+			"capital_of": capital_of,
+			"discovered": discovered,
+			"fog": "",
+			"outposts": [],
+		}
+
+
+func _shuffle_with_seed(arr: Array, seed_value: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	for i in range(arr.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp: Variant = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
+
+
+func sector_state(id: String) -> Dictionary:
+	return sectors.get(id, {}) as Dictionary
+
+
+## Отметить сектор посещённым и открыть его прямых соседей до «разведан».
+func discover_sector(id: String) -> void:
+	if not sectors.has(id):
+		return
+	var s: Dictionary = sectors[id]
+	s["discovered"] = 2
+	sectors[id] = s
+	var wm = load("res://scripts/world/world_map.gd")
+	for n in wm.neighbors(id):
+		var nid := str(n)
+		if not sectors.has(nid):
+			continue
+		var ns: Dictionary = sectors[nid]
+		if int(ns.get("discovered", 0)) < 1:
+			ns["discovered"] = 1
+			sectors[nid] = ns
+
 # --- Сериализация -------------------------------------------------------------
 ##
 ## ВНИМАНИЕ: результат to_dict() обязан быть JSON-безопасным, потому что
@@ -325,6 +418,7 @@ func to_dict() -> Dictionary:
 		"day": day, "global_threat": global_threat,
 		"relations": relations, "hero": hero, "journal": journal,
 		"hero_reputation": hero_reputation,
+		"world_seed": world_seed, "sectors": sectors, "outposts": outposts,
 	}
 
 ## Полная сериализация в JSON-безопасную форму. Для записи в файл.
@@ -352,6 +446,9 @@ static func from_dict(d: Dictionary):
 	ws.relations = d.get("relations", {})
 	ws.hero_reputation = d.get("hero_reputation", {})
 	ws.hero = d.get("hero", {})
+	ws.world_seed = int(d.get("world_seed", 0))
+	ws.sectors = d.get("sectors", {})
+	ws.outposts = d.get("outposts", {})
 	# journal объявлен как Array[Dictionary]; после JSON это обычный Array,
 	# поэтому пересобираем типизированный, иначе присвоение падает.
 	var raw_journal: Array = d.get("journal", [])
