@@ -59,7 +59,7 @@ var _fit_root: Control
 
 func _ready() -> void:
 	Loc.load_locale()
-	MusicDB.play.call_deferred("music.menu")
+	MusicDB.start_playlist.call_deferred()
 	# Тематический анимированный курсор вместо системной стрелки.
 	add_child(load("res://scripts/cursor_layer.gd").new())
 	_setup_backdrop()

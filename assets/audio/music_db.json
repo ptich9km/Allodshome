@@ -1,54 +1,17 @@
 {
-  "version": 1,
-  "comment": "Музыка: ключ -> файлы (вариант выбирается случайно) + шина и громкость. Файлы — OGG q4 из import/audio_src/music (WAV-мастера в git не идут).",
-  "tracks": {
-    "music.menu": {
-      "bus": "Music",
-      "gain_db": -6.0,
-      "fade": 2.5,
-      "files": [
-        "menu_main.ogg"
-      ],
-      "loop": true
-    },
-    "music.town": {
-      "bus": "Music",
-      "gain_db": -8.0,
-      "fade": 3.0,
-      "files": [
-        "town_rest_1.ogg",
-        "town_rest_2.ogg"
-      ],
-      "loop": true
-    },
-    "music.ancient": {
-      "bus": "Music",
-      "gain_db": -8.0,
-      "fade": 3.0,
-      "files": [
-        "ancient_1.ogg",
-        "ancient_2.ogg"
-      ],
-      "loop": true
-    },
-    "music.explore": {
-      "bus": "Music",
-      "gain_db": -8.0,
-      "fade": 3.0,
-      "files": [
-        "explore_1.ogg",
-        "explore_2.ogg"
-      ],
-      "loop": true
-    },
-    "music.combat": {
-      "bus": "Music",
-      "gain_db": -5.0,
-      "fade": 1.2,
-      "files": [
-        "combat_1.ogg"
-      ],
-      "loop": true
-    }
-  }
+  "version": 2,
+  "comment": "Музыка в игре — непрерывный плейлист, а не трек на ситуацию. Очерёдность = порядок файлов; после последнего снова первый. Луп у файлов выключается: иначе очередь не пойдёт дальше. OGG q4 из import/audio_src/music (WAV-мастера в git не идут).",
+  "bus": "Music",
+  "gain_db": -8.0,
+  "crossfade": 2.5,
+  "playlist": [
+    "menu_main.ogg",
+    "town_rest_1.ogg",
+    "town_rest_2.ogg",
+    "ancient_1.ogg",
+    "ancient_2.ogg",
+    "explore_1.ogg",
+    "explore_2.ogg",
+    "combat_1.ogg"
+  ]
 }

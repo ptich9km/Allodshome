@@ -72,10 +72,19 @@ func _run() -> void:
 
 	_check_music()
 
-	# Живая проверка: MusicDB создаёт узлы, грузит трек и переключает ключ.
-	MusicDB.play("music.menu", 0.1)
+	# Живая проверка очереди: старт с первого, повторный старт не сбрасывает,
+	# next_track() двигает индекс.
+	_check(MusicDB.start_playlist(), "MusicDB: плейлист запущен")
 	await create_timer(0.2).timeout
-	_check(MusicDB.current_key() == "music.menu", "MusicDB: трек меню запущен")
+	_check(MusicDB.current_index() == 0, "MusicDB: старт с трека 0")
+	_check(MusicDB.current_file() == "menu_main.ogg", "MusicDB: первый файл — menu_main")
+	_check(MusicDB.start_playlist(), "MusicDB: повторный старт — ok")
+	await create_timer(0.2).timeout
+	_check(MusicDB.current_index() == 0, "MusicDB: повторный старт не сбросил очередь")
+	_check(MusicDB.next_track(), "MusicDB: next_track() ok")
+	await create_timer(0.2).timeout
+	_check(MusicDB.current_index() == 1, "MusicDB: next_track() дал трек 1")
+	_check(MusicDB.current_file() == "town_rest_1.ogg", "MusicDB: второй файл — town_rest_1")
 	MusicDB.stop(0.1)
 	await create_timer(0.2).timeout
 
@@ -175,7 +184,8 @@ func _numeric_plays() -> Array[String]:
 	return out
 
 
-## Музыка: треки существуют, грузятся, помечены как луп и лежат на шине Music.
+## Музыка: непрерывный плейлист. Файлы существуют, грузятся, длинные,
+## без лупа (иначе очередь не пойдёт дальше), порядок начинается с темы меню.
 func _check_music() -> void:
 	var f := FileAccess.open("res://assets/audio/music_db.json", FileAccess.READ)
 	if f == null:
@@ -186,34 +196,37 @@ func _check_music() -> void:
 	if not (parsed is Dictionary):
 		_check(false, "music_db.json не JSON-объект")
 		return
-	var tracks: Variant = (parsed as Dictionary).get("tracks", {})
-	if not (tracks is Dictionary) or (tracks as Dictionary).is_empty():
-		_check(false, "в music_db.json нет tracks")
+	var db := parsed as Dictionary
+	_check(int(db.get("version", 0)) == 2, "music_db.json: версия 2")
+	_check(str(db.get("bus", "")) == "Music", "music_db.json: шина Music")
+	_check(float(db.get("crossfade", 0.0)) > 0.0, "music_db.json: кроссфейд задан")
+	var playlist: Variant = db.get("playlist", [])
+	if not (playlist is Array) or (playlist as Array).is_empty():
+		_check(false, "в music_db.json нет playlist")
 		return
-	_check(true, "music_db.json прочитан: %d трек(ов)" % (tracks as Dictionary).size())
-	for key in tracks:
-		var entry: Dictionary = tracks[key]
-		_check(str(entry.get("bus", "")) == "Music", "%s: шина Music" % key)
-		var files: Array = entry.get("files", [])
-		_check(not files.is_empty(), "%s: есть файлы" % key)
-		for rel in files:
-			var path := "res://assets/audio/music/" + str(rel)
-			_check(FileAccess.file_exists(path), "%s: файл на месте (%s)" % [key, rel])
-			var stream: Variant = load(path)
-			_check(stream is AudioStream, "%s: грузится" % key)
-			if stream is AudioStream:
-				_check((stream as AudioStream).get_length() > 60.0,
-					"%s: длина больше минуты" % key)
-			if stream is AudioStreamOggVorbis:
-				# Луп выставляется в MusicDB.play по полю loop: .import в git
-				# не хранится, поэтому настройка импорта ненадёжна.
-				_check(bool(entry.get("loop", true)), "%s: луп включён" % key)
+	var list := playlist as Array
+	_check(list.size() == 8, "в плейлисте 8 треков (сейчас %d)" % list.size())
+	_check(str(list[0]) == "menu_main.ogg", "плейлист начинается с menu_main.ogg")
+	var seen: Dictionary = {}
+	for rel in list:
+		var name := str(rel)
+		_check(not seen.has(name), "%s: без дублей" % name)
+		seen[name] = true
+		var path := "res://assets/audio/music/" + name
+		_check(FileAccess.file_exists(path), "%s: файл на месте" % name)
+		var stream: Variant = load(path)
+		_check(stream is AudioStream, "%s: грузится" % name)
+		if stream is AudioStream:
+			_check((stream as AudioStream).get_length() > 150.0,
+				"%s: длиннее 150 с" % name)
+		if stream is AudioStreamOggVorbis:
+			# MusicDB выключает луп при запуске; проверяем, что он не включён
+			# и в самом импортированном ресурсе.
+			_check(not (stream as AudioStreamOggVorbis).loop, "%s: луп выключен" % name)
 
-	# Ключи, которые играет код, должны быть в базе.
+	# Старого механизма «ключ на ситуацию» в коде быть не должно.
 	var re := RegEx.new()
-	re.compile('MusicDB\\.play(?:\\.call_deferred)?\\("([^"]+)"')
+	re.compile('MusicDB\\.play\\(')
 	for path in _gd_files("res://scripts"):
 		var text := FileAccess.get_file_as_string(path)
-		for m in re.search_all(text):
-			_check((tracks as Dictionary).has(m.get_string(1)),
-				"MusicDB.play: ключ есть (%s)" % m.get_string(1))
+		_check(re.search(text) == null, "нет MusicDB.play в " + path.get_file())

@@ -731,7 +731,7 @@ func _setup_post_pass() -> void:
 
 func _ready():  # Инициализация мира и боя
 	process_mode = PROCESS_MODE_ALWAYS  # Работает даже на паузе
-	MusicDB.play.call_deferred("music.explore")
+	MusicDB.start_playlist.call_deferred()
 
 	# Тематический анимированный курсор (обычный + прицел, см. cursor_layer.gd).
 	add_child(load("res://scripts/cursor_layer.gd").new())

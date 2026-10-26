@@ -92,7 +92,7 @@ ui/          — UI-сцены и скрипты
 | `scripts/unit.gd`, `unit_db.gd` | база юнитов (статы монстров/героев) |
 | `scripts/spell_db.gd` | заклинания (сферы/магия), `sphere_of(spell_name)`, `sound_of(name)` → ключ SoundDB |
 | `scripts/sound_db.gd` | `SoundDB`: именованные ключи из `assets/audio/sound_db.json`, шины Music/SFX/UI/Voice/Ambient, пул плееров; числовых ID больше нет |
-| `scripts/music_db.gd` | `MusicDB`: один активный трек с кроссфейдом, луп, узлы в корне дерева (переживают смену сцены); база — `assets/audio/music_db.json` |
+| `scripts/music_db.gd` | `MusicDB`: непрерывный плейлист из `assets/audio/music_db.json` (v2), кроссфейд 2.5 с, `Timer` с `PROCESS_MODE_ALWAYS`; старт с трека 1 при запуске, очередь не сбрасывается сменой сцены и паузой |
 | `scripts/ui.gd`, `scripts/character_select.gd` | UI; для мага — панель сфер вместо навыков оружия |
 | `scripts/transition_editor.gd` | визуальный редактор переходов terrain (в редакторе карт) |
 | `scripts/world/world_state.gd`, `world_bus.gd`, `world_sim.gd` | Слой-2, SIM-мир |
@@ -559,6 +559,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 
 ### Индекс записей
 
+- 26.10 (музыка) — плейлист вместо «трека на ситуацию»: все 8 треков по кругу с трека 1
 - 23.10 (звук) — звук без Аллодов: CC0-библиотека, именованные ключи, шины, 22 реплики и 8 треков музыки
 - 23.10 (позже 4) — инвентарь без прокрутки, иконки HUD, миникарта в рамке
 - 23.10 (позже 3) — портал: прибытие к парному, окно «покинуть карту», лента мира F3, статичные жители
