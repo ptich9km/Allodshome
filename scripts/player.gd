@@ -1512,6 +1512,10 @@ func _play_cast_swing() -> void:
 ## Использовать заклинание по имени. Возвращает true, если каст начат.
 ## При cast_time > 0 входит в состояние "casting" и доводит эффект позже.
 func cast_spell(name: String, target_position: Vector2, target_node: Node2D = null) -> bool:
+	# Страховка: на тактической паузе не кастуем ни по клику, ни авто-кастом,
+	# ни свитком. Раньше проверки не было вовсе (корень сцены Always).
+	if Game.is_paused:
+		return false
 	if not can_cast(name):
 		return false
 	var spell: Dictionary = SpellDB.get_spell(name)

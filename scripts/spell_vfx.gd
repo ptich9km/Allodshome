@@ -121,6 +121,18 @@ static func _scene() -> Node:
 	return Engine.get_main_loop().current_scene as Node
 
 
+## Твин эффекта, который останавливается вместе с миром.
+##
+## По умолчанию режим паузы у Tween — BOUND: твин замирает только если замер
+## узел-владелец. Здесь владелец — корень сцены (Game) с PROCESS_MODE_ALWAYS,
+## поэтому вспышки, телеграфы и искры продолжали играть на тактической паузе.
+## STOP останавливает твин по SceneTree.paused независимо от владельца.
+static func world_tween(scene: Node) -> Tween:
+	var tw := scene.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_STOP)
+	return tw
+
+
 # --- Снаряд ---------------------------------------------------------------
 
 ## Создать спрайт снаряда заклинания. Материал свой (свой time), шейдер общий.
@@ -170,7 +182,7 @@ static func cast_flash(pos: Vector2, sphere: String) -> void:
 	flash.scale = Vector2.ZERO
 	flash.modulate.a = 0.8
 	scene.add_child(flash)
-	var tw := scene.create_tween()
+	var tw := world_tween(scene)
 	tw.set_parallel(true)
 	tw.tween_property(flash, "scale", Vector2(4.0, 4.0), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(flash, "modulate:a", 0.0, 0.2)
@@ -194,7 +206,7 @@ static func cast_telegraph(pos: Vector2, sphere: String, cast_time: float) -> vo
 	ring.scale = Vector2(6.0, 6.0)
 	ring.modulate.a = 0.7
 	scene.add_child(ring)
-	var tw := scene.create_tween()
+	var tw := world_tween(scene)
 	tw.set_parallel(true)
 	tw.tween_property(ring, "scale", Vector2(1.2, 1.2), cast_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(ring, "modulate:a", 0.95, cast_time)
@@ -225,7 +237,7 @@ static func aura_ring(unit: Node2D, sphere: String, kind: String) -> void:
 		scene.add_child(p)
 		var angle := TAU * i / count
 		var target := unit.global_position + Vector2(cos(angle), sin(angle)) * 34.0
-		var tw := scene.create_tween()
+		var tw := world_tween(scene)
 		tw.set_parallel(true)
 		tw.tween_property(p, "position", target, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tw.tween_property(p, "modulate:a", 0.0, 0.5)
@@ -263,7 +275,7 @@ static func impact_burst(pos: Vector2, sphere: String, is_aoe: bool) -> void:
 		var angle := TAU * i / count + randf_range(-0.3, 0.3)
 		var dist := randf_range(30.0, 70.0) if is_aoe else randf_range(14.0, 36.0)
 		var target := pos + Vector2(cos(angle), sin(angle)) * dist
-		var tw := scene.create_tween()
+		var tw := world_tween(scene)
 		tw.set_parallel(true)
 		tw.tween_property(p, "position", target, 0.25).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 		tw.tween_property(p, "modulate:a", 0.0, 0.3)
@@ -288,7 +300,7 @@ static func spawn_light(pos: Vector2, life: float) -> void:
 	glow.scale = Vector2(7.0, 7.0)
 	glow.modulate.a = 0.35
 	scene.add_child(glow)
-	var tw := scene.create_tween()
+	var tw := world_tween(scene)
 	tw.tween_property(glow, "modulate:a", 0.18, life * 0.5)
 	tw.tween_property(glow, "modulate:a", 0.35, life * 0.5)
 	tw.tween_callback(glow.queue_free)
@@ -357,7 +369,7 @@ static func chain_arc(from: Vector2, to: Vector2, sphere: String,
 		# В Godot 4 у Line2D нет метода add_points() — точки задаются свойством.
 		line.points = points
 		scene.add_child(line)
-		var tw := scene.create_tween()
+		var tw := world_tween(scene)
 		tw.tween_interval(0.16 if pass_index == 0 else 0.1)
 		tw.tween_property(line, "modulate:a", 0.0, 0.12)
 		tw.tween_callback(line.queue_free)
@@ -382,7 +394,7 @@ static func ground_dust(unit: Node2D) -> void:
 		scene.add_child(p)
 		var angle := TAU * i / 7.0
 		var target := unit.global_position + Vector2(cos(angle), sin(angle) * 0.4) * 30.0
-		var tw := scene.create_tween()
+		var tw := world_tween(scene)
 		tw.set_parallel(true)
 		tw.tween_property(p, "position", target, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tw.tween_property(p, "modulate:a", 0.0, 0.5)
@@ -442,7 +454,7 @@ static func hail_shard(pos: Vector2) -> void:
 	s.material = zone_material("shard", Color(0.85, 0.94, 1.0, 1.0))
 	s.modulate.a = 0.95
 	scene.add_child(s)
-	var tw := scene.create_tween()
+	var tw := world_tween(scene)
 	tw.set_parallel(true)
 	tw.tween_property(s, "position", pos + Vector2(0, 8), 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(s, "modulate:a", 0.0, 0.28)

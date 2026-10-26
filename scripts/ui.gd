@@ -324,6 +324,8 @@ func _effect_labels(effects: Array) -> Array:
 ## прицеливания (анимированный курсор cast/), магия улетает только по клику
 ## на цель. Мана/заряд при этом НЕ списываются до попадания по цели.
 func _cast_spell_button(name: String) -> void:
+	if Game.is_paused:
+		return
 	if not is_instance_valid(player):
 		return
 	_begin_spell_targeting(name)
@@ -482,6 +484,8 @@ func _finish_spell_targeting() -> void:
 
 ## Быстрая клавиша 1..9: вход в прицеливание назначенного заклинания.
 func _quick_cast(spell: String) -> void:
+	if Game.is_paused:
+		return
 	if not is_instance_valid(player) or not player.can_cast(spell):
 		print("Быстрый вызов недоступен: " + spell)
 		return

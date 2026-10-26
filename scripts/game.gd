@@ -999,6 +999,16 @@ func _input(event):
 	# Окно портала само обрабатывает Esc (Esc = «Остаться»).
 	if _portal_confirm != null and is_instance_valid(_portal_confirm):
 		return
+	# Тактическая пауза: мир замер, значит и приказы/магия недоступны.
+	# Раньше _input продолжал работать (корень сцены Always), и клик по миру
+	# или хоткей 1..9 запускали заклинание прямо на паузе. Блокируем только
+	# их: Esc, Space и панели (I/B/W/M) — это интерфейс, он обязан работать.
+	if is_paused:
+		if event is InputEventMouseButton:
+			return
+		if event is InputEventKey and event.pressed and not event.echo \
+				and event.keycode >= KEY_1 and event.keycode <= KEY_9:
+			return
 	# Прицеливание (свиток или заклинание книги): ПКМ или ESC отменяет.
 	# Свиток НЕ тратится, мана/заряд НЕ списываются.
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -1099,6 +1109,9 @@ func _input(event):
 			ui.open_world_map()
 
 func handle_click(world_position: Vector2):
+	# Тактическая пауза: клик по миру — это приказ герою, на паузе его нет.
+	if is_paused:
+		return
 	# Герой мёртв (падение/разложение) — управление не работает
 	if is_instance_valid(player) and player.state in ["dead", "decay"]:
 		return
@@ -1547,6 +1560,8 @@ func _flash_cast_error(msg: String) -> void:
 ## точке, лечение/защита/бафф — по герою или союзнику. Мана/заряд списываются
 ## только при успешном касте.
 func _resolve_spell_click(world_position: Vector2) -> void:
+	if is_paused:
+		return
 	if not is_instance_valid(player):
 		return
 	var name := str(Game.pending_spell.get("name", ""))

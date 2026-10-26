@@ -81,6 +81,10 @@ static func _make(parent: Node2D, amount: int, life: float, tex: Texture2D,
 	p.visibility_rect = Rect2(-400, -400, 800, 800)
 	# Свет не должен ломать батчинг у частиц: они аддитивные, свет им не нужен.
 	p.light_mask = 0
+	# Частицы симулируются движком сами, без _process, и наследовали Always от
+	# корня сцены — искры продолжали летать на тактической паузе. PAUSABLE
+	# останавливает симуляцию вместе с миром.
+	p.process_mode = Node.PROCESS_MODE_PAUSABLE
 	# ГЛАВНОЕ: 2D-частицы не поддерживают физическую интерполяцию.
 	p.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	p.z_index = z
@@ -111,11 +115,16 @@ static func _attach_and_burst(parent: Node2D, p: GPUParticles2D, pos: Vector2) -
 
 
 ## Удалить одноразовый эмиттер, когда он отработал.
+##
+## process_always = false: таймер обязан идти по времени МИРА. С дефолтным
+## true вспышка на тактической паузе замирала (частицы паузабельные), а таймер
+## продолжал считать реальные секунды и освобождал её, не дав доиграть, —
+## игрок видел «эффект пропал».
 static func _autofree(p: Node2D, delay: float) -> void:
 	var tree := p.get_tree()
 	if tree == null:
 		return
-	var t := tree.create_timer(delay)
+	var t := tree.create_timer(delay, false, false, false)
 	t.timeout.connect(func() -> void:
 		if is_instance_valid(p):
 			p.queue_free())

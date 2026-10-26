@@ -48,6 +48,10 @@ func configure(u: Node2D, aura_kind: String, sp: String, effect: String) -> void
 
 
 func _ready() -> void:
+	# Аура — часть мира, а не интерфейса: на тактической паузе она обязана
+	# замереть вместе с юнитом (корень сцены стоит на PROCESS_MODE_ALWAYS,
+	# поэтому INHERIT паузу не ловит).
+	process_mode = PROCESS_MODE_PAUSABLE
 	z_index = 8
 	_sprite = Sprite2D.new()
 	_sprite.texture = SpellVFX.white_texture()
@@ -274,7 +278,7 @@ static func heal_cross(u: Node2D) -> void:
 	s.scale = Vector2(0.55, 0.55)
 	s.position = u.global_position + Vector2(0, -_head_offset_for(u))
 	scene.add_child(s)
-	var tw := scene.create_tween()
+	var tw := SpellVFX.world_tween(scene)
 	tw.set_parallel(true)
 	tw.tween_property(s, "scale", Vector2(0.72, 0.72), 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(s, "modulate:a", 0.0, 0.9)

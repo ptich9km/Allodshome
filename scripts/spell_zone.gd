@@ -70,6 +70,10 @@ var _edge: Sprite2D = null
 var _flame: Sprite2D = null
 var _snap_left: float = 0.0
 var _light_on: bool = false
+## Время жизни эффекта для шейдеров. Раньше бралось из Time.get_ticks_msec():
+## это РЕАЛЬНОЕ время, и после тактической паузы пламя/контур прыгали вперёд
+## на всю длительность паузы. Накопленный delta идёт только вместе с миром.
+var _elapsed: float = 0.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -186,6 +190,9 @@ func in_telegraph() -> bool:
 
 
 func _ready() -> void:
+	# См. projectile.gd: корень сцены Always, поэтому паузу надо запросить явно,
+	# иначе зона продолжала жить, тикать урон и гореть на тактической паузе.
+	process_mode = PROCESS_MODE_PAUSABLE
 	_rng.randomize()
 	snap_to_grid()
 	_fill = _make_quad(FILL_Z, 0.2)
@@ -267,7 +274,8 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	life_left -= delta
-	var t := float(Time.get_ticks_msec()) * 0.001
+	_elapsed += delta
+	var t := _elapsed
 	for s in [_fill, _edge, _flame]:
 		if s != null and s.material is ShaderMaterial:
 			(s.material as ShaderMaterial).set_shader_parameter("time", t)

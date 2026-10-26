@@ -22,6 +22,11 @@ var _trail_timer := 0.0
 
 
 func _ready() -> void:
+	# Корень сцены (Game) стоит на PROCESS_MODE_ALWAYS, и раньше снаряд
+	# наследовал это через INHERIT: «тактическая пауза» его не останавливала,
+	# он долетал и наносил урон. PAUSABLE останавливает узел по SceneTree.paused
+	# независимо от режима родителя.
+	process_mode = PROCESS_MODE_PAUSABLE
 	global_position = start_pos
 	_sprite = SpellVFX.make_projectile(spell_name)
 	add_child(_sprite)
