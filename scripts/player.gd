@@ -1911,6 +1911,12 @@ func _create_wall(target_position: Vector2, spell_name: String, sphere: String,
 	var mode := str(spell.get("wall_mode", "damage"))
 	var life := float(spell.get("wall_life", 6.0))
 	var cells := _zone_cells(spell, Vector2i(6, 2))
+	# Ориентация стены: ПЕРПЕНДИКУЛЯРНО направлению каста. Смотрим влево или
+	# вправо — стена встаёт вертикально (2×6), смотрим вверх/вниз — лежит
+	# горизонтально (6×2). Игрок 28.10: «магия должна становиться вертикально».
+	var aim := target_position - cast_origin()
+	if absf(aim.x) >= absf(aim.y):
+		cells = Vector2i(2, 6)
 	var dmg := 0
 	if mode != "block":
 		dmg = Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)),

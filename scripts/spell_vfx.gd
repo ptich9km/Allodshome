@@ -442,8 +442,11 @@ static func spawn_wall(pos: Vector2, sphere: String, owner_unit: Node2D, life: f
 	# Огонь получает третий слой поверх юнитов, земля остаётся плоской.
 	wall.flame = sphere == "Fire"
 	wall.style = "wall_fire" if wall.flame else "wall_earth"
-	scene.add_child(wall)
+	# ВАЖНО: configure ДО add_child. `_ready()` выполняется ВНУТРИ add_child и
+	# строит квады/очаги по `cells`; раньше он видел дефолт 6×2, и вертикальная
+	# стена 2×6 рисовалась горизонтальной, а зона 3×3 — полосой 6×2.
 	wall.configure(damage, cells, sphere, owner_unit, life)
+	scene.add_child(wall)
 	return wall
 
 
@@ -460,8 +463,9 @@ static func spawn_zone(pos: Vector2, style: String, sphere: String, owner_unit: 
 	zone.style = style
 	zone.mode = "damage"
 	zone.tick_interval = maxf(0.1, tick_interval)
-	scene.add_child(zone)
+	# configure ДО add_child: _ready() строит квады по cells (см. spawn_wall).
 	zone.configure(damage, cells, sphere, owner_unit, life)
+	scene.add_child(zone)
 	return zone
 
 
@@ -501,25 +505,22 @@ static func zone_material(style: String, color: Color) -> ShaderMaterial:
 ## даёт (1.0, 0.4, 0.1), и на 6×2 поле с HDR это читалось как рыжая плёнка.
 ## Языки пламени держат один hue, а яркость даёт ядро, а не смена оттенка.
 const FLAME_WALL_COLOR := Color(1.0, 0.30, 0.06)
+## Ядовитое облако горит ЗЕЛЁНЫМ пламенем (просьба игрока 28.10): туман —
+## зелёный, и языки огня должны быть того же цвета, а не оранжевые.
+const POISON_FLAME_COLOR := Color(0.40, 0.95, 0.28)
 
 
-## Материал языков пламени для огненной стены.
-##
-## Ключевое: слой рисуется ПОВЕРХ юнитов (решение игрока), поэтому он
-## самосветящийся (unshaded + additive) и не должен быть плотной заливкой —
-## заливка земли остаётся под юнитами и отвечает за границы опасной зоны.
-##
-## Ширина языков ЖЁСТКО ограничена прямоугольником зоны (по UV.x), а вверх они
-## выходят за его пределы. Это важно для «визуал не врёт»: пламя не должно
-## выглядеть так, будто горит больше клеток, чем реально бьёт. По вертикали
-## выход над зоной допустим — огонь вверх растёт, опасная зона от этого не
-## расширяется.
-static func flame_wall_material(color: Color) -> ShaderMaterial:
+## Материал ОДНОГО очага огня: у стены теперь своё пламя в каждой клетке,
+## а не одна растянутая плёнка на весь прямоугольник (жалоба игрока 28.10).
+## seed меняет форму языка от клетки к клетке.
+static func flame_wall_material(color: Color, seed: float = 0.0,
+		rise: float = 1.4) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = aux_shader("flame_wall", _flame_wall_shader())
 	mat.set_shader_parameter("color", color)
 	mat.set_shader_parameter("time", 0.0)
-	mat.set_shader_parameter("rise", 1.0)
+	mat.set_shader_parameter("rise", rise)
+	mat.set_shader_parameter("seed", seed)
 	return mat
 
 
@@ -528,7 +529,8 @@ static func _flame_wall_shader() -> String:
 render_mode blend_add, unshaded;
 uniform vec4 color : source_color = vec4(1.0, 0.30, 0.06, 1.0);
 uniform float time : hint_range(0.0, 100.0) = 0.0;
-uniform float rise : hint_range(0.1, 4.0) = 1.0;
+uniform float rise : hint_range(0.0, 4.0) = 1.4;
+uniform float seed : hint_range(0.0, 1.0) = 0.0;
 
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -559,39 +561,104 @@ float fbm(vec2 p) {
 }
 
 void fragment() {
-	// 0 внизу (у земли), 1 вверху (кончик языка).
-	float h = clamp((1.0 - UV.y) * rise, 0.0, 1.0);
+	// h: 0 у земли, 1 на верхушке квада. Клетка — нижние 1/(1+rise).
+	float h = clamp(1.0 - UV.y, 0.0, 1.0);
+	float cell_top = 1.0 / (1.0 + rise);
+	float in_cell = clamp(h / max(cell_top, 0.001), 0.0, 1.0);
 
-	// Доменное искажение: иначе все языки одинаковой формы и глаз ловит
-	// периодичность. Искажаем САМУ выборку шума, а не покрытие.
-	vec2 q = vec2(UV.x * 9.0, UV.y * 2.2 - time * 1.15);
-	float warp = fbm(q * 1.7 + vec2(0.0, -time * 0.45));
-	q.x += (warp - 0.5) * 1.35;
+	// Доменное искажение: иначе все языки одинаковой формы.
+	vec2 q = vec2(UV.x * 4.2 + seed * 7.3, h * 3.4 - time * 1.15 + seed * 3.1);
+	float warp = fbm(q * 1.6 + vec2(0.0, -time * 0.45));
+	q.x += (warp - 0.5) * 1.1;
 
-	// Язык = вертикальная полоса шума, поднятая порогом. Порог растёт с
-	// высотой: у земли языки широкие, кверху — тонкие и рваные.
 	float n = fbm(q);
-	float t = 1.0 - h;
-	float body = smoothstep(0.62 - t * 0.30, 0.92 - t * 0.30, n);
+	// Язык: у земли широкий, кверху рвётся и сужается.
+	float t = 1.0 - in_cell;
+	float body = smoothstep(0.52 - t * 0.24, 0.94 - t * 0.24, n);
+	body *= 1.0 - smoothstep(0.55, 1.0, in_cell) * 0.55;
 
-	// Кончики: чем выше, тем меньше шанс догореть.
-	float tips = smoothstep(0.30, 0.85, h);
-	body *= 1.0 - smoothstep(0.55, 1.0, h) * 0.85;
+	// Выше клетки — только кончики, которые гаснут к верху квада.
+	if (h > cell_top) {
+		float k = (h - cell_top) / max(1.0 - cell_top, 0.001);
+		body *= max(0.0, 1.0 - k * 1.25);
+	}
 
-	// У земли огонь плотнее — там горит, а не дымит.
-	float base_glow = (1.0 - smoothstep(0.0, 0.22, h)) * 0.55;
-
+	// У земли огонь плотнее — там горит, а не дымит. Небольшая добавка:
+	// 12 аддитивных очагов складываются, и большая даёт розовую плёнку.
+	float base_glow = (1.0 - smoothstep(0.0, 0.20, in_cell)) * 0.22;
 	float m = clamp(body + base_glow, 0.0, 1.0);
-	m *= 0.75 + 0.25 * tips;
 	if (m < 0.03) {
 		discard;
 	}
+	vec3 col = mix(color.rgb * 1.10, color.rgb * 0.55 + vec3(0.80, 0.62, 0.30),
+		body * 0.30);
+	COLOR = vec4(col * m * 1.35, 1.0);
+}"""
 
-	// Ядро светлее и HDR — значение выше 1.0, иначе с glow это плоское пятно.
-	// Но 0 % и 100 % читаются как интерфейс, поэтому ядро не доводим до белого.
-	vec3 col = mix(color.rgb * 1.15, color.rgb * 0.5 + vec3(0.85, 0.75, 0.45),
-		body * 0.45);
-	COLOR = vec4(col * m * 1.8, 1.0);
+
+## Каменная стена: валун в клетке. Раньше стена земли рисовалась тем же
+## «огненным» шейдером без пламени — игрок видел «что-то горит и сетку».
+## Теперь это камень: скруглённая глыба, светлый верх, тёмный низ, скол.
+static func stone_wall_material(seed: float = 0.0) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = aux_shader("stone_wall", _stone_wall_shader())
+	mat.set_shader_parameter("seed", seed)
+	return mat
+
+
+static func _stone_wall_shader() -> String:
+	return """shader_type canvas_item;
+render_mode blend_mix, unshaded;
+uniform vec4 color : source_color = vec4(0.62, 0.57, 0.50, 1.0);
+uniform float seed : hint_range(0.0, 1.0) = 0.0;
+
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
+	           mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float ridged(vec2 p) {
+	float v = 0.0;
+	float a = 0.5;
+	for (int k = 0; k < 3; k++) {
+		v += a * (1.0 - abs(vnoise(p) * 2.0 - 1.0));
+		p = p * 2.11 + 5.7;
+		a *= 0.5;
+	}
+	return v;
+}
+
+void fragment() {
+	// Глыба: скруглённый блок, центр чуть выше середины квада. Ширина больше
+	// клетки — соседние валуны перекрываются и стена читается кучей камней,
+	// а не рядом отдельных «яиц».
+	vec2 p = UV - vec2(0.5, 0.58);
+	float d = length(vec2(p.x * 0.95, p.y * 0.98));
+	float body = 1.0 - smoothstep(0.40, 0.46, d);
+	if (body < 0.02) {
+		discard;
+	}
+	// Скальная фактура: рваные грани + тонкие трещины.
+	float grain = vnoise(UV * 9.0 + seed * 13.0);
+	float cracks = ridged(UV * 4.5 + seed * 7.0);
+	float crack = 1.0 - smoothstep(0.0, 0.10, abs(cracks - 0.62));
+
+	// Светлый верх, тёмное основание — «камень стоит на земле».
+	float top = smoothstep(0.30, -0.30, p.y);
+	float bottom = smoothstep(-0.20, 0.45, p.y);
+	vec3 col = color.rgb * (0.70 + 0.55 * top - 0.28 * bottom);
+	col *= 0.86 + 0.22 * grain;
+	col = mix(col, col * 0.55, crack * 0.7);
+	COLOR = vec4(col, 1.0);
 }"""
 
 
@@ -614,17 +681,20 @@ uniform vec4 color : source_color = vec4(1.0, 0.4, 0.1, 1.0);
 uniform vec4 rim_color : source_color = vec4(1.0, 0.95, 0.7, 1.0);
 uniform float time : hint_range(0.0, 100.0) = 0.0;
 uniform float tile_px = 32.0;
-// Стиль: 0 = стена (огонь/камень), 1 = метель, 2 = ядовитое облако.
-uniform int style : hint_range(0, 2) = 0;
+// Стиль: 0 = огонь, 1 = метель, 2 = ядовитое облако, 3 = каменная стена.
+uniform int style : hint_range(0, 3) = 0;
 uniform vec2 cells = vec2(6.0, 2.0);
 uniform vec2 origin_cell = vec2(0.0, 0.0);
-uniform int nb = 0;
+// Множитель яркости заливки: у огня заливка — выжженная земля (тёмная),
+// у облака — сам туман (светлее). Раньше один и тот же цвет делал огонь
+// «светящимся прямоугольником».
+uniform float fill_shade : hint_range(0.0, 1.0) = 0.7;
 // Фаза: 0 = телеграф (только контур), 1 = активна.
 uniform float active = 0.0;
 // 0..1 — растворение на затухании.
 uniform float burn = 0.0;
 // Заливка намеренно слабая: юниты в зоне должны оставаться видимыми.
-uniform float fill_a : hint_range(0.0, 1.0) = 0.20;
+uniform float fill_a : hint_range(0.0, 1.0) = 0.2;
 uniform float edge_w : hint_range(1.0, 8.0) = 3.0;
 
 varying vec2 world;
@@ -675,49 +745,74 @@ float field(vec2 w) {
 
 void fragment() {
 	vec2 w = world;
-	vec2 cid = floor(w / tile_px);
+	vec2 size_px = cells * tile_px;
+	vec2 rel = w - origin_cell * tile_px;          // 0..size
 	vec2 cuv = fract(w / tile_px);
+	vec2 cell = floor(w / tile_px) - origin_cell;  // 0..cells-1
 
-	// Соседи: рисуем сторону, только если сосед вне зоны.
-	bool n_out  = (nb &   1) == 0;
-	bool e_out  = (nb &   2) == 0;
-	bool s_out  = (nb &   4) == 0;
-	bool w_out  = (nb &   8) == 0;
+	// --- Контур: маска соседей СЧИТАЕТСЯ ЗДЕСЬ, по каждой клетке.
+	// Раньше приходило одно число nb для ЦЕНТРАЛЬНОЙ клетки, и у стены 6×2
+	// контур рисовался только с одной стороны, а «сетка» шла от покадрового
+	// soft. Теперь стенка рисуется только там, где соседа нет.
+	bool n_out = cell.y <= 0.0;
+	bool s_out = cell.y >= cells.y - 1.0;
+	bool w_out = cell.x <= 0.0;
+	bool e_out = cell.x >= cells.x - 1.0;
 
-	float dN = cuv.y;
-	float dS = 1.0 - cuv.y;
-	float dW = cuv.x;
-	float dE = 1.0 - cuv.x;
-
-	float lw = edge_w / tile_px;   // толщина контура в долях клетки
+	float lw = edge_w / tile_px;
 
 	float border = 0.0;
-	if (n_out) { border = max(border, edge(dN, lw)); }
-	if (s_out) { border = max(border, edge(dS, lw)); }
-	if (w_out) { border = max(border, edge(dW, lw)); }
-	if (e_out) { border = max(border, edge(dE, lw)); }
+	if (n_out) { border = max(border, edge(cuv.y, lw)); }
+	if (s_out) { border = max(border, edge(1.0 - cuv.y, lw)); }
+	if (w_out) { border = max(border, edge(cuv.x, lw)); }
+	if (e_out) { border = max(border, edge(1.0 - cuv.x, lw)); }
 
-	// Внешние углы скругляем, вогнутые оставляем прямыми (вогнутая
-	// «зарубка» читается правильно, скруглённая выглядит кляксой).
-	float r = 0.34;
-	if (n_out && w_out && (nb & 128) != 0) { border *= 1.0 - smoothstep(0.0, r, length(vec2(dW, dN)) - r); }
-	if (s_out && e_out && (nb &  32) != 0) { border *= 1.0 - smoothstep(0.0, r, length(vec2(dE, dS)) - r); }
+	// Внешние углы скругляем (только выпуклые: внутри зоны угла нет).
+	float rr = 0.34;
+	if (n_out && w_out) { border *= 1.0 - smoothstep(0.0, rr, length(vec2(cuv.x, cuv.y)) - rr); }
+	if (n_out && e_out) { border *= 1.0 - smoothstep(0.0, rr, length(vec2(1.0 - cuv.x, cuv.y)) - rr); }
+	if (s_out && w_out) { border *= 1.0 - smoothstep(0.0, rr, length(vec2(cuv.x, 1.0 - cuv.y)) - rr); }
+	if (s_out && e_out) { border *= 1.0 - smoothstep(0.0, rr, length(vec2(1.0 - cuv.x, 1.0 - cuv.y)) - rr); }
 
-	// Телеграф: заливка идёт вдоль длинной оси зоны, по клеткам, а не
-	// по UV — так направление стены читается однозначно.
-	float along = cells.x > 1.0 ? (cid.x - origin_cell.x) / (cells.x - 1.0) : 0.0;
+	// Телеграф: заливка идёт вдоль длинной оси зоны, по клеткам.
+	float along = cells.x > 1.0 ? (cell.x) / (cells.x - 1.0) : 0.0;
 	if (cells.y > cells.x) {
-		along = cells.y > 1.0 ? (cid.y - origin_cell.y) / (cells.y - 1.0) : 0.0;
+		along = cells.y > 1.0 ? (cell.y) / (cells.y - 1.0) : 0.0;
 	}
 	float wipe = clamp(along, 0.0, 1.0);
 
+	// Мягкий край — от ВНЕШНЕГО прямоугольника зоны, а не от каждой клетки:
+	// иначе каждая клетка подсвечивается рамкой и видна «сетка».
+	float d_edge = min(min(rel.x, size_px.x - rel.x), min(rel.y, size_px.y - rel.y));
+	float soft = smoothstep(0.0, 6.0, d_edge);
+
+	// --- Заливка по стилю: у каждой школы свой рисунок, а не «что-то горит».
 	float n = field(w);
+	float fill = 0.0;
+	if (style == 0) {
+		// ОГОНЬ: тлеющая земля под языками пламени. Плотность рваная — иначе
+		// заливка читается ровным оранжевым прямоугольником.
+		float flick = 0.5 + 0.5 * fbm(vec2(w.x * 0.08, w.y * 0.12 - time * 0.9));
+		fill = pow(clamp(n, 0.0, 1.0), 1.4) * (0.45 + 0.55 * flick);
+	} else if (style == 1) {
+		// МЕТЕЛЬ: косые полосы позёмки по ветру + морозная дымка.
+		float streak = fract((w.x + w.y * 1.6) / 34.0 - time * 1.15);
+		float lines = smoothstep(0.0, 0.16, streak) * smoothstep(0.62, 0.30, streak);
+		fill = 0.15 + 0.85 * max(lines, pow(clamp(n, 0.0, 1.0), 1.6));
+	} else if (style == 2) {
+		// ЯД: клубы тумана в мировых координатах, плотнее в клубах.
+		float a = fbm(w / 30.0 + vec2(time * 0.12, -time * 0.20));
+		float b = fbm(w / 60.0 - vec2(time * 0.08, time * 0.05));
+		fill = smoothstep(0.30, 0.70, a * 0.65 + b * 0.55);
+	} else {
+		// ЗЕМЛЯ: тёмная корка и каменная крошка у основания стены.
+		float grit = vnoise(w * 0.55);
+		float height_fade = 1.0 - clamp(rel.y / max(1.0, size_px.y), 0.0, 1.0) * 0.55;
+		fill = (0.30 + 0.55 * smoothstep(0.40, 0.80, grit)) * height_fade;
+	}
 
-	// Мягкий край: зона не должна быть прямоугольным «баннером».
-	float inner = min(min(cuv.x, 1.0 - cuv.x), min(cuv.y, 1.0 - cuv.y));
-	float soft = smoothstep(0.0, 0.12, inner);
-
-	float alpha_fill = fill_a * soft * n * active * step(wipe, mix(-0.15, 1.25, active));
+	float alpha_fill = fill_a * soft * fill * active
+		* step(wipe, mix(-0.15, 1.25, active));
 	float alpha_edge = border * (0.55 + 0.45 * sin(time * 5.0)) * (0.25 + 0.75 * active);
 
 	// Растворение на затухании вместо линейного затухания modulate.a.
@@ -729,13 +824,55 @@ void fragment() {
 
 	// Ярче к центру (правило «это излучает свет»), но НЕ чисто белый:
 	// 0% и 100% принадлежат интерфейсу, а не эффекту.
-	vec3 col = mix(color.rgb * 0.65, color.rgb, n);
+	vec3 base = color.rgb * fill_shade;
+	vec3 col = mix(base * 0.65, base, n);
 	col = mix(col, rim_color.rgb, border * 0.6);
 	COLOR = vec4(col, a);
 }"""
 
+
+## Цвет заливки по СТИЛЮ, а не по сфере заклинания: яд — это Water, и по
+## цвету сферы он был синим. Теперь стиль задаёт палитру.
+const STYLE_COLORS := {
+	"wall_fire": Color(1.0, 0.36, 0.10),
+	"wall_earth": Color(0.52, 0.46, 0.36),
+	"hail": Color(0.72, 0.88, 1.0),
+	"cloud": Color(0.22, 0.58, 0.16),
+}
+
+## Плотность заливки по стилю. Огонь/метель — почти прозрачная подложка (всё
+## читаемое даёт второй слой: языки пламени и осколки), яд — плотнее, потому
+## что туман и есть эффект.
+const STYLE_FILL := {
+	"wall_fire": 0.0,
+	"wall_earth": 0.20,
+	"hail": 0.34,
+	"cloud": 0.50,
+}
+
+## Яркость заливки: огонь — выжженная тёмная земля (0.35), туман — светлый.
+const STYLE_SHADE := {
+	"wall_fire": 0.35,
+	"wall_earth": 0.70,
+	"hail": 0.85,
+	"cloud": 0.90,
+}
+
+
+static func style_shade(style: String) -> float:
+	return float(STYLE_SHADE.get(style, 0.7))
+
+
+static func style_fill(style: String) -> float:
+	return float(STYLE_FILL.get(style, 0.18))
+
+
+static func style_color(style: String) -> Color:
+	return STYLE_COLORS.get(style, Color(1.0, 0.4, 0.1))
+
 ## Материал наземной зоны. Один шейдер на все стили (стиль — uniform int),
-## потому что зон три, а логика у них одна.
+## потому что логика у них одна. Цвет берётся по СТИЛЮ: раньше он приходил
+## из сферы заклинания, и ядовитое облако (сфера Water) было синим.
 static func ground_material(sphere: String, style: String) -> ShaderMaterial:
 	if _ground_shader_cache.is_empty():
 		var sh := Shader.new()
@@ -744,8 +881,11 @@ static func ground_material(sphere: String, style: String) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	var cached: Shader = _ground_shader_cache["ground"]
 	mat.shader = cached
-	mat.set_shader_parameter("color", _sphere_color(sphere))
-	mat.set_shader_parameter("rim_color", _sphere_color(sphere).lerp(Color(1, 1, 1), 0.55))
+	var col := style_color(style) if style != "wall" else _sphere_color(sphere)
+	mat.set_shader_parameter("color", col)
+	mat.set_shader_parameter("rim_color", col.lerp(Color(1, 1, 1), 0.55))
+	mat.set_shader_parameter("fill_a", style_fill(style))
+	mat.set_shader_parameter("fill_shade", style_shade(style))
 	mat.set_shader_parameter("time", 0.0)
 	mat.set_shader_parameter("active", 0.0)
 	mat.set_shader_parameter("burn", 0.0)
