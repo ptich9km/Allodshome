@@ -105,6 +105,50 @@ func new_faction(name: String, race: String = "") -> Dictionary:
 	return f
 
 
+## Добить фракции четырёх рас (28.10).
+##
+## Генератор городов знает все четыре (MapGenerator.CITY_POPULATION), а
+## WorldState создавал только «Люди» и «Орки»: у нежити и друидов не было
+## великого мага, и ArchmagePanel честно писал «в этом городе великого мага
+## нет». Старые сейвы приходят с тем же набором из двух фракций.
+##
+## Возвращает, сколько фракций добавлено. Идемпотентна.
+const RACE_FACTION_LABEL := {
+	"humans": "Люди", "ork": "Орки", "necro": "Нежить", "druid": "Друиды",
+}
+
+func ensure_race_factions() -> int:
+	var added := 0
+	var lore = load("res://scripts/lore.gd")
+	for race in WORLD_CAPITAL_FACTIONS:
+		if _has_faction_for_race(str(race)):
+			continue
+		var label := str(RACE_FACTION_LABEL.get(str(race), str(race)))
+		if lore != null:
+			var fd: Dictionary = lore.faction(str(race)) as Dictionary
+			if str(fd.get("label", "")) != "":
+				label = str(fd.get("label"))
+		new_faction(label, str(race))
+		added += 1
+	return added
+
+
+## Фракция этой расы уже есть? Старые миры писали "human", новые — "humans".
+func _has_faction_for_race(race: String) -> bool:
+	var aliases: Array = [race, race.trim_suffix("s")]
+	if race == "ork":
+		aliases.append("orc")
+	for fid in factions:
+		var f: Dictionary = factions[fid]
+		var fr := str(f.get("race", ""))
+		if fr == "":
+			var am: Dictionary = f.get("archmage", {}) as Dictionary
+			fr = str(am.get("race", ""))
+		if aliases.has(fr):
+			return true
+	return false
+
+
 ## Великий маг фракции. Данные — из Lore + GameConfig через load-by-path:
 ## world_state без class_name (headless-canon), ссылки по имени класса запрещены.
 static func _seed_archmage(race: String) -> Dictionary:
@@ -272,6 +316,17 @@ func hero_rep(faction_or_race: String) -> int:
 	return int(hero_reputation.get(faction_or_race, 0))
 
 
+## Одна запись журнала мира. Журнал уезжает в сейв целиком, поэтому он
+## ограничен: живой календарь (28.10) пишет строки каждый игровой день, и без
+## предела файл сохранения рос бы без остановки. Старые записи уходят первыми.
+const JOURNAL_MAX := 400
+
+func log_entry(kind: String, text: String) -> void:
+	journal.append({ "day": day, "kind": kind, "text": text })
+	while journal.size() > JOURNAL_MAX:
+		journal.remove_at(0)
+
+
 ## Сдвинуть репутацию героя. Возвращает фактический сдвиг (с учётом клампа).
 ## Запись в журнал — только для заметных изменений, иначе журнал SIM тонет
 ## в строчках «+5 репутации» после каждого квеста.
@@ -283,10 +338,8 @@ func add_hero_reputation(faction_or_race: String, amount: int) -> int:
 	hero_reputation[faction_or_race] = now
 	var delta := now - old
 	if delta != 0 and (absi(delta) >= 10 or now == -100 or now == 100):
-		journal.append({
-			"day": day, "kind": "reputation",
-			"text": "Reputation with %s: %d (%+d)" % [faction_or_race, now, delta],
-		})
+		log_entry("reputation",
+			"Reputation with %s: %d (%+d)" % [faction_or_race, now, delta])
 	return delta
 
 

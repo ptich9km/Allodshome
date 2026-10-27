@@ -60,6 +60,9 @@ static var _hit_sfx_ms: int = 0          # троттл звука попада�
 ## map files, so a zone change reuses its maps instead of regenerating them.
 static var loaded_slot: String = ""
 static var party: Array = []              # наёмники (Mercenary) из таверны
+## Отряд из сейва v2: данные без узлов. game.gd создаёт наёмников, когда карта
+## уже собрана (наёмнику нужен проходимый тайл). Пусто — восстанавливать нечего.
+static var pending_party: Array = []
 static var mana_regen_accum: float = 0.0
 static var _trauma: float = 0.0
 static var _trauma_t: float = 0.0
@@ -586,6 +589,17 @@ static func _world_bus_static() -> Node:
 	return scene.root.get_node_or_null("WorldBus")
 
 
+## Репутация героя у фракции (расы) — для витрин: таверна и магазин (28.10).
+## Пустая раса (карта без городов) — репутации нет, витрина работает как раньше.
+static func hero_reputation(race: String) -> int:
+	if race == "":
+		return 0
+	var bus := _world_bus_static()
+	if bus == null or not ("state" in bus) or bus.state == null:
+		return 0
+	return int(bus.state.hero_rep(race))
+
+
 func _world_bus() -> Node:
 	if not is_inside_tree():
 		return null
@@ -797,6 +811,7 @@ func _ready():  # Инициализация мира и боя
 	_spawn_player_on_walkable()
 	Game.hero = player
 	Game.party.clear()
+	_restore_pending_party()
 	# enemies/npcs — static var, они ПЕРЕЖИВАЮТ смену сцены: узлы прежней
 	# карты к этому моменту уже освобождены движком, но остаются в массивах.
 	# Раньше чистился только party, и новая игра ловила
@@ -896,6 +911,51 @@ func _spawn_player_on_walkable():
 					player.global_position = Vector2(wx, wy)
 					player.reset_physics_interpolation()
 					return
+
+
+## Восстановить отряд из сейва v2. Зовётся после сборки карты и постановки
+## героя: позиция наёмника из сейва проверяется на проходимость, иначе он
+## встаёт рядом с героем (клетку могли занять зданием при перегенерации).
+func _restore_pending_party() -> void:
+	if Game.pending_party.is_empty():
+		return
+	var saved: Array = Game.pending_party
+	Game.pending_party = []
+	for i in range(saved.size()):
+		var raw: Variant = saved[i]
+		if not (raw is Dictionary):
+			continue
+		var rec: Dictionary = raw
+		var mercenary := Mercenary.new()
+		mercenary.anim_set = str(rec.get("set", mercenary.anim_set))
+		mercenary.max_hp = maxi(1, int(rec.get("hp_max", mercenary.max_hp)))
+		mercenary.damage = maxi(0, int(rec.get("damage", mercenary.damage)))
+		mercenary.spirit = maxi(0, int(rec.get("spirit", mercenary.spirit)))
+		mercenary.move_speed = maxf(10.0, float(rec.get("speed", mercenary.move_speed)))
+		add_child(mercenary)
+		var saved_pos := Vector2(float(rec.get("x", 0.0)), float(rec.get("y", 0.0)))
+		var on_land := false
+		if is_instance_valid(alm_map) and alm_map.has_method("is_walkable_world") \
+				and saved_pos != Vector2.ZERO:
+			on_land = bool(alm_map.call("is_walkable_world", saved_pos))
+		if on_land:
+			mercenary.global_position = saved_pos
+		elif is_instance_valid(player):
+			mercenary.global_position = player.global_position \
+				+ Vector2(32.0 * float(i + 1), 0.0)
+		mercenary.reset_physics_interpolation()
+		mercenary.current_hp = clampi(int(rec.get("hp", mercenary.max_hp)),
+			1, mercenary.max_hp)
+		Game.party.append(mercenary)
+
+
+## Снять живой отряд перед загрузкой слота: иначе в сцене остались бы наёмники
+## прошлой партии, и к ним добавились бы наёмники из сейва.
+func _clear_party_nodes() -> void:
+	for m in Game.party:
+		if is_instance_valid(m):
+			(m as Node).queue_free()
+	Game.party.clear()
 
 ## Спавн НПЦ/монстров из данных карты: .alm секция units (type_id) или
 ## sidecar .npcs.json (set). Агрессия — UnitDB.is_hostile (монстры palette=5).
@@ -1206,7 +1266,7 @@ func _building_click(kind: String, s: Dictionary) -> void:
 	if kind != "" and player.global_position.distance_to(door) <= 90.0:
 		_pending_building = ""
 		_pending_s = {}
-		_open_building_kind(kind)
+		_open_building_kind(kind, s)
 		return
 	_pending_building = kind
 	_pending_s = s
@@ -1217,15 +1277,44 @@ func _building_click(kind: String, s: Dictionary) -> void:
 	if alm_map != null and alm_map.has_method("find_path"):
 		player.begin_path(alm_map.find_path(player.global_position, door))
 
-func _open_building_kind(kind: String) -> void:
+func _open_building_kind(kind: String, s: Dictionary = {}) -> void:
 	if ui == null:
 		return
+	# Репутация (28.10): таверна и магазин работают с репутацией героя у
+	# фракции ГОРОДА. Раса города уже лежит в city_heads() (её пишет генератор),
+	# а здание ищет ближайшую главу — отдельного city_id у здания нет.
+	var race := _city_race_at_world(_door_point(s)) if not s.is_empty() else ""
 	match kind:
-		"shop": ui.open_shop()
+		"shop": ui.open_shop(race)
 		"alchemy": ui.open_alchemy()
-		"inn": ui.open_inn()
+		"inn": ui.open_inn(race)
 		"school": ui.open_school()
 		"workshop": ui.open_workshop()
+
+
+## Раса города, ближайшего к точке мира ("" — на карте нет глав/города).
+## Нужна панелям таверны и магазина: репутация героя считается по фракции.
+func _city_race_at_world(p: Vector2) -> String:
+	if alm_map == null or not alm_map.has_method("city_heads"):
+		return ""
+	var heads: Dictionary = alm_map.call("city_heads")
+	if heads.is_empty():
+		return ""
+	var ts := int(alm_map.get("tile_size"))
+	var best := ""
+	var best_d := INF
+	for cid in heads:
+		var rec: Dictionary = heads[cid]
+		for cell in (rec.get("cells", []) as Array):
+			if not (cell is Array) or (cell as Array).size() < 2:
+				continue
+			var cx := int((cell as Array)[0])
+			var cy := int((cell as Array)[1])
+			var d := p.distance_to(Vector2(cx * ts + ts / 2.0, cy * ts + ts / 2.0))
+			if d < best_d:
+				best_d = d
+				best = str(rec.get("race", ""))
+	return best
 
 func _herb_click(herb: HerbNode) -> void:
 	if not is_instance_valid(herb) or not herb.is_available():
@@ -1282,7 +1371,8 @@ func _archmage_click(mage: Node2D) -> void:
 	player.attack_target = null
 	_pending_city_head = null
 	if player.global_position.distance_to(mage.global_position) <= 90.0:
-		ui.open_archmage()
+		var ctx := _archmage_context(mage)
+		ui.open_archmage(str(ctx.get("city_id", "")), str(ctx.get("race", "")))
 		return
 	_pending_archmage = mage
 	player_target = mage.global_position
@@ -1297,8 +1387,27 @@ func _process_pending_archmage() -> void:
 		_pending_archmage = null
 		return
 	if player.global_position.distance_to(_pending_archmage.global_position) <= 90.0:
+		var mage := _pending_archmage
 		_pending_archmage = null
-		ui.open_archmage()
+		var ctx := _archmage_context(mage)
+		ui.open_archmage(str(ctx.get("city_id", "")), str(ctx.get("race", "")))
+
+
+## Контекст великого мага для панели: город и его раса. Раса берётся из
+## city_heads() по city_id NPC; запасной путь — по имени набора капитана
+## («city_druid_mage/t3» -> druid). Пусто — панель откатится на расу героя.
+func _archmage_context(mage: Node) -> Dictionary:
+	var city_id := ""
+	if "city_id" in mage:
+		city_id = str(mage.get("city_id"))
+	var race := ""
+	if city_id != "" and alm_map != null and alm_map.has_method("city_heads"):
+		var heads: Dictionary = alm_map.call("city_heads")
+		var rec: Dictionary = heads.get(city_id, {})
+		race = str(rec.get("race", ""))
+	if race == "" and "anim_set" in mage:
+		race = MapGenerator.race_of_set(str(mage.get("anim_set")))
+	return {"city_id": city_id, "race": race}
 
 
 ## Глава города под курсором (NPC ролью "head").
@@ -1372,12 +1481,13 @@ func _process_pending_building() -> void:
 	if player.global_position.distance_to(door) > 80.0:
 		return
 	var k := _pending_building
+	var s := _pending_s
 	_pending_building = ""
 	_pending_s = {}
 	player.stop_movement()
 	# Декоративное (k==""): герой остаётся видимым у стены, меню нет.
 	if k != "":
-		_open_building_kind(k)
+		_open_building_kind(k, s)
 
 ## Юнит под курсором (враг ИЛИ мирный НПЦ) по видимой области корпуса.
 func _hover_unit() -> Node2D:
@@ -1941,6 +2051,16 @@ func _process(delta):
 	Game.tick_shields(delta)
 	StatusEffects.tick(delta)
 	_check_portal()
+	_tick_world_clock(delta)
+
+
+## Календарь мира (28.10). Живёт здесь, а не в WorldBus._process: пауза уже
+## проверена выше (`is_paused`), а headless sim_runner не поднимает автолоады.
+func _tick_world_clock(delta: float) -> void:
+	var bus := _world_bus()
+	if bus == null or not bus.has_method("tick_day"):
+		return
+	bus.call("tick_day", delta)
 
 
 ## F3-лента мира: сектор/владелец/FPS, события SIM, болтовня НПЦ. F3
@@ -2240,6 +2360,14 @@ func _ensure_world_state() -> void:
 	if bus.state.sectors.is_empty() or int(bus.state.world_seed) != int(Game.world_seed):
 		var start_owner := MapGenerator.city_race_for_hero(Game.hero_race)
 		bus.state.init_world(Game.world_seed, start_owner)
+	# Четыре фракции обязательны (28.10): у нежити и друидов должен быть
+	# великий маг. Старые сейвы приходят с двумя — добиваем здесь, мир не трогаем.
+	if bus.state.has_method("ensure_race_factions"):
+		bus.state.ensure_race_factions()
+	# Календарь начинается заново: вход в игру и переход в другой сектор не
+	# должны «докручивать» день, накопленный прошлой сценой/сессией.
+	if bus.has_method("reset_day_timer"):
+		bus.call("reset_day_timer")
 
 
 ## Карта сектора для перехода: сначала из слота (посещённый сектор), потом из
@@ -2465,7 +2593,7 @@ func _gray_respawn_cell() -> Vector2i:
 
 
 func _process_action_mode():
-	if action_mode == "none" or not is_instance_valid(player):
+	if action_mode == "none" or action_mode == "stop" or not is_instance_valid(player):
 		return
 	
 	match action_mode:
@@ -2638,6 +2766,7 @@ func _restart_scene(slot: String) -> void:
 	# Дерево на паузе не создаёт узлы: меню сохранений ставит паузу.
 	_menu_release_pause()
 	_restore_world_from_slot(slot)
+	_clear_party_nodes()
 	if not is_instance_valid(player) or not is_instance_valid(alm_map):
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
@@ -2656,6 +2785,7 @@ func _restart_scene(slot: String) -> void:
 		return
 	await _swap_map(map_path, Game.map_zone, true, Game.map_sector)
 	_apply_sector_fog(Game.map_sector)
+	_restore_pending_party()
 	# HUD после подмены героя: книга магии (у воина/мага разные панели),
 	# золото и видимость нижней панели.
 	_refresh_ui_after_hero_swap()
@@ -2694,6 +2824,11 @@ func _restore_world_from_slot(slot: String) -> void:
 	bus.state = restored
 	if "sim" in bus and bus.sim != null and "state" in bus.sim:
 		bus.sim.state = restored
+	# Старый сейв мог не знать про фракции нежити/друидов (28.10).
+	if bus.state.has_method("ensure_race_factions"):
+		bus.state.ensure_race_factions()
+	if bus.has_method("reset_day_timer"):
+		bus.call("reset_day_timer")
 
 
 func _set_menu_status(text: String) -> void:

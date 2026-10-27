@@ -10,10 +10,13 @@ signal closed
 signal inventory_changed
 
 var player: Player
+var _race := ""                 # раса ГОРОДА (не героя): у каждой свой маг
+var _city_id := ""              # город, из которого открыли панель ("" — любой)
 var _root: MarginContainer
 var _panel: PanelContainer
 var _name_label: Label
 var _city_label: Label
+var _rep_label: Label
 var _portrait: TextureRect
 var _power_bar: ProgressBar
 var _power_label: Label
@@ -30,8 +33,12 @@ var _last_tier := -1
 const TIER_LABELS := ["Оборона", "Наступление", "Крепость", "Вершина"]
 
 
-func setup(p: Player) -> void:
+## city_race — раса города, в котором стоит капитан. Пусто — панель открыта не
+## из города (тесты, старые вызовы): тогда берём расу героя, как раньше.
+func setup(p: Player, city_id: String = "", city_race: String = "") -> void:
 	player = p
+	_city_id = city_id
+	_race = city_race
 	layer = 10
 	_build_ui()
 
@@ -47,7 +54,8 @@ func _archmage() -> Dictionary:
 	var bus := get_node_or_null("/root/WorldBus")
 	if bus == null or bus.state == null:
 		return {}
-	return bus.state.get_archmage(Game.hero_race)
+	var axis := _race if _race != "" else Game.hero_race
+	return bus.state.get_archmage(axis)
 
 
 func _ws_script() -> GDScript:
@@ -137,6 +145,12 @@ func _build_ui() -> void:
 	_city_label.theme_type_variation = &"ArchmageCity"
 	_city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	head_col.add_child(_city_label)
+
+	_rep_label = Label.new()
+	_rep_label.name = "Reputation"
+	_rep_label.theme_type_variation = &"ArchmageCity"
+	_rep_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head_col.add_child(_rep_label)
 
 	_power_bar = ProgressBar.new()
 	_power_bar.name = "PowerBar"
@@ -231,8 +245,13 @@ func _make_theme() -> Theme:
 
 func _refresh() -> void:
 	var am := _archmage()
+	var axis := _race if _race != "" else Game.hero_race
+	if _rep_label != null:
+		_rep_label.text = tr("Отношение: %s %d") \
+			% [Lore.faction_label(axis), Game.hero_reputation(axis)]
 	if am.is_empty():
 		_name_label.text = tr("Маг недоступен")
+		_city_label.text = Lore.faction_city(axis)
 		_power_label.text = ""
 		_stance_label.text = ""
 		_speech_label.text = tr("В этом городе великого мага нет.")
@@ -311,13 +330,22 @@ func _captain_set(tier: int) -> String:
 	return "ork_mage_a52/t%d" % t
 
 
-## Раса капитана из живого NPC-архмага. Пусто, если такого нет.
+## Раса капитана из живого NPC-архмага. Сначала ищем мага СВОЕГО города
+## (city_id), иначе первого на карте, иначе расу панели/героя.
 func _captain_race() -> String:
+	if _city_id != "":
+		for n in Game.npcs:
+			if not is_instance_valid(n) or not bool(n.get("is_archmage")):
+				continue
+			if str(n.get("city_id")) == _city_id:
+				return MapGenerator.race_of_set(str((n as Npc).anim_set))
 	for n in Game.npcs:
 		if not is_instance_valid(n):
 			continue
 		if bool(n.get("is_archmage")):
 			return MapGenerator.race_of_set(str((n as Npc).anim_set))
+	if _race != "":
+		return _race
 	# Запасной путь: панель могли открыть не из города (тесты, save-load).
 	return MapGenerator.city_race_for_hero(Game.hero_race)
 

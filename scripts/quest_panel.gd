@@ -123,6 +123,14 @@ func _input(event: InputEvent) -> void:
 	if UiKit.esc_pressed(event):
 		close()
 		get_viewport().set_input_as_handled()
+		return
+	# W открывает журнал из game.gd, а закрывать его game.gd не даёт: открытая
+	# панель ставит is_editor_open(). Поэтому W обязан закрывать здесь — иначе
+	# «нажал W ещё раз, а журнал висит» (жалоба игрока 28.10).
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode == KEY_W and not event.ctrl_pressed:
+		close()
+		get_viewport().set_input_as_handled()
 
 
 func close() -> void:
@@ -248,6 +256,14 @@ func _build_ui() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(0, 36)
 	content.add_child(_status)
+
+	var hint := Label.new()
+	hint.name = "CloseHint"
+	hint.theme_type_variation = &"QuestStatus"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.text = Loc.t("ui.quest.close_hint")
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(hint)
 
 
 ## [scroll frame PanelContainer, row VBoxContainer].

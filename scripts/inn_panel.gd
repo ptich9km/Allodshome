@@ -24,7 +24,11 @@ var _root: MarginContainer
 var _panel: PanelContainer
 var _recruit_grid: GridContainer
 var _gold_label: Label
+var _rep_label: Label
+var _race := ""            # раса города: ось репутации ("" — карта без города)
+var _rep := 0              # репутация героя у этой расы на момент открытия
 var _party_label: Label
+var _rep_hint: Label
 var _talk_label: Label
 var _talk_button: Button
 var _close_button: Button
@@ -32,8 +36,10 @@ var _previous_focus: Control
 var _hover_card: PanelContainer = null
 var _candidates: Array[Dictionary] = []
 
-func setup(p: Player) -> void:
+func setup(p: Player, city_race: String = "") -> void:
 	player = p
+	_race = city_race
+	_rep = Game.hero_reputation(_race)
 	layer = 10
 	_build_ui()
 
@@ -139,6 +145,11 @@ func _build_ui() -> void:
 	_gold_label.theme_type_variation = &"InnGoldLabel"
 	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(_gold_label)
+	_rep_label = Label.new()
+	_rep_label.name = "Reputation"
+	_rep_label.theme_type_variation = &"InnGoldLabel"
+	_rep_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_rep_label)
 	_close_button = Button.new()
 	_close_button.name = "Close"
 	_close_button.text = tr("Закрыть")
@@ -220,20 +231,76 @@ func _build_ui() -> void:
 	_party_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(_party_label)
 
+	_rep_hint = Label.new()
+	_rep_hint.name = "ReputationHint"
+	_rep_hint.theme_type_variation = &"InnHintLabel"
+	_rep_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rep_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(_rep_hint)
+
 	_build_hover_card()
+
+## Тир наёмников по репутации: 0..3. Пороги — [reputation] tier_1..tier_3;
+## CANDIDATES перечислены от слабого тира к сильному, поэтому тир = индекс.
+func _tier() -> int:
+	var t := 0
+	if _rep >= GameConfig.geti("reputation", "tier_1"):
+		t = 1
+	if _rep >= GameConfig.geti("reputation", "tier_2"):
+		t = 2
+	if _rep >= GameConfig.geti("reputation", "tier_3"):
+		t = 3
+	return t
+
+
+## Порог репутации для тира (1..3). 0 — тир без порога.
+func _tier_threshold(tier_index: int) -> int:
+	match tier_index:
+		1:
+			return GameConfig.geti("reputation", "tier_1")
+		2:
+			return GameConfig.geti("reputation", "tier_2")
+		3:
+			return GameConfig.geti("reputation", "tier_3")
+	return 0
+
+
+## Сколько репутации до следующего тира (0 — выше некуда).
+func _next_tier_need() -> int:
+	var next_tier := _tier() + 1
+	if next_tier > CANDIDATES.size() - 1:
+		return 0
+	return _tier_threshold(next_tier)
+
+
+## Ячейка-замок для тира выше текущего. Пустые клетки читались как «наёмники
+## пропали» (жалоба игрока 28.10) — теперь видно, что и сколько нужно.
+func _locked_entry(index: int) -> Dictionary:
+	if index < 0 or index >= CANDIDATES.size():
+		return {}
+	if index <= _tier():
+		return {}
+	var need := _tier_threshold(index)
+	if need <= 0:
+		return {}
+	return {"set": str(CANDIDATES[index]), "locked": true, "need": need}
+
 
 func _generate_candidates() -> void:
 	_candidates.clear()
-	var pool: Array = CANDIDATES.duplicate()
+	var tier := _tier()
+	var tier_cost := GameConfig.geti("reputation", "inn_tier_cost")
+	var pool: Array = CANDIDATES.slice(0, mini(tier + 1, CANDIDATES.size()))
 	while not pool.is_empty():
 		var index := randi() % pool.size()
 		var set_name := str(pool[index])
 		pool.remove_at(index)
 		_candidates.append({
 			"set": set_name,
-			"hp": 45 + randi() % 45,
-			"dmg": 4 + randi() % 5,
-			"cost": 30 + randi() % 50,
+			"tier": tier,
+			"hp": 45 + randi() % 45 + tier * 20,
+			"dmg": 4 + randi() % 5 + tier * 2,
+			"cost": 30 + randi() % 50 + tier * tier_cost,
 		})
 
 func _refresh() -> void:
@@ -243,11 +310,27 @@ func _refresh() -> void:
 	if not is_instance_valid(player):
 		return
 	_gold_label.text = tr("Золото: %d") % player.gold
+	if _rep_label != null:
+		if _race == "":
+			_rep_label.text = tr("Репутация: нет города")
+		else:
+			_rep_label.text = tr("Репутация: %s %d · тир наёмников %d") \
+				% [Lore.faction_label(_race), _rep, _tier()]
 	_party_label.text = tr("Отряд: %d/%d · наём на одну прогулку, опыт не делится") % [Game.party.size(), MAX_PARTY]
+	if _rep_hint != null:
+		var next_need := _next_tier_need()
+		if _race == "":
+			_rep_hint.text = tr("Ассортимент зависит от отношения фракции. Репутация растёт за задания главы города.")
+		elif next_need > 0:
+			_rep_hint.text = tr("Ассортимент зависит от отношения фракции «%s»: %d. Следующий тир наёмников — с %d репутации (задания главы города).") \
+				% [Lore.faction_label(_race), _rep, next_need]
+		else:
+			_rep_hint.text = tr("Ассортимент зависит от отношения фракции «%s»: %d. Открыт высший тир наёмников.") \
+				% [Lore.faction_label(_race), _rep]
 	var action_buttons: Array[Button] = []
 	var slots_to_fill := maxi(_candidates.size(), _CELL_COLUMNS)
 	for index in range(slots_to_fill):
-		var entry: Dictionary = _candidates[index] if index < _candidates.size() else {}
+		var entry: Dictionary = _candidates[index] if index < _candidates.size() else _locked_entry(index)
 		var slot := _make_recruit_slot(entry)
 		_recruit_grid.add_child(slot)
 		var hire_button := slot.find_child("Hire", true, false) as Button
@@ -287,6 +370,9 @@ func _make_recruit_slot(entry: Dictionary) -> PanelContainer:
 	portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	portrait.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if bool(entry.get("locked", false)):
+		# Замок: портрет приглушён, кнопки найма нет, требование написано.
+		portrait.modulate = Color(1, 1, 1, 0.35)
 	content.add_child(portrait)
 
 	var name_label := Label.new()
@@ -296,7 +382,21 @@ func _make_recruit_slot(entry: Dictionary) -> PanelContainer:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.custom_minimum_size = Vector2(0, 16)
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if bool(entry.get("locked", false)):
+		name_label.modulate = Color(1, 1, 1, 0.5)
 	content.add_child(name_label)
+
+	if bool(entry.get("locked", false)):
+		var need_label := Label.new()
+		need_label.name = "Locked"
+		need_label.theme_type_variation = &"InnCandidateStats"
+		need_label.text = tr("Нужна репутация: %d") % int(entry.get("need", 0))
+		need_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		need_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		need_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		need_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.add_child(need_label)
+		return slot
 
 	var hire := Button.new()
 	hire.name = "Hire"

@@ -32,6 +32,10 @@ var _npc_grid: GridContainer
 var _player_grid: GridContainer
 var _player_tabs: GridContainer
 var _gold_label: Label
+var _rep_label: Label
+var _npc_notice: Label
+var _race := ""            # раса города: ось репутации ("" — карта без города)
+var _rep := 0              # репутация героя у этой расы на момент открытия
 var _hint_label: Label
 var _merchant_label: Label
 var _merchant_button: Button
@@ -40,15 +44,17 @@ var _category_buttons: Array[Button] = []
 var _category_group: ButtonGroup
 var _previous_focus: Control
 var _hover_card: PanelContainer = null
-var _category_index := 0
+var _category_index := 3   # открываемся на зельях: вкладки рецептов без репутации пусты (28.10)
 var _focus_restored := false
 
 const _PANEL_MIN := Vector2(980, 580)
 
 static var _all_cache: Array = []
 
-func setup(p: Player) -> void:
+func setup(p: Player, city_race: String = "") -> void:
 	player = p
+	_race = city_race
+	_rep = Game.hero_reputation(_race)
 	layer = 10
 	if _all_cache.is_empty():
 		_all_cache = ItemDB.all()
@@ -118,6 +124,11 @@ func _build_ui() -> void:
 	_gold_label.theme_type_variation = &"ShopGoldLabel"
 	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(_gold_label)
+	_rep_label = Label.new()
+	_rep_label.name = "Reputation"
+	_rep_label.theme_type_variation = &"ShopGoldLabel"
+	_rep_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_rep_label)
 	_close_button = Button.new()
 	_close_button.name = "Close"
 	_close_button.text = tr("Закрыть")
@@ -149,6 +160,13 @@ func _build_ui() -> void:
 	buy_title.theme_type_variation = &"ShopSection"
 	buy_title.text = tr("У торговца")
 	buy_col.add_child(buy_title)
+	_npc_notice = Label.new()
+	_npc_notice.name = "ReputationNotice"
+	_npc_notice.theme_type_variation = &"ShopEmptyTabLabel"
+	_npc_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_npc_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_npc_notice.visible = false
+	buy_col.add_child(_npc_notice)
 	_npc_scroll = ScrollContainer.new()
 	_npc_scroll.name = "NpcShelfScroll"
 	_npc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -308,7 +326,7 @@ func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
 		lines.append(tr("В складе: %d шт.") % count)
 	var price := int(item.get("price", 0))
 	if buying:
-		lines.append(tr("Цена: %d з") % price)
+		lines.append(tr("Цена: %d з") % _buy_price(price))
 	else:
 		lines.append(tr("Продать за: %d з") % _sell_price(price))
 	return lines
@@ -316,8 +334,53 @@ func _hover_lines(item: Dictionary, buying: bool, count: int) -> Array:
 func _sell_price(price: int) -> int:
 	return maxi(1, int(price / float(maxi(1, GameConfig.geti("economy", "sell_price_div")))))
 
+
+## Скидка по репутации: 0 / 5 / 10 / 15 % на порогах [reputation].
+func _discount_percent() -> int:
+	var d := 0
+	if _rep >= GameConfig.geti("reputation", "tier_1"):
+		d = GameConfig.geti("reputation", "discount_1")
+	if _rep >= GameConfig.geti("reputation", "tier_2"):
+		d = GameConfig.geti("reputation", "discount_2")
+	if _rep >= GameConfig.geti("reputation", "tier_3"):
+		d = GameConfig.geti("reputation", "discount_3")
+	return clampi(d, 0, 90)
+
+
+## Цена покупки с учётом репутации. Считается в ОДНОМ месте: витрина, подсказка,
+## блокировка кнопки и списание золота обязаны показывать одно число.
+func _buy_price(base: int) -> int:
+	if base <= 0:
+		return base
+	return maxi(1, int(round(float(base) * (100.0 - float(_discount_percent())) / 100.0)))
+
 func _update_layout() -> void:
 	pass
+
+
+## Подсказка под вкладками: ассортимент и цена зависят от отношения фракции
+## города. Игрок должен видеть это ДО того, как решит, что товар пропал.
+func _trade_hint() -> String:
+	var base := tr("Слева покупка, справа продажа.")
+	if _race == "":
+		return tr("%s Ассортимент зависит от отношения фракции.") % base
+	return tr("%s Отношение фракции «%s»: %d, скидка %d%%.") \
+		% [base, Lore.faction_label(_race), _rep, _discount_percent()]
+
+
+## Плашка над полкой, когда часть товаров закрыта репутацией: эльфийские
+## свитки (порог `elven_rep`). Пустая полка без объяснения читается как
+## «товары пропали» (жалоба игрока 28.10).
+func _update_rep_notice(category: String) -> void:
+	if _npc_notice == null:
+		return
+	var elven := GameConfig.geti("reputation", "elven_rep")
+	if category == "books" and _rep < elven:
+		_npc_notice.text = tr("Эльфийские свитки: нужна репутация %d (сейчас %d).") \
+			% [elven, _rep]
+		_npc_notice.visible = true
+	else:
+		_npc_notice.visible = false
 
 func _refresh() -> void:
 	if not is_instance_valid(player):
@@ -325,7 +388,17 @@ func _refresh() -> void:
 	if _hover_card != null:
 		UiKit.hide_hover_card(_hover_card)
 	_gold_label.text = tr("Золото: %d") % player.gold
-	_hint_label.text = tr("Слева покупка · справа продажа · заблокированное не хватает золота")
+	if _rep_label != null:
+		var discount := _discount_percent()
+		if _race == "":
+			_rep_label.text = tr("Репутация: нет города")
+		elif discount > 0:
+			_rep_label.text = tr("Репутация: %s %d · скидка %d%%") \
+				% [Lore.faction_label(_race), _rep, discount]
+		else:
+			_rep_label.text = tr("Репутация: %s %d") \
+				% [Lore.faction_label(_race), _rep]
+	_hint_label.text = _trade_hint()
 	for index in range(_category_buttons.size()):
 		_category_buttons[index].button_pressed = index == _category_index
 	# Позиции скролла и фокус: полная пересборка сеток сбрасывала их на каждой
@@ -382,14 +455,16 @@ func _set_category(index: int) -> void:
 func _build_buy_shelf(category_index: int) -> Array[Button]:
 	_clear_grid(_npc_grid)
 	var pool := _category_items(category_index)
-	pool.sort_custom(func(a: Dictionary, b: Dictionary): return int(a.get("price", 0)) < int(b.get("price", 0)))
+	_update_rep_notice(str(CATEGORIES[category_index]["id"]))
+	pool.sort_custom(func(a: Dictionary, b: Dictionary):
+		return _buy_price(int(a.get("price", 0))) < _buy_price(int(b.get("price", 0))))
 	var buttons: Array[Button] = []
 	for item in pool:
 		var slot := _make_shop_slot(item, true, 1)
 		_npc_grid.add_child(slot)
 		var button := slot.find_child("Trade", true, false) as Button
 		if button != null:
-			button.disabled = player.gold < int(item.get("price", 0))
+			button.disabled = player.gold < _buy_price(int(item.get("price", 0)))
 			if not button.disabled:
 				buttons.append(button)
 	return buttons
@@ -436,7 +511,8 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 		return slot
 	var key := str(item.get("key", ""))
 	var name := str(item.get("name_ru", key))
-	var price := int(item.get("price", 0))
+	var base_price := int(item.get("price", 0))
+	var price := _buy_price(base_price) if buying else base_price
 	var icon := TextureRect.new()
 	var icon_path := str(item.get("icon", ""))
 	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
@@ -501,11 +577,17 @@ func _item_stats(item: Dictionary) -> String:
 
 func _category_items(category_index: int) -> Array[Dictionary]:
 	var category := str(CATEGORIES[category_index]["id"])
+	var elven_rep := GameConfig.geti("reputation", "elven_rep")
 	var pool: Array[Dictionary] = []
 	for raw in _all_cache:
 		var item: Dictionary = raw
 		var quality := str(item.get("quality", ""))
 		var price := int(item.get("price", 0))
+		# Репутация — пропуск к эльфийским свиткам (28.10). Чертежи мастерской
+		# продаются всем: без них рушится цикл крафта, а вкладки пустеют
+		# (жалоба игрока: «в магазине не осталось товаров»).
+		if quality == "SuperScroll" and _rep < elven_rep:
+			continue
 		# Фильтр цены: пропускаем сломанное (0) и мусор. Зелья/книги/эликсиры
 		# с ценой 1M и книги price=0 проходят отдельно ниже.
 		if quality == "Recipe" and not category.begins_with("recipes"):

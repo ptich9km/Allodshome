@@ -21,6 +21,21 @@ const RACE_TO_FACTION := {
 	"ork": "ork",
 }
 
+## Человекочитаемое имя фракции для витрин (таверна/магазин). Это подпись
+## интерфейса, а не лор: канон имён живёт в assets/lore/world.json.
+const FACTION_LABEL := {
+	"humans": "люди",
+	"ork": "орки",
+	"necro": "нежить",
+	"druid": "друиды",
+}
+
+
+static func faction_label(race: String) -> String:
+	if race == "":
+		return ""
+	return str(FACTION_LABEL.get(race, race))
+
 static var _world: Dictionary = {}
 static var _npcs: Dictionary = {}
 static var _loaded := false

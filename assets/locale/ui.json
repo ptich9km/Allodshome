@@ -716,6 +716,10 @@
   "ru": "Закрыть",
   "en": "Close"
  },
+ "ui.quest.close_hint": {
+  "ru": "W или Esc — закрыть журнал",
+  "en": "W or Esc — close the journal"
+ },
  "ui.quest.panel_title": {
   "ru": "КВЕСТЫ",
   "en": "QUESTS"

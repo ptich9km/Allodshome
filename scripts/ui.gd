@@ -798,20 +798,25 @@ func _setup_action_buttons():
 	inv_btn.pressed.connect(open_inventory_panel)
 	hud_cmd_row.add_child(inv_btn)
 
-	var cmd_labels := ["След.", "Атак.", "Охр.", "Стоп"]
+	var cmd_tips := [
+		"Следовать за героем и бить врагов рядом (отряд тоже)",
+		"Атаковать ближайшего врага вокруг героя (отряд тоже)",
+		"Охранять место: бить в радиусе поста, не убегать (отряд тоже)",
+		"Стоять на месте и только отвечать на удар (отряд тоже)",
+	]
 	# Короткие подписи — ТОЛЬКО запасной вариант, если PNG не на месте: кнопка
 	# 32 px, полная подпись в неё не влезает. Смысл сохраняет tooltip.
 	var cmd_short := ["Сл", "Ат", "Ох", "Ст"]
 	var cmd_modes := ["follow", "attack", "guard", "stop"]
 	var cmd_icons := ["follow", "attack", "guard", "stop"]
-	for i in range(cmd_labels.size()):
+	for i in range(cmd_tips.size()):
 		var b := Button.new()
 		b.name = "Cmd%d" % i
 		b.custom_minimum_size = Vector2(HUD_CMD_SIZE, HUD_CMD_SIZE)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.theme_type_variation = &"HudCmd"
 		b.focus_mode = Control.FOCUS_ALL
-		b.tooltip_text = cmd_labels[i]
+		b.tooltip_text = cmd_tips[i]
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		_apply_cmd_icon(b, cmd_icons[i], cmd_short[i])
 		hud_cmd_row.add_child(b)
@@ -855,7 +860,8 @@ func _set_action_mode(mode: String):
 			active = 2
 			Game.action_mode = "guard"
 		"stop":
-			Game.action_mode = "none"
+			active = 3
+			Game.action_mode = "stop"
 	if active >= 0 and active < cmd_buttons.size():
 		cmd_buttons[active].theme_type_variation = &"HudCmdActive"
 		cmd_buttons[active].set_pressed_no_signal(true)
@@ -1724,13 +1730,13 @@ func _control_contains(c: Control, p: Vector2) -> bool:
 	return hit
 
 ## Магазин: купля/продажа (клик по зданию Shop).
-func open_shop() -> void:
+func open_shop(city_race: String = "") -> void:
 	if _shop != null and is_instance_valid(_shop):
 		return
 	_enter_interior()
 	Game.cursor_context = "buy"   # курсор-монета с кошельком
 	_shop = ShopPanel.new()
-	_shop.setup(player)
+	_shop.setup(player, city_race)
 	_shop.closed.connect(_on_panel_closed)
 	add_child(_shop)
 
@@ -1754,22 +1760,27 @@ func open_school() -> void:
 	add_child(_school)
 
 ## Таверна: наём наёмников и разговоры (клик по Inn).
-func open_inn() -> void:
+func open_inn(city_race: String = "") -> void:
 	if _inn != null and is_instance_valid(_inn):
 		return
 	_enter_interior()
 	_inn = InnPanel.new()
-	_inn.setup(player)
+	_inn.setup(player, city_race)
 	_inn.closed.connect(_on_panel_closed)
 	add_child(_inn)
 
 ## Великий маг (капитан): военная плата (клик по магу в центре города).
-func open_archmage() -> void:
+## Великий маг города (28.10): панель открывается для ГОРОДА, а не для расы
+## героя. city_id/race передаёт game.gd по клику на капитана; без них панель
+## работает по-старому (раса героя) — так её зовут тесты.
+func open_archmage(city_id: String = "", city_race: String = "") -> void:
 	if _archmage != null and is_instance_valid(_archmage):
-		return
+		if city_id == "" or str(_archmage.get("_city_id")) == city_id:
+			return
+		_archmage.close()
 	_enter_interior()
 	_archmage = ArchmagePanel.new()
-	_archmage.setup(player)
+	_archmage.setup(player, city_id, city_race)
 	_archmage.closed.connect(_on_panel_closed)
 	_archmage.inventory_changed.connect(_on_inventory_changed)
 	add_child(_archmage)

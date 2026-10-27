@@ -11,11 +11,17 @@
 # ============================================================================
 extends Node
 
+## День мира сменился (живой календарь). Слушают лента мира и тесты;
+## квесты ротацию видят сами — она сверяет WorldBus.state.day каждый кадр.
+signal day_changed(day: int)
+
 var state   # WorldState  — слой-1 ДАННЫЕ (RefCounted)
 var sim     # WorldSim    — слой-2 СИМ (RefCounted)
 
 ## Аккумулятор тика великого мага (реальное время, сек).
 var _archmage_acc := 0.0
+## Аккумулятор календаря живой игры (реальное время, сек).
+var _day_acc := 0.0
 
 
 func _ready() -> void:
@@ -27,9 +33,25 @@ func _ready() -> void:
 
 
 func reseed() -> void:
-	# race = Game.hero_race (human|ork|necro|druid); archmage создаётся в new_faction.
-	var f_h: Dictionary = state.new_faction("Люди", "human")
-	var f_e: Dictionary = state.new_faction("Орки", "ork")
+	# Все четыре расы, а не две (28.10): города бывают у каждой
+	# (MapGenerator.CITY_POPULATION), а фракция нужна ради великого мага —
+	# иначе у нежити и друидов панель писала «в этом городе мага нет».
+	# Ключи рас — как в world.json: humans/ork/necro/druid.
+	var lore: GDScript = load("res://scripts/lore.gd")
+	var races: Array = ["humans", "ork", "necro", "druid"]
+	var f_h: Dictionary = {}
+	var f_e: Dictionary = {}
+	for race in races:
+		var label: String = str(race)
+		if lore != null:
+			var fd: Dictionary = lore.faction(str(race)) as Dictionary
+			if str(fd.get("label", "")) != "":
+				label = str(fd.get("label"))
+		var f: Dictionary = state.new_faction(label, str(race))
+		if str(race) == "humans":
+			f_h = f
+		elif str(race) == "ork":
+			f_e = f
 	var r: Dictionary = state.new_region("Черноземье")
 	var _c_h: Dictionary = state.new_city("Речной Пост", f_h.id, r.id)
 	var c_e: Dictionary = state.new_city("Кровавый Бор", f_e.id, r.id)
@@ -46,6 +68,38 @@ func reseed() -> void:
 func advance(days: int) -> void:
 	for _i in days:
 		sim.tick()
+
+
+## Календарь ЖИВОЙ игры (28.10). Зовёт game.gd из _process и только когда мир
+## не на паузе: тактическая пауза и меню сохранений не должны двигать дни,
+## иначе ротация квестов идёт, пока игрок читает меню.
+##
+## Не _process у автолоада специально: headless sim_runner крутит дни сам через
+## advance(), а `--script` не поднимает автолоады. Возвращает число прошедших
+## дней (0 — ещё не день).
+func tick_day(delta: float) -> int:
+	if state == null or sim == null:
+		return 0
+	var cfg: GDScript = load("res://scripts/game_config.gd")
+	var seconds := 300.0
+	if cfg != null:
+		seconds = cfg.getf("world", "day_seconds")
+	if seconds <= 0.0:
+		return 0
+	_day_acc += delta
+	var n := 0
+	while _day_acc >= seconds:
+		_day_acc -= seconds
+		sim.tick(true)
+		n += 1
+		day_changed.emit(int(state.day))
+	return n
+
+
+## Сброс календаря: загрузка слота/новая карта не должны «докручивать» день,
+## накопленный прошлой сессией.
+func reset_day_timer() -> void:
+	_day_acc = 0.0
 
 
 func snapshot() -> Dictionary:
