@@ -18,9 +18,34 @@ const TILE := 32
 ## Насколько высоко поднимать эффект над основанием спрайта.
 const HEAD_FACTOR := 0.86     # доля высоты спрайта
 const HEAD_MARGIN := 12.0     # + px, чтобы не липло к макушке
-## Вертикальный шаг между эффектами в столбике. Три наложенных баффа должны
-## быть видны РАЗДЕЛЬНО, а не наложиться друг на друга в одной точке.
+## Шаг между эффектами в столбике (используется редкими видами аур).
 const STACK_STEP := 20.0
+
+## Кольца защит стоят на РАЗНОЙ ВЫСОТЕ по школе — доля высоты ФИГУРЫ от ног:
+## земля у ног, воздух у бёдер, вода у груди, огонь у головы. Так четыре защиты
+## читаются сразу и не складываются в одно пятно. Доли считаются от реальной
+## рамки фигуры (54 px), а не от холста кадра (64 px) — иначе «голова» огня
+## оказывалась на животе.
+const RESIST_ROW_FRAC := {"Earth": 0.20, "Air": 0.40, "Water": 0.64, "Fire": 0.88,
+	"Astral": 0.64}
+## Высота кольца, px: тонкий обруч, а не широкий пузырь. Половина высоты
+## (9 px) — это и есть запас: центр нижнего ряда стоит на 0.20 высоты фигуры
+## (~11 px), поэтому обруч земли не уходит под ноги.
+const BREEZE_H := 18.0
+## Отступ кольца от силуэта по ширине, px.
+const BREEZE_PAD := 20.0
+## Размер летающего щита, px (геральдический силуэт в шейдере aura_shield).
+## 27.10: уменьшен на 25 % по просьбе игрока — 20×26 оказался крупным.
+const SHIELD_PX := Vector2(15.0, 20.0)
+## Высота орбиты щита — доля высоты фигуры от ног (центр корпуса).
+const SHIELD_BODY_FRAC := 0.55
+## Аура благословения над головой, px.
+const BLESS_PX := Vector2(16.0, 16.0)
+const BLESS_HEAD_GAP := 8.0
+## Ветер ускорения: широкая низкая полоса у ног.
+const HASTE_PX := Vector2(40.0, 12.0)
+## Крест лечения над головой, px.
+const HEAL_CROSS_PX := 22.0
 
 var kind: String = "shield"   # shield | resist | haste
 var sphere: String = "Astral"
@@ -30,14 +55,6 @@ var effect_type: String = ""
 var _sprite: Sprite2D = null
 var _elapsed: float = 0.0
 var _base_offset: float = 0.0
-var _stack_index: int = 0
-
-## Порядок столбика снизу вверх: земля -> молния -> вода -> огонь.
-## Огонь сверху: он самый контрастный, и четыре защиты сразу читаются как лестница.
-## Щит в столбик НЕ входит (рисуется вокруг тела), ветер — у ног.
-## Номер слота считается по уже висящим аурам той же стихии.
-const RESIST_STACK_ORDER := {"Earth": 0, "Air": 1, "Water": 2, "Fire": 3}
-const STACK_STEP_RESIST := 18.0
 
 
 func configure(u: Node2D, aura_kind: String, sp: String, effect: String) -> void:
@@ -48,84 +65,48 @@ func configure(u: Node2D, aura_kind: String, sp: String, effect: String) -> void
 
 
 func _ready() -> void:
+	# Аура — часть мира, а не интерфейса: на тактической паузе она обязана
+	# замереть вместе с юнитом (корень сцены стоит на PROCESS_MODE_ALWAYS,
+	# поэтому INHERIT паузу не ловит).
+	process_mode = PROCESS_MODE_PAUSABLE
 	z_index = 8
 	_sprite = Sprite2D.new()
 	_sprite.texture = SpellVFX.white_texture()
 	_sprite.material = _material()
-	_sprite.scale = _scale()
+	_apply_size()
+	# Кольцо ветерка рисуется ПОЗАДИ юнита: вокруг тела оно должно читаться как
+	# обруч, а не как полосы поперёк лица. Сзади всё, что упирается в силуэт,
+	# само скрывается спрайтом, наружу выходят только струи по бокам.
+	if kind == "resist":
+		_sprite.show_behind_parent = true
 	add_child(_sprite)
-	# Ветер — у ног, щит — вокруг тела, остальное — над головой.
-	_stack_index = _compute_stack_index()
+	# Ветер — у ног, щит — вокруг корпуса, защиты — кольцами на своей высоте.
 	_base_offset = _kind_offset()
 	_apply_offset()
 	set_process(true)
 
 
 ## Куда ставить эффект по его виду.
-## Щит рисуется ВОКРУГ героя (по центру силуэта), а не над головой: по
-## описанию это «сетка вокруг персонажа», и так сразу видно, что он прикрыт.
-## Сопротивление — в столбике над головой, ветер — у ног.
+## Щит — «маленький летающий щит» вокруг корпуса; защита — обруч на своей
+## доле высоты ФИГУРЫ (земля внизу, огонь у головы); ускорение — у ног.
 func _kind_offset() -> float:
+	var fig := _figure_rect()
+	var bottom := fig.end.y          # ноги фигуры (≈ 0, чуть выше основания)
+	var h := maxf(8.0, fig.size.y)
 	match kind:
 		"haste":
-			return -6.0
+			# Ветер у самых ног, но НЕ под землёй: центр на 10 px, высота 12 px.
+			return -10.0
 		"shield":
-			return -_sprite_height() * 0.45
+			return bottom - h * SHIELD_BODY_FRAC
+		"resist":
+			var frac := float(RESIST_ROW_FRAC.get(sphere, 0.62))
+			return bottom - h * frac
+		"bless":
+			# Над макушкой: top отрицательный, поэтому «выше» = ещё минус.
+			return fig.position.y - BLESS_HEAD_GAP
 		_:
 			return _head_offset()
-
-
-## Номер слота в столбике: считаем, сколько «головных» аур уже висит ниже
-## нашего по STACK_ORDER. Нужен, чтобы баффы не накладывались друг на друга.
-## Щит в столбик не входит — он рисуется вокруг тела.
-func _compute_stack_index() -> int:
-	if kind != "resist":
-		return 0
-	return _rank_among(unit)
-
-
-## Ранг среди висящих сопротивлений: сколько стихий стоят НИЖЕ нашей.
-## Считать надо именно так: «сколько уже было ниже» давало 0 всем, когда
-## накладывали сверху вниз (Fire -> Water -> Air -> Earth): каждый новый
-## оказывался выше предыдущих, то есть снизу, и все четыре значка попадали
-## в одну точку. Ранг же пересчитывается, когда состав стопки меняется.
-func _rank_among(u: Node2D) -> int:
-	if not is_instance_valid(u):
-		return 0
-	var mine := int(RESIST_STACK_ORDER.get(sphere, 0))
-	var below := 0
-	for child in u.get_children():
-		if not (child is SpellAura):
-			continue
-		var other := child as SpellAura
-		if other.kind != "resist" or other.sphere == sphere:
-			continue
-		if int(RESIST_STACK_ORDER.get(other.sphere, 0)) < mine:
-			below += 1
-	return below
-
-
-## Пересчитать столбик на цели: слоты зависят от СОСТАВА висящих аур, поэтому
-## при добавлении и удалении надо пересчитать их все, а не только новую.
-static func restack(u: Node2D) -> void:
-	if not is_instance_valid(u):
-		return
-	for child in u.get_children():
-		if not (child is SpellAura):
-			continue
-		var a := child as SpellAura
-		if a.kind != "resist":
-			continue
-		a.set_stack_index(a._rank_among(u))
-
-
-## Задать слот столбика и сразу пересчитать смещение.
-func set_stack_index(index: int) -> void:
-	if _stack_index == index:
-		return
-	_stack_index = index
-	_base_offset = _kind_offset()
-	_apply_offset()
 
 
 func _material() -> ShaderMaterial:
@@ -133,14 +114,82 @@ func _material() -> ShaderMaterial:
 		"haste":
 			return SpellVFX.zone_material("aura_wind", Color(0.78, 1.0, 0.82, 1.0))
 		"resist":
-			# Цвет и ФОРМА — по стихии (см. RESIST_COLORS / RESIST_SHAPES):
-			# огонь красный и шипастый, вода синяя капля, молния светло-голубая
-			# зигзаг, земля светло-коричневый блок.
-			var mat := SpellVFX.zone_material("aura_up", SpellVFX.resist_color(sphere))
-			mat.set_shader_parameter("shape", SpellVFX.resist_shape(sphere))
+			# Цвет школы + ФОРМА ДВИЖЕНИЯ по школе (uniform school):
+			# огонь — угольки вверх, вода — рябь, воздух — косые струи,
+			# земля — пыль. Цвет один — это канал, недоступный дальтоникам.
+			var mat := SpellVFX.zone_material("aura_breeze", SpellVFX.resist_color(sphere))
+			mat.set_shader_parameter("school", SpellVFX.resist_school(sphere))
 			return mat
+		"bless":
+			return SpellVFX.zone_material("aura_bless", Color(1.0, 0.86, 0.38, 1.0))
 		_:
 			return SpellVFX.zone_material("aura_shield", Color(0.72, 0.52, 1.0, 1.0))
+
+
+## Ширина корпуса юнита в пикселях — по РАМКЕ ФИГУРЫ, а не по холсту кадра.
+## Холст 64 px, фигура ~20 px: кольцо по холсту выходило вдвое шире персонажа.
+func _body_width() -> float:
+	var r := Game.unit_local_rect(unit)
+	if r.size.x > 1.0:
+		return r.size.x
+	var w := _sprite_width()
+	if w > 0.0:
+		return w
+	return maxf(24.0, _sprite_height() * 0.35)
+
+
+func _sprite_width() -> float:
+	if not is_instance_valid(unit):
+		return 0.0
+	var anim: Node = unit.get_node_or_null("UnitAnim")
+	if anim == null:
+		return 0.0
+	var sp := anim.get_node_or_null("Sprite") as Sprite2D
+	if sp == null or sp.texture == null:
+		return 0.0
+	return sp.texture.get_width() * absf(sp.scale.x)
+
+
+## Рамка ФИГУРЫ в координатах юнита (ноги ≈ 0, макушка — отрицательный y).
+## Берётся по содержимому кадра, а не по холсту 64×64: фигура занимает ~54 px.
+func _figure_rect() -> Rect2:
+	var r := Game.unit_local_rect(unit)
+	if r.size.y >= 8.0:
+		return r
+	var h := _sprite_height()
+	return Rect2(Vector2(-12.0, -h), Vector2(24.0, h))
+
+
+## Размер спрайта эффекта В ПИКСЕЛЯХ.
+##
+## Здесь была главная причина «однотипной точки, которая плавает»: масштаб
+## задавался множителем 0.45…1.6 при текстуре 4×4 px, то есть аура выходила
+## размером 2–6 пикселей. Считаем от текстуры — SpellVFX.fit_px().
+func _size_px() -> Vector2:
+	match kind:
+		"haste":
+			return Vector2(maxf(HASTE_PX.x, _body_width() * 1.15), HASTE_PX.y)
+		"shield":
+			return SHIELD_PX
+		"resist":
+			# Тонкий обруч вокруг тела: широкий, но низкий.
+			return Vector2(_body_width() + BREEZE_PAD, BREEZE_H)
+		"bless":
+			return BLESS_PX
+		_:
+			return Vector2(20.0, 20.0)
+
+
+func _apply_size() -> void:
+	if _sprite == null:
+		return
+	var sz := _size_px()
+	SpellVFX.fit_px(_sprite, sz.x, sz.y)
+
+
+## Радиус орбиты летающего щита, px: чуть шире корпуса, чтобы щит не утопал в теле.
+func _orbit_radius() -> float:
+	return maxf(16.0, _body_width() * 0.9 + 8.0)
 
 
 ## Высота спрайта юнита в пикселях. Раньше бралась константа, и у гнома
@@ -150,35 +199,32 @@ func _sprite_height() -> float:
 
 
 func _head_offset() -> float:
-	var step := STACK_STEP_RESIST if kind == "resist" else STACK_STEP
-	return -(_sprite_height() * HEAD_FACTOR + HEAD_MARGIN + float(_stack_index) * step)
+	return -(_sprite_height() * HEAD_FACTOR + HEAD_MARGIN)
 
 
-## Аура ушла (истекло сопротивление или сняли бафф) — оставшиеся в столбике
-## обязаны сдвинуться, иначе внизу останется пустое место.
+## Аура ушла — сдвигать больше нечего: кольца защит стоят по школе, а не по
+## порядку наложения. Раньше здесь пересчитывался «столбик», и при снятии
+## одной защиты остальные прыгали вниз.
 func _exit_tree() -> void:
-	if unit != null and is_instance_valid(unit) and kind == "resist":
-		restack(unit)
+	pass
 
 
 func _apply_offset() -> void:
 	if _sprite == null:
 		return
-	_sprite.position = Vector2(0, _base_offset)
+	_sprite.position = Vector2(0, _base_offset + _anim_offset())
 
 
-func _scale() -> Vector2:
-	# Щит — шире силуэта, чтобы сетка его окружала. Сопротивление — значок над
-	# головой, ветер — широкая полоса у ног.
-	match kind:
-		"haste":
-			return Vector2(1.6, 0.34)
-		"resist":
-			return Vector2(0.45, 0.45)
-		"shield":
-			return Vector2(1.6, 1.6)
-		_:
-			return Vector2(0.78, 0.78)
+## Смещение узла анимации относительно юнита: `_anim.position.y = -рельеф`.
+## Фигура рисуется ОТ этого узла, а не от точки на земле. Без этой поправки
+## ауры стояли на 20–25 px ниже персонажа — «под ногами» (жалоба 27.10).
+func _anim_offset() -> float:
+	if not is_instance_valid(unit):
+		return 0.0
+	var anim: Node2D = unit.get_node_or_null("UnitAnim") as Node2D
+	if anim == null:
+		return 0.0
+	return anim.position.y
 
 
 func _process(delta: float) -> void:
@@ -196,9 +242,16 @@ func _process(delta: float) -> void:
 		queue_free()
 		return
 
-	# Сопротивление и щит слегка покачиваются, чтобы было видно, что это эффект.
-	if kind != "haste" and _sprite != null:
-		_sprite.position.y = _base_offset + sin(_elapsed * 2.4) * 3.0
+	# Щит ЛЕТАЕТ: облетает героя по эллипсу и слегка покачивается наклоном.
+	# Раньше щит был статичной сеткой вокруг тела, а защиты — точкой, которая
+	# качалась вверх-вниз. Покачивание убрано совсем (игрок: «точка плавает
+	# туда-сюда»), движение осталось только у щита, где оно осмысленно.
+	if kind == "shield" and _sprite != null:
+		var ang := _elapsed * 1.5
+		var rad := _orbit_radius()
+		_sprite.position = Vector2(cos(ang) * rad,
+			_base_offset + _anim_offset() + sin(ang) * rad * 0.30)
+		_sprite.rotation = sin(ang * 1.2) * 0.22
 
 
 ## Эффект закончился (баф снят, юнит умер) — аура исчезает сама.
@@ -220,14 +273,11 @@ func _effect_still_active() -> bool:
 		# при четырёх защитах дал бы один «resist» и ни одна аура не исчезла бы
 		# после истечения своей.
 		return StatusEffects.has_effect(unit, "resist", sphere)
+	if kind == "bless":
+		return StatusEffects.has_effect(unit, "bless")
 	if effect_type == "":
 		return true
 	return effect_type in StatusEffects.active_types(unit)
-
-
-## Высота эффекта над основанием спрайта — для статических всплесков.
-static func _head_offset_for(u: Node2D) -> float:
-	return Game.unit_visual_height(u) * HEAD_FACTOR + HEAD_MARGIN
 
 
 ## Создать ауру на юните (или обновить существующую того же вида).
@@ -254,9 +304,6 @@ static func attach(u: Node2D, aura_kind: String, sp: String, effect_type: String
 	# ветер ускорения уезжал над головой вместе с щитом.
 	aura.configure(u, aura_kind, sp, effect_type)
 	u.add_child(aura)
-	# Состав столбика изменился — пересчитать слоты у всех, иначе новая аура
-	# встанет на чужое место.
-	restack(u)
 	return aura
 
 
@@ -271,11 +318,19 @@ static func heal_cross(u: Node2D) -> void:
 	s.z_index = 8
 	s.texture = SpellVFX.white_texture()
 	s.material = SpellVFX.zone_material("heal_cross", Color(1.0, 0.32, 0.32, 1.0))
-	s.scale = Vector2(0.55, 0.55)
-	s.position = u.global_position + Vector2(0, -_head_offset_for(u))
+	SpellVFX.fit_px(s, HEAL_CROSS_PX, HEAL_CROSS_PX)
+	var base_scale := s.scale
+	# Над макушкой ФИГУРЫ в мировых координатах: точка на земле + подъём узла
+	# анимации (рельеф) + верх рамки фигуры. Иначе крест висит под ногами.
+	var shift := 0.0
+	var anim: Node2D = u.get_node_or_null("UnitAnim") as Node2D
+	if anim != null:
+		shift = anim.position.y
+	var top := shift + Game.unit_local_rect(u).position.y
+	s.position = u.global_position + Vector2(0, top - 8.0)
 	scene.add_child(s)
-	var tw := scene.create_tween()
+	var tw := SpellVFX.world_tween(scene)
 	tw.set_parallel(true)
-	tw.tween_property(s, "scale", Vector2(0.72, 0.72), 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(s, "scale", base_scale * 1.3, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(s, "modulate:a", 0.0, 0.9)
 	tw.tween_callback(s.queue_free)

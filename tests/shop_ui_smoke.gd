@@ -57,6 +57,7 @@ func _run() -> void:
 	_test_no_text_in_cell()
 	await _test_hover_card()
 	await _test_buy_sell()
+	await _test_rep_notice()
 	_finish()
 
 
@@ -177,11 +178,35 @@ func _test_buy_sell() -> void:
 			% [gold_before, hero.gold, inv_before, hero.inventory.size()])
 
 
+## 28.10: репутация гейтит эльфийские свитки; закрытое должно быть объяснено,
+## иначе «товары пропали». Плашка и подсказка живут вне сетки, поэтому их
+## видно и при непустой вкладке.
+func _test_rep_notice() -> void:
+	var idx := -1
+	for i in range(ShopPanel.CATEGORIES.size()):
+		if str(ShopPanel.CATEGORIES[i]["id"]) == "books":
+			idx = i
+			break
+	if idx < 0:
+		_check(false, "вкладка «Книги и свитки» найдена")
+		return
+	_shop.call("_set_category", idx)
+	await process_frame
+	var notice = _shop.get("_npc_notice")
+	_check(notice is Label and (notice as Label).visible,
+		"закрытые эльфийские свитки объяснены плашкой")
+	if notice is Label:
+		_check(str((notice as Label).text).contains("40"),
+			"плашка называет порог репутации")
+	var hint = _shop.get("_hint_label")
+	_check(hint is Label and str((hint as Label).text).contains("фракц"),
+		"подсказка говорит, что ассортимент зависит от фракции")
+
+
 func _find(node_name: String) -> Node:
 	if _shop == null:
 		return null
 	return _shop.find_child(node_name, true, false)
-
 
 func _first_child_of_type(root: Node, type_name: String) -> Control:
 	if root == null:

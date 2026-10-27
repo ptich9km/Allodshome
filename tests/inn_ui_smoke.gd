@@ -54,6 +54,19 @@ func _run() -> void:
 		"сетка %d колонки (получено %d)" % [CELL_COLUMNS, grid.columns])
 	_check(grid.get_child_count() >= expect_n,
 		"ячеек не меньше кандидатов (%d >= %d)" % [grid.get_child_count(), expect_n])
+	# 28.10: тиры выше текущего видны как замки с порогом, а не пустые клетки.
+	# На нулевой репутации доступен только t0 — три замка из четырёх ячеек.
+	var locked_cards := 0
+	for child in grid.get_children():
+		if child.find_child("Locked", true, false) != null:
+			locked_cards += 1
+	_check(grid.get_child_count() == CELL_COLUMNS,
+		"сетка заполнена до %d ячеек (сейчас %d)" % [CELL_COLUMNS, grid.get_child_count()])
+	_check(locked_cards == CELL_COLUMNS - expect_n,
+		"закрытые тиры показаны замками (%d из %d)" % [locked_cards, CELL_COLUMNS])
+	var rep_hint = _panel.get("_rep_hint")
+	_check(rep_hint is Label and str((rep_hint as Label).text).to_lower().contains("репутац"),
+		"подсказка объясняет, что ассортимент зависит от репутации")
 
 	# Ячейки контентные, не артовые 96×107.57
 	var panel: Control = _panel.get("_panel")

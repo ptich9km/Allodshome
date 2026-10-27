@@ -62,6 +62,11 @@ static func make_light(node: Node2D, color: Color, radius_px: float,
 	light.set_meta("rise", minf(0.18, life * 0.3))
 	# Появление: быстрый подъём, затем плавное затухание.
 	var tw := node.create_tween()
+	# Свет — часть мира: на тактической паузе он не должен жить своей жизнью.
+	# BOUND привязывает твин к узлу-владельцу, а корень сцены (Game) стоит на
+	# PROCESS_MODE_ALWAYS, поэтому твин продолжал идти и гасил свет посреди
+	# паузы. STOP останавливает твин по SceneTree.paused.
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_STOP)
 	tw.tween_property(light, "energy", peak_energy, light.get_meta("rise"))
 	tw.tween_interval(maxf(0.05, life - light.get_meta("rise")))
 	tw.tween_property(light, "energy", 0.0, light.get_meta("rise") + 0.12)

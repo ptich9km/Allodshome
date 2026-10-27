@@ -37,6 +37,15 @@ var _inventory_slots: Array = []
 var _inventory_items: Array = []
 var _hover_card: PanelContainer = null
 var _gold_label: Label
+var _view_tabs: Array[Button] = []
+var _view_pages: Array[Control] = []
+var _view_group: ButtonGroup = null
+var _view_index := 0
+var _page_inventory: VBoxContainer = null
+var _page_relations: VBoxContainer = null
+var _page_crafts: VBoxContainer = null
+var _relations_box: VBoxContainer = null
+var _crafts_box: VBoxContainer = null
 var _gold_coin: TextureRect = null
 var _gold_frame := 0
 var _gold_anim_t := 0.0
@@ -185,6 +194,14 @@ func _make_theme() -> Theme:
 		UiTheme.PANEL_INNER, UiTheme.PANEL_EDGE,
 		UiTheme.PANEL_INNER.lightened(0.14), UiTheme.ACCENT_DIM,
 		UiTheme.RADIUS_PANEL, UiTheme.SPACE_2)
+	UiKit.add_button(theme, &"InvTab",
+		UiTheme.TRANSPARENT, UiTheme.TRANSPARENT,
+		UiTheme.PANEL_INNER, UiTheme.ACCENT_DIM,
+		UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
+	UiKit.add_label(theme, &"InvPageTitle", UiTheme.ACCENT, UiTheme.FONT_SECTION)
+	UiKit.add_label(theme, &"InvRowLabel", UiTheme.TEXT, UiTheme.FONT_BODY)
+	UiKit.add_label(theme, &"InvRowValue", UiTheme.ACCENT, UiTheme.FONT_BODY)
+	UiKit.add_label(theme, &"InvRowNote", UiTheme.TEXT_MUTED, UiTheme.FONT_MICRO)
 	UiKit.apply_scrollbar(theme, UiTheme.RADIUS_SLOT, UiTheme.SPACE_1)
 	UiKit.add_panel(theme, &"InvPanel",
 		UiTheme.PANEL_BG, UiTheme.PANEL_EDGE, UiTheme.RADIUS_FRAME)
@@ -241,8 +258,13 @@ func _build_ui() -> void:
 	title.name = "Title"
 	title.theme_type_variation = &"InvTitle"
 	title.text = tr("ИНВЕНТАРЬ")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	header.add_child(title)
+	_build_view_tabs(header)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(spacer)
 	_gold_coin = TextureRect.new()
 	_gold_coin.name = "GoldCoin"
 	_gold_coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -267,6 +289,25 @@ func _build_ui() -> void:
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
 
+	# Страницы: «Склад» (прежняя раскладка), «Отношения», «Ремесла».
+	# Вкладки живут в шапке: отдельная строка отняла бы высоту у склада и
+	# вернула бы прокрутку (жалоба игрока 23.10).
+	var holder := VBoxContainer.new()
+	holder.name = "Pages"
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(holder)
+	_page_inventory = VBoxContainer.new()
+	_page_inventory.name = "InventoryPage"
+	_page_inventory.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_page_inventory.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	holder.add_child(_page_inventory)
+	_page_relations = _make_page("RelationsPage")
+	holder.add_child(_page_relations)
+	_page_crafts = _make_page("CraftsPage")
+	holder.add_child(_page_crafts)
+	_view_pages = [_page_inventory, _page_relations, _page_crafts]
+	_set_view(0)
+
 	# Верх: кукла (имя сверху) СЛЕВА | статы расширены вправо.
 	# Порядок внутри окна (08.10): прижать paper-doll к левому краю,
 	# статы без скролла за счёт ширины колонки. Размер панели 960×640 НЕ меняем.
@@ -280,7 +321,7 @@ func _build_ui() -> void:
 	# трёх рядов и включался вертикальный скролл (жалоба игрока 23.10).
 	# ScrollContainer статов сообщает минимум по содержимому, поэтому top
 	# без EXPAND получает именно столько, сколько нужно таблице.
-	content.add_child(top)
+	_page_inventory.add_child(top)
 
 	var equip_col := VBoxContainer.new()
 	equip_col.name = "EquipCol"
@@ -346,11 +387,302 @@ func _build_ui() -> void:
 	var inv_col := VBoxContainer.new()
 	inv_col.name = "InvCol"
 	inv_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(inv_col)
+	_page_inventory.add_child(inv_col)
 	_build_inventory_area(inv_col)
 
 	_build_hover_card()
 	_refresh()
+
+
+## Вкладки видов: склад, отношения, ремесла. Живут в шапке (height budget).
+func _build_view_tabs(header: HBoxContainer) -> void:
+	_view_group = ButtonGroup.new()
+	var names := ["Склад", "Отношения", "Ремесла"]
+	for i in range(names.size()):
+		var b := Button.new()
+		b.name = "ViewTab%d" % i
+		b.text = tr(names[i])
+		b.theme_type_variation = &"InvTab"
+		b.toggle_mode = true
+		b.button_group = _view_group
+		b.button_pressed = i == 0
+		b.focus_mode = Control.FOCUS_ALL
+		b.custom_minimum_size = Vector2(0, 28)
+		b.pressed.connect(_set_view.bind(i))
+		header.add_child(b)
+		_view_tabs.append(b)
+
+
+## Страница вкладки: заголовок + скролл (на будущее — длинный список рецептов)
+## + VBox строк.
+func _make_page(page_name: String) -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.name = page_name
+	page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	page.visible = false
+	var title := Label.new()
+	title.theme_type_variation = &"InvPageTitle"
+	if page_name == "RelationsPage":
+		title.text = tr("ОТНОШЕНИЯ")
+		_relations_box = VBoxContainer.new()
+	elif page_name == "CraftsPage":
+		title.text = tr("РЕМЁСЛА")
+		_crafts_box = VBoxContainer.new()
+	else:
+		_relations_box = VBoxContainer.new()
+	page.add_child(title)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.follow_focus = true
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_child(scroll)
+	var box := _relations_box if page_name == "RelationsPage" else _crafts_box
+	if box == null:
+		box = VBoxContainer.new()
+	box.name = "Rows"
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", UiTheme.SPACE_1)
+	scroll.add_child(box)
+	return page
+
+
+func _set_view(index: int) -> void:
+	if _view_pages.is_empty():
+		return
+	_view_index = clampi(index, 0, _view_pages.size() - 1)
+	for i in range(_view_pages.size()):
+		_view_pages[i].visible = i == _view_index
+	for i in range(_view_tabs.size()):
+		_view_tabs[i].set_pressed_no_signal(i == _view_index)
+	if _view_index == 1:
+		_refresh_relations()
+	elif _view_index == 2:
+		_refresh_crafts()
+
+
+## --- Вкладка «Отношения» ------------------------------------------------------
+## Ось репутации — раса/фракция (те же ключи, что у квестов главы города).
+const FACTION_ORDER := ["humans", "ork", "necro", "druid"]
+
+func _bus_state():
+	var bus := get_node_or_null("/root/WorldBus")
+	if bus == null or not ("state" in bus):
+		return null
+	return bus.state
+
+
+func _rep_status(value: int) -> String:
+	var t1 := GameConfig.geti("reputation", "tier_1")
+	var t2 := GameConfig.geti("reputation", "tier_2")
+	var t3 := GameConfig.geti("reputation", "tier_3")
+	if value < 0:
+		return tr("вражда")
+	if value < t1:
+		return tr("нейтрально")
+	if value < t2:
+		return tr("дружелюбно")
+	if value < t3:
+		return tr("доверие")
+	return tr("союз")
+
+
+## Что репутация открывает — числа берутся из того же [reputation], что и гейты.
+func _rep_unlocks(value: int) -> String:
+	var t1 := GameConfig.geti("reputation", "tier_1")
+	var t2 := GameConfig.geti("reputation", "tier_2")
+	var t3 := GameConfig.geti("reputation", "tier_3")
+	var elven := GameConfig.geti("reputation", "elven_rep")
+	var merc := 1
+	if value >= t1:
+		merc = 2
+	if value >= t2:
+		merc = 3
+	if value >= t3:
+		merc = 4
+	var discount := 0
+	if value >= t1:
+		discount = GameConfig.geti("reputation", "discount_1")
+	if value >= t2:
+		discount = GameConfig.geti("reputation", "discount_2")
+	if value >= t3:
+		discount = GameConfig.geti("reputation", "discount_3")
+	var elven_mark := tr("да") if value >= elven else tr("нет")
+	return tr("Наёмники %d/4 · эльфийские свитки: %s · скидка %d%%") \
+		% [merc, elven_mark, discount]
+
+
+func _add_row(box: VBoxContainer, label_text: String, value_text: String,
+		note: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	var lab := Label.new()
+	lab.theme_type_variation = &"InvRowLabel"
+	lab.text = label_text
+	lab.custom_minimum_size = Vector2(180, 0)
+	row.add_child(lab)
+	var val := Label.new()
+	val.theme_type_variation = &"InvRowValue"
+	val.text = value_text
+	val.custom_minimum_size = Vector2(120, 0)
+	row.add_child(val)
+	if note != "":
+		var n := Label.new()
+		n.theme_type_variation = &"InvRowNote"
+		n.text = note
+		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(n)
+	box.add_child(row)
+	return row
+
+
+func _clear_box(box: VBoxContainer) -> void:
+	if box == null:
+		return
+	for c in box.get_children():
+		c.queue_free()
+
+
+func _refresh_relations() -> void:
+	if _relations_box == null:
+		return
+	_clear_box(_relations_box)
+	var st = _bus_state()
+	var title := Label.new()
+	title.theme_type_variation = &"InvSection"
+	title.text = tr("ВАШЕ ОТНОШЕНИЕ")
+	_relations_box.add_child(title)
+	for race in FACTION_ORDER:
+		var value := Game.hero_reputation(str(race))
+		var label := Lore.faction_label(str(race))
+		var mine := tr(" · ваша фракция") if Lore.hero_race_to_faction(Game.hero_race) == str(race) else ""
+		_add_row(_relations_box, label + mine,
+			"%d · %s" % [value, _rep_status(value)], _rep_unlocks(value))
+	var note := Label.new()
+	note.theme_type_variation = &"InvRowNote"
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.text = tr("Репутация растёт за задания главы города и открывает наёмников, эльфийские свитки и скидку.")
+	_relations_box.add_child(note)
+	if st == null:
+		return
+	# Отношения фракций между собой (SIM): пары без повторов, значение — к -100..100.
+	var title2 := Label.new()
+	title2.theme_type_variation = &"InvSection"
+	title2.text = tr("ФРАКЦИИ МЕЖДУ СОБОЙ")
+	_relations_box.add_child(title2)
+	var names := {}
+	for fid in st.factions:
+		var f: Dictionary = st.factions[fid]
+		var race := str(f.get("race", ""))
+		var nm := str(f.get("name", ""))
+		if nm == "":
+			nm = Lore.faction_label(race)
+		names[str(fid)] = nm
+	var seen := {}
+	var pairs := 0
+	for key in st.relations:
+		var parts := str(key).split(":")
+		if parts.size() != 2:
+			continue
+		var a := parts[0]
+		var b := parts[1]
+		var pair_key := [a, b]
+		pair_key.sort()
+		var sig := "%s|%s" % [pair_key[0], pair_key[1]]
+		if a == b or seen.has(sig):
+			continue
+		seen[sig] = true
+		var v := int(st.relations[key])
+		var left := str(names.get(a, a))
+		var right := str(names.get(b, b))
+		_add_row(_relations_box, "%s — %s" % [left, right],
+			"%d · %s" % [v, _rep_status(v)], "")
+		pairs += 1
+	if pairs == 0:
+		var none := Label.new()
+		none.theme_type_variation = &"InvRowNote"
+		none.text = tr("Фракции пока не выясняли отношений.")
+		_relations_box.add_child(none)
+
+
+## --- Вкладка «Ремёсла» --------------------------------------------------------
+const CRAFT_ROWS := [
+	{"key": "smithing", "label": "Кузнец"},
+	{"key": "tailoring", "label": "Портной"},
+	{"key": "mastering", "label": "Мастер"},
+	{"key": "alchemy", "label": "Алхимия"},
+]
+
+func _refresh_crafts() -> void:
+	if _crafts_box == null:
+		return
+	_clear_box(_crafts_box)
+	var title := Label.new()
+	title.theme_type_variation = &"InvSection"
+	title.text = tr("ВАШИ НАВЫКИ")
+	_crafts_box.add_child(title)
+	for entry in CRAFT_ROWS:
+		var key := str(entry["key"])
+		var level := 0
+		var exp_now := 0
+		if is_instance_valid(player):
+			level = player.skill_value(key)
+			exp_now = int(player.experience.get(key, 0))
+		var base_exp := Player.skill_to_exp(level)
+		var next_exp := Player.skill_to_exp(level + 1)
+		var percent := 0
+		if next_exp > base_exp:
+			percent = clampi(int(round(100.0 * float(exp_now - base_exp) / float(next_exp - base_exp))), 0, 100)
+		_add_row(_crafts_box, tr(str(entry["label"])),
+			tr("ур. %d") % level,
+			tr("до следующего уровня: %d%% (%d/%d опыта)") % [percent, exp_now - base_exp, next_exp - base_exp])
+	var note := Label.new()
+	note.theme_type_variation = &"InvRowNote"
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.text = tr("Навык растёт от переработки и крафта; рецепты — свитки в складе.")
+	_crafts_box.add_child(note)
+	# Рецепты в складе по ремеслу: weapon/armor — кузнец, clothes — портной.
+	var title2 := Label.new()
+	title2.theme_type_variation = &"InvSection"
+	title2.text = tr("РЕЦЕПТЫ В СКЛАДЕ")
+	_crafts_box.add_child(title2)
+	var counts := {}
+	var names := {}
+	if is_instance_valid(player):
+		for raw_key in player.inventory:
+			var item := ItemDB.find(str(raw_key))
+			if str(item.get("quality", "")) != "Recipe":
+				continue
+			var bp := str(item.get("bp", ""))
+			var kind := "smithing" if bp in ["weapon", "armor"] else ("tailoring" if bp == "clothes" else "mastering")
+			counts[kind] = int(counts.get(kind, 0)) + 1
+			if not names.has(kind):
+				names[kind] = []
+			(names[kind] as Array).append(str(item.get("name_ru", raw_key)))
+	for entry in CRAFT_ROWS:
+		var key := str(entry["key"])
+		if key == "alchemy":
+			continue
+		var n := int(counts.get(key, 0))
+		var list := ", ".join(PackedStringArray(names.get(key, []))) if n > 0 else tr("нет")
+		_add_row(_crafts_box, tr(str(entry["label"])), "%d" % n, list if n > 0 else "")
+	var alchemy := _alchemy_recipe_count()
+	_add_row(_crafts_box, tr("Алхимия"), "%d" % alchemy,
+		tr("базовые рецепты травника известны сразу"))
+
+
+func _alchemy_recipe_count() -> int:
+	var text := FileAccess.get_file_as_string("res://assets/professions/alchemy/recipes.json")
+	if text == "":
+		return 0
+	var data: Variant = JSON.parse_string(text)
+	if not (data is Dictionary):
+		return 0
+	var list: Variant = (data as Dictionary).get("recipes", [])
+	return (list as Array).size() if list is Array else 0
 
 
 func _build_hover_card() -> void:
@@ -840,6 +1172,7 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			# Свечение уровня крафтовой вещи (обычная - без материала).
 			CraftVFX.apply_to_icon(icon_rect, CraftVFX.tier_of_item(item))
+			CraftVFX.apply_elven(icon_rect, item)
 			if is_essence:
 				icon_rect.name = "EssenceIcon"
 				icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1110,3 +1443,7 @@ func _refresh() -> void:
 	_refresh_equipment()
 	_refresh_inventory_grid()
 	_refresh_stats()
+	if _view_index == 1:
+		_refresh_relations()
+	elif _view_index == 2:
+		_refresh_crafts()

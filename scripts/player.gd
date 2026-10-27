@@ -1185,7 +1185,11 @@ func _apply_relief_stand() -> void:
 		h = float(alm_map.call("relief_at_world", global_position))
 	_anim.position = Vector2(_anim.position.x, -h)
 	if health_bar:
-		health_bar.position.y = -(h + _anim.sprite_height() + 6.0)  # над головой
+		# Над ГОЛОВОЙ фигуры, а не над холстом кадра: холст 64, фигура ~54.
+		# Отступ 16 px (а не 6): между макушкой и шкалой живёт аура
+		# благословения (16 px нимб), иначе шкала её перекрывает.
+		var top := Game.unit_local_rect(self).position.y
+		health_bar.position.y = top - h - 16.0
 
 ## Точка фокуса камеры: визуальный центр персонажа (середина фигурки), а не его
 ## «ноги» (global_position). Спрайт рисуется от подошв вверх — если центрировать
@@ -1265,9 +1269,9 @@ func chase_target(delta):
 			state = "idle"
 			velocity = Vector2.ZERO
 			return
-		# Дистанция боя — между корпусами (хит-боксами), а не точками «пола»
+		# Дистанция боя — между КОРПУСАМИ (реальная фигура), плюс длина оружия.
 		var range_to_enemy := Game.units_range(self, attack_target)
-		if range_to_enemy <= Game.ATTACK_RANGE:
+		if range_to_enemy <= Game.attack_reach(self):
 			_path.clear()
 			state = "attack"
 			velocity = Vector2.ZERO
@@ -1292,7 +1296,7 @@ func chase_target(delta):
 func attack_enemy(delta):
 	if attack_target and is_instance_valid(attack_target):
 		# Враг убежал из радиуса — догоняем, а не бьём в пустоту
-		if Game.units_range(self, attack_target) > Game.ATTACK_RANGE + 12.0:
+		if Game.units_range(self, attack_target) > Game.attack_reach(self) + 8.0:
 			state = "chase"
 			_impact_timer = -1.0
 			_swing_target = null
@@ -1348,7 +1352,7 @@ func attack_enemy(delta):
 				if victim == null or not Game.enemies.has(victim):
 					return
 				# Повторная проверка дистанции на кадре удара: цель могла убежать.
-				if Game.units_range(self, victim) > Game.ATTACK_RANGE + 16.0:
+				if Game.units_range(self, victim) > Game.attack_reach(self) + 12.0:
 					return
 				# Единая точка: промах по hit_chance(атака, защита), далее Game.deal_damage
 				# (поглощение бронёй → take_damage → щит → HP).
@@ -1512,6 +1516,10 @@ func _play_cast_swing() -> void:
 ## Использовать заклинание по имени. Возвращает true, если каст начат.
 ## При cast_time > 0 входит в состояние "casting" и доводит эффект позже.
 func cast_spell(name: String, target_position: Vector2, target_node: Node2D = null) -> bool:
+	# Страховка: на тактической паузе не кастуем ни по клику, ни авто-кастом,
+	# ни свитком. Раньше проверки не было вовсе (корень сцены Always).
+	if Game.is_paused:
+		return false
 	if not can_cast(name):
 		return false
 	var spell: Dictionary = SpellDB.get_spell(name)
@@ -1573,33 +1581,40 @@ func _commit_cast(name: String, spell: Dictionary, target_position: Vector2, tar
 			known_spells[name]["charges"] = left
 	elif has_mana and not Game.debug_magic:
 		current_mana = maxi(0, current_mana - SpellDB.mana_cost(name))
-	cast_cooldowns[name] = SpellDB.cooldown_of(name)
+	# Кулдаун — от познания магии (навык сферы + разум), а не только база.
+	cast_cooldowns[name] = Game.spell_cooldown(self, name)
 	StatusEffects.break_invisibility(self)   # атака срывает невидимость
 	_cast_spell_effect(name, spell, target_position, target)
 	_apply_spell_experience(str(spell.get("sphere", "")))
 
 
-## Свиток мага: применить заклинание 1 раз. ВОЗВРАЩАЕТ bool — раньше был void,
+## Свиток: применить заклинание 1 раз. ВОЗВРАЩАЕТ bool — раньше был void,
 ## и game.gd безусловно удалял предмет, даже если эффекта не было.
-func apply_scroll_to_target(name: String, target: Node2D) -> bool:
+## power — сила свитка (50 обычный / 100 эльфийский): ею заменяется навык
+## героя при расчёте урона.
+func apply_scroll_to_target(name: String, target: Node2D, power: float = -1.0) -> bool:
 	var spell: Dictionary = SpellDB.get_spell(name)
 	if spell.is_empty():
 		push_warning("Свиток ссылается на заклинание, которого нет в базе: " + name)
 		return false
 	if target == null or not is_instance_valid(target):
 		return false
-	_cast_spell_effect(name, spell, target.global_position, target)
+	_cast_spell_effect(name, spell, target.global_position, target, power)
+	# Кулдаун — по магии, заложенной в свиток (50/100), а не по навыку того,
+	# кто его прочитал: иначе воин спамил бы свитками кликами.
+	cast_cooldowns[name] = Game.spell_cooldown(self, name, power)
 	_apply_spell_experience(str(spell.get("sphere", "")))
 	return true
 
 
 ## Свиток по ТОЧКЕ (area/wall/по месту) — когда под курсором нет юнита.
-func apply_scroll_to_target_point(name: String, point: Vector2) -> bool:
+func apply_scroll_to_target_point(name: String, point: Vector2, power: float = -1.0) -> bool:
 	var spell: Dictionary = SpellDB.get_spell(name)
 	if spell.is_empty():
 		push_warning("Свиток ссылается на заклинание, которого нет в базе: " + name)
 		return false
-	_cast_spell_effect(name, spell, point, self)
+	_cast_spell_effect(name, spell, point, self, power)
+	cast_cooldowns[name] = Game.spell_cooldown(self, name, power)
 	_apply_spell_experience(str(spell.get("sphere", "")))
 	return true
 
@@ -1618,7 +1633,11 @@ func _play_spell_sound(name: String, sphere: String) -> void:
 
 ## Общий порядок применения заклинания (книга на панели ИЛИ свиток с прицелом).
 ## Раньше здесь было 5 веток, и 8 разных «баффов» сводились к одному щиту.
-func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector2, target_node: Node2D) -> void:
+## power_override — сила свитка (50/100): ею заменяется навык героя при
+## расчёте УРОНА. Для баффов и лечения сила свитка не применяется (решение
+## игрока: свиток влияет только на урон).
+func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector2,
+		target_node: Node2D, power_override: float = -1.0) -> void:
 	var sphere := str(spell.get("sphere", ""))
 	var kind := str(spell.get("kind", "buff"))
 	var dmg := int(spell.get("damage", 0))
@@ -1636,12 +1655,14 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 		"attack", "area":
 			# Призматическое сияние бьёт по нескольким целям сразу.
 			if str(spell.get("projectile", "")) == "chain":
-				_cast_chain_spell(name, spell, sphere, dmg, area, target_position)
+				_cast_chain_spell(name, spell, sphere, dmg, area, target_position,
+					power_override)
 			# Метель и ядовитое облако — не снаряд, а зона с длительностью.
 			elif str(spell.get("zone_style", "")) != "":
-				_create_zone(target_position, name, sphere)
+				_create_zone(target_position, name, sphere, power_override)
 			else:
-				_fire_spell_projectile(name, sphere, dmg, area, target_position)
+				_fire_spell_projectile(name, sphere, dmg, area, target_position,
+					power_override)
 		"heal":
 			_heal_target(target_node, name, dmg)
 		"buff":
@@ -1654,7 +1675,7 @@ func _cast_spell_effect(name: String, spell: Dictionary, target_position: Vector
 				StatusEffects.apply_spell(target_node, spell, self)
 			SpellVFX.aura_ring(target_node, sphere, "debuff")
 		"wall":
-			_create_wall(target_position, name, sphere)
+			_create_wall(target_position, name, sphere, power_override)
 		"raise":
 			_raise_dead(target_position, name)
 		"self":
@@ -1719,14 +1740,17 @@ func _attach_auras(target: Node2D, spell: Dictionary) -> void:
 				SpellAura.attach(target, "resist", esphere, "resist")
 			"haste":
 				SpellAura.attach(target, "haste", esphere, "haste")
+			"bless":
+				SpellAura.attach(target, "bless", esphere, "bless")
 			_:
 				pass
 
 ## Снаряд заклинания (с анимацией из assets/projectiles/<folder>/).
 ## Если папки снаряда нет (эффект отсутствует — Haste/Invisibility/Summon...),
 ## применяем заклинание мгновенно без летящего снаряда.
-func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float, target_position: Vector2) -> void:
-	var final_dmg := Game.spell_damage(self, name, sphere, dmg)
+func _fire_spell_projectile(name: String, sphere: String, dmg: int, area: float,
+		target_position: Vector2, power_override: float = -1.0) -> void:
+	var final_dmg := Game.spell_damage(self, name, sphere, dmg, power_override)
 	if SpellDB.projectile_folder(name) == "":
 		# Эффекта-снаряда нет: мгновенный урон по цели/точке (напр. Animate_Dead).
 		var enemy := get_nearest_enemy(target_position, 120.0)
@@ -1803,7 +1827,8 @@ func heal_amount(amount: int) -> int:
 ## от КУРСОРА без всякой проверки расстояния до мага.
 
 func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
-		dmg: int, area: float, target_position: Vector2) -> void:
+		dmg: int, area: float, target_position: Vector2,
+		power_override: float = -1.0) -> void:
 	var origin := cast_origin()
 	# Дальность заклинания — единственный предел досягаемости. Раньше она из
 	# базы не читалась вообще, и клик в 260 px бил врагов там, сколько бы
@@ -1814,13 +1839,14 @@ func _cast_chain_spell(spell_name: String, spell: Dictionary, sphere: String,
 	if targets.is_empty():
 		# Никого в досягаемости — бьём в точку прицела, чтобы каст не пропадал
 		# впустую.
-		_fire_spell_projectile(spell_name, sphere, dmg, area, target_position)
+		_fire_spell_projectile(spell_name, sphere, dmg, area, target_position,
+			power_override)
 		return
 	# Урон через общий Game.spell_damage: сила заклинания, разум и навык должны
 	# влиять на «сияние» так же, как на снаряды. Раньше здесь передавался сырой
 	# dmg из БД, и призматическое сияние было единственным заклинанием,
 	# полностью игнорировавшим развитие мага.
-	var final_dmg := Game.spell_damage(self, spell_name, sphere, dmg)
+	var final_dmg := Game.spell_damage(self, spell_name, sphere, dmg, power_override)
 	# Каждой цели — свой цвет радуги, иначе все лучи выходили цветом сферы.
 	var color_index := 0
 	for t in targets:
@@ -1879,26 +1905,36 @@ func _chain_targets(aim: Vector2, radius: float, origin: Vector2,
 ## Раньше это был ColorRect 32×32 на 2 секунды: без урона и без блокировки.
 ## Размер стены задаётся в КЛЕТКАХ (zone_cells) — по решению игрока 6 × 2,
 ## и урон, спрайт и блокировка берут размер из одного и того же прямоугольника.
-func _create_wall(target_position: Vector2, spell_name: String, sphere: String) -> void:
+func _create_wall(target_position: Vector2, spell_name: String, sphere: String,
+		power_override: float = -1.0) -> void:
 	var spell := SpellDB.get_spell(spell_name)
 	var mode := str(spell.get("wall_mode", "damage"))
 	var life := float(spell.get("wall_life", 6.0))
 	var cells := _zone_cells(spell, Vector2i(6, 2))
+	# Ориентация стены: ПЕРПЕНДИКУЛЯРНО направлению каста. Смотрим влево или
+	# вправо — стена встаёт вертикально (2×6), смотрим вверх/вниз — лежит
+	# горизонтально (6×2). Игрок 28.10: «магия должна становиться вертикально».
+	var aim := target_position - cast_origin()
+	if absf(aim.x) >= absf(aim.y):
+		cells = Vector2i(2, 6)
 	var dmg := 0
 	if mode != "block":
-		dmg = Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)))
+		dmg = Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)),
+			power_override)
 	SpellVFX.spawn_wall(target_position, sphere, self, life, mode, cells, dmg)
 
 
 ## Зона с длительностью: метель и ядовитое облако. Раньше это был одиночный
 ## снаряд с одним попаданием — «метель» бросала один метеор, а «облако» не
 ## оставляло после себя ничего, хотя в базе у обоих dot на 5–6 секунд.
-func _create_zone(target_position: Vector2, spell_name: String, sphere: String) -> void:
+func _create_zone(target_position: Vector2, spell_name: String, sphere: String,
+		power_override: float = -1.0) -> void:
 	var spell := SpellDB.get_spell(spell_name)
 	var style := str(spell.get("zone_style", "cloud"))
 	var life := float(spell.get("zone_life", 4.0))
 	var cells := _zone_cells(spell, Vector2i(3, 3))
-	var dmg := Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)))
+	var dmg := Game.spell_damage(self, spell_name, sphere, int(spell.get("damage", 0)),
+		power_override)
 	SpellVFX.spawn_zone(target_position, style, sphere, self, life, cells, dmg, 0.5)
 	# Зона наносит урон и эффекты (медлен, яд) всем, кто в ней стоит.
 	StatusEffects.apply_area(target_position, _zone_radius(cells), spell, self)
@@ -2104,54 +2140,135 @@ func _create_lightning_effect(from: Vector2, to: Vector2):
 ## Авто-каст мага: лечение при падении HP + авто-баффы по ветке.
 ## Не прерывает ручной прицел (pending_spell) и не работает в casting.
 var _auto_buff_accum := 0.0
+var _auto_heal_accum := 0.0
+var _auto_scroll_accum := 0.0
 
 
+## Авто-волшебство мага: лечение себя и цели + баффы по уровню из настроек.
+##
+## Раньше лечение включалось ТОЛЬКО если игрок вручную назначил лечение на ПКМ
+## (`Game.auto_spell`) — по умолчанию маг не лечился вообще, даже вне боя
+## (жалоба 27.10). Теперь уровень авто-волшебства по умолчанию «Базовое»,
+## и лечение идёт само, пока есть мана и заклинание известно.
 func _tick_auto_cast(delta: float) -> void:
 	if state == "casting" or state == "dead" or state == "corpse" \
 			or not Game.pending_spell.is_empty():
 		return
 	if not Game.pending_scroll.is_empty():
 		return
+	# ВОИН: никаких уровней авто-волшебства. Только ОДИН свиток, помеченный
+	# правой кнопкой в книге магии, и только на себя (игрок 28.10: «воин не
+	# должен быть заменой магу»).
+	if not has_mana:
+		_tick_auto_scroll(delta)
+		return
+	if Game.auto_buff_tier == "none":
+		return
 	var ratio := GameConfig.getf("magic", "auto_heal_ratio")
 	if ratio <= 0.0:
 		ratio = 0.45
-	# 1) Лечение: auto_spell — заклинание kind=heal (обычно Heal)
-	if Game.auto_spell != "" and SpellDB.kind_of(Game.auto_spell) == "heal":
-		_auto_try_heal(Game.auto_spell, ratio)
-	# 2) Баффы по ветке
-	if Game.auto_buff_tier != "none":
-		_auto_buff_accum += delta
-		var interval := GameConfig.getf("magic", "auto_buff_interval")
-		if interval <= 0.0:
-			interval = 2.0
-		if _auto_buff_accum >= interval:
-			_auto_buff_accum = 0.0
-			_auto_try_buffs()
+	# 1) Лечение — раз в секунду: порог 45 % HP, цель из настроек.
+	_auto_heal_accum += delta
+	if _auto_heal_accum >= 1.0:
+		_auto_heal_accum = 0.0
+		var heal_spell := _auto_heal_spell()
+		if heal_spell != "":
+			_auto_try_heal(heal_spell, ratio)
+	# 2) Баффы по уровню: один бафф за интервал, чтобы не выжигать ману.
+	_auto_buff_accum += delta
+	var interval := GameConfig.getf("magic", "auto_buff_interval")
+	if interval <= 0.0:
+		interval = 2.0
+	if _auto_buff_accum >= interval:
+		_auto_buff_accum = 0.0
+		_auto_try_buffs()
 
 
-func _auto_heal_candidates() -> Array:
-	var out: Array = []
-	var mode := Game.auto_heal_targets
-	match mode:
-		"party":
-			for m in Game.party:
-				if is_instance_valid(m):
-					out.append(m)
-		"ally":
-			if is_instance_valid(Game.hero) and Game.hero != self:
-				out.append(Game.hero)
-			for m in Game.party:
-				if is_instance_valid(m):
-					out.append(m)
-		"neutral":
-			if is_instance_valid(Game.hero) and Game.hero != self:
-				out.append(Game.hero)
-			for m in Game.party:
-				if is_instance_valid(m):
-					out.append(m)
-			for n in Game.npcs:
-				if is_instance_valid(n) and "role" in n and str(n.role) == "guard":
-					out.append(n)
+## Автокаст единственного помеченного свитка (воин): только на себя,
+## по кулдауну заклинания, ровно один свиток за каст.
+##
+## Страховка от «купил 10 свитков и сжёг их за секунду»: каст не идёт, если
+## уже кастуем, если кулдаун заклинания не прошёл, если эффект ещё висит
+## (для баффа) или HP выше порога (для лечения).
+func _tick_auto_scroll(delta: float) -> void:
+	var item_key := Game.auto_scroll_item
+	if item_key == "":
+		return
+	var spell := SpellDB.spell_from_scroll(item_key)
+	if spell == "":
+		Game.auto_scroll_item = ""
+		return
+	if not has_item(item_key):
+		Game.auto_scroll_item = ""
+		print("Авто-свиток закончился: %s — пометка снята." % item_key)
+		return
+	if float(cast_cooldowns.get(spell, 0.0)) > 0.0:
+		return
+	var kind := SpellDB.kind_of(spell)
+	var effs := SpellDB.effects_of(spell)
+	var et := ""
+	var e_sphere := ""
+	if not effs.is_empty():
+		et = str((effs[0] as Dictionary).get("type", ""))
+		e_sphere = str((effs[0] as Dictionary).get("sphere", ""))
+	if kind == "heal":
+		var mx := maxi(1, max_hp)
+		var ratio := GameConfig.getf("magic", "auto_heal_ratio")
+		if ratio <= 0.0:
+			ratio = 0.45
+		if float(current_hp) / float(mx) >= ratio:
+			return
+	elif kind in ["buff", "self"] and et != "":
+		if StatusEffects.is_active(self, et, e_sphere):
+			return
+	else:
+		# Боевые свитки на себя бессмысленны — автокаст не назначается.
+		return
+	_auto_scroll_accum += delta
+	if _auto_scroll_accum < 1.0:
+		return
+	_auto_scroll_accum = 0.0
+	if not remove_item(item_key):
+		Game.auto_scroll_item = ""
+		return
+	var scroll_item := ItemDB.find(item_key)
+	var scroll_power := SpellDB.scroll_power_of(scroll_item)
+	# Кулдаун — по магии внутри свитка (50/100), а не по применению предмета.
+	cast_cooldowns[spell] = Game.spell_cooldown(self, spell, scroll_power)
+	_cast_spell_effect(spell, SpellDB.get_spell(spell), global_position, self,
+		scroll_power)
+	_apply_spell_experience(SpellDB.sphere_of(spell))
+
+
+## Каким лечить (маг): выбранное вручную (ПКМ по книге), иначе первое
+## ИЗУЧЕННОЕ заклинание лечения. Свиточные заряды сюда не попадают —
+## свитки у мага кастуются только вручную.
+func _auto_heal_spell() -> String:
+	if Game.auto_spell != "" and known_spells.has(Game.auto_spell) \
+			and SpellDB.kind_of(Game.auto_spell) == "heal" \
+			and spell_charges(Game.auto_spell) == -1:
+		return Game.auto_spell
+	for sn in known_spells.keys():
+		if SpellDB.kind_of(str(sn)) == "heal" and spell_charges(str(sn)) == -1:
+			return str(sn)
+	return ""
+
+
+## Кого лечить и баффать — ОДИН список целей (настройка «Только я / Я и моя
+## группа / Я, моя группа и нейтраллы»).
+## Раньше для режима "party" перебирался только `Game.party` (наёмники), а сам
+## маг в него не входит — поэтому он не лечил и не баффал себя.
+func _auto_targets() -> Array:
+	var out: Array = [self]
+	if Game.auto_targets == "self":
+		return out
+	for m in Game.party:
+		if is_instance_valid(m) and m != self:
+			out.append(m)
+	if Game.auto_targets == "party_neutral":
+		for n in Game.npcs:
+			if is_instance_valid(n) and n != self:
+				out.append(n)
 	return out
 
 
@@ -2161,7 +2278,7 @@ func _auto_try_heal(spell_name: String, ratio: float) -> void:
 	var rng := SpellDB.range_of(spell_name)
 	var best: Node2D = null
 	var best_hp := 1.0
-	for u in _auto_heal_candidates():
+	for u in _auto_targets():
 		if not is_instance_valid(u) or not ("current_hp" in u) or not ("max_hp" in u):
 			continue
 		var mx := int(u.get("max_hp"))
@@ -2183,16 +2300,21 @@ func _auto_try_heal(spell_name: String, ratio: float) -> void:
 	cast_spell(spell_name, best.global_position, best)
 
 
+## Заклинания баффов по уровню авто-волшебства.
+##
+## Базовое — то, что нужно всегда: ускорение и щит. Среднее добавляет
+## благословение и защиты от четырёх стихий. Максимальное — ещё невидимость.
 func _auto_buff_spells_for_tier() -> Array:
 	match Game.auto_buff_tier:
-		"light":
-			return ["Haste"]
+		"base":
+			return ["Haste", "Shield"]
 		"medium":
-			return ["Haste", "Bless", "Protection_from_Fire", "Protection_from_Water",
-				"Protection_from_Air", "Protection_from_Earth"]
-		"advanced":
-			return ["Haste", "Bless", "Protection_from_Fire", "Protection_from_Water",
-				"Protection_from_Air", "Protection_from_Earth", "Invisibility"]
+			return ["Haste", "Shield", "Bless", "Protection_from_Fire",
+				"Protection_from_Water", "Protection_from_Air", "Protection_from_Earth"]
+		"max":
+			return ["Haste", "Shield", "Bless", "Protection_from_Fire",
+				"Protection_from_Water", "Protection_from_Air", "Protection_from_Earth",
+				"Invisibility"]
 	return []
 
 
@@ -2200,40 +2322,36 @@ func _auto_try_buffs() -> void:
 	var spells := _auto_buff_spells_for_tier()
 	if spells.is_empty():
 		return
-	var candidates: Array = []
-	match Game.auto_buff_targets:
-		"party":
-			for m in Game.party:
-				if is_instance_valid(m):
-					candidates.append(m)
-		"ally":
-			if is_instance_valid(Game.hero) and Game.hero != self:
-				candidates.append(Game.hero)
-			for m in Game.party:
-				if is_instance_valid(m):
-					candidates.append(m)
-		"neutral":
-			if is_instance_valid(Game.hero) and Game.hero != self:
-				candidates.append(Game.hero)
-			for m in Game.party:
-				if is_instance_valid(m):
-					candidates.append(m)
+	var candidates := _auto_targets()
 	for sn in spells:
+		# Уровни авто-волшебства — только для ИЗУЧЕННЫХ заклинаний (маг).
+		# Свиточные заряды уровнем не тратятся: у воина автокаст один и по ПКМ.
+		if spell_charges(sn) != -1:
+			continue
 		if not can_cast(sn):
 			continue
-		var kind := SpellDB.kind_of(sn)
+		# Shield (kind "self") применяется только к кастеру: на союзника
+		# заклинание всё равно наложилось бы на себя, но сожгло бы ману и
+		# кулдаун «в пустоту».
+		var self_only := SpellDB.kind_of(sn) == "self"
 		var tkind := SpellDB.target_of(sn)
 		var rng := SpellDB.range_of(sn)
 		for u in candidates:
 			if not is_instance_valid(u):
 				continue
-			# Уже под баффом? Проверяем первый эффект
+			if self_only and u != self:
+				continue
+			# Уже под баффом? Смотрим СФЕРУ САМОГО ЭФФЕКТА, а не заклинания.
+			# У Haste/Bless/Shield/Invisibility поля `sphere` в эффекте нет, и
+			# проверка по сфере заклинания ("Astral") не совпадала никогда —
+			# маг перекастовывал ускорение каждые 10 с при длительности 20 с.
 			var effs := SpellDB.effects_of(sn)
 			var need := true
 			if not effs.is_empty():
 				var e0: Dictionary = effs[0]
 				var et := str(e0.get("type", ""))
-				if et != "" and StatusEffects.has_effect(u, et, SpellDB.sphere_of(sn)):
+				var e_sphere := str(e0.get("sphere", ""))
+				if et != "" and StatusEffects.is_active(u, et, e_sphere):
 					need = false
 			if not need:
 				continue

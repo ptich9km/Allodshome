@@ -314,6 +314,9 @@ func _run() -> void:
 	# Стена огня: создаётся и наносит урон по тику (режим damage)
 	StatusEffects.clear(hero)
 	var foe3 := _spawn_foe(hero.global_position + Vector2(80, 0))
+	# Враг не должен УБЕЖАТЬ из стены: он агрится на героя и за 0.8 с выходит
+	# из полосы (стена теперь перпендикулярна касту и узкая — 2 клетки).
+	foe3.set_physics_process(false)
 	await process_frame
 	hero.call("_create_wall", foe3.global_position, "Wall_of_Fire", "Fire")
 	await process_frame

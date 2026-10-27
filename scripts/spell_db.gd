@@ -255,12 +255,30 @@ static func book_index(name: String) -> int:
 ## Заклинание из названия свитка ("Scroll Fire Ball"/"SuperScroll Fire Ball") или "".
 static func spell_from_scroll(item_name: String) -> String:
 	var n := str(item_name)
-	for prefix in ["Scroll ", "SuperScroll ", "Quest "]:
+	for prefix in ["Scroll ", "SuperScroll ", "Elven Scroll ", "Эльфийский свиток: ",
+			"Свиток: ", "Quest "]:
 		if n.begins_with(prefix):
 			var rest := n.trim_prefix(prefix)
 			# "Fire Ball" -> "Fire_Ball"
 			return rest.replace(" ", "_")
 	return ""
+
+
+## Сила свитка из его effects: "castSpell=Fire_Ball:50" -> 50.0, ":100" -> 100.0.
+## -1.0 — если сила не задана (тогда каст считается по навыку героя).
+## Работаем со словарём предмета, а не с ключом: SpellDB не должен зависеть
+## от ItemDB (циклическая ссылка классов).
+static func scroll_power_of(item: Dictionary) -> float:
+	for raw in item.get("effects", []):
+		var s := str(raw)
+		if not s.begins_with("castSpell="):
+			continue
+		var parts := s.split(":")
+		# "castSpell=Fire_Ball:50" → ["castSpell=Fire_Ball", "50"]: сила — последняя
+		# часть. Раньше здесь стояло `>= 3` и сила всегда читалась как -1.
+		if parts.size() >= 2:
+			return float(parts[parts.size() - 1])
+	return -1.0
 
 ## Имя заклинания по его литералу (нечувствительно к регистру): "" если нет.
 static func _resolve_spell(literal: String) -> String:

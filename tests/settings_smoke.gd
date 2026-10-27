@@ -207,8 +207,9 @@ func _rebind_reaches_inputmap() -> void:
 		await process_frame
 		return
 
-	# Переходим на вкладку «Управление» — третья.
-	var tab2 = panel.find_child("Tab2", true, false)
+	# Переходим на вкладку «Управление» — теперь она четвёртая (Tab3):
+	# вкладку «Магия» вставили ПЕРЕД ней 27.10.
+	var tab2 = panel.find_child("Tab3", true, false)
 	_check(tab2 is Button, "вкладка «Управление» есть")
 	if tab2 is Button:
 		(tab2 as Button).pressed.emit()
@@ -278,7 +279,7 @@ func _panel_opens_and_closes() -> void:
 
 	_check(panel.get("_root") != null, "панель настроек собрана")
 	var tabs: Array = panel.get("_tab_buttons")
-	_check(tabs.size() == 3, "три раздела (=%d)" % tabs.size())
+	_check(tabs.size() == 4, "четыре раздела: графика, звук, магия, управление (=%d)" % tabs.size())
 
 	# Каждый раздел обязан что-то содержать: пустой вкладкой считать нельзя.
 	for i in range(tabs.size()):
@@ -288,6 +289,31 @@ func _panel_opens_and_closes() -> void:
 		var body = panel.get("_body")
 		_check(body is VBoxContainer and (body as VBoxContainer).get_child_count() > 0,
 			"раздел %d непустой" % i)
+
+	# Раздел «Магия»: уровень авто-волшебства и цель меняют статики Game.
+	(tabs[2] as Button).pressed.emit()
+	await process_frame
+	var base_btn = panel.find_child("Opt_base", true, false)
+	var max_btn = panel.find_child("Opt_max", true, false)
+	var self_btn = panel.find_child("Opt_self", true, false)
+	_check(base_btn is Button, "кнопка уровня «Базовое» есть")
+	_check(max_btn is Button, "кнопка уровня «Максимальное» есть")
+	_check(self_btn is Button, "кнопка цели «Только я» есть")
+	Game.auto_buff_tier = "base"
+	Game.auto_targets = "party"
+	if max_btn is Button:
+		(max_btn as Button).pressed.emit()
+		await process_frame
+		_check(Game.auto_buff_tier == "max", "нажатие уровня меняет Game.auto_buff_tier")
+	# После нажатия панель пересобирает раздел (подсветка активного варианта),
+	# поэтому прежняя ссылка на кнопку уже освобождена — ищем заново.
+	var self_btn2 = panel.find_child("Opt_self", true, false)
+	if self_btn2 is Button:
+		(self_btn2 as Button).pressed.emit()
+		await process_frame
+		_check(Game.auto_targets == "self", "нажатие цели меняет Game.auto_targets")
+	Game.auto_buff_tier = "base"
+	Game.auto_targets = "party"
 
 	# Esc.
 	var ev := InputEventKey.new()

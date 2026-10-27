@@ -105,64 +105,87 @@ func _test_styles(fire: SpellWall, earth: SpellWall) -> void:
 # --- 2-3. Слои ------------------------------------------------------------
 
 func _test_layers(fire: SpellWall, earth: SpellWall) -> void:
-	var flame := _flame_of(fire)
-	_check(flame != null, "у стены огня есть слой пламени")
-	_check(_flame_of(earth) == null, "у стены земли слоя пламени нет")
-	if flame == null:
+	var flames := _flames_of(fire)
+	# Пламя есть в КАЖДОЙ клетке; у дальнего ряда оно тише (иначе 12
+	# аддитивных очагов выжигают цвет в белую плёнку).
+	_check(flames.size() == fire.cells.x * fire.cells.y,
+		"у стены огня очаг в каждой клетке: %d из %d"
+			% [flames.size(), fire.cells.x * fire.cells.y])
+	var near := 0.0
+	var far := 10.0
+	for f in flames:
+		var b := float(f.get_meta("base_alpha", 1.0))
+		near = maxf(near, b)
+		far = minf(far, b)
+	_check(near > far + 0.2,
+		"дальний ряд пламени тише ближнего (%.2f против %.2f)" % [far, near])
+	_check(_flames_of(earth).is_empty(), "у стены земли пламени нет")
+	_check(_stones_of(earth).size() == earth.cells.x * earth.cells.y,
+		"у стены земли валун в каждой клетке: %d" % _stones_of(earth).size())
+	if flames.is_empty():
 		return
 	# Пламя поверх юнитов — это решение игрока. Заливка при этом обязана
 	# остаться ПОД ними, иначе земля спрячет героя стоящего в огне.
-	_check(flame.z_index >= ZONE_Z,
-		"пламя поверх юнитов (z=%d, нужно >= %d)" % [flame.z_index, ZONE_Z])
+	_check(flames[0].z_index >= ZONE_Z,
+		"пламя поверх юнитов (z=%d, нужно >= %d)" % [flames[0].z_index, ZONE_Z])
+	# Валуны — наоборот, ниже юнитов: стена не должна прятать героя.
+	if not _stones_of(earth).is_empty():
+		_check(_stones_of(earth)[0].z_index < ZONE_Z,
+			"валуны ниже юнитов (z=%d)" % _stones_of(earth)[0].z_index)
 	var fill := _fill_of(fire)
 	_check(fill != null and fill.z_index <= FILL_Z,
 		"заливка зоны под юнитами (z=%s, нужно <= %d)" % [
 			str(fill.z_index) if fill != null else "-", FILL_Z])
-	if fill != null and flame != null:
-		_check(fill.z_index < flame.z_index,
-			"заливка ниже пламени — границы опасных клеток не перекрыты огнём")
 
 
 # --- 4-5. Геометрия -------------------------------------------------------
 
 func _test_geometry(fire: SpellWall) -> void:
-	var flame := _flame_of(fire)
-	if flame == null:
+	var flames := _flames_of(fire)
+	if flames.is_empty():
 		return
 	var ps := fire.pixel_size()
-	# Размер спрайта в пикселях = scale * РЕАЛЬНЫЙ размер текстуры. Раньше здесь
-	# стояло жёсткое 32, и тест врал: текстура белая квадратная 4x4, а не 32x32,
-	# поэтому ширина выходила в 8 раз больше настоящей. Тот же magic number
-	# был и в коде зоны — игрок заменил его на texture.get_size(), и здесь
-	# проверка обязана считать так же.
-	var tex := flame.texture.get_size()
-	var width := flame.scale.x * tex.x
-	_check(absf(width - ps.x) <= 1.0,
-		("ширина пламени = ширине зоны (%.1f против %.1f) — визуал не врёт "
-			+ "про лишние клетки") % [width, ps.x])
-	# Вверх пламя выходит за прямоугольник зоны: огонь растёт вверх.
-	var height := flame.scale.y * tex.y
-	_check(height > ps.y,
-		("пламя выше прямоугольника зоны (%.1f против %.1f)" % [height, ps.y]))
-	_check(absf(height - (ps.y + 32.0 * RISE)) <= 1.0,
-		("высота пламени = зона + подъём %.1f клетки (ожидалось %.1f)"
-			% [RISE, ps.y + 32.0 * RISE]))
-	# Низ пламени совпадает с низом зоны: иначе огонь висит в воздухе.
-	# Спрайт растёт вверх от центра, поэтому центр смещён вниз на пол
-	# добавленной высоты.
-	_check(absf(flame.position.y + rise_px() * 0.5) <= 1.0,
-		("низ пламени совпадает с низом зоны (смещение %.2f)"
-			% (flame.position.y + rise_px() * 0.5)))
+	# Каждый очаг — ровно клетка в ширину и клетка+подъём в высоту.
+	var bad_w := 0
+	var bad_h := 0
+	for f in flames:
+		var tex: Vector2 = f.texture.get_size()
+		var w: float = f.scale.x * tex.x
+		var h: float = f.scale.y * tex.y
+		if absf(w - 32.0) > 0.5:
+			bad_w += 1
+		if absf(h - (32.0 + rise_px())) > 0.5:
+			bad_h += 1
+	_check(bad_w == 0, "каждый очаг шириной в клетку (промахов: %d)" % bad_w)
+	_check(bad_h == 0, "каждый очаг = клетка + подъём %.1f (промахов: %d)"
+		% [RISE, bad_h])
+	# Низ каждого очага совпадает с низом СВОЕЙ клетки — огонь не в воздухе.
+	var bad_bottom := 0
+	for f in flames:
+		var tex2: Vector2 = f.texture.get_size()
+		var h2: float = f.scale.y * tex2.y
+		var bottom_local: float = f.position.y + h2 * 0.5
+		var bottom_world: float = fire.global_position.y + bottom_local
+		# Клетка должна содержать эту нижнюю точку (низ клетки = её y+32).
+		var cell_y := int(floor((bottom_world - 1.0) / 32.0))
+		var cell_bottom := float(cell_y + 1) * 32.0
+		if absf(bottom_world - cell_bottom) > 1.0:
+			bad_bottom += 1
+	_check(bad_bottom == 0, "низ очагов на границах клеток (промахов: %d)"
+		% bad_bottom)
+	# Зона осталась прежней: 6×2 = 192×64.
+	_check(absf(ps.x - 192.0) <= 1.0 and absf(ps.y - 64.0) <= 1.0,
+		"размер зоны 6×2 (%s)" % str(ps))
 
 
 # --- 6. Цвет --------------------------------------------------------------
 
 func _test_color(fire: SpellWall) -> void:
-	var flame := _flame_of(fire)
-	if flame == null or not (flame.material is ShaderMaterial):
+	var flames := _flames_of(fire)
+	if flames.is_empty() or not (flames[0].material is ShaderMaterial):
 		_check(false, "у пламени есть ShaderMaterial")
 		return
-	var c: Color = (flame.material as ShaderMaterial).get_shader_parameter("color")
+	var c: Color = (flames[0].material as ShaderMaterial).get_shader_parameter("color")
 	_check(c.is_equal_approx(SpellVFX.FLAME_WALL_COLOR),
 		"цвет пламени = заданному красно-оранжевому (%s против %s)"
 			% [str(c), str(SpellVFX.FLAME_WALL_COLOR)])
@@ -184,10 +207,16 @@ func _test_phases(fire: SpellWall) -> void:
 		_check(false, "свежая стена огня для проверки фаз создана")
 		return
 	await process_frame
-	var f := _flame_of(fresh)
-	if f == null:
+	var flames := _flames_of(fresh)
+	if flames.is_empty():
 		_check(false, "у свежей стены есть пламя")
 		return
+	# Пульс проверяем на БЛИЖНЕМ ряду: у дальнего своя базовая яркость 0.5.
+	var f: Sprite2D = flames[0]
+	for s in flames:
+		if float((s as Sprite2D).get_meta("base_alpha", 1.0)) > 0.99:
+			f = s as Sprite2D
+			break
 	# В фазе подсказки огонь ещё не бьёт — пламени быть не должно, иначе
 	# подсказка ничего не сообщает.
 	_check(fresh.telegraph > 0.0,
@@ -240,13 +269,28 @@ func rise_px() -> float:
 	return 32.0 * RISE
 
 
-func _flame_of(wall: SpellWall) -> Sprite2D:
+func _flames_of(wall: SpellWall) -> Array:
+	var out: Array = []
 	if wall == null:
-		return null
+		return out
 	for c in wall.get_children():
 		if c is Sprite2D and (c as Sprite2D).z_index >= ZONE_Z:
-			return c as Sprite2D
-	return null
+			out.append(c as Sprite2D)
+	return out
+
+
+## Валуны каменной стены — по идентичности шейдера (а не по z: слой контура
+## тоже лежит между заливкой и пламенем).
+func _stones_of(wall: SpellWall) -> Array:
+	var out: Array = []
+	if wall == null:
+		return out
+	var want: Shader = SpellVFX.stone_wall_material(0.0).shader
+	for c in wall.get_children():
+		if c is Sprite2D and (c as Sprite2D).material is ShaderMaterial:
+			if ((c as Sprite2D).material as ShaderMaterial).shader == want:
+				out.append(c as Sprite2D)
+	return out
 
 
 func _fill_of(wall: SpellWall) -> Sprite2D:

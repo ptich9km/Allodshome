@@ -46,6 +46,7 @@ func _run() -> void:
 
 	print("-- WorldState --")
 	_new_faction_has_archmage()
+	_ensure_race_factions()
 	_get_archmage_by_race()
 	_old_save_without_archmage()
 	_add_power_and_tier()
@@ -179,6 +180,23 @@ func _new_faction_has_archmage() -> void:
 	var am2: Dictionary = f2.get("archmage", {})
 	_check(am2 is Dictionary, "archmage без race — словарь, не null")
 	_check(float(am2.get("power", 0)) > 0.0, "без race power из GameConfig")
+
+
+## 28.10: у нежити и друидов не было великого мага, потому что WorldState
+## создавал только людей и орков. ensure_race_factions добивает четыре расы и
+## не дублирует старую фракцию, записанную как "human".
+func _ensure_race_factions() -> void:
+	var w = WorldStateSc.new()
+	_check(w.ensure_race_factions() == 4, "ensure_race_factions создаёт 4 фракции")
+	for race in ["humans", "ork", "necro", "druid"]:
+		var am: Dictionary = w.get_archmage(str(race))
+		_check(not am.is_empty(), "get_archmage(%s) не пуст" % str(race))
+	_check(w.ensure_race_factions() == 0, "повторный вызов ничего не добавляет")
+	var legacy = WorldStateSc.new()
+	legacy.new_faction("Люди", "human")
+	var legacy_added: int = legacy.ensure_race_factions()
+	_check(legacy_added == 3,
+		"старая фракция race=human не дублируется (добавлено %d)" % legacy_added)
 
 
 func _get_archmage_by_race() -> void:

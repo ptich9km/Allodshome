@@ -95,6 +95,14 @@ func refresh_spell_book() -> void:
 	_spell_button_names.clear()
 	_cd_shown.clear()
 
+	# ВОИН: книга = свитки из склада. Маг свитки сюда НЕ берёт — они бы
+	# затирали книжную магию; у мага свиток живёт в складе и на хоткее.
+	if not player.has_mana:
+		_build_scroll_book()
+		_ensure_auto_status_label()
+		_refresh_auto_status()
+		return
+
 	# Каноничная таблица из 24 книжных заклинаний: порядок = порядок иконок
 	# assets/spells/spell_NN.png (нарезаны из spellbook.bmp, слот книги = индекс)
 	var slots: Array = []
@@ -237,7 +245,7 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	# Иконку запоминаем, чтобы гасить только её, а не кнопку целиком
 	if icon != "":
 		b.set_meta("icon", b.get_child(0))
-	_set_cooldown_visual(b, 0.0, SpellDB.cooldown_of(name))
+	_set_cooldown_visual(b, 0.0, Game.spell_cooldown(player, name))
 
 
 ## Обновить вид клетки под текущим кулдауном: left секунд, либо 0 = готово.
@@ -287,8 +295,9 @@ func _spell_tooltip(spell_name: String, title: String, sphere: String, charges: 
 	var rng_range := float(spell.get("range", 0))
 	if rng_range > 0.0:
 		lines.append("Дальность: %.0f м" % (rng_range / 32.0))
-	if SpellDB.cooldown_of(spell_name) > 0.0:
-		lines.append("Кулдаун: %.1f с" % SpellDB.cooldown_of(spell_name))
+	var cd_total := Game.spell_cooldown(player, spell_name)
+	if cd_total > 0.0:
+		lines.append("Кулдаун: %.1f с" % cd_total)
 	if SpellDB.cast_time_of(spell_name) > 0.0:
 		lines.append("Подготовка: %.2f с" % SpellDB.cast_time_of(spell_name))
 
@@ -324,6 +333,8 @@ func _effect_labels(effects: Array) -> Array:
 ## прицеливания (анимированный курсор cast/), магия улетает только по клику
 ## на цель. Мана/заряд при этом НЕ списываются до попадания по цели.
 func _cast_spell_button(name: String) -> void:
+	if Game.is_paused:
+		return
 	if not is_instance_valid(player):
 		return
 	_begin_spell_targeting(name)
@@ -346,16 +357,8 @@ func _toggle_auto_spell(name: String) -> void:
 			_mark_auto_spell_cell(b, sn)
 		else:
 			_clear_auto_spell_mark(b)
-	# Цикл цели лечения: party → ally → neutral → party
-	if Game.auto_spell != "" and SpellDB.kind_of(Game.auto_spell) == "heal":
-		match Game.auto_heal_targets:
-			"party":
-				Game.auto_heal_targets = "ally"
-			"ally":
-				Game.auto_heal_targets = "neutral"
-			_:
-				Game.auto_heal_targets = "party"
-	# Бафф-ветка: Alt+ПКМ циклом, либо 1..3 не трогаем — добавим хоткей ниже
+	# Цель лечения и баффов — теперь одна настройка (Esc → Настройки, «Магия»),
+	# поэтому ПКМ больше не цикл: он молча менял поведение авто-лечения.
 	_refresh_auto_status()
 
 
@@ -399,26 +402,16 @@ func _clear_auto_spell_mark(b: Button) -> void:
 		badge.visible = false
 
 
-## Alt+ПКМ по книге: цикл авто-баффов none → light → medium → advanced → none.
+## Alt+ПКМ по книге: быстрый цикл уровня авто-волшебства (без окна настроек).
+## base → medium → max → base. Цель меняется в Esc → Настройки, «Магия».
 func _cycle_auto_buff_tier() -> void:
 	match Game.auto_buff_tier:
-		"none":
-			Game.auto_buff_tier = "light"
-		"light":
+		"base":
 			Game.auto_buff_tier = "medium"
 		"medium":
-			Game.auto_buff_tier = "advanced"
+			Game.auto_buff_tier = "max"
 		_:
-			Game.auto_buff_tier = "none"
-	# Цель баффов: party по умолчанию; цикл при смене ветки
-	if Game.auto_buff_tier != "none":
-		match Game.auto_buff_targets:
-			"party":
-				Game.auto_buff_targets = "ally"
-			"ally":
-				Game.auto_buff_targets = "neutral"
-			_:
-				Game.auto_buff_targets = "party"
+			Game.auto_buff_tier = "base"
 	_refresh_auto_status()
 
 
@@ -440,6 +433,141 @@ func _ensure_auto_status_label() -> void:
 	spell_panel.add_child(lab)
 
 
+## --- Книга воина: свитки из склада -----------------------------------------
+
+## Воин не учит магию: его «книга» — свитки в складе. Одна ячейка на тип,
+## склад остаётся хозяином (свиток можно продать). Маг свитки сюда не берёт.
+func _build_scroll_book() -> void:
+	var seen: Array = []
+	for raw in player.inventory:
+		var key := str(raw)
+		if seen.has(key):
+			continue
+		var item := ItemDB.find(key)
+		if item.is_empty():
+			continue
+		var q := str(item.get("quality", ""))
+		if q != "Scroll" and q != "SuperScroll":
+			continue
+		seen.append(key)
+		_make_scroll_cell(key, item, player.inventory.count(key))
+
+
+## Ячейка свитка: иконка предмета, остаток, метка автокаста.
+func _make_scroll_cell(item_key: String, item: Dictionary, count: int) -> void:
+	var spell := SpellDB.spell_from_scroll(item_key)
+	var sphere_name := SpellDB.sphere_of(spell)
+	var sphere_color: Color = UiKit.SPHERE_COLORS.get(sphere_name, Color(0.5, 0.5, 0.5))
+	var elven := CraftVFX.is_elven(item)
+
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
+	b.flat = true
+	b.focus_mode = Control.FOCUS_ALL
+	b.set_meta("scroll_item", item_key)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = UiTheme.SLOT_BG
+	style.set_border_width_all(UiTheme.BORDER_HAIRLINE)
+	style.set_border_width(SIDE_BOTTOM, 2)
+	style.border_color = UiTheme.ACCENT if elven else sphere_color.lerp(
+		UiTheme.PANEL_EDGE.darkened(0.45), 0.4)
+	style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
+	style.set_content_margin_all(UiTheme.SPACE_1)
+	b.add_theme_stylebox_override("normal", style)
+	var hover_style := style.duplicate()
+	hover_style.border_color = UiTheme.ACCENT if elven else sphere_color
+	hover_style.bg_color = UiTheme.PANEL_INNER.lightened(0.08)
+	b.add_theme_stylebox_override("hover", hover_style)
+	var pressed_style := style.duplicate()
+	pressed_style.bg_color = UiTheme.BG_DEEP
+	b.add_theme_stylebox_override("pressed", pressed_style)
+
+	var icon_path := str(item.get("icon", ""))
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		var ic := TextureRect.new()
+		ic.texture = load(icon_path)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ic.offset_left = 3.0
+		ic.offset_top = 3.0
+		ic.offset_right = -3.0
+		ic.offset_bottom = -3.0
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		CraftVFX.apply_elven(ic, item)
+		b.add_child(ic)
+
+	b.tooltip_text = "%s\nОсталось: %d\nЛКМ — применить · ПКМ — автокаст на себя · Ctrl+1..9 — хоткей" % [
+		str(item.get("name_ru", item_key)), count]
+
+	var cnt := Label.new()
+	cnt.text = str(count)
+	cnt.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+	cnt.add_theme_color_override("font_color", UiTheme.ACCENT)
+	cnt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	cnt.add_theme_constant_override("outline_size", 3)
+	cnt.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	cnt.offset_left = -18.0
+	cnt.offset_top = -17.0
+	cnt.offset_right = -1.0
+	cnt.offset_bottom = -1.0
+	cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(cnt)
+
+	if Game.auto_scroll_item == item_key:
+		var mark := Label.new()
+		mark.text = "A"
+		mark.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
+		mark.add_theme_color_override("font_color", Color(0.7, 1.0, 0.75))
+		mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+		mark.add_theme_constant_override("outline_size", 3)
+		mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		mark.offset_left = 2.0
+		mark.offset_top = 0.0
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(mark)
+
+	b.pressed.connect(func(k: String = item_key): _begin_scroll_targeting(k))
+	b.gui_input.connect(func(event: InputEvent, k: String = item_key):
+		if event is InputEventMouseButton and event.pressed \
+				and event.button_index == MOUSE_BUTTON_RIGHT:
+			b.accept_event()
+			_toggle_auto_scroll(k)
+			return
+		if event is InputEventKey and event.pressed and event.ctrl_pressed \
+				and event.keycode >= KEY_1 and event.keycode <= KEY_9:
+			var slot: int = event.keycode - KEY_1
+			Game.hotbar[slot] = {"kind": "item", "key": k}
+			_notify_item_assigned(slot, k)
+			b.accept_event()
+	)
+	spell_grid.add_child(b)
+	spell_buttons.append(b)
+	_spell_buttons_filled.append(b)
+	_spell_button_names.append(spell)
+
+
+## ПКМ по свитку: ЕДИНСТВЕННЫЙ автокаст, и только на себя.
+func _toggle_auto_scroll(item_key: String) -> void:
+	var spell := SpellDB.spell_from_scroll(item_key)
+	if spell == "":
+		return
+	if Game.auto_scroll_item == item_key:
+		Game.auto_scroll_item = ""
+		call_deferred("refresh_spell_book")
+		_refresh_auto_status()
+		return
+	var kind := SpellDB.kind_of(spell)
+	if kind != "heal" and kind != "buff" and kind != "self":
+		_flash_targeting_error("Автокаст — только на себя: боевой свиток так не работает.")
+		return
+	Game.auto_scroll_item = item_key
+	call_deferred("refresh_spell_book")
+	_refresh_auto_status()
+
+
 func _refresh_auto_status() -> void:
 	_ensure_auto_status_label()
 	var lab := get_node_or_null("BottomPanel/SpellPanel/SpellAutoStatus") as Label
@@ -447,10 +575,34 @@ func _refresh_auto_status() -> void:
 		return
 	var parts: Array = []
 	if Game.auto_spell != "":
-		parts.append("каст: %s → %s" % [Game.auto_spell, Game.auto_heal_targets])
-	if Game.auto_buff_tier != "none":
-		parts.append("бафф: %s → %s" % [Game.auto_buff_tier, Game.auto_buff_targets])
-	lab.text = "Авто: " + (" · ".join(parts) if parts.size() > 0 else "нет (ПКМ по заклинанию)")
+		parts.append("каст: %s" % Game.auto_spell)
+	if Game.auto_scroll_item != "":
+		var it := ItemDB.find(Game.auto_scroll_item)
+		parts.append("свиток: %s" % str(it.get("name_ru", Game.auto_scroll_item)))
+	parts.append("авто: %s · %s" % [_tier_name(Game.auto_buff_tier),
+		_target_name(Game.auto_targets)])
+	lab.text = "Авто-волшебство: " + " · ".join(parts)
+
+
+## Названия уровней и целей для подписи и окна настроек.
+static func _tier_name(tier: String) -> String:
+	match tier:
+		"medium":
+			return "Среднее"
+		"max":
+			return "Максимальное"
+		_:
+			return "Базовое"
+
+
+static func _target_name(target: String) -> String:
+	match target:
+		"self":
+			return "только я"
+		"party_neutral":
+			return "я, группа и нейтраллы"
+		_:
+			return "я и моя группа"
 
 # --- Прицеливание (свиток МАГА или заклинание книги) ---
 # Курсор-прицел рисует scripts/cursor_layer.gd (вариант cast) по состоянию
@@ -482,6 +634,8 @@ func _finish_spell_targeting() -> void:
 
 ## Быстрая клавиша 1..9: вход в прицеливание назначенного заклинания.
 func _quick_cast(spell: String) -> void:
+	if Game.is_paused:
+		return
 	if not is_instance_valid(player) or not player.can_cast(spell):
 		print("Быстрый вызов недоступен: " + spell)
 		return
@@ -644,20 +798,25 @@ func _setup_action_buttons():
 	inv_btn.pressed.connect(open_inventory_panel)
 	hud_cmd_row.add_child(inv_btn)
 
-	var cmd_labels := ["След.", "Атак.", "Охр.", "Стоп"]
+	var cmd_tips := [
+		"Следовать за героем и бить врагов рядом (отряд тоже)",
+		"Атаковать ближайшего врага вокруг героя (отряд тоже)",
+		"Охранять место: бить в радиусе поста, не убегать (отряд тоже)",
+		"Стоять на месте и только отвечать на удар (отряд тоже)",
+	]
 	# Короткие подписи — ТОЛЬКО запасной вариант, если PNG не на месте: кнопка
 	# 32 px, полная подпись в неё не влезает. Смысл сохраняет tooltip.
 	var cmd_short := ["Сл", "Ат", "Ох", "Ст"]
 	var cmd_modes := ["follow", "attack", "guard", "stop"]
 	var cmd_icons := ["follow", "attack", "guard", "stop"]
-	for i in range(cmd_labels.size()):
+	for i in range(cmd_tips.size()):
 		var b := Button.new()
 		b.name = "Cmd%d" % i
 		b.custom_minimum_size = Vector2(HUD_CMD_SIZE, HUD_CMD_SIZE)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.theme_type_variation = &"HudCmd"
 		b.focus_mode = Control.FOCUS_ALL
-		b.tooltip_text = cmd_labels[i]
+		b.tooltip_text = cmd_tips[i]
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		_apply_cmd_icon(b, cmd_icons[i], cmd_short[i])
 		hud_cmd_row.add_child(b)
@@ -701,7 +860,8 @@ func _set_action_mode(mode: String):
 			active = 2
 			Game.action_mode = "guard"
 		"stop":
-			Game.action_mode = "none"
+			active = 3
+			Game.action_mode = "stop"
 	if active >= 0 and active < cmd_buttons.size():
 		cmd_buttons[active].theme_type_variation = &"HudCmdActive"
 		cmd_buttons[active].set_pressed_no_signal(true)
@@ -1338,7 +1498,15 @@ func update_ui(p: Player, delta: float = 0.0):
 			continue
 		if i < _spell_button_names.size():
 			var sn: String = str(_spell_button_names[i])
-			if player.can_cast(sn):
+			var scroll_key := str(button.get_meta("scroll_item", ""))
+			if scroll_key != "":
+				# Свиток воина: доступен, пока он есть в складе и не на кулдауне.
+				var have := player.has_item(scroll_key)
+				var cd_left := float(player.cast_cooldowns.get(sn, 0.0))
+				var usable := have and cd_left <= 0.0 and player.state != "casting"
+				button.modulate = Color.WHITE if usable else Color(1, 1, 1, 0.45)
+				button.disabled = not usable
+			elif player.can_cast(sn):
 				button.modulate = Color.WHITE
 				button.disabled = false
 			else:
@@ -1368,6 +1536,20 @@ func _process(_delta):
 	# 24 клетки, лупать их без надобности — лишняя работа в каждом кадре.
 	_update_cooldowns()
 
+	# Подпись «Авто-волшебство» обновляем только при смене настроек: их меняют
+	# либо в Esc → Настройки (раздел «Магия»), либо Alt+ПКМ по книге.
+	if _auto_shown_tier != Game.auto_buff_tier or _auto_shown_target != Game.auto_targets \
+			or _auto_shown_spell != Game.auto_spell:
+		_auto_shown_tier = Game.auto_buff_tier
+		_auto_shown_target = Game.auto_targets
+		_auto_shown_spell = Game.auto_spell
+		_refresh_auto_status()
+
+
+var _auto_shown_tier := ""
+var _auto_shown_target := ""
+var _auto_shown_spell := ""
+
 
 func _update_cooldowns() -> void:
 	if not is_instance_valid(player):
@@ -1383,7 +1565,14 @@ func _update_cooldowns() -> void:
 		if shown == _cd_shown.get(spell_name, -1):
 			continue
 		_cd_shown[spell_name] = shown
-		_set_cooldown_visual(b, left, SpellDB.cooldown_of(spell_name))
+		# Кольцо кулдауна обязано совпадать с РАСЧЁТОМ: у свитка это сила
+		# магии внутри него (50/100), у заклинания — навык сферы и разум.
+		var scroll_key := str(b.get_meta("scroll_item", ""))
+		var total := Game.spell_cooldown(player, spell_name)
+		if scroll_key != "":
+			total = Game.spell_cooldown(player, spell_name,
+				SpellDB.scroll_power_of(ItemDB.find(scroll_key)))
+		_set_cooldown_visual(b, left, total)
 
 func toggle_spells():
 	spells_visible = !spells_visible
@@ -1541,13 +1730,13 @@ func _control_contains(c: Control, p: Vector2) -> bool:
 	return hit
 
 ## Магазин: купля/продажа (клик по зданию Shop).
-func open_shop() -> void:
+func open_shop(city_race: String = "") -> void:
 	if _shop != null and is_instance_valid(_shop):
 		return
 	_enter_interior()
 	Game.cursor_context = "buy"   # курсор-монета с кошельком
 	_shop = ShopPanel.new()
-	_shop.setup(player)
+	_shop.setup(player, city_race)
 	_shop.closed.connect(_on_panel_closed)
 	add_child(_shop)
 
@@ -1571,22 +1760,27 @@ func open_school() -> void:
 	add_child(_school)
 
 ## Таверна: наём наёмников и разговоры (клик по Inn).
-func open_inn() -> void:
+func open_inn(city_race: String = "") -> void:
 	if _inn != null and is_instance_valid(_inn):
 		return
 	_enter_interior()
 	_inn = InnPanel.new()
-	_inn.setup(player)
+	_inn.setup(player, city_race)
 	_inn.closed.connect(_on_panel_closed)
 	add_child(_inn)
 
 ## Великий маг (капитан): военная плата (клик по магу в центре города).
-func open_archmage() -> void:
+## Великий маг города (28.10): панель открывается для ГОРОДА, а не для расы
+## героя. city_id/race передаёт game.gd по клику на капитана; без них панель
+## работает по-старому (раса героя) — так её зовут тесты.
+func open_archmage(city_id: String = "", city_race: String = "") -> void:
 	if _archmage != null and is_instance_valid(_archmage):
-		return
+		if city_id == "" or str(_archmage.get("_city_id")) == city_id:
+			return
+		_archmage.close()
 	_enter_interior()
 	_archmage = ArchmagePanel.new()
-	_archmage.setup(player)
+	_archmage.setup(player, city_id, city_race)
 	_archmage.closed.connect(_on_panel_closed)
 	_archmage.inventory_changed.connect(_on_inventory_changed)
 	add_child(_archmage)
@@ -1662,6 +1856,10 @@ func _on_inventory_changed() -> void:
 	if is_instance_valid(_inventory_panel) and _inventory_panel.has_method("_refresh_stats"):
 		_inventory_panel._refresh_stats()
 	_update_gold(int(player.gold) if player != null else 0)
+	# У воина книга магии — это склад со свитками: купил/подобрал свиток —
+	# ячейка должна появиться сразу, а не после переоткрытия игры.
+	if is_instance_valid(player) and not player.has_mana:
+		refresh_spell_book()
 
 func refresh_inventory() -> void:
 	if is_instance_valid(_inventory_panel):

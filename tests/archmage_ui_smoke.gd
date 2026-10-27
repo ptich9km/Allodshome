@@ -164,7 +164,26 @@ func _run() -> void:
 	var btn = panel.get("_btn_ingot")
 	_check(btn != null and bool(btn.disabled), "при power=100 кнопка «Сдать» неактивна")
 
+	# 28.10: панель открывается для ГОРОДА, а не для расы героя. Герой-человек
+	# в друидском городе обязан увидеть друидского великого мага.
 	panel.call("close")
+	await process_frame
+	ui.call("open_archmage", "c0t0", "druid")
+	await process_frame
+	var druid_panel = ui.get("_archmage")
+	_check(druid_panel != null and is_instance_valid(druid_panel),
+		"панель друидского города создана")
+	if druid_panel != null:
+		var nm := str((druid_panel.get("_name_label") as Label).text)
+		var expect := Lore.faction_archmage("druid")
+		_check(expect != "" and nm == expect,
+			"друидский маг по городу: %s (ожидали %s)" % [nm, expect])
+		var am_d: Variant = _bus_state().get_archmage("druid")
+		_check(am_d is Dictionary and not (am_d as Dictionary).is_empty(),
+			"у друидов есть великий маг")
+		druid_panel.call("close")
+		await process_frame
+
 	await process_frame
 	var after = ui.get("_archmage")
 	_check(after == null or not is_instance_valid(after), "панель закрыта")

@@ -23,13 +23,18 @@ func _init(state_) -> void:
 	state = state_
 
 
-func tick() -> void:
+## `live` — тик из живой игры (WorldBus.tick_day), а не из headless sim_runner.
+## В живой игре шаг TickPlayer пропускается: SIM-герой — отдельная сущность
+## с собственным HP и уровнем, и его «Герой окреп (ур. N)» писал бы в журнал
+## ложные события про настоящего героя.
+func tick(live: bool = false) -> void:
 	TickGlobalThreat()
 	TickFactions()
 	TickArmies()
 	TickSettlements()
 	TickEvents()
-	TickPlayer()
+	if not live:
+		TickPlayer()
 	EmitWorldChanged()
 
 
@@ -248,4 +253,4 @@ func EmitWorldChanged() -> void:
 
 
 func _log(kind: String, text: String) -> void:
-	state.journal.append({ "day": state.day, "kind": kind, "text": text })
+	state.log_entry(kind, text)

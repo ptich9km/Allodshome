@@ -203,6 +203,10 @@ func _regenerate(city_id: String) -> void:
 		excluded.append(str(tpl.get("id", "")))
 	offers_by_city[key] = out
 	offers_changed.emit(city_id)
+	# Ротация по дню мира меняет «!»/«?» над главами, но панель об этом
+	# узнаёт сигналом, а маркер — только вызовом. Без этого после смены дня
+	# «!» висел над городом, где офферов уже нет.
+	refresh_markers()
 
 
 ## Rotation number of a town by world day: offers live exactly offer_ttl_days

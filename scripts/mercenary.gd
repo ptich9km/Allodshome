@@ -21,6 +21,23 @@ var _anim: UnitAnimBase = null
 var _path: Array = []
 var _repath: float = 0.0
 
+## --- Приказы отряда (28.10) -------------------------------------------------
+## Game.action_mode задаётся кнопками HUD (След./Атак./Охр./Стоп) и раньше
+## двигал ТОЛЬКО героя: наёмники всегда сами бежали за ближайшим врагом.
+## Теперь намерение выбирается по режиму, а движение остаётся прежним
+## (путь + steering): решение и движение разделены.
+const FOLLOW_GAP := 64.0        # держаться за героем на этой дистанции
+const FOLLOW_RADIUS := 240.0    # своего врага искать в этом радиусе
+const FOLLOW_LEASH := 320.0     # не гнаться за врагом дальше этого от героя
+const ATTACK_RADIUS := 480.0    # «Атака»: враг в этом радиусе от ГЕРОЯ
+const GUARD_RADIUS := 150.0     # «Охрана»: враг в этом радиусе от поста
+const GUARD_LEASH := 400.0      # герой ушёл дальше — пост переносится
+const STOP_REACH := 8.0         # «Стоп»: только ответка в пределах удара
+
+var _order: String = ""         # текущий режим ("" — ещё не читали)
+var _anchor := Vector2.ZERO     # пост охраны
+
+
 func _ready() -> void:
 	add_to_group("mercenary")
 	Game.configure_unit_body(self)
@@ -70,7 +87,8 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var target := _nearest_enemy(240.0)
+	_sync_order()
+	var target := _order_target()
 	# Кадр удара: урон наносится в момент соприкосновения, а не в начале замаха
 	if _impact_timer >= 0.0:
 		_impact_timer -= delta
@@ -83,18 +101,15 @@ func _physics_process(delta: float) -> void:
 			_pending_target = null
 		return
 	if target != null:
-		if global_position.distance_to(target.global_position) > 40.0:
+		# Дистанция боя — зазор между ТЕЛАМИ (та же мера, что у героя и врагов),
+		# иначе наёмник махал бы с полутора шагов по воздуху.
+		if Game.units_range(self, target) > Game.attack_reach(self):
 			_move_toward(target.global_position, delta)
 		else:
 			velocity = Vector2.ZERO
 			_attack(target)
 	else:
-		var hero: Node2D = Game.hero
-		if hero != null and is_instance_valid(hero) \
-				and global_position.distance_to(hero.global_position) > 64.0:
-			_move_toward(hero.global_position, delta)
-		else:
-			velocity = Vector2.ZERO
+		_hold_position(delta)
 
 	move_and_slide()
 	if velocity.length_squared() > 1.0:
@@ -104,13 +119,78 @@ func _physics_process(delta: float) -> void:
 	else:
 		_anim.play(UnitAnim.Anim.IDLE)
 
+## Прочитать приказ героя. Смена режима ставит пост охраны на текущее место:
+## иначе «Охрана» после долгой ходьбы тянула бы наёмника назад к старой точке.
+func _sync_order() -> void:
+	var mode := Game.action_mode
+	if mode == "" or mode == "none":
+		mode = "follow"
+	if mode == _order:
+		return
+	_order = mode
+	_anchor = global_position
+
+## Цель по приказу. Возвращает null — значит цель не выбрана, идём на пост.
+func _order_target() -> Node2D:
+	var hero: Node2D = Game.hero
+	match _order:
+		"stop":
+			# Стоять: бить только того, кто сам подошёл на удар.
+			return _nearest_enemy_from(global_position,
+				Game.attack_reach(self) + STOP_REACH)
+		"guard":
+			return _nearest_enemy_from(_anchor, GUARD_RADIUS)
+		"attack":
+			if hero == null or not is_instance_valid(hero):
+				return _nearest_enemy(ATTACK_RADIUS)
+			return _nearest_enemy_from(hero.global_position, ATTACK_RADIUS)
+		_:
+			# След.: своего врага — рядом, но не гнаться далеко от героя.
+			var enemy := _nearest_enemy(FOLLOW_RADIUS)
+			if enemy != null and hero != null and is_instance_valid(hero) \
+					and enemy.global_position.distance_to(hero.global_position) > FOLLOW_LEASH:
+				return null
+			return enemy
+
+## Нет цели: держать строй по приказу.
+func _hold_position(delta: float) -> void:
+	var hero: Node2D = Game.hero
+	match _order:
+		"stop":
+			velocity = Vector2.ZERO
+			_path.clear()
+		"guard":
+			# Герой ушёл дальше лиза — пост переезжает: охрана не бросает героя.
+			if hero != null and is_instance_valid(hero) \
+					and hero.global_position.distance_to(_anchor) > GUARD_LEASH:
+				_anchor = global_position
+				if global_position.distance_to(hero.global_position) > FOLLOW_GAP:
+					_move_toward(hero.global_position, delta)
+					return
+			if global_position.distance_to(_anchor) > 12.0:
+				_move_toward(_anchor, delta)
+			else:
+				velocity = Vector2.ZERO
+				_path.clear()
+		_:
+			# След./Атака без врагов: стоять рядом с героем.
+			if hero != null and is_instance_valid(hero) \
+					and global_position.distance_to(hero.global_position) > FOLLOW_GAP:
+				_move_toward(hero.global_position, delta)
+			else:
+				velocity = Vector2.ZERO
+				_path.clear()
+
 func _nearest_enemy(radius: float) -> Node2D:
+	return _nearest_enemy_from(global_position, radius)
+
+func _nearest_enemy_from(origin: Vector2, radius: float) -> Node2D:
 	var best: Node2D = null
 	var best_d := radius
 	for e in Game.enemies:
 		if not is_instance_valid(e):
 			continue
-		var d := global_position.distance_to(e.global_position)
+		var d := origin.distance_to(e.global_position)
 		if d < best_d:
 			best_d = d
 			best = e

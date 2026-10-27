@@ -208,7 +208,7 @@
     "zone_style": "hail",
     "zone_life": 4.0,
     "zone_cells": [
-      4,
+      3,
       3
     ],
     "projectile": "meteor",

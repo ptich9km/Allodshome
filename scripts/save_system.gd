@@ -24,9 +24,13 @@ extends RefCounted
 ## Версия в `version` внутри каждого элемента; элемент новее текущего
 ## отклоняется целиком, а не «читается как есть» — иначе битые/чужие данные
 ## молча портят игровое состояние.
+##
+## v2 (28.10): в hero появились `party` (наёмники) и `hotbar` (клавиши 1..9).
+## Оба поля опциональны: сейв v1 читается без миграции — пустой отряд и пустой
+## хотбар это ровно то, что было в v1, где их не сохраняли вовсе.
 
 const DIR := "user://saves/"
-const VERSION := 1
+const VERSION := 2
 ## Где живут сохранения. Этот каталог НЕ должен трогать ни один прогон тестов
 ## или инструментов: все сценарии (headless-тесты, `--path` на ту же
 ## установку, копии проекта) используют один и тот же `user://`
@@ -610,6 +614,10 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"known_spells": player.known_spells.duplicate(true),
 		"sphere_books": player.sphere_books.duplicate(true),
 		"position": player.global_position,
+		# v2: отряд и хотбар. Призванные (lifespan > 0) не сохраняются: они
+		# временные и привязаны к жизни каста, а не к прогулке героя.
+		"party": _party_snapshot(),
+		"hotbar": Game.hotbar.duplicate(true),
 	}
 	var map_files := world_files()
 	var events: Variant = systems.get("events", null)
@@ -648,6 +656,88 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 	meta.merge(world_meta, true)
 	payload["meta"] = meta
 	return payload
+
+
+## Отряд в сейв: чистые данные, без ссылок на узлы (save-systems: сохраняем
+## состояние, а не объекты сцены). Призванные существа (lifespan > 0) —
+## временные, они не часть прогулки героя.
+static func _party_snapshot() -> Array:
+	var out: Array = []
+	for m in Game.party:
+		if not is_instance_valid(m):
+			continue
+		var unit: Node2D = m as Node2D
+		if unit == null:
+			continue
+		if "lifespan" in m and float(m.get("lifespan")) > 0.0:
+			continue
+		out.append({
+			"set": str(m.get("anim_set")),
+			"hp_max": int(m.get("max_hp")),
+			"hp": int(m.get("current_hp")),
+			"damage": int(m.get("damage")),
+			"spirit": int(m.get("spirit")),
+			"speed": float(m.get("move_speed")),
+			"x": unit.global_position.x,
+			"y": unit.global_position.y,
+		})
+	return out
+
+
+## Прочитать отряд из сейва: набор обязан существовать в units_db, иначе
+## запись отбрасывается (сейв старой версии/правка данных не должны рождать
+## «наёмника-призрака» без анимации).
+static func _party_saved(v: Variant) -> Array:
+	var out: Array = []
+	if not (v is Array):
+		return out
+	for raw in (v as Array):
+		if not (raw is Dictionary):
+			continue
+		var rec: Dictionary = raw
+		var set_name := str(rec.get("set", ""))
+		if set_name == "" or UnitDB.get_set(set_name).is_empty():
+			continue
+		var hp_max := maxi(1, int(rec.get("hp_max", 70)))
+		out.append({
+			"set": set_name,
+			"hp_max": hp_max,
+			"hp": clampi(int(rec.get("hp", hp_max)), 1, hp_max),
+			"damage": maxi(0, int(rec.get("damage", 6))),
+			"spirit": maxi(0, int(rec.get("spirit", 5))),
+			"speed": maxf(10.0, float(rec.get("speed", 90.0))),
+			"x": float(rec.get("x", 0.0)),
+			"y": float(rec.get("y", 0.0)),
+		})
+	return out
+
+
+## Хотбар из сейва: слоты 0..8, только существующие заклинания и предметы.
+## Неизвестную запись выбрасываем — иначе клавиша молча не делает ничего.
+static func _hotbar_saved(v: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if not (v is Dictionary):
+		return out
+	var spells: Array = SpellDB.catalog_spells()
+	for raw_slot in (v as Dictionary):
+		var slot := int(str(raw_slot))
+		if slot < 0 or slot > 8:
+			continue
+		var entry: Variant = (v as Dictionary)[raw_slot]
+		if not (entry is Dictionary):
+			continue
+		var kind := str((entry as Dictionary).get("kind", ""))
+		if kind == "spell":
+			var name := str((entry as Dictionary).get("name", ""))
+			if name == "" or not spells.has(name):
+				continue
+			out[slot] = {"kind": "spell", "name": name}
+		elif kind == "item":
+			var key := str((entry as Dictionary).get("key", ""))
+			if key == "" or ItemDB.find(key).is_empty():
+				continue
+			out[slot] = {"kind": "item", "key": key}
+	return out
 
 
 ## Текущая карта игры: {"path": user:// путь к .alm, "basename": имя}.
@@ -844,6 +934,10 @@ static func apply_payload(d: Dictionary, player, slot: String = "") -> void:
 		"known_spells": _dict(h.get("known_spells", {})),
 		"sphere_books": _dict(h.get("sphere_books", {})),
 	}
+	# v2: отряд и хотбар кладутся в статики Game — узлы создаёт game.gd, когда
+	# карта уже собрана (наёмнику нужен проходимый тайл, а не пустая сцена).
+	Game.pending_party = _party_saved(h.get("party", []))
+	Game.hotbar = _hotbar_saved(h.get("hotbar", {}))
 	if player == null:
 		return
 	player.max_hp = int(h.get("max_hp", 100))

@@ -44,6 +44,9 @@ const EDGE_Z := 11
 ## опасных клеток он не прячет: наземный слой отвечает за «где бьёт»,
 ## а пламя — за «как выглядит огонь».
 const FLAME_Z := 13
+## Валуны каменной стены: выше заливки, но НИЖЕ юнитов — стена не должна
+## прятать героя, стоящего рядом.
+const STONE_Z := 6
 ## Насколько пламя поднимается вверх от прямоугольника зоны, в клетках.
 ## Огонь растёт вверх, и это НЕ расширяет опасную зону по клеткам.
 const FLAME_RISE := 1.4
@@ -67,9 +70,17 @@ var _shard_accum: float = 0.0
 var _blocked: Array[Vector2i] = []
 var _fill: Sprite2D = null
 var _edge: Sprite2D = null
-var _flame: Sprite2D = null
+## Очаги огня — ОТДЕЛЬНЫЙ спрайт на каждую клетку стены. Раньше был один квад
+## на весь прямоугольник, и пламя читалось как размытая плёнка «на все клетки».
+var _flames: Array[Sprite2D] = []
+## Валуны каменной стены — тоже по одному на клетку.
+var _stones: Array[Sprite2D] = []
 var _snap_left: float = 0.0
 var _light_on: bool = false
+## Время жизни эффекта для шейдеров. Раньше бралось из Time.get_ticks_msec():
+## это РЕАЛЬНОЕ время, и после тактической паузы пламя/контур прыгали вперёд
+## на всю длительность паузы. Накопленный delta идёт только вместе с миром.
+var _elapsed: float = 0.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -186,12 +197,14 @@ func in_telegraph() -> bool:
 
 
 func _ready() -> void:
+	# См. projectile.gd: корень сцены Always, поэтому паузу надо запросить явно,
+	# иначе зона продолжала жить, тикать урон и гореть на тактической паузе.
+	process_mode = PROCESS_MODE_PAUSABLE
 	_rng.randomize()
 	snap_to_grid()
-	_fill = _make_quad(FILL_Z, 0.2)
+	_fill = _make_quad(FILL_Z, 1.0)
 	_edge = _make_quad(EDGE_Z, 1.0)
-	if flame:
-		_flame = _make_flame_quad()
+	_make_cell_effects()
 	_update_shader()
 	_tick_accum = tick_interval
 	_shard_accum = shard_interval
@@ -203,9 +216,75 @@ func _ready() -> void:
 	set_process(true)
 
 
-## Один квад на всю зону — но шейдер считает по клеткам и рисует контур
-## по внешнему краю, поэтому «одного растянутого квада» больше недостаточно:
-## мы даём шейдеру сетку мира, а не UV квада.
+
+## Очаги огня и валуны: ОТДЕЛЬНЫЙ спрайт на каждую клетку зоны.
+##
+## Почему не один квад: шейдер на весь прямоугольник давал «одно пламя на все
+## клетки», а у стены земли вообще рисовалось пламя без огня. Игрок попросил,
+## чтобы в каждой клетке горел свой огонь и стоял свой камень.
+##
+## Пламя теперь есть в КАЖДОЙ клетке, но у дальних рядов оно тише: 12
+## аддитивных очагов одинаковой яркости складывались и выжигали цвет в белую
+## плёнку. Дальний ряд — 50 % яркости, ближний — 100 %.
+## У ядовитого облака своё пламя — ЗЕЛЁНОЕ (просьба игрока 28.10): туман плюс
+## низкие языки зелёного огня.
+func _make_cell_effects() -> void:
+	var base := first_cell()
+	var cell_h := float(TILE)
+	var horizontal := cells.x >= cells.y
+	var depth_max := float(maxi(1, cells.y - 1 if horizontal else cells.x - 1))
+	for dy in range(cells.y):
+		for dx in range(cells.x):
+			var c := base + Vector2i(dx, dy)
+			var center := Vector2((c.x + 0.5) * TILE, (c.y + 0.5) * TILE)
+			var seed := _cell_seed(c)
+			# Насколько клетка «дальше» от зрителя (0 = дальняя, 1 = ближняя).
+			var depth := float(dy if horizontal else dx)
+			var front := 0.5 + 0.5 * (depth / depth_max)
+			if style == "wall_fire" or style == "cloud":
+				var f := Sprite2D.new()
+				f.texture = SpellVFX.white_texture()
+				var flame_color := SpellVFX.FLAME_WALL_COLOR
+				var rise := FLAME_RISE
+				var base_alpha := front
+				if style == "cloud":
+					# Яд: низкое зелёное пламя, туман под ним остаётся заливкой.
+					flame_color = SpellVFX.POISON_FLAME_COLOR
+					rise = FLAME_RISE * 0.6
+					base_alpha = 0.45 + 0.3 * front
+				f.material = SpellVFX.flame_wall_material(flame_color, seed, rise)
+				f.z_index = FLAME_Z
+				var rise_px := float(TILE) * rise
+				var h := cell_h + rise_px
+				var ts := f.texture.get_size()
+				f.scale = Vector2(cell_h / ts.x, h / ts.y)
+				# Низ спрайта = низ клетки, вверх — подъём пламени.
+				f.position = to_local(center) + Vector2(0.0, -rise_px * 0.5)
+				f.set_meta("base_alpha", base_alpha)
+				f.modulate.a = base_alpha
+				add_child(f)
+				_flames.append(f)
+			elif style == "wall_earth":
+				var st := Sprite2D.new()
+				st.texture = SpellVFX.white_texture()
+				st.material = SpellVFX.stone_wall_material(seed)
+				st.z_index = STONE_Z
+				var ts2 := st.texture.get_size()
+				var stone_h := cell_h * 1.35
+				st.scale = Vector2(cell_h / ts2.x, stone_h / ts2.y)
+				st.position = to_local(center) + Vector2(0.0, (stone_h - cell_h) * 0.5)
+				st.set_meta("base_alpha", 1.0)
+				add_child(st)
+				_stones.append(st)
+
+
+## Детерминированная «личность» клетки для формы пламени/камня.
+func _cell_seed(c: Vector2i) -> float:
+	return float(absi(c.x * 73856093 ^ c.y * 19349663) % 1000) / 1000.0
+
+
+## Квад зоны: шейдер считает по клеткам и рисует контур по внешнему краю,
+## поэтому ему дают сетку мира, а не UV квада.
 func _make_quad(z: int, edge_boost: float) -> Sprite2D:
 	var s := Sprite2D.new()
 	s.texture = SpellVFX.white_texture()
@@ -220,28 +299,8 @@ func _make_quad(z: int, edge_boost: float) -> Sprite2D:
 	return s
 
 
-## Квад языков пламени: ширина ровно по прямоугольнику зоны, высота выше —
-## он торчит вверх. Смещение считаем так, чтобы НИЗ квада совпадал с низом
-## зоны, иначе огонь окажется в воздухе над землёй.
-func _make_flame_quad() -> Sprite2D:
-	var f := Sprite2D.new()
-	f.texture = SpellVFX.white_texture()
-	f.material = SpellVFX.flame_wall_material(SpellVFX.FLAME_WALL_COLOR)
-	f.z_index = FLAME_Z
-	var ps := pixel_size()
-	var rise := float(TILE) * FLAME_RISE
-	# Текстура 4×4 пикселя, масштабируем чтобы покрыть нужную область
-	var tex_size := f.texture.get_size()
-	f.scale = Vector2(ps.x / tex_size.x, (ps.y + rise) / tex_size.y)
-	# Спрайт растёт вверх от своего центра, поэтому сдвигаем центр вниз на
-	# половину добавленной высоты — тогда низ совпадёт с низом зоны.
-	f.position = Vector2(0.0, -rise * 0.5)
-	add_child(f)
-	return f
-
-
 func _update_shader() -> void:
-	for s in [_fill, _edge, _flame]:
+	for s in [_fill, _edge]:
 		if s == null:
 			continue
 		var mat := s.material as ShaderMaterial
@@ -251,13 +310,13 @@ func _update_shader() -> void:
 		mat.set_shader_parameter("style", _style_index())
 		mat.set_shader_parameter("cells", Vector2(cells.x, cells.y))
 		mat.set_shader_parameter("origin_cell", Vector2(first_cell().x, first_cell().y))
-		mat.set_shader_parameter("nb", neighbour_mask(center_cell()))
 
 
 func _style_index() -> int:
 	match style:
 		"hail": return 1
 		"cloud": return 2
+		"wall_earth": return 3
 		_: return 0
 
 
@@ -267,10 +326,17 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	life_left -= delta
-	var t := float(Time.get_ticks_msec()) * 0.001
-	for s in [_fill, _edge, _flame]:
+	_elapsed += delta
+	var t := _elapsed
+	for s in [_fill, _edge]:
 		if s != null and s.material is ShaderMaterial:
 			(s.material as ShaderMaterial).set_shader_parameter("time", t)
+	# У каждого очага своя фаза (seed): один общий time делал пламя синхронным.
+	for i in range(_flames.size()):
+		var f := _flames[i]
+		if f != null and f.material is ShaderMaterial:
+			var seed := float((f.material as ShaderMaterial).get_shader_parameter("seed"))
+			(f.material as ShaderMaterial).set_shader_parameter("time", t + seed * 12.0)
 
 	# Фаза подсказки: контур виден, заливки нет, урона нет.
 	if telegraph > 0.0:
@@ -278,8 +344,9 @@ func _process(delta: float) -> void:
 		_set_active(0.0)
 		# Пламени в фазе подсказки нет: подсказка показывает ТОЛЬКО границы
 		# опасных клеток, как в наземной зоне. Языки пламени означают «уже
-		# горит» — раньше этого огонь бьёт.
+		# горит» — раньше этого огонь бьёт. Валуны — тоже после подсказки.
 		_set_flame_alpha(0.0)
+		_set_stone_alpha(0.0)
 		# Контур пульсирует, чтобы подсказку нельзя было пропустить.
 		_set_edge_alpha(0.55 + 0.45 * sin(t * 9.0))
 		if _snap_left <= 0.0 and telegraph <= 0.0:
@@ -292,16 +359,18 @@ func _process(delta: float) -> void:
 		_snap_left -= delta
 		_set_active(1.0)
 		_set_edge_alpha(1.0)
-		# Короткая вспышка пламени в момент попадания.
+		# Короткая вспышка в момент попадания.
 		_set_flame_alpha(1.0)
+		_set_stone_alpha(1.0)
 		_ensure_light()
 		_spawn_shards_if_hail(delta)
 		return
 
 	_set_active(1.0)
 	_set_edge_alpha(0.55 + 0.45 * sin(t * 5.0))
-	# Пламя живёт всё время горения, с лёгким пульсом по яркости.
+	# Пламя и камни живут всё время действия.
 	_set_flame_alpha(0.85 + 0.15 * sin(t * 6.3))
+	_set_stone_alpha(1.0)
 	_ensure_light()
 
 	# Растворение на затухании: читается как «сгорает», а не как гаснет UI.
@@ -311,12 +380,9 @@ func _process(delta: float) -> void:
 			if s != null and s.material is ShaderMaterial:
 				(s.material as ShaderMaterial).set_shader_parameter("burn", burn)
 		_set_edge_alpha(0.35 * (1.0 - burn) + 0.15)
-		# Пламя не исчезает рывком: языки короткие, гаснут плавно, а по
-		# высоте поднимаются — «сгорает», а не «выключается».
+		# Пламя не исчезает рывком: гаснет плавно, «сгорает».
 		_set_flame_alpha(0.85 * (1.0 - burn) * (1.0 - burn))
-		if _flame != null and _flame.material is ShaderMaterial:
-			(_flame.material as ShaderMaterial).set_shader_parameter("rise",
-				1.0 + FLAME_RISE * burn)
+		_set_stone_alpha(1.0 - burn * 0.85)
 	if life_left <= 0.0:
 		queue_free()
 		return
@@ -340,8 +406,19 @@ func _set_active(v: float) -> void:
 ## Прозрачность пламени. additive-материал читает modulate.a как множитель
 ## яркости, поэтому 0 — это честное «нет огня», а не серое пятно.
 func _set_flame_alpha(a: float) -> void:
-	if _flame != null:
-		_flame.modulate.a = clampf(a, 0.0, 1.0)
+	for f in _flames:
+		if f != null:
+			# У дальних рядов своя базовая яркость (глубина сцены).
+			var base := float(f.get_meta("base_alpha", 1.0))
+			f.modulate.a = clampf(a * base, 0.0, 1.0)
+
+
+## Прозрачность валунов (каменная стена).
+func _set_stone_alpha(a: float) -> void:
+	for st in _stones:
+		if st != null:
+			var base := float(st.get_meta("base_alpha", 1.0))
+			st.modulate.a = clampf(a * base, 0.0, 1.0)
 
 
 func _set_edge_alpha(a: float) -> void:

@@ -184,6 +184,50 @@
   "ru": "Управление",
   "en": "Controls"
  },
+ "ui.settings.tab_magic": {
+  "ru": "Магия",
+  "en": "Magic"
+ },
+ "ui.settings.auto_magic": {
+  "ru": "Авто-волшебство",
+  "en": "Auto magic"
+ },
+ "ui.settings.auto_level_base": {
+  "ru": "Базовое",
+  "en": "Basic"
+ },
+ "ui.settings.auto_level_medium": {
+  "ru": "Среднее",
+  "en": "Medium"
+ },
+ "ui.settings.auto_level_max": {
+  "ru": "Максимальное",
+  "en": "Maximum"
+ },
+ "ui.settings.auto_target": {
+  "ru": "Кого лечить и баффать",
+  "en": "Who to heal and buff"
+ },
+ "ui.settings.auto_target_self": {
+  "ru": "Только я (негуманно)",
+  "en": "Only me (selfish)"
+ },
+ "ui.settings.auto_target_party": {
+  "ru": "Я и моя группа",
+  "en": "Me and my party"
+ },
+ "ui.settings.auto_target_neutral": {
+  "ru": "Я, группа и нейтраллы",
+  "en": "Me, party and neutrals"
+ },
+ "ui.settings.stub_magic": {
+  "ru": "Базовое: ускорение и щит. Среднее: ещё благословение и защиты от четырёх стихий. Максимальное: ещё невидимость. Маг лечит себя и цель при HP ниже 45 % и баффает, пока хватает маны.",
+  "en": "Basic: haste and shield. Medium: plus bless and four elemental wards. Maximum: plus invisibility. The mage heals himself and the target below 45% HP and buffs while mana lasts."
+ },
+ "ui.settings.hint_3": {
+  "ru": "Авто-волшебство включается сразу и не сохраняется в сейв: после загрузки — «Базовое» и «Я и моя группа».",
+  "en": "Auto magic applies immediately and is not saved: after loading it resets to Basic and Me and my party."
+ },
  "ui.settings.fullscreen": {
   "ru": "Полный экран",
   "en": "Fullscreen"
@@ -671,6 +715,10 @@
  "ui.quest.close": {
   "ru": "Закрыть",
   "en": "Close"
+ },
+ "ui.quest.close_hint": {
+  "ru": "W или Esc — закрыть журнал",
+  "en": "W or Esc — close the journal"
  },
  "ui.quest.panel_title": {
   "ru": "КВЕСТЫ",

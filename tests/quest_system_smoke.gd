@@ -75,6 +75,7 @@ func _phase() -> void:
 	var panel := _test_panel_refresh(qs)
 	if panel != null:
 		panel.close()
+	_test_panel_w_close(qs)
 	_report()
 
 
@@ -822,3 +823,21 @@ func _test_panel_refresh(qs: QuestSystem) -> QuestPanel:
 			cards_before, offers_box.get_child_count(), expected])
 	bus.state.day = day_before
 	return panel
+
+
+## W открывает журнал (game.gd) и ОБЯЗАН его закрывать (28.10). Путь через
+## game.gd закрыт: открытая панель ставит is_editor_open(), и W до game.gd не
+## доходит; значит, закрытие должен уметь сам QuestPanel._input.
+func _test_panel_w_close(qs: QuestSystem) -> void:
+	var panel := QuestPanel.new()
+	panel.name = "QuestPanelWSmoke"
+	root.add_child(panel)
+	panel.setup(Game.hero as Player, "")
+	var closed := [false]
+	panel.closed.connect(func() -> void: closed[0] = true)
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_W
+	ev.pressed = true
+	panel._input(ev)
+	_check(closed[0], "W закрывает журнал (сигнал closed)")
+	_check(panel.is_queued_for_deletion(), "W закрывает журнал (панель удаляется)")
