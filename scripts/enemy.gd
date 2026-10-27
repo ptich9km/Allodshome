@@ -133,7 +133,7 @@ func _physics_process(delta):
 			if distance_to_target > deaggro_radius:
 				state = "idle"
 				velocity = Vector2.ZERO
-			elif distance_to_target < 40.0:
+			elif distance_to_target < Game.attack_reach(self):
 				state = "attack"
 				velocity = Vector2.ZERO   # остановиться и бить, а не проскакивать мимо
 			elif hp_percent < 0.15 and can_flee:
@@ -141,7 +141,7 @@ func _physics_process(delta):
 			else:
 				_chase_move(delta, target)
 		"attack":
-			if distance_to_target > 50.0:
+			if distance_to_target > Game.attack_reach(self) + 8.0:
 				state = "chase"
 				_impact_timer = -1.0
 			else:
@@ -199,7 +199,9 @@ func _apply_relief_stand() -> void:
 	var z := UnitDB.fly_z(anim_set)
 	_anim.position = Vector2(_anim.position.x, -(h + z))
 	if health_bar:
-		health_bar.position.y = -(h + z + _anim.sprite_height() + 6.0)  # над головой
+		# Над головой ФИГУРЫ, а не над холстом кадра (см. Game.unit_local_rect).
+		var top := Game.unit_local_rect(self).position.y
+		health_bar.position.y = top - (h + z) - 6.0
 
 # --- Физика движения (плавный разгон/торможение + проходимость) ---
 ## Разгон/торможение - в GameConfig [movement] accel/decel.

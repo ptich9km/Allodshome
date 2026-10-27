@@ -75,6 +75,22 @@ static func has_effect(unit: Node2D, type: String, sphere: String = "") -> bool:
 	return find_index_sphere(unit, type, sphere) >= 0
 
 
+## Активен ли эффект с учётом ВНУТРЕННИХ типов.
+##
+## Щит у героя хранится не как "shield", а как "shield_armor" (временная
+## броня), у врагов — в meta shield_strength/shield_time. Из-за этого проверка
+## «щит уже висит» всегда возвращала false, и автокаст перекастовывал щит
+## каждый кулдаун (жалоба игрока 28.10).
+static func is_active(unit: Node2D, type: String, sphere: String = "") -> bool:
+	if type == "shield":
+		if shield_armor_time(unit) > 0.0:
+			return true
+		if int(unit.get_meta("shield_strength", 0)) > 0 \
+				and float(unit.get_meta("shield_time", 0.0)) > 0.0:
+			return true
+	return has_effect(unit, type, sphere)
+
+
 # --- Применение -----------------------------------------------------------
 
 ## Наложить все эффекты заклинания на юнита. Повторное наложение обновляет

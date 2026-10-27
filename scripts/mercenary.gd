@@ -83,7 +83,9 @@ func _physics_process(delta: float) -> void:
 			_pending_target = null
 		return
 	if target != null:
-		if global_position.distance_to(target.global_position) > 40.0:
+		# Дистанция боя — зазор между ТЕЛАМИ (та же мера, что у героя и врагов),
+		# иначе наёмник махал бы с полутора шагов по воздуху.
+		if Game.units_range(self, target) > Game.attack_reach(self):
 			_move_toward(target.global_position, delta)
 		else:
 			velocity = Vector2.ZERO

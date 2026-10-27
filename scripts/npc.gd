@@ -35,6 +35,8 @@ var attack_cooldown := 0.0
 var _impact_timer := -1.0
 var _path: Array = []
 var _repath := 0.0
+## Кулдаун лечения мага-НПЦ (см. `_mage_heal_tick`).
+var _heal_cd := 0.0
 ## Бюджет A*: не больше 2 запросов пути за физический кадр на всю карту.
 ## Без него десяток патрульных в городе мог запускать поиск в один кадр.
 static var _path_frame := -1
@@ -140,10 +142,12 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
+	# Маги-НПЦ лечат себя и раненых рядом (стража, жители, герой).
+	_mage_heal_tick(delta)
+
 	# Стража: Серые рядом — бой (граждане не дерутся)
 	if role == "guard" and damage > 0 and _guard_combat(delta):
 		return
-
 	# Непатрульная стража стоит у поста: никаких случайных прогулок и A*.
 	if not is_patrol:
 		velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
@@ -245,7 +249,7 @@ func _guard_combat(delta: float) -> bool:
 		_impact_timer = -1.0
 		return false
 	velocity = velocity.move_toward(Vector2.ZERO, 1800.0 * delta)
-	if dist > 30.0:
+	if dist > Game.attack_reach(self):
 		_chase_move(delta, target)
 	else:
 		if attack_cooldown <= 0.0 and _impact_timer < 0.0:
@@ -460,6 +464,65 @@ func _random_intact_gear(mat: String) -> Dictionary:
 	if pool.is_empty():
 		return {}
 	return {"key": str((pool[randi() % pool.size()] as Dictionary).get("key", ""))}
+
+## Лечение мага-НПЦ: себя и раненых рядом (стража, жители, герой).
+##
+## У НПЦ нет маны, поэтому ограничение — кулдаун из `game.cfg [magic]`; сила
+## лечения — доля максимального HP цели. Врагов не лечит никогда.
+## «Маг» определяется по набору: `city_*_mage`, `ork_mage_a52` и т. п.
+func _mage_heal_tick(delta: float) -> void:
+	if not anim_set.contains("mage"):
+		return
+	_heal_cd = maxf(0.0, _heal_cd - delta)
+	if _heal_cd > 0.0:
+		return
+	var ratio := GameConfig.getf("magic", "auto_heal_ratio")
+	if ratio <= 0.0:
+		ratio = 0.45
+	var reach := maxf(120.0, SpellDB.range_of("Heal"))
+	var best: Node2D = null
+	var worst := ratio
+	for u in _heal_allies():
+		if not is_instance_valid(u) or not u.has_method("heal_amount"):
+			continue
+		if not ("current_hp" in u) or not ("max_hp" in u):
+			continue
+		var mx := int(u.get("max_hp"))
+		if mx <= 0:
+			continue
+		var r := float(int(u.get("current_hp"))) / float(mx)
+		if r >= worst:
+			continue
+		if u != self and global_position.distance_to((u as Node2D).global_position) > reach:
+			continue
+		worst = r
+		best = u
+	if best == null:
+		return
+	var pct := GameConfig.getf("magic", "npc_heal_percent")
+	if pct <= 0.0:
+		pct = 0.12
+	var amount := maxi(1, int(round(float(int(best.get("max_hp"))) * pct)))
+	best.call("heal_amount", amount)
+	SpellAura.heal_cross(best)
+	SoundDB.play("magic.heal")
+	_heal_cd = maxf(1.0, GameConfig.getf("magic", "npc_heal_cooldown"))
+
+
+## Кого маг-НПЦ считает своим: себя, героя, стражу, жителей, наёмников героя.
+## Враги (`Game.enemies`) сюда не попадают принципиально.
+func _heal_allies() -> Array:
+	var out: Array = [self]
+	if is_instance_valid(Game.hero):
+		out.append(Game.hero)
+	for n in Game.npcs:
+		if is_instance_valid(n) and n != self:
+			out.append(n)
+	for m in Game.party:
+		if is_instance_valid(m):
+			out.append(m)
+	return out
+
 
 ## Восстановить HP (лечение, вампиризм). Возвращает реально восстановленное.
 func heal_amount(amount: int) -> int:

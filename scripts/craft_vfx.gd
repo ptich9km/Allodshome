@@ -185,3 +185,66 @@ static func tier_of_item(item: Dictionary) -> int:
 	if q.ends_with("Fine"):
 		return TIER_IMPROVED
 	return TIER_ORDINARY
+
+
+# --- Эльфийские свитки ------------------------------------------------------
+#
+# В базе два класса свитков: `Scroll` (сила заклинания 50, дешёвые) и
+# `SuperScroll` (сила 100 — мастер-класс). Вторые отличались только ценой и
+# техническим именем, поэтому игрок не видел разницы (27.10). Здесь — общее
+# свечение и мерцающие звёзды для магазина, склада и книги магии.
+
+const ELVEN_QUALITY := "SuperScroll"
+static var _elven_shader: Shader = null
+
+
+static func is_elven(item: Dictionary) -> bool:
+	return str(item.get("quality", "")) == ELVEN_QUALITY
+
+
+static func elven_shader() -> Shader:
+	if _elven_shader != null:
+		return _elven_shader
+	var sh := Shader.new()
+	sh.code = """shader_type canvas_item;
+// Иконка остаётся как есть; поверх — мягкое сине-фиолетовое свечение и
+// редкие мерцающие звёздочки. TIME встроенный: обновлять форму каждый кадр
+// из кода не нужно.
+uniform vec3 glow_tint = vec3(0.62, 0.55, 1.0);
+
+float star(vec2 uv, vec2 at, float size) {
+	return 1.0 - smoothstep(0.0, size, length(uv - at));
+}
+
+void fragment() {
+	vec4 tex = texture(TEXTURE, UV);
+	vec2 p = UV - vec2(0.5);
+	float d = length(p) * 2.0;
+	// Свечение по краю иконки: центр остаётся чётким.
+	float glow = smoothstep(0.45, 1.05, d) * (1.0 - smoothstep(1.0, 1.3, d));
+	float s = 0.0;
+	s += star(UV, vec2(0.20, 0.28), 0.045) * (0.55 + 0.45 * sin(TIME * 2.3));
+	s += star(UV, vec2(0.80, 0.20), 0.038) * (0.55 + 0.45 * sin(TIME * 2.9 + 1.7));
+	s += star(UV, vec2(0.72, 0.82), 0.042) * (0.55 + 0.45 * sin(TIME * 2.1 + 3.1));
+	s += star(UV, vec2(0.26, 0.74), 0.034) * (0.55 + 0.45 * sin(TIME * 3.3 + 4.4));
+	vec3 col = tex.rgb + glow_tint * (glow * 0.55 * (1.0 - tex.a) + s * 0.9);
+	float alpha = max(tex.a, glow * 0.45 + s * 0.8);
+	COLOR = vec4(col, alpha);
+}
+"""
+	_elven_shader = sh
+	return sh
+
+
+## Навесить эльфийское свечение на иконку предмета (если это SuperScroll).
+## Для обычных свитков материал СНИМАЕТСЯ: иконки переиспользуются в панелях,
+## и «свечение с прошлого предмета» иначе осталось бы навсегда.
+static func apply_elven(icon: CanvasItem, item: Dictionary) -> void:
+	if icon == null or not is_instance_valid(icon):
+		return
+	if not is_elven(item):
+		icon.material = null
+		return
+	var mat := ShaderMaterial.new()
+	mat.shader = elven_shader()
+	icon.material = mat

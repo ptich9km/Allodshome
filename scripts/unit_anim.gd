@@ -211,11 +211,58 @@ func sprite_height() -> float:
 		return 0.0
 	return -_sprite.position.y
 
-## Полная видимая высота кадра с учётом масштаба юнита (tile_size).
+## Полная видимая высота ФИГУРЫ с учётом масштаба юнита.
+##
+## Не высота холста: кадры у нас 64×64, а фигура внутри ~54 px, сверху пустое
+## поле. Раньше здесь возвращался холст, и всё, что считается «от высоты»
+## (ауры, крест лечения, камера, точка каста), уезжало вверх на ~10 px.
 func visual_height() -> float:
+	var r := content_rect()
+	if r.size.y > 0.5:
+		return r.size.y
 	if _sprite == null:
 		return 0.0
 	return -_sprite.position.y * _sprite.scale.y
+
+
+## Рамка непрозрачного содержимого ТЕКУЩЕГО кадра в координатах юнита.
+## Ноги ≈ 0, макушка — отрицательный y. Считается по альфа-каналу
+## (кэш — Game.texture_content_rect), поэтому не зависит от размера холста.
+func content_rect() -> Rect2:
+	if _sprite == null or _sprite.texture == null:
+		return Rect2()
+	return _frame_content_rect(_sprite.texture)
+
+
+## Рамка ТЕЛА по кадру стойки (первый кадр набора).
+## Кадр удара шире: меч/посох/хвост не должны раздувать хит-бокс и дистанцию боя.
+func body_rect() -> Rect2:
+	if _sprite == null:
+		return Rect2()
+	var tex: Texture2D = null
+	if not frames.is_empty():
+		tex = frames[0]
+	if tex == null:
+		tex = _sprite.texture
+	if tex == null:
+		return Rect2()
+	return _frame_content_rect(tex)
+
+
+## Перевод рамки содержимого текстуры в координаты юнита с учётом позиции,
+## масштаба и зеркала спрайта.
+func _frame_content_rect(tex: Texture2D) -> Rect2:
+	if _sprite == null or tex == null:
+		return Rect2()
+	var r := Game.texture_content_rect(tex)
+	if r.size.x <= 0.5 or r.size.y <= 0.5:
+		return Rect2()
+	var tw := tex.get_width()
+	var x0 := r.position.x
+	if _sprite.flip_h:
+		x0 = float(tw) - (r.position.x + r.size.x)
+	var sc := _sprite.scale
+	return Rect2(_sprite.position + Vector2(x0, r.position.y) * sc, r.size * sc)
 
 ## Индекс кадра: направление-мажор. frame = block_start + file_dir*phases + phase.
 ## Для dirs=5 (unarmed) правые направления (5,6,7) = зеркало левых (3,2,1) flip_h.

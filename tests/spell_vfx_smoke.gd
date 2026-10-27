@@ -2,17 +2,21 @@ extends SceneTree
 ## Headless-проверка ВИЗУАЛА заклинаний, который раньше просто не было.
 ##
 ## Проверяет то, что видно только в игре:
-##  1. ауры (щит / сопротивление / ускорение) живут дольше одноразовой вспышки
-##     и висят НАД ГОЛОВОЙ, а не у ног;
-##  2. высота ауры считается из РЕАЛЬНОГО размера спрайта, а не из константы;
-##  3. аура исчезает, когда эффект истёк (сама, без ручного снятия);
-##  4. метель и ядовитое облако — это зоны с длительностью, а не одиночный снаряд;
-##  5. у каждой зоны есть шейдер, он реально компилируется (без ошибок GPU).
+##  1. ауры (щит / сопротивление / ускорение) живут дольше одноразовой вспышки;
+##  2. защита — КОЛЬЦО ВЕТЕРКА вокруг корпуса, а не точка над головой: размер
+##     задаётся в пикселях (был баг: scale 0.45 при текстуре 4×4 = 2 px);
+##  3. кольца разных школ не совпадают и НЕ качаются;
+##  4. щит — маленький предмет, который ЛЕТАЕТ по орбите вокруг героя;
+##  5. аура исчезает, когда эффект истёк (сама, без ручного снятия);
+##  6. метель и ядовитое облако — это зоны с длительностью, а не одиночный снаряд;
+##  7. у каждой зоны есть шейдер, он реально компилируется (без ошибок GPU).
 ##
 ## Запуск:
 ##   godot --headless --path . --script res://tests/spell_vfx_smoke.gd
 
 const MIN_AURA_LIFE := 0.9   # одноразовая вспышка жила 0.45 с — аура должна жить дольше
+## Ниже этого размера эффект читается как «точка» (жалоба игрока).
+const MIN_VISIBLE_PX := 14.0
 
 var _fails: Array = []
 var _hero: Player = null
@@ -51,7 +55,8 @@ func _run() -> void:
 	_hero.set("current_mana", 999)
 	_hero.set("current_hp", _hero.max_hp)
 
-	await _test_aura_above_head()
+	await _test_aura_shapes()
+	await _test_bless_aura()
 	await _test_aura_lifetime()
 	await _test_heal_cross()
 	await _test_zones()
@@ -59,9 +64,9 @@ func _run() -> void:
 	_finish()
 
 
-# --- 1-2. Аура над головой -------------------------------------------------
+# --- 1-4. Ауры: кольца защит и летающий щит --------------------------------
 
-func _test_aura_above_head() -> void:
+func _test_aura_shapes() -> void:
 	# Сопротивление огню: 90 секунд в базе, одноразовая вспышка жила 0.45 с.
 	var spell := SpellDB.get_spell("Protection_from_Fire")
 	var duration := int(SpellDB.effect_of_type("Protection_from_Fire", "resist").get("duration", 0))
@@ -79,39 +84,60 @@ func _test_aura_above_head() -> void:
 	_check(is_instance_valid(aura) and not aura.is_queued_for_deletion(),
 		"аура жива через %.1f с (вспышка гасла за 0.45 с)" % MIN_AURA_LIFE)
 
-	# Над головой, а не у ног и не внутри тела.
-	_check(aura._base_offset < -20.0,
-		"аура выше ног (offset %.0f px)" % aura._base_offset)
-	# Высота берётся из РЕАЛЬНОЙ высоты спрайта (UnitAnim.visual_height),
-	# а не из футпринта (_unit_metrics -> tile_size*32): для героя это 32 px,
-	# и аура по этой высоте оказывалась ВНУТРИ персонажа.
+	# Защита — КОЛЬЦО ВЕТЕРКА вокруг корпуса. Главный баг прошлой версии:
+	# scale 0.45 при текстуре 4×4 px давал значок 2 px, то есть «точку,
+	# которая плавает туда-сюда». Размер обязан считаться в пикселях.
+	var size := SpellVFX.sprite_px(aura._sprite)
+	_check(size.x >= MIN_VISIBLE_PX and size.y >= MIN_VISIBLE_PX,
+		"кольцо ветерка видно: %.0f×%.0f px (прошлый значок был 2–6 px)" % [size.x, size.y])
+	var body_w := aura._body_width()
+	_check(size.x > body_w and body_w > 0.0,
+		"кольцо шире корпуса (%.0f > %.0f) — струи идут вокруг тела" % [size.x, body_w])
+	# Тело внутри кольца не закрыто: центр кольца прозрачен (проверяем по
+	# геометрии шейдера — кольцо начинается с 46 % радиуса).
+	_check(aura._sprite.material is ShaderMaterial,
+		"у кольца ветерка свой ShaderMaterial")
+	# Кольцо стоит по центру силуэта, со сдвигом ряда школы (огонь — выше).
 	var vh := Game.unit_visual_height(_hero)
 	_check(vh > 0.0, "высота спрайта героя читается из UnitAnim: %.1f px" % vh)
-	var footprint := float((Game._unit_metrics(_hero) as Array)[1])
-	_check(vh != footprint,
-		"высота спрайта (%.1f) отличается от футпринта (%.1f) — аура считает по высоте"
-			% [vh, footprint])
-	var expected := -(vh * SpellAura.HEAD_FACTOR + SpellAura.HEAD_MARGIN
-		+ float(aura._stack_index) * SpellAura.STACK_STEP)
-	_check(is_equal_approx(aura._base_offset, expected),
-		"высота ауры считана из высоты спрайта (%.1f px, слот %d -> offset %.1f, ждём %.1f)"
-			% [vh, aura._stack_index, aura._base_offset, expected])
+	_check(aura._base_offset < -vh * 0.2 and aura._base_offset > -vh,
+		"кольцо в пределах силуэта (offset %.1f при высоте %.1f)" % [aura._base_offset, vh])
+	# НЕ качается: покачивание точки и было жалобой игрока.
+	var y1 := aura._sprite.position.y
+	await create_timer(0.5).timeout
+	_check(absf(aura._sprite.position.y - y1) < 0.01,
+		"кольцо защиты не качается (%.2f -> %.2f)" % [y1, aura._sprite.position.y])
+	# Второй канал различия кроме цвета — РАЗНОЕ ДВИЖЕНИЕ по школе.
+	_check(SpellVFX.resist_school("Fire") != SpellVFX.resist_school("Water"),
+		"у огня и воды разное движение ветерка (0 против 1)")
+	var mat := aura._sprite.material as ShaderMaterial
+	_check(mat != null
+			and int(mat.get_shader_parameter("school")) == SpellVFX.resist_school("Fire"),
+		"шейдеру ветерка передана школа огня")
+	# Цвет школы, а не белый: иначе все защиты неразличимы.
+	var c: Color = mat.get_shader_parameter("color")
+	_check(c.is_equal_approx(SpellVFX.resist_color("Fire")),
+		"кольцо окрашено цветом школы (%s)" % str(c))
 
-	# Столбик: сопротивление и щит висят на РАЗНЫХ высотах, иначе наложены
-	# друг на друга и не видно, что на герое несколько эффектов.
-	_hero._apply_effects(_hero, SpellDB.get_spell("Shield"))
+	# Вторая защита: кольцо на ДРУГОЙ ВЫСОТЕ (земля ниже, огонь выше), поэтому
+	# кольца не сливаются в одно пятно.
+	_hero._apply_effects(_hero, SpellDB.get_spell("Protection_from_Water"))
 	await process_frame
-	var stack := _head_auras()
-	var offsets: Array = []
-	for a in stack:
-		offsets.append((a as SpellAura)._base_offset)
-	var unique_offsets := {}
-	for o in offsets:
-		unique_offsets[o] = true
-	_check(stack.size() >= 2,
-		"на герое одновременно висят несколько аур: %d" % stack.size())
-	_check(unique_offsets.size() == offsets.size(),
-		"ауры не наложены друг на друга, у всех своя высота: %s" % str(offsets))
+	var rings := _resist_auras()
+	_check(rings.size() >= 2, "две защиты висят одновременно: %d" % rings.size())
+	var water: SpellAura = null
+	for a in rings:
+		var ra := a as SpellAura
+		if ra.sphere == "Water":
+			water = ra
+	_check(water != null, "кольцо воды создано")
+	if water != null:
+		_check(absf(water._base_offset - aura._base_offset) >= 5.0,
+			"кольца защит на разной высоте (вода %.1f, огонь %.1f)"
+				% [water._base_offset, aura._base_offset])
+		_check(int((water._sprite.material as ShaderMaterial).get_shader_parameter("school"))
+				== SpellVFX.resist_school("Water"),
+			"у кольца воды своя школа движения")
 
 	# Ветер ускорения рисуется у ног — это осознанное отличие от остальных.
 	_hero._apply_effects(_hero, SpellDB.get_spell("Haste"))
@@ -119,33 +145,45 @@ func _test_aura_above_head() -> void:
 	var haste := _find_aura("haste")
 	_check(haste != null, "аура ускорения создана")
 	if haste != null:
-		_check(haste._base_offset > -8.0,
-			"ветер ускорения у ног (offset %.0f, а не над головой)" % haste._base_offset)
+		# У ног: над подошвами, но не под землёй и не над головой.
+		var up_h := -haste._base_offset
+		_check(up_h >= 0.0 and up_h < 18.0,
+			"ветер ускорения у ног (%.0f px над подошвами)" % up_h)
 
-	# Щит — сетка вокруг персонажа.
+	# Щит — маленький ЛЕТАЮЩИЙ предмет, а не сетка вокруг тела.
 	_hero._apply_effects(_hero, SpellDB.get_spell("Shield"))
 	await process_frame
 	var shield := _find_aura("shield")
 	_check(shield != null, "аура щита создана")
 	if shield != null:
-		# Щит рисуется ВОКРУГ тела (по центру силуэта), а не над головой:
-		# так сразу видно, что герой прикрыт. Раньше он висел над головой
-		# и был не виден вовсе.
-		var vh2 := Game.unit_visual_height(_hero)
-		_check(is_equal_approx(shield._base_offset, -vh2 * 0.45),
-			"щит по центру силуэта (offset %.1f, ждём %.1f для высоты %.1f)"
-				% [shield._base_offset, -vh2 * 0.45, vh2])
-		# Сравниваем АБСОЛЮТНЫЕ Y. Первая версия сравнивала _base_offset
-		# (относительный сдвиг) с global_position.y (абсолютная координата) —
-		# это смешение единиц, и проверка ругалась при верном щите.
-		var abs_y := shield.global_position.y + shield._base_offset
-		var head_y := _hero.global_position.y - vh2
-		var feet_y := _hero.global_position.y
+		var sh_size := SpellVFX.sprite_px(shield._sprite)
+		_check(sh_size.x >= MIN_VISIBLE_PX,
+			"щит виден: %.0f×%.0f px" % [sh_size.x, sh_size.y])
+		_check(sh_size.x < body_w * 1.4,
+			"щит МАЛЕНЬКИЙ: %.0f px против корпуса %.0f px" % [sh_size.x, body_w])
+		# Орбита вокруг тела, а не над головой.
+		var fig := Game.unit_local_rect(_hero)
+		var expect_y := fig.end.y - fig.size.y * SpellAura.SHIELD_BODY_FRAC
+		_check(absf(shield._base_offset - expect_y) < 1.0,
+			"орбита щита на высоте корпуса (offset %.1f, ждём %.1f)"
+				% [shield._base_offset, expect_y])
+		# Летает: за 0.4 с смещение по X обязано быть заметным.
+		var x1 := shield._sprite.position.x
+		await create_timer(0.4).timeout
+		_check(absf(shield._sprite.position.x - x1) > 2.0,
+			"щит летает по орбите (x %.1f -> %.1f)" % [x1, shield._sprite.position.x])
+		# И не улетает выше головы/ниже ног. Позиция спрайта включает подъём
+		# узла анимации (рельеф), поэтому и границы фигуры считаем с ним.
+		var shift := 0.0
+		var anim_node: Node2D = _hero.get_node_or_null("UnitAnim") as Node2D
+		if anim_node != null:
+			shift = anim_node.position.y
+		var abs_y := shield.global_position.y + shield._sprite.position.y
+		var head_y := _hero.global_position.y + shift + fig.position.y
+		var feet_y := _hero.global_position.y + shift + fig.end.y
 		_check(abs_y > head_y and abs_y < feet_y,
-			"щит по центру силуэта: макушка %.1f < щит %.1f < ноги %.1f"
+			"щит в пределах силуэта: макушка %.1f < щит %.1f < ноги %.1f"
 				% [head_y, abs_y, feet_y])
-		_check(shield._sprite.scale.x >= 1.4,
-			"щит шире силуэта (scale %.2f)" % shield._sprite.scale.x)
 
 	# Одна аура на вид: щит кастуется каждые 10 с и не должен наслаиваться.
 	var before := _count_auras("shield")
@@ -155,13 +193,41 @@ func _test_aura_above_head() -> void:
 		"повторный щит не плодит ауры (%d -> %d)" % [before, _count_auras("shield")])
 
 
-## Все ауры, кроме ветра (ветер у ног, в столбик не входит).
-func _head_auras() -> Array:
+## Все кольца защит на герое.
+func _resist_auras() -> Array:
 	var out: Array = []
 	for c in _hero.get_children():
-		if c is SpellAura and (c as SpellAura).kind != "haste":
+		if c is SpellAura and (c as SpellAura).kind == "resist":
 			out.append(c as SpellAura)
 	return out
+
+
+# --- Благословение: маленькая жёлтая аура над головой -----------------------
+
+func _test_bless_aura() -> void:
+	_hero._apply_effects(_hero, SpellDB.get_spell("Bless"))
+	await process_frame
+	var aura := _find_aura("bless")
+	_check(aura != null, "аура благословения создана (раньше Bless был невидим)")
+	if aura == null:
+		return
+	var size := SpellVFX.sprite_px(aura._sprite)
+	_check(size.x >= MIN_VISIBLE_PX and size.y >= MIN_VISIBLE_PX,
+		"аура благословения видна: %.0f×%.0f px" % [size.x, size.y])
+	# Над ГОЛОВОЙ: смещение выше макушки фигуры.
+	var fig := Game.unit_local_rect(_hero)
+	_check(-aura._base_offset > -fig.position.y,
+		"аура выше макушки (%.0f px при голове %.0f)" % [-aura._base_offset, -fig.position.y])
+	var mat := aura._sprite.material as ShaderMaterial
+	_check(mat != null and mat.shader != null
+			and mat.shader.code.contains("cos(ang * 6.0)"),
+		"шейдер ауры благословения — нимб с лучами, а не точка")
+	# Исчезает, когда эффект снят.
+	StatusEffects.clear(_hero)
+	await process_frame
+	await process_frame
+	_check(not is_instance_valid(aura) or aura.is_queued_for_deletion(),
+		"аура благословения исчезает вместе с эффектом")
 
 
 # --- 3. Аура снимается сама ------------------------------------------------
@@ -242,11 +308,20 @@ func _test_zones() -> void:
 # --- 6. Шейдеры компилируются --------------------------------------------
 
 func _test_shaders() -> void:
-	for style in ["hail", "shard", "cloud", "aura_shield", "aura_up", "aura_wind", "heal_cross"]:
+	for style in ["hail", "shard", "cloud", "aura_shield", "aura_breeze", "aura_wind", "heal_cross"]:
 		var mat := SpellVFX.zone_material(style, Color.WHITE)
 		var sh: Shader = mat.shader
 		var ok := sh != null and sh.code.contains("shader_type canvas_item")
 		_check(ok, "шейдер %s есть и начинается с shader_type canvas_item" % style)
+	# Ветерок защиты обязан иметь ветку движения по школе, а не только цвет:
+	# иначе четыре защиты снова неразличимы (цвет — недоступный канал).
+	var bz := SpellVFX.zone_material("aura_breeze", Color.WHITE).shader
+	_check(bz != null and bz.code.contains("uniform int school"),
+		"у ветерка есть uniform school (движение по школе)")
+	_check(bz != null and bz.code.contains("dashes"),
+		"ветерок — бегущие штрихи по обручу, а не заливка")
+	_check(bz != null and bz.code.contains("blend_mix"),
+		"ветерок смешивается альфой, а не аддитивно (иначе четыре кольца = белое пятно)")
 
 
 # --- Поиск узлов -----------------------------------------------------------

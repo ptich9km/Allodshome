@@ -840,6 +840,7 @@ func _add_inventory_slot(item: Dictionary, count: int = 0) -> void:
 			icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			# Свечение уровня крафтовой вещи (обычная - без материала).
 			CraftVFX.apply_to_icon(icon_rect, CraftVFX.tier_of_item(item))
+			CraftVFX.apply_elven(icon_rect, item)
 			if is_essence:
 				icon_rect.name = "EssenceIcon"
 				icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

@@ -451,6 +451,7 @@ func _make_shop_slot(item: Dictionary, buying: bool, count: int) -> PanelContain
 	# refresh, узлы не пулятся, так что материал каждый раз новый - но и
 	# Shader кэшируется в CraftVFX, поэтому компиляция не повторяется.
 	CraftVFX.apply_to_icon(icon, CraftVFX.tier_of_item(item))
+	CraftVFX.apply_elven(icon, item)
 	content.add_child(icon)
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 1)

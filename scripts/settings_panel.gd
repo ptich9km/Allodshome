@@ -156,13 +156,14 @@ func _build() -> void:
 
 
 func _build_tabs() -> void:
-	var keys := ["ui.settings.tab_video", "ui.settings.tab_audio", "ui.settings.tab_input"]
+	var keys := ["ui.settings.tab_video", "ui.settings.tab_audio",
+		"ui.settings.tab_magic", "ui.settings.tab_input"]
 	for i in range(keys.size()):
 		var b := Button.new()
 		b.name = "Tab%d" % i
 		b.theme_type_variation = &"SetTab"
 		b.text = Loc.t(str(keys[i]))
-		b.custom_minimum_size = Vector2(150, 34)
+		b.custom_minimum_size = Vector2(140, 34)
 		b.pressed.connect(_select_tab.bind(i))
 		_tabs.add_child(b)
 		_tab_buttons.append(b)
@@ -244,6 +245,8 @@ func _select_tab(index: int) -> void:
 			_build_video_tab()
 		1:
 			_build_audio_tab()
+		2:
+			_build_magic_tab()
 		_:
 			_build_input_tab()
 	_hint.text = Loc.t("ui.settings.hint_%d" % _tab_index)
@@ -339,6 +342,72 @@ func _scale_row(btn: Button) -> HBoxContainer:
 	row.add_child(plus)
 	_body.add_child(row)
 	return row
+
+
+## Раздел «Магия»: авто-волшебство мага.
+##
+## Уровень и цель — единственное место, где это меняется (раньше был скрытый
+## Alt+ПКМ по книге, и игрок его не находил). Настройки живут в статиках Game и
+## НЕ сохраняются в сейв: после загрузки — «Базовое» и «Я и моя группа».
+func _build_magic_tab() -> void:
+	_choice_row("ui.settings.auto_magic", [
+		["base", "ui.settings.auto_level_base"],
+		["medium", "ui.settings.auto_level_medium"],
+		["max", "ui.settings.auto_level_max"],
+	], Game.auto_buff_tier, _on_auto_tier)
+	_choice_row("ui.settings.auto_target", [
+		["self", "ui.settings.auto_target_self"],
+		["party", "ui.settings.auto_target_party"],
+		["party_neutral", "ui.settings.auto_target_neutral"],
+	], Game.auto_targets, _on_auto_target)
+	var stub := Label.new()
+	stub.theme_type_variation = &"SetStub"
+	stub.text = Loc.t("ui.settings.stub_magic")
+	stub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stub.custom_minimum_size = Vector2(480, 0)
+	_body.add_child(stub)
+
+
+## Строка выбора из нескольких вариантов: подпись слева, кнопки справа.
+## Активный вариант подсвечен и выключен (как вкладки), фокус ходит стрелками.
+func _choice_row(label_key: String, options: Array, current: String,
+		on_pick: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UiTheme.SPACE_2)
+	var lab := Label.new()
+	lab.theme_type_variation = &"SetRowLabel"
+	lab.text = Loc.t(label_key)
+	lab.custom_minimum_size = Vector2(200, 0)
+	lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(lab)
+	var buttons: Array[Button] = []
+	for opt in options:
+		var pair: Array = opt
+		var value := str(pair[0])
+		var b := Button.new()
+		b.name = "Opt_%s" % value
+		b.text = Loc.t(str(pair[1]))
+		b.custom_minimum_size = Vector2(150, 30)
+		var active := value == current
+		b.theme_type_variation = &"SetTabActive" if active else &"SetValueBtn"
+		b.disabled = active
+		b.pressed.connect(func() -> void:
+			on_pick.call(value))
+		row.add_child(b)
+		buttons.append(b)
+	_body.add_child(row)
+	UiKit.wire_grid_focus(buttons, buttons.size())
+	return row
+
+
+func _on_auto_tier(value: String) -> void:
+	Game.auto_buff_tier = value
+	_select_tab(_tab_index)
+
+
+func _on_auto_target(value: String) -> void:
+	Game.auto_targets = value
+	_select_tab(_tab_index)
 
 
 func _build_audio_tab() -> void:
