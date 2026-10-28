@@ -176,10 +176,11 @@ static func is_equippable(item: Dictionary) -> bool:
 	return true
 
 ## Non-wearable qualities: broken gear and craft materials are raw stuff.
+## "Tag" — фракционная бирка (пакет B): трофей-ингредиент, не снаряжение.
 const NON_GEAR_QUALITY := [
 	"Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb",
 	"Broken", "Broken Fine", "Broken Rare",
-	"Fabric", "Essence", "Recipe",
+	"Fabric", "Essence", "Recipe", "Tag",
 ]
 
 ## Class restrictions (22.10 player decision): a warrior wears metal armor
@@ -398,6 +399,25 @@ static func ingot_key(material: String) -> String:
 		return ""
 	var ingot: Dictionary = find("%s Ingot" % material.to_lower())
 	return str(ingot.get("key", ""))
+
+## Бирки фракций (пакет B переработки ковки, 28.10). Ось — раса фракции,
+## та же, что у репутации: humans/ork/necro/druid. Бирка падает со стражника
+## форпоста и уходит в рецепты фракционной брони (пакет D).
+const TAG_OF_RACE := {
+	"humans": "Alliance Tag",
+	"ork": "Horde Tag",
+	"necro": "Reaper Tag",
+	"druid": "Circle Tag",
+}
+
+## Ключ бирки расы ("" — такой фракции нет).
+static func tag_key(race: String) -> String:
+	return str(TAG_OF_RACE.get(race, ""))
+
+## Это бирка-трофей? Читает type, а не quality: «Tag» в quality занят
+## отдельно, чтобы бирка не попала в таблицу сломанных вещей.
+static func is_tag(item: Dictionary) -> bool:
+	return str(item.get("type", "")) == "Trophy"
 
 ## Предметы для инвентаря: все экипируемые в порядке базы.
 static func equippable_items() -> Array:

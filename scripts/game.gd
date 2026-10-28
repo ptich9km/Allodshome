@@ -55,6 +55,12 @@ static var pending_events: Array = []   # saved events, applied by EventSystem
 ## Пусто — новая игра; applied=true — блок уже прочитан (не применяем дважды).
 static var pending_quests: Dictionary = {}
 static var pending_quests_applied: bool = false
+## Форпосты фракций (пакет B, 28.10): что стоит на текущей карте и какие уже
+## захвачены. Ключ захвата включает карту (зона|сектор|сид), потому что id
+## лагеря ("op0") повторяется на каждой карте.
+static var outposts: Array = []
+static var outposts_captured: Dictionary = {}
+static var pending_outposts_captured: Dictionary = {}
 static var _hit_sfx_ms: int = 0          # троттл звука попадания (единая точка урона)
 ## Slot the running game came from ("" — new game). The slot folder holds the
 ## map files, so a zone change reuses its maps instead of regenerating them.
@@ -532,6 +538,11 @@ static func clear_load_position() -> void:
 
 static func clear_hero_save() -> void:
 	hero_save = {}
+	# Новая игра/новая карта: захваченные форпосты прежнего мира не должны
+	# «протекать» в новый (ключ включает сид, но старые ключи копились бы).
+	outposts.clear()
+	outposts_captured.clear()
+	pending_outposts_captured.clear()
 
 ## Путь портрета: явный hero_portrait или сборка из character_id (с легаси-маппингом).
 static func hero_portrait_path() -> String:
@@ -598,6 +609,76 @@ static func hero_reputation(race: String) -> int:
 	if bus == null or not ("state" in bus) or bus.state == null:
 		return 0
 	return int(bus.state.hero_rep(race))
+
+
+# --- Форпосты фракций (пакет B переработки ковки) --------------------------
+
+## Ключ захвата: id лагеря уникален только внутри карты, а карты у секторов
+## свои. Сид+зона+сектор остаются те же после сохранения и загрузки (имя файла
+## карты меняется на save_<slot>, поэтому имя в ключ не годится).
+static func outpost_key(oid: String) -> String:
+	if oid == "":
+		return ""
+	return "%s|%s|%d|%s" % [str(map_zone), str(map_sector), int(map_seed), oid]
+
+
+## Перечитать форпосты карты. Вызывается после сборки/загрузки карты и ДО
+## спавна юнитов: иначе стража уже захваченных лагерей успела бы появиться.
+static func reload_outposts(map_node = null) -> void:
+	outposts = []
+	if map_node != null and is_instance_valid(map_node) \
+			and map_node.has_method("outposts"):
+		var raw: Variant = map_node.call("outposts")
+		if raw is Array:
+			outposts = (raw as Array).duplicate(true)
+	# Захваченное пришло из сейва: переносим один раз, дальше живёт в словаре.
+	if not pending_outposts_captured.is_empty():
+		for key in pending_outposts_captured:
+			outposts_captured[str(key)] = true
+		pending_outposts_captured.clear()
+
+
+## Захвачен ли форпост текущей карты.
+static func is_outpost_captured(oid: String) -> bool:
+	return outposts_captured.has(outpost_key(oid))
+
+
+## Умер стражник форпоста: падение репутации фракции и, если лагерь зачищен,
+## его захват. Вызывает enemy.gd из take_damage (после лута и сигнала died).
+static func on_outpost_guard_died(unit: Node2D) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var oid := str(unit.get("outpost_id"))
+	if oid == "":
+		return
+	var faction := str(unit.get("faction"))
+	if faction != "":
+		var bus := _world_bus_static()
+		if bus != null and ("state" in bus) and bus.state != null:
+			bus.state.add_hero_reputation(faction, -GameConfig.geti("outpost", "rep_penalty"))
+	# Живые стражники того же лагеря? Труп уже вычищен из Game.enemies.
+	for e in enemies:
+		if e != null and is_instance_valid(e) and str(e.get("outpost_id")) == oid:
+			return
+	var key := outpost_key(oid)
+	if key == "" or outposts_captured.has(key):
+		return
+	outposts_captured[key] = true
+	var gold := GameConfig.geti("outpost", "capture_gold")
+	if hero != null and is_instance_valid(hero) and hero.has_method("add_gold"):
+		hero.call("add_gold", gold)
+	var name := oid
+	for o in outposts:
+		if str((o as Dictionary).get("id", "")) == oid:
+			name = str((o as Dictionary).get("name", oid))
+			break
+	var bus2 := _world_bus_static()
+	if bus2 != null and ("state" in bus2) and bus2.state != null:
+		bus2.state.log_entry("outpost", "%s захвачен" % name)
+	var wf = load("res://scripts/world/world_feed.gd")
+	if wf != null:
+		wf.post("world", "%s захвачен (+%d золота)" % [name, gold])
+	print("OUTPOST captured: %s (%s), +%d gold" % [name, oid, gold])
 
 
 func _world_bus() -> Node:
@@ -821,6 +902,8 @@ func _ready():  # Инициализация мира и боя
 	# Это же чинит хвост в _alive_gray_count (считал мёртвые узлы).
 	Game.enemies.clear()
 	Game.npcs.clear()
+	# Форпосты карты — ДО спавна юнитов: стража захваченных лагерей не появляется.
+	Game.reload_outposts(alm_map)
 	_sep_grid.clear()
 	_sep_grid_frame = -1
 	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
@@ -974,11 +1057,15 @@ func _spawn_map_units(done: Callable = Callable()) -> void:
 			set_name = UnitDB.set_name_for_id(int(rec["type_id"]))
 		if set_name == "" or not UnitDB.has(set_name):
 			continue
+		# Захваченный форпост стражи не имеет: лагерь уже за героем.
+		var oid := str(rec.get("outpost", ""))
+		if oid != "" and is_outpost_captured(oid):
+			continue
 		var raw_cell := Vector2i(int(rec.get("x", 0)), int(rec.get("y", 0)))
 		var open_pos := _find_open_spot(raw_cell, int(alm_map.get("tile_size")))
 		if open_pos.x < 0.0:
 			continue
-		if UnitDB.is_hostile(set_name):
+		if UnitDB.is_hostile(set_name) or oid != "":
 			_spawn_monster(set_name, open_pos, rec)
 		else:
 			_spawn_npc(set_name, open_pos, rec)
@@ -1009,7 +1096,11 @@ func _on_startup_spawned() -> void:
 
 func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var e := Enemy.new()
-	e.name = "Monster_" + set_name.get_file()
+	var oid := str(rec.get("outpost", ""))
+	# Имя узла: у стражи форпоста набор одинаковый (city_ork_warrior/t1), и без
+	# id лагеря в отладочном выводе все стражники были бы «Monster_t1».
+	e.name = ("Outpost_%s_%s" % [oid, set_name.get_file()]) if oid != "" \
+		else "Monster_" + set_name.get_file()
 	e.anim_set = set_name
 	var hp := int(rec.get("hp_max", 0))
 	if hp > 0:
@@ -1017,6 +1108,9 @@ func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var dmg := int(rec.get("damage", 0))
 	if dmg > 0:
 		e.damage = dmg
+	# Форпост (пакет B): фракция и id лагеря едут в записи .npcs.json.
+	e.faction = str(rec.get("faction", ""))
+	e.outpost_id = str(rec.get("outpost", ""))
 	e.position = pos
 	e.home_position = pos
 	add_child(e)
@@ -2324,7 +2418,7 @@ func travel_to_sector(sector_id: String) -> void:
 		get_tree().paused = was_paused
 		return
 
-	await _swap_map(new_path, tier, false, sector_id, from_sector)
+	await _swap_map(new_path, tier, false, sector_id, from_sector, seed_value)
 	Game.map_sector = sector_id
 	Game.map_zone = tier
 	Game.map_seed = seed_value
@@ -2413,14 +2507,20 @@ func _zone_map_path(zone: String, seed_value: int) -> String:
 ## Пересоздать узел Map и переселить на него героя и партию.
 ## from_slot — карта пришла из папки этого слота (загрузка игры): тогда точка
 ## входа — позиция героя из сейва, а не спавн новой карты.
+## map_seed_value — сид НОВОЙ карты (переход между секторами): его надо
+## применить ДО спавна стражи форпостов, иначе ключ захвата считается по
+## сиду прежней карты.
 func _swap_map(new_path: String, zone: String, from_slot: bool = false,
-		sector: String = "", arrival_from: String = "") -> void:
+		sector: String = "", arrival_from: String = "",
+		map_seed_value: int = 0) -> void:
 	_clear_world_units()
 	# Зона меняется ДО создания карты: AlmMap._ready и спавн используют
 	# Game.map_zone, и он должен уже совпадать с новой картой.
 	Game.map_zone = zone
 	if sector != "":
 		Game.map_sector = sector
+	if map_seed_value != 0:
+		Game.map_seed = map_seed_value
 	Game.pending_map_path = new_path
 	if is_instance_valid(alm_map):
 		remove_child(alm_map)
@@ -2484,6 +2584,7 @@ func _swap_map(new_path: String, zone: String, from_slot: bool = false,
 		if is_instance_valid(unit):
 			unit.global_position = player.global_position + Vector2(32, 0)
 			unit.reset_physics_interpolation()
+	Game.reload_outposts(alm_map)
 	await _spawn_map_units()
 	if camera != null and is_instance_valid(player):
 		camera.position = player.camera_focus()

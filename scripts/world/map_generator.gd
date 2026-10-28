@@ -154,7 +154,9 @@ static func map_basename(seed_value: int, zone: String, race: String = "",
 # 30: туман войны + чанки террейна (19.10).
 # 31 (23.10): мир 4x3 — карта сектора со своим размером (96..192) и порталами
 # по каждой границе с соседом. Старые карты без сектора остаются совместимы.
-const GEN_VERSION := 31
+# 32 (28.10): форпосты фракций (пакет B) — 3 лагеря на карту вне стартовой зоны,
+# sidecar .outposts.json и стража с бирками.
+const GEN_VERSION := 32
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -358,6 +360,8 @@ func _generate() -> void:
 	_structures_out.clear()
 	_npcs_out.clear()
 	_herbs_out.clear()
+	_outposts_out.clear()
+	_outpost_reach.clear()
 
 	# 1. Почва Voronoi (база, без гор/воды/дороги)
 	_place_terrain(n)
@@ -389,6 +393,10 @@ func _generate() -> void:
 
 	# 6b. Мелкий декор вокруг городов (бочки/ящики/фонари seedream)
 	_place_city_props(rng)
+
+	# 6c. Форпосты фракций (пакет B): 3 лагеря вне городов, в стартовой зоне 0.
+	# Свой поток RNG — деревья/травы/Серые не сдвигаются от появления лагерей.
+	_place_outposts(rng_from_seed(_seed + STREAM_OUTPOSTS))
 
 	# 7. Деревья/объекты (заполняют _obstacles, обходя города/дороги/спавн)
 	_place_objects(rng)
@@ -666,6 +674,45 @@ const GRAY_MIN_SPAWN_DISTANCE := 14   # не тыкать зверя прямо 
 ##   squirrel -> squirrel_herd  orc/goblin -> orc_camp
 ##   ogre -> ogre_lair      troll -> troll_lair    bat    -> bat_swarm
 const ENCOUNTER_KINDS: Array = []
+
+## --- Форпосты фракций (пакет B переработки ковки, 28.10) -------------------
+##
+## Решение игрока: по ТРИ захватываемых форпоста на карту, в стартовой зоне
+## фракционных воинов нет вовсе (там только Серые). Форпост — это маленький
+## лагерь вне города: шатёр расы, костёр и 3–6 стражников с бирками в луте.
+##
+## Почему свои поток RNG как у трав/POI: добавление форпостов не должно
+## сдвигать деревья, травы и Серых — иначе каждая старая карта менялась бы
+## целиком. STREAM_OUTPOSTS занимает свой диапазон.
+const STREAM_OUTPOSTS := -2718
+const OUTPOST_FACTIONS: Array = ["humans", "ork", "necro", "druid"]
+## Шатёр/дом лагеря по расам. Все имена обязаны быть в structure_db.json
+## (проверяется генератором, иначе лагерь останется без постройки).
+const OUTPOST_CAMPS := {
+	"humans": ["tent1", "tent2", "tent3"],
+	"ork": ["vigvam1", "vigvam2", "vigvam3"],
+	"necro": ["necro1", "necro2", "necro3"],
+	"druid": ["druidhouse1", "druidhouse2", "druidhouse3"],
+}
+## Имена форпостов для журнала мира и захвата. Отдельно от расы: игрок видит
+## «Форпост Орды», а не «ork».
+const OUTPOST_NAMES := {
+	"humans": "Форпост Альянса",
+	"ork": "Форпост Орды",
+	"necro": "Форпост Пожинателей",
+	"druid": "Форпост Круга",
+}
+const OUTPOST_CAMPFIRE := "campfire"
+const OUTPOST_MIN_CITY_DISTANCE := 20
+const OUTPOST_MIN_SPAWN_DISTANCE := 16
+const OUTPOST_MIN_EACH_OTHER := 20
+## Радиус лагеря в клетках: шатёр + костёр + посты стражи.
+const OUTPOST_RADIUS := 4
+
+var _outposts_out: Array = []  # {id, faction, name, x, y, guards}
+## Достижимые от спавна клетки на момент расстановки лагерей: лагерь в
+## карманe за горами был бы недоступен игроку, а значит мёртвым контентом.
+var _outpost_reach: Dictionary = {}
 
 var _spawn_pos: Vector2i = Vector2i(-1, -1)
 var _portal_pos: Vector2i = Vector2i(-1, -1)
@@ -1520,6 +1567,223 @@ func _poi_spot_ok(cell: Vector2i) -> bool:
 		if int(record.get("x", -1)) == cell.x and int(record.get("y", -1)) == cell.y:
 			return false
 	return true
+
+
+# --- Форпосты фракций (пакет B переработки ковки) --------------------------
+
+## Этап 6c: форпосты. Ставится ПОСЛЕ городов/декора и ДО деревьев: лагерь
+## резервирует клетки, и лес/травы/Серые обходят его сами.
+##
+## Стартовая зона намеренно пуста (решение игрока 28.10): «в начальном нет
+## никаких фракционных воинов, только серые». Поэтому там 0 форпостов, и это
+## не ошибка генератора, а правило.
+func _place_outposts(rng: RandomNumberGenerator) -> void:
+	_outposts_out.clear()
+	var target := GameConfig.geti("outpost", "per_map")
+	if _zone == "start":
+		target = 0
+	if target <= 0:
+		print("OUTPOSTS: 0 (зона %s)" % _zone)
+		return
+	# Фракции не повторяются, пока их хватает: три лагеря одной и той же расы
+	# на одной карте читались бы как один лагерь, размноженный копипастой.
+	var factions: Array = OUTPOST_FACTIONS.duplicate()
+	_shuffle(rng, factions)
+	# Достижимость от спавна: карман за горами не должен съесть лагерь.
+	_outpost_reach = _reachable_cells(_spawn_pos)
+	var placed := 0
+	var tries := 0
+	while placed < target and tries < 500:
+		tries += 1
+		var anchor := Vector2i(rng.randi_range(3, W - 4), rng.randi_range(3, H - 4))
+		if not _outpost_cell_ok(anchor):
+			continue
+		var faction := str(factions[placed % factions.size()])
+		if _build_outpost(placed, faction, anchor, rng):
+			placed += 1
+	var names: Array = []
+	for o in _outposts_out:
+		names.append(str((o as Dictionary)["faction"]))
+	print("OUTPOSTS: %d/%d (%s)" % [placed, target, ", ".join(names)])
+
+
+## Якорь лагеря: суша вне дороги, не у города/спавна/портала и не рядом с
+## другим лагерем. Терраин — любой проходимый (трава/почва/песок/грязь).
+func _outpost_cell_ok(cell: Vector2i) -> bool:
+	if cell.x < OUTPOST_RADIUS + 2 or cell.y < OUTPOST_RADIUS + 2 \
+			or cell.x >= W - OUTPOST_RADIUS - 2 or cell.y >= H - OUTPOST_RADIUS - 2:
+		return false
+	if not _outpost_terrain_ok(cell):
+		return false
+	if _obstacles[cell.y * W + cell.x] != 0 or _reserved.has(cell):
+		return false
+	if not _outpost_reach.is_empty() and not _outpost_reach.has(cell):
+		return false
+	if _near_road(cell) or _near_city(cell, OUTPOST_MIN_CITY_DISTANCE):
+		return false
+	if _near_point(cell, _spawn_pos, OUTPOST_MIN_SPAWN_DISTANCE):
+		return false
+	if _near_point(cell, _portal_pos, OUTPOST_MIN_SPAWN_DISTANCE):
+		return false
+	for o in _outposts_out:
+		var d: Dictionary = o
+		if absi(cell.x - int(d["x"])) < OUTPOST_MIN_EACH_OTHER \
+				and absi(cell.y - int(d["y"])) < OUTPOST_MIN_EACH_OTHER:
+			return false
+	return true
+
+
+## Проходимый биом под лагерь. Горы/вода не годятся: шатёр стоял бы в озере.
+func _outpost_terrain_ok(cell: Vector2i) -> bool:
+	if cell.x < 0 or cell.y < 0 or cell.x >= W or cell.y >= H:
+		return false
+	var t := _terrain[cell.y * W + cell.x]
+	return t == 0 or t == 4 or t == 5 or t == 6
+
+
+## Собрать один лагерь. false — не нашлось места под шатёр (якорь пропадает).
+func _build_outpost(index: int, faction: String, anchor: Vector2i,
+		rng: RandomNumberGenerator) -> bool:
+	var camps: Array = OUTPOST_CAMPS.get(faction, [])
+	if camps.is_empty():
+		return false
+	var spec := _structure_spec(str(_pick(rng, camps)))
+	if spec.is_empty():
+		push_error("MapGenerator: нет постройки лагеря для '%s'" % faction)
+		return false
+	var camp_cell := _place_camp_building(anchor, spec)
+	if camp_cell.x < 0:
+		return false
+	# Костёр: центр лагеря, чтобы место читалось как стоянка, а не как дом.
+	var fire_spec := _structure_spec(OUTPOST_CAMPFIRE)
+	var fire_cell := _free_camp_cell(anchor, {}, 1)
+	if not fire_spec.is_empty() and fire_cell.x >= 0:
+		_structures_out.append({"x": fire_cell.x, "y": fire_cell.y,
+			"type_id": int(fire_spec["id"])})
+		_reserved[fire_cell] = true
+	# Стража: тир зоны задаёт и набор, и силу (как у городских стражей).
+	var tier := _outpost_tier()
+	var token := "human" if faction == "humans" else faction
+	var count := GameConfig.geti("outpost", "guards_min") \
+		+ rng.randi_range(0, maxi(0, GameConfig.geti("outpost", "guards_max")
+			- GameConfig.geti("outpost", "guards_min")))
+	var hp := rng.randi_range(GameConfig.zonei(_zone, "guard_hp_min"),
+		GameConfig.zonei(_zone, "guard_hp_max"))
+	var dmg := rng.randi_range(GameConfig.zonei(_zone, "guard_damage_min"),
+		GameConfig.zonei(_zone, "guard_damage_max"))
+	var oid := "op%d" % index
+	var taken := {}
+	for i in range(count):
+		var slot := anchor + Vector2i(rng.randi_range(-2, 2), rng.randi_range(-2, 2))
+		var spot := _free_camp_cell(slot, taken, 2)
+		if spot.x < 0:
+			continue
+		taken[spot] = true
+		_reserved[spot] = true
+		var role := "mage" if i == 1 and count >= 3 else "warrior"
+		var set_name := "city_%s_%s/t%d" % [token, role, tier]
+		if not UnitDB.has(set_name):
+			set_name = "city_%s_warrior/t%d" % [token, tier]
+		if not UnitDB.has(set_name):
+			continue
+		var rec := _npc_rec(spot, set_name, "guard", false, hp, dmg)
+		rec["faction"] = faction
+		rec["outpost"] = oid
+		_npcs_out.append(rec)
+	_outposts_out.append({
+		"id": oid,
+		"faction": faction,
+		"name": str(OUTPOST_NAMES.get(faction, "Форпост")),
+		"x": anchor.x, "y": anchor.y,
+	})
+	return true
+
+
+## Поставить шатёр лагеря: свободный футпринт в радиусе лагеря. В отличие от
+## города, дорога не нужна — лагерь стоит на земле.
+func _place_camp_building(anchor: Vector2i, spec: Dictionary) -> Vector2i:
+	var w := int(spec["w"])
+	var h := int(spec["h"])
+	var vis_rows: int = maxi(0, int(spec.get("fh", h)) - h)
+	for r in range(0, OUTPOST_RADIUS):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if r > 0 and abs(dx) != r and abs(dy) != r:
+					continue
+				var tl := anchor + Vector2i(dx, dy) - Vector2i(w >> 1, h - 1)
+				if not _camp_footprint_fits(tl, w, h, anchor, vis_rows):
+					continue
+				_structures_out.append({"x": tl.x, "y": tl.y, "type_id": int(spec["id"])})
+				for yy in range(h):
+					for xx in range(w):
+						_reserved[tl + Vector2i(xx, yy)] = true
+				for vy in range(vis_rows):
+					for xx in range(w):
+						_reserved[tl + Vector2i(xx, -vy - 1)] = true
+				_reserved[anchor] = true
+				return anchor
+	return Vector2i(-1, -1)
+
+
+func _camp_footprint_fits(tl: Vector2i, w: int, h: int, anchor: Vector2i,
+		vis_rows: int) -> bool:
+	for yy in range(h):
+		for xx in range(w):
+			var c := tl + Vector2i(xx, yy)
+			if not _outpost_terrain_ok(c):
+				return false
+			if _obstacles[c.y * W + c.x] != 0 or _reserved.has(c):
+				return false
+			if not _outpost_reach.is_empty() and not _outpost_reach.has(c):
+				return false
+			if c == _spawn_pos or c == _portal_pos:
+				return false
+			if maxi(absi(c.x - anchor.x), absi(c.y - anchor.y)) > OUTPOST_RADIUS:
+				return false
+	for vy in range(vis_rows):
+		var roof := tl + Vector2i(0, -vy - 1)
+		if roof.y < 1:
+			return false
+	return true
+
+
+## Свободная клетка лагеря рядом с желаемой (радиус radius, не занята).
+func _free_camp_cell(want: Vector2i, taken: Dictionary, radius: int) -> Vector2i:
+	if _camp_cell_free(want, taken):
+		return want
+	for r in range(1, radius + 1):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if abs(dx) != r and abs(dy) != r:
+					continue
+				var c := want + Vector2i(dx, dy)
+				if _camp_cell_free(c, taken):
+					return c
+	return Vector2i(-1, -1)
+
+
+func _camp_cell_free(c: Vector2i, taken: Dictionary) -> bool:
+	if not _outpost_terrain_ok(c):
+		return false
+	if _obstacles[c.y * W + c.x] != 0:
+		return false
+	if taken.has(c) or _reserved.has(c):
+		return false
+	if c == _spawn_pos or c == _portal_pos:
+		return false
+	if not _outpost_reach.is_empty() and not _outpost_reach.has(c):
+		return false
+	return true
+
+
+## Тир стражи по зоне: старт пуст, дальше набор и сила растут. t0..t3 есть у
+## всех четырёх городских наборов (units_db.json, city_*_warrior/tN).
+func _outpost_tier() -> int:
+	match _zone:
+		"mid": return 1
+		"hard": return 2
+		"faction": return 3
+	return 0
 
 
 ## Этап 7: деревья/объекты в _obstacles (ID из alm_objects.json). Кластерный
@@ -2748,6 +3012,12 @@ func _save_sidecars() -> void:
 	if h:
 		h.store_string(JSON.stringify({"herbs": _herbs_out}))
 		h.close()
+	# Форпосты (пакет B): отдельный sidecar, чтобы игра знала, ЧЬИ лагеря на
+	# карте и сколько стражи осталось до захвата.
+	var o := FileAccess.open(_out_dir + _basename + ".outposts.json", FileAccess.WRITE)
+	if o:
+		o.store_string(JSON.stringify({"outposts": _outposts_out}))
+		o.close()
 
 func _validate_city_content() -> void:
 	var required := ["shop", "inn", "blacksmith", "train", "druidshop"]
