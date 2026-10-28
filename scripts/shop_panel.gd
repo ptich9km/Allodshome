@@ -13,6 +13,7 @@ const CATEGORIES := [
 	{"id": "recipes_clothes", "label": "Рец. Маг. одежда"},
 	{"id": "potions", "label": "Зелья"},
 	{"id": "books", "label": "Книги и свитки"},
+	{"id": "recipes_faction", "label": "Рец. Фракция"},
 ]
 const MERCHANT_LINES := [
 	"Снаряжение дорожает с каждой новой стражей у ворот.",
@@ -375,6 +376,16 @@ func _update_rep_notice(category: String) -> void:
 	if _npc_notice == null:
 		return
 	var elven := GameConfig.geti("reputation", "elven_rep")
+	if category == "recipes_faction":
+		# Пакет F: полка фракционных чертежей. Она не «пустая без причины»:
+		# чертежи можно добыть захватом форпоста, а тут — второй источник.
+		if _race == "":
+			_npc_notice.text = tr("Фракционные чертежи: на этой карте нет города.")
+		else:
+			_npc_notice.text = tr("Чертежи наборов фракции «%s»: добываются за захват форпоста или покупаются здесь.") \
+				% Lore.faction_label(_race)
+		_npc_notice.visible = true
+		return
 	if category == "books" and _rep < elven:
 		_npc_notice.text = tr("Эльфийские свитки: нужна репутация %d (сейчас %d).") \
 			% [elven, _rep]
@@ -608,6 +619,15 @@ func _category_items(category_index: int) -> Array[Dictionary]:
 				matches = quality == "Recipe" and str(item.get("bp", "")) == "weapon"
 			"recipes_clothes":
 				matches = quality == "Recipe" and str(item.get("bp", "")) == "clothes"
+			"recipes_faction":
+				# Пакет F: чертежи фракционных наборов. В лавке города — только
+				# наборы ЕГО фракции (8 слотов: тяжёлый + лёгкий комплект).
+				# Карта без города — полка пуста, о чём говорит плашка.
+				matches = quality == "Recipe" and str(item.get("bp", "")) == "faction"
+				if matches and _race != "":
+					matches = str(item.get("recipe_id", "")).begins_with("faction_%s_" % _race)
+				elif matches:
+					matches = false
 		if not matches:
 			continue
 		# Для не-зелья/книг/свитков: сломанное (price 0) и мусор >60k.

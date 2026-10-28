@@ -488,6 +488,14 @@
   "ru": "Травнику нужно сырьё. Собери в полях %s — потребуется %d — и принеси главе.",
   "en": "The healer needs material. Gather %s in the fields — %d in all — and bring it to the head."
  },
+ "ui.quest.tpl.gather_tags.title": {
+  "ru": "Бирки: %s",
+  "en": "Tags: %s"
+ },
+ "ui.quest.tpl.gather_tags.text": {
+  "ru": "Бирки фракции «%s»: нужно %d. Сними их с солдат на форпостах — по биркам куют их броню.",
+  "en": "Tags of the %s faction: %d needed. Take them from soldiers at the outposts — their armor is forged from tags."
+ },
  "ui.quest.tpl.find_relic.title": {
   "ru": "Найти: %s",
   "en": "Search for %s"
