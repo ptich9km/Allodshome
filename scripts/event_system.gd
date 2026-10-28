@@ -52,6 +52,15 @@ func _on_exiting() -> void:
 		instance = null
 
 func _process(delta: float) -> void:
+	if not Game.perf_enabled:
+		_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_process_impl(delta)
+	Game.perf_end("events", t0)
+
+
+func _process_impl(delta: float) -> void:
 	if GameConfig.geti("events", "enabled") == 0:
 		return
 	_check_map_changed()

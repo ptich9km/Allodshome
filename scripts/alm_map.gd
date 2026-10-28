@@ -1150,6 +1150,16 @@ func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 ## клетки. Если цель непроходима — ищем путь к ближайшей проходимой рядом с ней
 ## (клик по дереву/воде подводит героя к самому краю). Пустой — пути нет.
 func find_path(from_world: Vector2, to_world: Vector2) -> Array:
+	if not Game.perf_enabled:
+		return _find_path_impl(from_world, to_world)
+	var t0 := Time.get_ticks_usec()
+	var out := _find_path_impl(from_world, to_world)
+	Game.perf_end("find_path", t0)
+	Game.perf_count("find_path_calls")
+	return out
+
+
+func _find_path_impl(from_world: Vector2, to_world: Vector2) -> Array:
 	var start := _cell_of(from_world)
 	var goal := _cell_of(to_world)
 	# Герой может стоять в клетке, которая по разметке непроходима (упёрся/склон):

@@ -71,6 +71,15 @@ func _create_sprite():
 	_anim.play(UnitAnim.Anim.IDLE)
 
 func _physics_process(delta):
+	if not Game.perf_enabled:
+		_physics_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_physics_process_impl(delta)
+	Game.perf_end("enemy_ai", t0)
+
+
+func _physics_process_impl(delta):
 	if Game.is_paused:
 		return
 	# P5: далеко от героя — AI спит (контент не трогаем, только CPU).
@@ -257,6 +266,15 @@ func _can_step(step: Vector2) -> bool:
 ## ближайший страж-НПЦ города в радиусе агро.
 ## Невидимого героя враг «не замечает» дальше 40 px, но видит вплотную.
 func _combat_target() -> Node2D:
+	if not Game.perf_enabled:
+		return _combat_target_impl()
+	var t0 := Time.get_ticks_usec()
+	var out := _combat_target_impl()
+	Game.perf_end("enemy_target_scan", t0)
+	return out
+
+
+func _combat_target_impl() -> Node2D:
 	# Стычка событий (19.10): пока враг в группе события, он бьёт
 	# противоположную группу; удар героя по нему переводит его на героя
 	# (см. take_damage). Противник умер или исчез - обычная логика ниже.
@@ -280,12 +298,22 @@ func _combat_target() -> Node2D:
 			return player
 	var best: Node2D = null
 	var bd := deaggro_radius * StatusEffects.vision_mult(self)
+	# Отсечение (29.10): точная геометрия только для тех НПЦ, кто может
+	# оказаться в радиусе; перебор всех 28 жителей с расчётом хит-боксов
+	# каждому тикающему врагу — это и была вторая половина просадки в городе.
+	var reach := bd + 128.0
+	var reach_sq := reach * reach
 	for n in Game.npcs:
 		if n == null or not is_instance_valid(n):
 			continue
 		if not (n is Npc) or n.role != "guard":
 			continue
 		if StatusEffects.is_invisible(n):
+			continue
+		var npos: Vector2 = (n as Node2D).global_position
+		var dx := npos.x - global_position.x
+		var dy := npos.y - global_position.y
+		if dx * dx + dy * dy > reach_sq:
 			continue
 		var d := Game.units_range(self, n)
 		if d < bd:

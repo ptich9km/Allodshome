@@ -97,6 +97,82 @@ static var _spell_targeting_frame: int = -1  # кадр, когда начато
 ## править код ради каждой отладки. Значение читается ОДИН раз при старте;
 ## тесты и дебаг присваивают переменную напрямую как раньше (перекрытие).
 static var debug_magic: bool = GameConfig.geti("debug", "all_magic") != 0
+## Профилировщик кадра (29.10, разбор просадки в городе). Включается
+## [debug] perf = 1 или присваиванием Game.perf_enabled = true из теста.
+## Копит МИКРОсекунды по именам блоков и число вызовов, раз в 2 с печатает
+## таблицу «мс на кадр». Нужен, чтобы не гадать, кто ест кадр: ИИ, поиск пути,
+## ховер, туман или UI.
+static var perf_enabled: bool = GameConfig.geti("debug", "perf") != 0
+static var perf_usec: Dictionary = {}
+static var perf_calls: Dictionary = {}
+static var perf_frames: int = 0
+static var _perf_since_ms: int = 0
+static var _perf_wall_usec: int = 0
+static var _perf_last_usec: int = 0
+
+
+## Начать замер блока. Возвращает метку времени (0 — профилировщик выключен).
+static func perf_begin() -> int:
+	return Time.get_ticks_usec() if perf_enabled else 0
+
+
+## Закрыть замер блока: key — имя блока в таблице.
+static func perf_end(key: String, t0: int) -> void:
+	if not perf_enabled or t0 == 0:
+		return
+	perf_usec[key] = int(perf_usec.get(key, 0)) + (Time.get_ticks_usec() - t0)
+
+
+## Счётчик событий (например, число вызовов поиска пути), не время.
+static func perf_count(key: String, amount: int = 1) -> void:
+	if not perf_enabled:
+		return
+	perf_calls[key] = int(perf_calls.get(key, 0)) + amount
+
+
+## Кадр закончился: раз в 2 секунды печатаем таблицу и обнуляем счётчики.
+## Wall-время считается между вызовами (обычно из Game._process), то есть это
+## реальная длительность кадра, а не сумма замеренных блоков.
+static func perf_frame() -> void:
+	if not perf_enabled:
+		return
+	perf_frames += 1
+	var now_us := Time.get_ticks_usec()
+	if _perf_last_usec != 0:
+		_perf_wall_usec += now_us - _perf_last_usec
+	_perf_last_usec = now_us
+	var now := Time.get_ticks_msec()
+	if _perf_since_ms == 0:
+		_perf_since_ms = now
+		return
+	if now - _perf_since_ms < 2000:
+		return
+	var frames := maxi(1, perf_frames)
+	var wall_ms := float(_perf_wall_usec) / 1000.0
+	var lines: Array = []
+	var total := 0.0
+	for key in perf_usec:
+		var ms := float(int(perf_usec[key])) / 1000.0 / float(frames)
+		total += ms
+		var calls := int(perf_calls.get(key, 0))
+		var per_frame := float(calls) / float(frames)
+		lines.append("%8.2f ms  %-14s (%6.1f выз/кадр)" % [ms, key, per_frame])
+	lines.sort()
+	print("--- PERF  кадров: %d, кадр: %.1f мс (%.1f FPS) ---" % [
+		frames, wall_ms / float(frames), 1000.0 * float(frames) / maxf(1.0, wall_ms)])
+	for l in lines:
+		print(l)
+	for ck in perf_calls:
+		if perf_usec.has(ck):
+			continue
+		print("%8s     %-14s (%6.1f выз/кадр)" % ["", ck,
+			float(int(perf_calls[ck])) / float(frames)])
+	print("     сумма замеренных блоков: %.2f мс/кадр" % total)
+	perf_usec.clear()
+	perf_calls.clear()
+	perf_frames = 0
+	_perf_wall_usec = 0
+	_perf_since_ms = now
 
 # --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
 static func apply_shield(unit: Node2D, strength: int, seconds: float) -> void:
@@ -392,6 +468,7 @@ static func _sep_rebuild_grid() -> void:
 	var f := Engine.get_physics_frames()
 	if f == _sep_grid_frame:
 		return
+	var t0 := perf_begin()
 	_sep_grid_frame = f
 	_sep_grid.clear()
 	if is_instance_valid(Game.hero):
@@ -402,6 +479,7 @@ static func _sep_rebuild_grid() -> void:
 		_sep_insert(other)
 	for other in Game.party:
 		_sep_insert(other)
+	perf_end("sep_grid", t0)
 
 
 static func _sep_neighbors(pos: Vector2) -> Array:
@@ -1606,11 +1684,17 @@ func _hover_unit() -> Node2D:
 	if not is_instance_valid(player):
 		return null
 	var mouse := player.get_global_mouse_position()
+	# Отсечение (29.10): раньше точный хит-бокс считался для КАЖДОГО врага и
+	# НПЦ карты каждый кадр (160+28), хотя под курсором может быть только
+	# соседняя фигура. Дешёвое сравнение по центрам снимает почти всё.
+	var reach_sq := 128.0 * 128.0
 	for e in enemies:
-		if is_instance_valid(e) and unit_hover_hit(e, mouse):
+		if is_instance_valid(e) and (e as Node2D).global_position.distance_squared_to(mouse) <= reach_sq \
+				and unit_hover_hit(e, mouse):
 			return e
 	for e in npcs:
-		if is_instance_valid(e) and unit_hover_hit(e, mouse):
+		if is_instance_valid(e) and (e as Node2D).global_position.distance_squared_to(mouse) <= reach_sq \
+				and unit_hover_hit(e, mouse):
 			return e
 	return null
 
@@ -1991,6 +2075,13 @@ func cancel_targeting() -> void:
 ## иначе — рамка тела по стойке (`UnitAnim.body_rect()`), а не по холсту и не
 ## по кадру удара (меч/посох не должны раздувать тело).
 static func unit_hit_rect(u: Node2D) -> Rect2:
+	var t0 := perf_begin()
+	var out := _unit_hit_rect_impl(u)
+	perf_end("hit_rect", t0)
+	return out
+
+
+static func _unit_hit_rect_impl(u: Node2D) -> Rect2:
 	if not is_instance_valid(u):
 		return Rect2()
 	var set_name := ""
@@ -2021,6 +2112,13 @@ static func unit_hit_rect(u: Node2D) -> Rect2:
 
 ## Рамка ТЕЛА в мире: по кадру стойки, а не по текущему (кадр удара шире).
 static func unit_body_rect(u: Node2D) -> Rect2:
+	var t0 := perf_begin()
+	var out := _unit_body_rect_impl(u)
+	perf_end("body_rect", t0)
+	return out
+
+
+static func _unit_body_rect_impl(u: Node2D) -> Rect2:
 	if not is_instance_valid(u):
 		return Rect2()
 	var anim := u.get_node_or_null("UnitAnim")
@@ -2102,6 +2200,7 @@ static func _build_alpha_mask(img: Image) -> Dictionary:
 ## Расстояние между КОРПУСАМИ юнитов (хит-бокс к хит-боксу; 0 при пересечении).
 ## Для боя: юниты встают вплотную телами и атакуют, а не «издалека по центру».
 static func units_range(a: Node2D, b: Node2D) -> float:
+	perf_count("units_range_calls")
 	var ra := unit_hit_rect(a)
 	var rb := unit_hit_rect(b)
 	if ra.intersects(rb):
@@ -2140,6 +2239,16 @@ func _physics_process(delta):
 
 
 func _process(delta):
+	if not Game.perf_enabled:
+		_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_process_impl(delta)
+	Game.perf_end("game", t0)
+	Game.perf_frame()
+
+
+func _process_impl(delta):
 	if is_paused:
 		return
 	_gray_respawn_tick(delta)
@@ -2155,7 +2264,12 @@ func _process(delta):
 	
 	# Обработка режимов действий
 	_process_action_mode()
-	_update_target_ring()
+	if Game.perf_enabled:
+		var th := Time.get_ticks_usec()
+		_update_target_ring()
+		Game.perf_end("hover", th)
+	else:
+		_update_target_ring()
 	_process_pending_building()
 	_process_pending_herb()
 	_process_pending_archmage()

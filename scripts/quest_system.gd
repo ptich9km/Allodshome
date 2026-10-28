@@ -86,6 +86,15 @@ func _bind_map(map: Node) -> void:
 
 
 func _process(delta: float) -> void:
+	if not Game.perf_enabled:
+		_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_process_impl(delta)
+	Game.perf_end("quests", t0)
+
+
+func _process_impl(delta: float) -> void:
 	if GameConfig.geti("quests", "enabled") == 0:
 		return
 	_tick_urgent(delta)

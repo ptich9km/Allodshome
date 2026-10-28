@@ -94,6 +94,15 @@ func refresh_quest_marker() -> void:
 	quest_marker.set_kind(QuestSystem.instance.marker_kind_for(city_id))
 
 func _physics_process(delta: float) -> void:
+	if not Game.perf_enabled:
+		_physics_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_physics_process_impl(delta)
+	Game.perf_end("npc_ai", t0)
+
+
+func _physics_process_impl(delta: float) -> void:
 	if Game.is_paused or _anim == null:
 		return
 	# P5: далеко от героя — спим (патруль/бой не тикаем). Стража просыпается
@@ -271,16 +280,34 @@ func _guard_combat(delta: float) -> bool:
 	return true
 
 ## Ближайший Серый в радиусе агро.
+##
+## ОТСЕЧЕНИЕ (29.10): раньше точный хит-бокс (`Game.units_range`) считался для
+## ВСЕГО списка `Game.enemies` (на mid это 150-160 целей) — 9 стражей давали
+## ~1400 расчётов в кадр и просадку до 5 FPS в городе. Теперь сначала дешёвое
+## сравнение квадратов расстояний по центрам, и точная геометрия — только для
+## целей, которые физически могут попасть в радиус (плюс запас на размер тела).
 func _nearest_enemy() -> Node2D:
+	var t0 := Game.perf_begin()
 	var best: Node2D = null
 	var bd := aggro_radius
+	# 128 px — верхняя граница «полуширины» тел: центр может быть дальше
+	# радиуса агро, а тела при этом уже соприкасаются.
+	var reach := aggro_radius + 128.0
+	var reach_sq := reach * reach
 	for e in Game.enemies:
 		if e == null or not is_instance_valid(e):
+			continue
+		var epos: Vector2 = (e as Node2D).global_position
+		var dx := epos.x - global_position.x
+		var dy := epos.y - global_position.y
+		if dx * dx + dy * dy > reach_sq:
 			continue
 		var d := Game.units_range(self, e)
 		if d < bd:
 			bd = d
 			best = e
+	Game.perf_end("npc_target_scan", t0)
+	Game.perf_count("npc_target_scan_n")
 	return best
 
 ## Погоня за Серыми. Перепланировка ~1.2 с + случайный старт (не в одном кадре).
