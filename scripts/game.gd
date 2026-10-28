@@ -675,10 +675,23 @@ static func on_outpost_guard_died(unit: Node2D) -> void:
 	var bus2 := _world_bus_static()
 	if bus2 != null and ("state" in bus2) and bus2.state != null:
 		bus2.state.log_entry("outpost", "%s захвачен" % name)
+	# Захват даёт чертежи наборов этой фракции (пакет C+D): взял лагерь —
+	# узнал, как куют их броню. Лавки (пакет F) добавят второй источник.
+	var scrolls := CraftDB.recipe_ids_of_faction(faction)
+	var given := 0
+	if hero != null and is_instance_valid(hero) and hero.has_method("add_item"):
+		for rid in scrolls:
+			var scroll_key := CraftDB.recipe_scroll_key(str(rid))
+			if ItemDB.find(scroll_key).is_empty():
+				continue
+			if not CraftDB.has_recipe_scroll(hero, str(rid)):
+				hero.call("add_item", scroll_key)
+				given += 1
 	var wf = load("res://scripts/world/world_feed.gd")
 	if wf != null:
-		wf.post("world", "%s захвачен (+%d золота)" % [name, gold])
-	print("OUTPOST captured: %s (%s), +%d gold" % [name, oid, gold])
+		var tail := "" if given == 0 else ", чертежей: %d" % given
+		wf.post("world", "%s захвачен (+%d золота%s)" % [name, gold, tail])
+	print("OUTPOST captured: %s (%s), +%d gold, +%d scrolls" % [name, oid, gold, given])
 
 
 func _world_bus() -> Node:
@@ -1074,6 +1087,11 @@ func _spawn_map_units(done: Callable = Callable()) -> void:
 		# Оверлей загрузки в это время ещё висит, полоса идёт 60..95%.
 		if spawned % 24 == 0:
 			_on_spawn_batch(spawned, recs.size())
+			# Карта могла быть снесена прямо во время спавна (смена сцены в
+			# тестах/переход между зонами): тогда get_tree() уже null, и
+			# await падал с "null instance". Остаток спавна бессмыслен.
+			if not is_inside_tree():
+				return
 			await get_tree().process_frame
 	print("Карта: спавн юнитов %d" % spawned)
 	_on_spawn_batch(recs.size(), recs.size())

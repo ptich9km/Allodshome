@@ -419,6 +419,12 @@ static func tag_key(race: String) -> String:
 static func is_tag(item: Dictionary) -> bool:
 	return str(item.get("type", "")) == "Trophy"
 
+## Это вещь фракционного набора (пакет C+D)? У неё есть поле `faction`
+## (humans/ork/necro/druid): текстура своя в faction_sets/, а металл — сталь.
+## Нужно тестам (материал в ключе/имени не обязан совпадать) и лавкам.
+static func is_faction_set(item: Dictionary) -> bool:
+	return str(item.get("faction", "")) != ""
+
 ## Предметы для инвентаря: все экипируемые в порядке базы.
 static func equippable_items() -> Array:
 	ensure_loaded()

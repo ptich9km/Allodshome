@@ -239,9 +239,69 @@ func _check_capture() -> void:
 	Game.on_outpost_guard_died(a)
 	_check(not Game.is_outpost_captured("op0"), "один стражник — лагерь ещё не захвачен")
 	Game.enemies = []
+	var player := Player.new()
+	Game.hero = player
 	Game.on_outpost_guard_died(b)
 	_check(Game.is_outpost_captured("op0"), "последний стражник захватывает лагерь")
 	_check(not Game.is_outpost_captured("op1"), "соседний лагерь не захвачен заодно")
+	# Захват даёт чертежи наборов этой фракции (пакет C+D).
+	var scrolls := CraftDB.recipe_ids_of_faction("ork")
+	var got := 0
+	for rid in scrolls:
+		if player.inventory.has(CraftDB.recipe_scroll_key(str(rid))):
+			got += 1
+	_check(scrolls.size() > 0 and got == scrolls.size(),
+		"захват выдал чертежи фракции (%d из %d)" % [got, scrolls.size()])
+	# Наборы пакета C+D: рецепты читаются мастерской, броня делится по классам,
+	# а бирка — обязательный ингредиент.
+	var heavy_recipes := CraftDB.known_recipes(CraftDB.SMITH, player).filter(
+		func(r: Dictionary) -> bool: return str(r.get("id", "")).begins_with("faction_ork_heavy"))
+	var light_recipes := CraftDB.known_recipes(CraftDB.TAILOR, player).filter(
+		func(r: Dictionary) -> bool: return str(r.get("id", "")).begins_with("faction_ork_light"))
+	_check(heavy_recipes.size() == 4 and light_recipes.size() == 4,
+		"после захвата мастерская знает 4+4 рецепта (%d+%d)"
+			% [heavy_recipes.size(), light_recipes.size()])
+	var cuirass := ItemDB.find(CraftDB.output_key(CraftDB.recipe_by_id("faction_ork_heavy_body"), 0))
+	var robe := ItemDB.find(CraftDB.output_key(CraftDB.recipe_by_id("faction_ork_light_body"), 0))
+	_check(not cuirass.is_empty() and ItemDB.allows_class(cuirass, "warrior")
+		and not ItemDB.allows_class(cuirass, "mage"),
+		"тяжёлая кираса набора — только воину")
+	_check(not robe.is_empty() and ItemDB.allows_class(robe, "mage")
+		and not ItemDB.allows_class(robe, "warrior"),
+		"лёгкая роба набора — только магу")
+	var rbody := CraftDB.recipe_by_id("faction_ork_heavy_body")
+	var needs_tag := false
+	for ing in rbody.get("inputs", []):
+		if str((ing as Dictionary).get("item", "")) == ItemDB.tag_key("ork"):
+			needs_tag = true
+	_check(needs_tag, "рецепт тяжёлого набора требует бирку фракции")
+	# Крафт целиком: сталь + ткань + бирка -> кираса набора.
+	for _i in 10:
+		player.add_item("steel Ingot")
+	player.add_item("Fabric")
+	player.add_item(ItemDB.tag_key("ork"))
+	var tab := CraftTab.new()
+	tab.setup(player, CraftDB.SMITH)
+	var made := str(tab.call("_craft", rbody))
+	_check(made != "", "кираса набора скрафчена (%s)" % made)
+	var crafted_key := CraftDB.output_key(rbody, 0)
+	var has_result := false
+	for raw in player.inventory:
+		if str(raw) == crafted_key or str(raw) == CraftDB.output_key(rbody, 1) \
+				or str(raw) == CraftDB.output_key(rbody, 2):
+			has_result = true
+	_check(has_result, "вещь набора легла в склад")
+	tab.free()
+	# Повторный захват того же лагеря чертежи не дублирует.
+	Game.outposts_captured.erase(Game.outpost_key("op0"))
+	Game.on_outpost_guard_died(b)
+	var dup := 0
+	for raw in player.inventory:
+		if str(raw).begins_with("Recipe faction_ork_"):
+			dup += 1
+	_check(dup == scrolls.size(), "повторный захват не дублирует чертежи (%d)" % dup)
+	Game.hero = null
+	player.free()
 	a.free()
 	b.free()
 

@@ -269,12 +269,19 @@ func _test_recipes() -> void:
 func _test_crafted_items() -> void:
 	var crafted := 0
 	var shared := 0
+	var faction_set_items := 0
 	for it in ItemDB.all():
 		var d: Dictionary = it
 		if CraftVFX.tier_of_item(d) == CraftVFX.TIER_ORDINARY \
 				and not str(d.get("quality", "")).begins_with("Crafted"):
 			continue
 		crafted += 1
+		if ItemDB.is_faction_set(d):
+			# Фракционный набор (пакет C+D): у него нет «обычной вещи того же
+			# металла и типа», текстура своя. Требование «три уровня = одна
+			# текстура» проверяется отдельным проходом ниже.
+			faction_set_items += 1
+			continue
 		var base_icon := ""
 		for other in ItemDB.all():
 			var o: Dictionary = other
@@ -288,7 +295,25 @@ func _test_crafted_items() -> void:
 			% str(d.get("key", "")))
 		shared += 1
 	_check(crafted > 0, "крафтовые вещи есть (%d)" % crafted)
-	_check(shared == crafted, "у всех одна текстура с базовой вещью (%d)" % shared)
+	_check(shared + faction_set_items == crafted,
+		"у всех одна текстура с базовой вещью или своя у набора (%d + %d = %d)"
+			% [shared, faction_set_items, crafted])
+	# Фракционный набор: три уровня одного слота обязаны делить ОДНУ текстуру.
+	# Группировка по иконке: у набора своя картинка на слот, и уровней ровно 3.
+	var by_icon := {}
+	for it2 in ItemDB.all():
+		var d2: Dictionary = it2
+		if not ItemDB.is_faction_set(d2):
+			continue
+		var icon2 := str(d2.get("icon", ""))
+		by_icon[icon2] = int(by_icon.get(icon2, 0)) + 1
+	var bad_sets := 0
+	for icon3 in by_icon:
+		if int(by_icon[icon3]) != 3:
+			bad_sets += 1
+	_check(by_icon.size() > 0, "фракционные наборы есть (%d слотов)" % by_icon.size())
+	_check(bad_sets == 0,
+		"у каждого слота набора ровно 3 уровня на одной текстуре (плохих: %d)" % bad_sets)
 
 
 ## Выход переработки: качество решает, металл больше ткани.

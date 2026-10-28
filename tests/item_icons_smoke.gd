@@ -83,6 +83,7 @@ func _init() -> void:
 	var faction_items := 0
 	var weapon_items := 0
 	var base_items := 0
+	var faction_sets := 0
 	var broken_items := 0
 	var wrong_group := 0
 	var nonmetal_real := 0
@@ -118,6 +119,12 @@ func _init() -> void:
 			elif icon3.begins_with("res://assets/items/base/") \
 					or icon3.begins_with("res://assets/items/base_w/"):
 				base_items += 1
+			elif icon3.begins_with("res://assets/items/faction_sets/"):
+				# Пакет C+D (28.10): фракционные наборы куются из стали, но
+				# носят цвет фракции — это не «металл common», поэтому группа
+				# палитры к ним не применяется (проверка группы ниже их не
+				# видит). Текстуры свои, в faction_sets/.
+				faction_sets += 1
 			elif icon3.begins_with("res://assets/items/broken/"):
 				broken_items += 1
 			else:
@@ -133,6 +140,8 @@ func _init() -> void:
 	_check(base_items > 0, "базовые иконки (сталь) используются (%d)" % base_items)
 	_check(broken_items > 0,
 		"иконки сломанных вещей используются (%d)" % broken_items)
+	_check(faction_sets > 0,
+		"иконки фракционных наборов используются (%d)" % faction_sets)
 	_check(wrong_group == 0, "группа в пути совпадает с палитрой (расхождений: %d)" % wrong_group)
 	_check(nonmetal_real == 0,
 		"неметаллы не получили фракционные иконки (ошибок: %d)" % nonmetal_real)

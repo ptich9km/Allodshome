@@ -59,6 +59,246 @@
     {"key": "Crafted Fine Linen Hat", "weight": 15.0},
     {"key": "Crafted Master Linen Hat", "weight": 5.0}
    ]
+  },
+  {
+   "id": "faction_humans_light_head",
+   "name_ru": "Капюшон Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Cap", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Cap", "weight": 15.0},
+    {"key": "Crafted Master Alliance Cap", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_light_body",
+   "name_ru": "Роба Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Robe", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Robe", "weight": 15.0},
+    {"key": "Crafted Master Alliance Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_light_hands",
+   "name_ru": "Наручи Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Bracers", "weight": 15.0},
+    {"key": "Crafted Master Alliance Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_light_feet",
+   "name_ru": "Сапоги Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Boots", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Boots", "weight": 15.0},
+    {"key": "Crafted Master Alliance Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_light_head",
+   "name_ru": "Капюшон Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Cap", "weight": 80.0},
+    {"key": "Crafted Fine Horde Cap", "weight": 15.0},
+    {"key": "Crafted Master Horde Cap", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_light_body",
+   "name_ru": "Роба Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Robe", "weight": 80.0},
+    {"key": "Crafted Fine Horde Robe", "weight": 15.0},
+    {"key": "Crafted Master Horde Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_light_hands",
+   "name_ru": "Наручи Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Horde Bracers", "weight": 15.0},
+    {"key": "Crafted Master Horde Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_light_feet",
+   "name_ru": "Сапоги Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Boots", "weight": 80.0},
+    {"key": "Crafted Fine Horde Boots", "weight": 15.0},
+    {"key": "Crafted Master Horde Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_light_head",
+   "name_ru": "Капюшон Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Cap", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Cap", "weight": 15.0},
+    {"key": "Crafted Master Reaper Cap", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_light_body",
+   "name_ru": "Роба Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Robe", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Robe", "weight": 15.0},
+    {"key": "Crafted Master Reaper Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_light_hands",
+   "name_ru": "Наручи Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Bracers", "weight": 15.0},
+    {"key": "Crafted Master Reaper Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_light_feet",
+   "name_ru": "Сапоги Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Boots", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Boots", "weight": 15.0},
+    {"key": "Crafted Master Reaper Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_light_head",
+   "name_ru": "Капюшон Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Cap", "weight": 80.0},
+    {"key": "Crafted Fine Circle Cap", "weight": 15.0},
+    {"key": "Crafted Master Circle Cap", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_light_body",
+   "name_ru": "Роба Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Robe", "weight": 80.0},
+    {"key": "Crafted Fine Circle Robe", "weight": 15.0},
+    {"key": "Crafted Master Circle Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_light_hands",
+   "name_ru": "Наручи Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Circle Bracers", "weight": 15.0},
+    {"key": "Crafted Master Circle Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_light_feet",
+   "name_ru": "Сапоги Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Boots", "weight": 80.0},
+    {"key": "Crafted Fine Circle Boots", "weight": 15.0},
+    {"key": "Crafted Master Circle Boots", "weight": 5.0}
+   ]
   }
  ]
 }

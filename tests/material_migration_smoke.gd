@@ -228,6 +228,10 @@ func _init() -> void:
 		var m5 := str(d5.get("material", ""))
 		if not m5 in METALS:
 			continue
+		# Фракционный набор (пакет C+D): имя — «Кираса Альянса», металла в нём
+		# нет по смыслу; фракция помечена полем `faction`.
+		if ItemDB.is_faction_set(d5):
+			continue
 		var word: String = str(RU_WORD.get(m5, ""))
 		var ru := str(d5.get("name_ru", ""))
 		if word != "" and not ru.to_lower().contains(word):

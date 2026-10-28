@@ -115,6 +115,246 @@
      {"key": "Crafted Fine gold Cuirass", "weight": 15.0},
      {"key": "Crafted Master gold Cuirass", "weight": 5.0}
     ]
-   }
+   },
+  {
+   "id": "faction_humans_heavy_head",
+   "name_ru": "Шлем Альянса",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 6},
+    {"item": "Fabric", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Helm", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Helm", "weight": 15.0},
+    {"key": "Crafted Master Alliance Helm", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_heavy_body",
+   "name_ru": "Кираса Альянса",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 10},
+    {"item": "Fabric", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Cuirass", "weight": 15.0},
+    {"key": "Crafted Master Alliance Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_heavy_hands",
+   "name_ru": "Латные наручи Альянса",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 4},
+    {"item": "Fabric", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Plate Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Plate Bracers", "weight": 15.0},
+    {"key": "Crafted Master Alliance Plate Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_heavy_feet",
+   "name_ru": "Латные сапоги Альянса",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 5},
+    {"item": "Fabric", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Plate Boots", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Plate Boots", "weight": 15.0},
+    {"key": "Crafted Master Alliance Plate Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_heavy_head",
+   "name_ru": "Шлем Орды",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 6},
+    {"item": "Fabric", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Helm", "weight": 80.0},
+    {"key": "Crafted Fine Horde Helm", "weight": 15.0},
+    {"key": "Crafted Master Horde Helm", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_heavy_body",
+   "name_ru": "Кираса Орды",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 10},
+    {"item": "Fabric", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine Horde Cuirass", "weight": 15.0},
+    {"key": "Crafted Master Horde Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_heavy_hands",
+   "name_ru": "Латные наручи Орды",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 4},
+    {"item": "Fabric", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Plate Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Horde Plate Bracers", "weight": 15.0},
+    {"key": "Crafted Master Horde Plate Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_heavy_feet",
+   "name_ru": "Латные сапоги Орды",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 5},
+    {"item": "Fabric", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Plate Boots", "weight": 80.0},
+    {"key": "Crafted Fine Horde Plate Boots", "weight": 15.0},
+    {"key": "Crafted Master Horde Plate Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_heavy_head",
+   "name_ru": "Шлем Пожинателей",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 6},
+    {"item": "Fabric", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Helm", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Helm", "weight": 15.0},
+    {"key": "Crafted Master Reaper Helm", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_heavy_body",
+   "name_ru": "Кираса Пожинателей",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 10},
+    {"item": "Fabric", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Cuirass", "weight": 15.0},
+    {"key": "Crafted Master Reaper Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_heavy_hands",
+   "name_ru": "Латные наручи Пожинателей",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 4},
+    {"item": "Fabric", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Plate Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Plate Bracers", "weight": 15.0},
+    {"key": "Crafted Master Reaper Plate Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_heavy_feet",
+   "name_ru": "Латные сапоги Пожинателей",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 5},
+    {"item": "Fabric", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Plate Boots", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Plate Boots", "weight": 15.0},
+    {"key": "Crafted Master Reaper Plate Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_heavy_head",
+   "name_ru": "Шлем Круга",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 6},
+    {"item": "Fabric", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Helm", "weight": 80.0},
+    {"key": "Crafted Fine Circle Helm", "weight": 15.0},
+    {"key": "Crafted Master Circle Helm", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_heavy_body",
+   "name_ru": "Кираса Круга",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 10},
+    {"item": "Fabric", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Cuirass", "weight": 80.0},
+    {"key": "Crafted Fine Circle Cuirass", "weight": 15.0},
+    {"key": "Crafted Master Circle Cuirass", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_heavy_hands",
+   "name_ru": "Латные наручи Круга",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 4},
+    {"item": "Fabric", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Plate Bracers", "weight": 80.0},
+    {"key": "Crafted Fine Circle Plate Bracers", "weight": 15.0},
+    {"key": "Crafted Master Circle Plate Bracers", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_heavy_feet",
+   "name_ru": "Латные сапоги Круга",
+   "craft": "smith",
+   "inputs": [
+    {"item": "steel Ingot", "count": 5},
+    {"item": "Fabric", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Plate Boots", "weight": 80.0},
+    {"key": "Crafted Fine Circle Plate Boots", "weight": 15.0},
+    {"key": "Crafted Master Circle Plate Boots", "weight": 5.0}
+   ]
+  }
   ]
 }

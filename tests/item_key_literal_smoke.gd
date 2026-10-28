@@ -95,6 +95,11 @@ func _init() -> void:
 		var key := str(d.get("key", ""))
 		if mat == "" or key == "" or mat == "None" or mat == "<null>":
 			continue
+		# Фракционный набор (пакет C+D): в ключе стоит ФРАКЦИЯ («Crafted
+		# Alliance Cuirass»), а материал — сталь. Правило «материал в ключе»
+		# к нему не применяется по смыслу, метка — поле `faction`.
+		if ItemDB.is_faction_set(d):
+			continue
 		if mat in METALS:
 			# слитки построены как "bronze Ingot" - материал в начале без ведущего
 			# пробела, остальные ключи как "Common bronze Helm"
