@@ -1,7 +1,8 @@
 class_name StructureDB
-## База зданий из assets/structures/structure_db.json (сгенерирована из
-## structures.txt оригинала). Ключи — ID структур (1..179); folder может
-## дублироваться (Church ID 11 и Saving Place ID 66 — одна папка church).
+## База зданий из assets/structures/structure_db.json. Изначально сгенерирована из
+## structures.txt оригинала, но 29.10 Аллодовские записи (ids 1..179) и их арт
+## удалены: остались только наши здания (200..232) — цельный спрайт 3×3, без фаз.
+## Ключи — ID структур (200..232); folder может дублироваться.
 ## Даёт сетку кадров, хитбокс выделения, фазы анимации, тень и свойства.
 
 const DB_PATH := "res://assets/structures/structure_db.json"
@@ -72,7 +73,7 @@ static func preview_texture(id: int) -> Texture2D:
 static func display_name_by_id(id: int) -> String:
 	return str(get_by_id(id).get("desc", ""))
 
-## Данные строения по имени папки ("church") — первое совпадение или {}.
+## Данные строения по имени папки ("inn_s1") — первое совпадение или {}.
 ## Для папок с несколькими записями (церковь/дом) это неоднозначно,
 ## в рендере используйте get_by_id.
 static func get_structure(name: String) -> Dictionary:

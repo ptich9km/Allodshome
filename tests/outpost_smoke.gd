@@ -68,6 +68,7 @@ func _check_generation() -> void:
 	_check(start_ops.is_empty(), "в стартовой зоне форпостов НЕТ (найдено: %d)" % start_ops.size())
 	_check(_guards(start_path).is_empty(), "в стартовой зоне нет фракционной стражи")
 	_check(_has_outpost_sidecar(start_path), "sidecar .outposts.json пишется даже пустым")
+	_check_no_legacy_structures("start", start_path)
 
 	var per_map := GameConfig.geti("outpost", "per_map")
 	for pair in [["mid", mid_path, SEED_MID], ["hard", hard_path, SEED_HARD],
@@ -81,6 +82,7 @@ func _check_generation() -> void:
 		_check_terrain(zone, ops)
 		_check_distances(zone, path, ops)
 		_check_guards(zone, path, ops)
+		_check_no_legacy_structures(zone, path)
 	_check_tier()
 	# Детерминизм: тот же сид в другом каталоге — те же форпосты.
 	var mid2 := MapGenerator.new().generate(SEED_MID, "mid", DIR_DET, "op_mid")
@@ -480,6 +482,40 @@ func _read_cell(path: String) -> Vector2i:
 
 func _cheb(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+
+## Арт Аллодов удалён (29.10): на карте не должно остаться ни одного здания
+## с id < 200 и ни одной ссылки на снесённую папку. Сторож ловит возврат
+## legacy-пулов в генератор (форпосты, города, декор).
+func _check_no_legacy_structures(zone: String, path: String) -> void:
+	var f := FileAccess.open(_basename(path) + ".structures.json", FileAccess.READ)
+	if f == null:
+		_check(false, "зона %s: нет sidecar .structures.json" % zone)
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	var list: Variant = (parsed as Dictionary).get("structures", []) if parsed is Dictionary else []
+	if not (list is Array):
+		_check(false, "зона %s: structures — не массив" % zone)
+		return
+	var legacy := 0
+	var broken := 0
+	for raw in list as Array:
+		var s: Dictionary = raw
+		var tid := int(s.get("type_id", 0))
+		if tid < 200:
+			legacy += 1
+			continue
+		var def := StructureDB.get_by_id(tid)
+		var folder := str(def.get("folder", ""))
+		if folder == "" or not ResourceLoader.exists(
+				"res://assets/structures/%s/house-001.png" % folder):
+			broken += 1
+	_check(legacy == 0, "зона %s: Аллодовских зданий (id < 200) нет (%d)" % [zone, legacy])
+	_check(broken == 0, "зона %s: все постройки ссылаются на существующие папки (%d битых)"
+		% [zone, broken])
+	_check((list as Array).size() > 0, "зона %s: постройки на карте есть (%d)"
+		% [zone, (list as Array).size()])
 
 
 ## Лежит ли клетка внутри футпринта любой постройки из sidecar.

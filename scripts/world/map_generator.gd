@@ -1,6 +1,7 @@
 class_name MapGenerator
 extends RefCounted
-## Умный генератор .alm на основе паттернов Beach.alm.
+## Умный генератор .alm на основе паттернов оригинальных карт Nival
+## (корпус удалён 29.10; паттерны зафиксированы в shapes_db/transition_db).
 ## Noise → terrain → переходы из transition_db → высоты → дороги → объекты.
 ##
 ## Вызывается из игры по сиду: `MapGenerator.new().generate(seed, zone, dir)`.
@@ -156,7 +157,10 @@ static func map_basename(seed_value: int, zone: String, race: String = "",
 # по каждой границе с соседом. Старые карты без сектора остаются совместимы.
 # 32 (28.10): форпосты фракций (пакет B) — 3 лагеря на карту вне стартовой зоны,
 # sidecar .outposts.json и стража с бирками.
-const GEN_VERSION := 32
+# 33 (29.10): арт Аллодов удалён из игры — ids 1..179 снесены, форпосты стоят из
+# наших seedream-построек, вместо костра проп. Без бампа старые карты в user://
+# ссылались бы на удалённые папки (здания молча исчезали бы).
+const GEN_VERSION := 33
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -688,11 +692,13 @@ const STREAM_OUTPOSTS := -2718
 const OUTPOST_FACTIONS: Array = ["humans", "ork", "necro", "druid"]
 ## Шатёр/дом лагеря по расам. Все имена обязаны быть в structure_db.json
 ## (проверяется генератором, иначе лагерь останется без постройки).
+## 28.10: Аллодовские tent/vigvam/necro/druidhouse удалены вместе с ids 1..179 —
+## лагеря стоят из наших seedream-построек (те же папки, что жильё/декор).
 const OUTPOST_CAMPS := {
-	"humans": ["tent1", "tent2", "tent3"],
-	"ork": ["vigvam1", "vigvam2", "vigvam3"],
-	"necro": ["necro1", "necro2", "necro3"],
-	"druid": ["druidhouse1", "druidhouse2", "druidhouse3"],
+	"humans": ["barracks_s1", "barracks_s2"],
+	"ork": ["ork_house_b1", "ork_house_b2"],
+	"necro": ["necro_house_b1", "necro_house_b2"],
+	"druid": ["druid_house_b1", "druid_house_b2"],
 }
 ## Имена форпостов для журнала мира и захвата. Отдельно от расы: игрок видит
 ## «Форпост Орды», а не «ork».
@@ -702,7 +708,7 @@ const OUTPOST_NAMES := {
 	"necro": "Форпост Пожинателей",
 	"druid": "Форпост Круга",
 }
-const OUTPOST_CAMPFIRE := "campfire"
+const OUTPOST_PROP_ID := 193  ## бочка у шатра: центр лагеря без Аллодовского костра
 const OUTPOST_MIN_CITY_DISTANCE := 20
 const OUTPOST_MIN_SPAWN_DISTANCE := 16
 const OUTPOST_MIN_EACH_OTHER := 20
@@ -1654,13 +1660,13 @@ func _build_outpost(index: int, faction: String, anchor: Vector2i,
 	var camp_cell := _place_camp_building(anchor, spec)
 	if camp_cell.x < 0:
 		return false
-	# Костёр: центр лагеря, чтобы место читалось как стоянка, а не как дом.
-	var fire_spec := _structure_spec(OUTPOST_CAMPFIRE)
-	var fire_cell := _free_camp_cell(anchor, {}, 1)
-	if not fire_spec.is_empty() and fire_cell.x >= 0:
-		_structures_out.append({"x": fire_cell.x, "y": fire_cell.y,
-			"type_id": int(fire_spec["id"])})
-		_reserved[fire_cell] = true
+	# Метка лагеря: проп у шатра (бочка), а не Аллодовский костёр.
+	# Проп живёт в поле препятствий, как мелкий декор городов (`_place_city_props`),
+	# и не занимает футпринт структуры.
+	var prop_cell := _free_camp_cell(anchor, {}, 1)
+	if prop_cell.x >= 0:
+		_obstacles[prop_cell.y * W + prop_cell.x] = OUTPOST_PROP_ID
+		_reserved[prop_cell] = true
 	# Стража: тир зоны задаёт и набор, и силу (как у городских стражей).
 	var tier := _outpost_tier()
 	var token := "human" if faction == "humans" else faction

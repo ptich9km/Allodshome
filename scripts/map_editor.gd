@@ -65,7 +65,7 @@ func _ready() -> void:
 	_select_tool(3)   # стартуем с инструментом «Выбор» (нельзя случайно испортить)
 
 	# Автооткрытие карты из аргумента запуска:
-	# godot --path . res://scenes/map_editor.tscn -- --open-alm=res://assets/maps/Kids3.alm
+	# godot --path . res://scenes/map_editor.tscn -- --open-alm=res://assets/maps/gen/gen_smart_01.alm
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--open-alm="):
 			var p := a.trim_prefix("--open-alm=")

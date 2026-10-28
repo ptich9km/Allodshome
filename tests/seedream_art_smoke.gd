@@ -63,9 +63,8 @@ func _run() -> void:
 
 
 ## Только папки, которые генератор реально использует (см. TREE_* в
-## map_generator.gd и структуры 200+ в structure_db.json). Старые аллодовские
-## папки в assets/structures не трогаем - они к сегодняшнему контенту
-## не относятся и вырезались другим пайплайном.
+## map_generator.gd и структуры 200+ в structure_db.json). Аллодовские папки
+## удалены 29.10 — в assets/structures остались только наши здания.
 func _scan_dir(dir_path: String, out: Array[String]) -> void:
 	var d := DirAccess.open(dir_path)
 	if d == null:
