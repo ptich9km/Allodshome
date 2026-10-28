@@ -1,20 +1,25 @@
 extends SceneTree
-## Проверка материалов item_db: 20 металлов палитры в нижнем регистре, серебро
+## Проверка материалов item_db: 4 металла в нижнем регистре, серебро
 ## удалено, неметаллы на месте, кузница знает все металлы.
 ##
-## ОБНОВЛЁН после gen_metal_case_migration.py и gen_empty_metals_items.py.
-## Прежняя версия проверяла переезд мифрил->тербий и ждала ЗАГЛАВНЫЕ металлы
-## ("Bronze", "Terbium") плюс "Silver" в списке переплавляемых - после перевода
-## металлов в нижний регистр и удаления серебра она проверяла бы несуществующее.
+## ОБНОВЛЁН (пакет A, 28.10): 16 фракционных металлов удалены из игры —
+## слитки, вещи, лом, иконки. Раньше здесь были 20 металлов и покрытие
+## слотов у 12 сгенерированных; теперь вместо них работает сторож
+## REMOVED_FACTION: фракционные металлы не должны вернуться в базу.
 ##
 ## Запуск: godot --headless --path . --script res://tests/material_migration_smoke.gd
 
 const DB_PATH := "res://assets/items/item_db.json"
 const INGOT_DIR := "res://assets/professions/blacksmith/"
 
-## 20 металлов faction_palette.json - ровно те, что переплавляет кузница.
+## Металлы кузницы (ровно ItemDB._SMELTABLE): пакет A оставил 4 общих.
 const METALS := [
 	"bronze", "iron", "steel", "gold",
+]
+
+## 16 фракционных металлов, удалённых пакетом A (28.10). Ни слитка, ни
+## вещи, ни лома, ни иконки - проверяем всё, чтобы чистка не откатилась.
+const REMOVED_FACTION := [
 	"argentum", "lutetium", "lanthanum", "terbium",
 	"wolfram", "chromium", "cobalt", "titanium",
 	"thorium", "uranium", "plutonium", "radium",
@@ -50,26 +55,7 @@ const FANTASY := ["Mithrill", "Adamantium", "Meteoric", "Crystal",
 ## Русские словоформы металлов, которые должны быть в name_ru.
 const RU_WORD := {
 	"bronze": "бронз", "iron": "желез", "steel": "стал", "gold": "золот",
-	"argentum": "аргентум", "lutetium": "лютец", "lanthanum": "лантан",
-	"terbium": "тербий", "wolfram": "вольфрам", "chromium": "хром",
-	"cobalt": "кобальт", "titanium": "титан", "thorium": "торий",
-	"uranium": "уран", "plutonium": "плутони", "radium": "ради",
-	"gallium": "галли", "yttrium": "иттри", "promethium": "промети",
-	"neodymium": "неодим",
 }
-
-## Покрытие слотов проверяем ТОЛЬКО у 12 металлов, созданных gen_empty_metals_items.py.
-## У 8 старых металлов набор исторически разный и неполный (у gold 6 типов, у
-## radium 16), и требовать от них полноты нельзя - это не дыра, а данность.
-const GENERATED_METALS := ["argentum", "lutetium", "lanthanum", "wolfram",
-	"chromium", "cobalt", "thorium", "uranium", "gallium", "yttrium",
-	"promethium", "neodymium"]
-
-## Обязательный набор слотов для сгенерированных металлов.
-const REQUIRED_TYPES := ["Amulet", "Ring", "Helm", "Full Helm", "Cuirass",
-	"Plate Cuirass", "Chain Mail", "Small Shield", "Large Shield",
-	"Tower Shield", "Dagger", "Short Sword", "Long Sword",
-	"Two Handed Sword", "Two Handed Axe", "Pike", "Crossbow"]
 
 ## Предметы, у которых поля material нет ВООБЩЕ (книги, зелья, свитки).
 ## Это не «неизвестный материал» - это отсутствие поля, и такие предметы
@@ -103,8 +89,8 @@ func _init() -> void:
 		var d_hits := text.count(drop)
 		_check(d_hits == 0, "серебро '%s' отсутствует (%d)" % [drop, d_hits])
 
-	# 3. Все 20 металлов присутствуют, в нижнем регистре. Покрытие слотов
-	#    проверяем только у 12 сгенерированных.
+	# 3. Все 4 металла присутствуют, в нижнем регистре, и 16 фракционных
+	#    металлов не вернулись (слиток/вещь/лом - любого типа).
 	ItemDB.ensure_loaded()
 	var by_material := {}
 	var types_by_material := {}
@@ -128,17 +114,15 @@ func _init() -> void:
 		_check(count > 0, "металл '%s' есть в item_db (%d предметов)" % [metal, count])
 		_check(metal == metal.to_lower(), "металл '%s' в нижнем регистре" % metal)
 
-	for metal2 in GENERATED_METALS:
-		var types: Dictionary = types_by_material.get(metal2, {})
-		var miss: Array[String] = []
-		for req in REQUIRED_TYPES:
-			if not types.has(req):
-				miss.append(req)
-		_check(not miss.is_empty() == false,
-			"сгенерированный металл '%s' покрывает слоты (%d типов, не хватает: %s)"
-			% [metal2, types.size(), ", ".join(miss) if not miss.is_empty() else "-"])
+	var resurrected: Array[String] = []
+	for metal4 in REMOVED_FACTION:
+		if int(by_material.get(metal4, 0)) > 0:
+			resurrected.append(metal4)
+	_check(resurrected.is_empty(),
+		"фракционные металлы удалены навсегда (вернулись: %s)"
+		% (", ".join(resurrected) if not resurrected.is_empty() else "-"))
 
-	# 4. Нет никаких металлов кроме 20 известных + неметаллов. Предметы без
+	# 4. Нет никаких металлов кроме 4 известных + неметаллов. Предметы без
 	#    поля material (книги, зелья, свитки) пропускаем: у них материала нет
 	#    по построению, и раньше такой тест ловил "<null> в списке известных".
 	var unknown := 0

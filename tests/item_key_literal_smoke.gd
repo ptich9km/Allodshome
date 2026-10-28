@@ -21,12 +21,9 @@ const DB_PATH := "res://assets/items/item_db.json"
 const SCAN_DIRS := ["res://scripts"]
 
 ## Материалы металлов в том виде, как они лежат в ключах (нижний регистр).
+## Пакет A (28.10): 16 фракционных металлов удалены, остались 4 общих.
 const METALS := [
 	"bronze", "iron", "steel", "gold",
-	"argentum", "lutetium", "lanthanum", "terbium",
-	"wolfram", "chromium", "cobalt", "titanium",
-	"thorium", "uranium", "plutonium", "radium",
-	"gallium", "yttrium", "promethium", "neodymium",
 ]
 
 ## Неметаллы в ключах остались с заглавной буквы (см. gen_metal_case_migration.py).
@@ -47,7 +44,7 @@ const TYPES := [
 ]
 
 ## Шаблон ключа: качество + материал + тип. Порядок именно такой в item_db.
-const KEY_RE := "^((?:[A-Z][a-z]+ )?)(bronze|iron|steel|gold|argentum|lutetium|lanthanum|terbium|wolfram|chromium|cobalt|titanium|thorium|uranium|plutonium|radium|gallium|yttrium|promethium|neodymium|Leather|Hard Leather|Dragon Leather|Wood|Magic Wood) (.+)$"
+const KEY_RE := "^((?:[A-Z][a-z]+ )?)(bronze|iron|steel|gold|Leather|Hard Leather|Dragon Leather|Wood|Magic Wood) (.+)$"
 
 var _fails: Array[String] = []
 

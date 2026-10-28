@@ -297,32 +297,22 @@ static func has_broken(material: String, category: String) -> bool:
 			return true
 	return false
 
-## Фракционные металлы _SMELTABLE (все, кроме общих bronze/iron/steel/gold).
-## Полосы ровно те же, что в _SMELTABLE: Альянс, Орды, Пожинатели, Друиды.
-const FACTION_METALS := [
-	"argentum", "lutetium", "lanthanum", "terbium",
-	"wolfram", "chromium", "cobalt", "titanium",
-	"thorium", "uranium", "plutonium", "radium",
-	"gallium", "yttrium", "promethium", "neodymium",
-]
-
 ## Металлы лут-сломанного для категории с учётом ТИРА убитого (1..5).
 ##
 ## Смысл: сломанное падает с Серых и НПЦ как сырьё для кузницы, поэтому
 ## металл должен расти вместе с силой врага, а не выпадать случайно по всей
-## таблице. Иначе волк-новичок ронял бы радий, а переплавка на старте не
-## имела бы смысла. Полосы:
+## таблице. Иначе волк-новичок ронял бы мусор, а переплавка на старте не
+## имела бы смысла. Полосы (пакет A: 16 фракционных металлов удалены,
+## остаются только четыре общих):
 ##   тир <= 0 или <= 2 -> bronze, iron (старт/обучение);
 ##   тир 3             -> iron, steel;
-##   тир >= 4          -> steel + фракционные металлы.
+##   тир >= 4          -> steel.
 ## Одежда мага — только лён (material "Linen" в точном регистре, как в базе).
 static func broken_materials(category: String, tier: int) -> Array:
 	if category == "Garment":
 		return ["Linen"]
 	if tier >= 4:
-		var out: Array = ["steel"]
-		out.append_array(FACTION_METALS)
-		return out
+		return ["steel"]
 	if tier == 3:
 		return ["iron", "steel"]
 	return ["bronze", "iron"]
@@ -383,20 +373,12 @@ static func roll_broken_gear(materials: Array, categories: Array) -> Dictionary:
 	return {"key": key}
 
 ## Металлы, которые переплавляет кузница. Регистр важен: материал в item_db
-## хранится в нижнем регистре (bronze, terbium...) - так же, как названы файлы
-## иконок в faction/, faction_w/ и blacksmith/. 20 металлов из faction_palette.json.
-## Кожа/дерево/ткань сюда НЕ входят: кузнец их не берёт (см. is_smeltable).
+## хранится в нижнем регистре (bronze, iron...) - так же, как названы файлы
+## иконок. Пакет A: 16 фракционных металлов удалены из игры, остались только
+## четыре общих. Кожа/дерево/ткань сюда НЕ входят: кузнец их не берёт
+## (см. is_smeltable).
 const _SMELTABLE := [
-	# common
 	"bronze", "iron", "steel", "gold",
-	# Альянс Света
-	"argentum", "lutetium", "lanthanum", "terbium",
-	# Орды Огня
-	"wolfram", "chromium", "cobalt", "titanium",
-	# Пожинатели
-	"thorium", "uranium", "plutonium", "radium",
-	# Круг Друидов
-	"gallium", "yttrium", "promethium", "neodymium",
 ]
 
 static func is_smeltable(item: Dictionary) -> bool:
@@ -407,7 +389,7 @@ static func is_smeltable(item: Dictionary) -> bool:
 	return str(item.get("material", "")) in _SMELTABLE
 
 ## Ключ предмета-слитка для материала ("", если такого металла нет).
-## Материал приходит в нижнем регистре, и ключ слитка такой же: "terbium Ingot".
+## Материал приходит в нижнем регистре, и ключ слитка такой же: "iron Ingot".
 ## Раньше ключ строился как "%s Ingot" % material, что работало только при
 ## заглавном регистре в базе; после перевода металлов вниз переплавка находила
 ## слиток лишь у части металлов, молча ничего не выдавая.

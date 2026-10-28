@@ -20,7 +20,7 @@ extends SceneTree
 ## Реальные ключи из item_db.json. ItemDB.all() отдаёт МАССИВ СЛОВАРЕЙ,
 ## а не ключи, поэтому ключи достаём полями Dictionary.
 const LIGHT_ARMOR := "Common Linen Cloak"   # лёгкая ткань, слот cloak (кожа удалена 01.10)
-const HEAVY_ARMOR := "Very Rare radium Cuirass"   # defence 53 — верхняя граница
+const HEAVY_ARMOR := "Crafted Master gold Cuirass"   # defence 22 — верхняя граница (пакет A: radium удалён)
 const BUCKLER := "Common bronze Buckler"
 
 var _fails: Array = []

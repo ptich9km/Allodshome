@@ -106,10 +106,7 @@ SHEET_PATH = os.path.join(OUT_DIR, "_contact_sheet.png")
 
 # Порядок = ItemDB._SMELTABLE (scripts/item_db.gd). Держать синхронно.
 METALS = [
-    "bronze", "iron", "steel", "gold", "argentum",
-    "lutetium", "lanthanum", "terbium", "wolfram", "chromium",
-    "cobalt", "titanium", "thorium", "uranium", "plutonium",
-    "radium", "gallium", "yttrium", "promethium", "neodymium",
+    "bronze", "iron", "steel", "gold",
 ]
 
 # Тир качества у картинки ОДИН на металл (bronze — cheap, iron — common,
@@ -149,10 +146,11 @@ TATTER_THREADS = 5
 TATTER_THREAD_LEN = 7.0
 
 ## Пары для сравнения в import/broken_overlay/_compare.png: (металл, вид) —
-## три уровня «света» (тёмный кобальт, средняя сталь, светлое серебро) × броня и оружие.
+## три уровня «света» (тёмная бронза, средняя сталь, светлое золото) × броня
+## и оружие. Пакет A: cobalt/argentum удалены, взяты 4 общих металла.
 COMPARE: list[tuple[str, str]] = [
-    ("cobalt", "armor"), ("steel", "armor"), ("argentum", "armor"),
-    ("cobalt", "weapon"), ("steel", "weapon"), ("argentum", "weapon"),
+    ("bronze", "armor"), ("steel", "armor"), ("gold", "armor"),
+    ("bronze", "weapon"), ("steel", "weapon"), ("gold", "weapon"),
     ("Linen", "garment"),
 ]
 COMPARE_PATH = os.path.join(OUT_DIR, "_compare.png")

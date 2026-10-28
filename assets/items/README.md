@@ -12,25 +12,25 @@
 | `base/` | неокрашенные текстуры одежды, 3 сета × 9 слотов × 4 качества | 108 |
 | `base_w/` | оружие, 13 типов × 4 качества | 52 |
 | `faction/common/` | бронза, железо, золото | 42 |
-| `faction/light_alliance/` | argentum, lutetium, lanthanum, terbium | 56 |
-| `faction/fire_hordes/` | wolfram, chromium, cobalt, titanium | 56 |
-| `faction/reapers/` | thorium, uranium, plutonium, radium | 56 |
-| `faction/druid_circle/` | gallium, yttrium, promethium, neodymium | 56 |
 | `faction_w/common/` | оружие: бронза, железо, золото | 39 |
-| `faction_w/light_alliance/` | оружие: argentum, lutetium, lanthanum, terbium | 52 |
-| `faction_w/fire_hordes/` | оружие: wolfram, chromium, cobalt, titanium | 52 |
-| `faction_w/reapers/` | оружие: thorium, uranium, plutonium, radium | 52 |
-| `faction_w/druid_circle/` | оружие: gallium, yttrium, promethium, neodymium | 52 |
-| `placeholder/` | заглушки для вещей без готового арта | 83 |
+| `broken/` | сломанные вещи для мастерской (4 металла × броня/оружие + лён) | 9 |
+| `recipes/` | иконки чертежей | 22 |
+| `staff/` | посохи | 4 |
 
-**Итого 756 PNG.** Контактные листы (`_contact_sheet.png`) — выход dev-инструмента,
-в `.gitignore`.
+**Пакет A (28.10):** 16 фракционных металлов (Альянс Света, Орды Огня,
+Пожинатели, Круг Друидов) и их иконки удалены. Папки
+`faction/{light_alliance,fire_hordes,reapers,druid_circle}/`,
+`faction_w/...` и слитки этих металлов стёрты с диска.
+В `item_db.json` осталось **316** предметов и **4** слитка
+(bronze 2 / iron 9 / steel 20 / gold 80 золота за слиток).
+
+**Итого 276 PNG** (было 756). Контактные листы (`_contact_sheet.png`) — выход
+dev-инструмента, в `.gitignore`.
 
 **Слоты `shirt` и `cloak` не перекрашиваются** (решение игрока: плащ, рубаха и
 магическая одежда — тряпки, вариации по металлам им не нужны). В атласе они
-есть, в `faction/` их намеренно нет: 7 слотов × 2 сета × 19 металлов = 266
-файлов вместо 342. Их арт лежит прямо в `base/`, предметы из льна заведены
-`tests/gen_cloak_items.py`.
+есть, в `faction/` их намеренно нет. Их арт лежит прямо в `base/`, предметы из
+льна заведены `tests/gen_cloak_items.py`.
 
 ---
 
@@ -50,24 +50,19 @@ faction_w/{group}/{metal}_{type}_{tier}.png    оружие, перекраше�
 `two_handed_spear`, `greatsword`, `bow`, `crossbow`, `shield`
 `quality` = `cheap` | `common` | `good` | `elite`
 
-**Качество = тир металла.** У каждой группы 4 металла и 4 качества, они
-сопоставлены один к одному: `cheap` = 1-й металл группы, `elite` = 4-й.
-Поэтому у металла ровно **14** файлов брони (2 сета × 7 металлических слотов) и
-ровно **13** файлов оружия, а не 28 и не 52. Взять все четыре качества — значит
-сделать четыре копии одного тира с разной детализацией; ровно это один раз
-случилось с бронёй (1368 файлов вместо 342).
+**Качество = тир металла.** У группы `common` 4 металла и 4 качества, они
+сопоставлены один к одному. Поэтому у металла ровно **14** файлов брони
+(2 сета × 7 металлических слотов) и ровно **13** файлов оружия.
 
 | группа | cheap | common | good | elite |
 |---|---|---|---|---|
 | `common` | bronze | iron | steel | gold |
-| `light_alliance` | argentum | lutetium | lanthanum | terbium |
-| `fire_hordes` | wolfram | chromium | cobalt | titanium |
-| `reapers` | thorium | uranium | plutonium | radium |
-| `druid_circle` | gallium | yttrium | promethium | neodymium |
 
-Цвета — в `faction_palette.json` (источник правды для генератора). Первые 19
-значений совпадают с таблицей в `assets/loot_icons/README.md`; `gold`
-(212, 175, 55) добавлен как 4-й тир группы `common`.
+> **Пакет A (28.10):** таблицы фракционных групп (`light_alliance`,
+> `fire_hordes`, `reapers`, `druid_circle`) и их 16 металлов удалены вместе
+> с иконками; источник правды — группа `common` в `faction_palette.json`.
+
+Цвета — в `faction_palette.json` (источник правды для генераторов).
 
 ---
 
@@ -113,8 +108,10 @@ faction_w/{group}/{metal}_{type}_{tier}.png    оружие, перекраше�
 `heavy_ring_elite` — 61%. «Самоцвет» и «ткань» выглядят одинаково, и
 классификатор зон давал бы случайный результат.
 
-**Калибровка тёмных металлов.** У металлов с `V < 0.62` (cobalt, plutonium,
-thorium, wolfram) середина рампы поднимается до `V = 0.46`, иначе предмет
+**Калибровка тёмных металлов (историческая).** У металлов с `V < 0.62`
+(в калибровке участвовали cobalt, plutonium, thorium, wolfram — пакет A их
+удалил, формула в `tests/faction_tint.py` осталась и работает для `common`)
+середина рампы поднимается до `V = 0.46`, иначе предмет
 уходит в почти чёрный и сливается с тёмным UI склада. Проверено на замере:
 plutonium `(60,40,80)` → середина `(87,58,117)`. Это **независимая** ось от
 `SHADOW_MUL`: калибровка поднимает середину ради читаемости, тень отвечает
@@ -144,10 +141,10 @@ plutonium `(60,40,80)` → середина `(87,58,117)`. Это **незави
 python tests/extract_chatgpt_armor.py
 
 # 2. Перекраска base/ в faction/
-python tests/gen_faction_armor_tint.py --report   # только отчёт
-python tests/gen_faction_armor_tint.py            # перекрасить всё
-python tests/gen_faction_armor_tint.py --sheet    # + контактные листы
-python tests/gen_faction_armor_tint.py --check    # сверить с перегенерацией
+#    Пакет A (28.10): gen_faction_armor_tint.py УДАЛЁН вместе с 16
+#    фракционными металлами. Перекраска в общие металлы (bronze/iron/gold)
+#    при необходимости восстанавливается из git истории; формула дуотона
+#    по-прежнему живёт в tests/faction_tint.py.
 ```
 
 Все скрипты детерминированы: `random.*` не используется, `--check` сверяет
@@ -337,14 +334,16 @@ python tests/extract_chatgpt_weapons.py --sheet    # + контактный ли
   одежда своя, с оттенком фракции она не вяжется. Лежит только в `base/`.
 - **`steel` (тир `good` группы `common`) не перекрашивается:** в палитре
   помечен `is_base: true`, это сами файлы `base/` и `base_w/`. Сталь = вид
-  «как есть», файл не дублируется. Поэтому в `faction/common/` 54 файла брони
-  и 39 файлов оружия, а не 72 и 52.
-- **12 металлов из 20 не имеют ни одного предмета** в `assets/items/item_db.json`:
-  argentum, lutetium, lanthanum, wolfram, chromium, cobalt, thorium, uranium,
-  gallium, yttrium, promethium, neodymium. Текстуры для них созданы (18 брони и
-  13 оружия на металл — **372 файла**), но показать их пока нечем: нужны
-  предметы. У каждой фракции наполнен только последний тир, у Пожинателей —
-  два последних; это наследие переезда с Аллодов (мифрил→тербий,
-  адамант→титаний, метеорит→плутоний, кристалл→радий).
+  «как есть», файл не дублируется. Поэтому в `faction/common/` 42 файла брони
+  и 39 файлов оружия.
+- **Пакет A (28.10): 16 фракционных металлов удалены из игры.** Раньше в
+  `item_db.json` не было ни одного предмета из argentum…neodymium, хотя
+  текстуры для них были созданы (372 файла) — теперь удалены и текстуры, и
+  папки, и палитра. Это закрыло долг «ассеты есть, показывать нечем».
 - **Эти ассеты пока не подключены к игре.** `item_db.json` у 508 предметов
   ссылается на 508 уникальных иконок в `assets/inventory/`.
+
+(Пункт исторический: `assets/inventory/` удалён ещё 03.10 при переходе на
+нарезанные атласы; сейчас все 316 предметов ссылаются на `base/`,
+`base_w/`, `faction/common/`, `faction_w/common/`, `broken/`, `recipes/`,
+`staff/` и наружные ассеты зелий/магии — проверяет `item_icons_smoke`.)
