@@ -128,7 +128,7 @@ func _test_slot_mapping() -> void:
 		"Common bronze Bracers": "hands",
 		"Common iron Plate Boots": "feet",   # кожа удалена 01.10
 		"Common bronze Amulet": "amulet",
-		"Elven titanium Ring": "ring",
+		"Very Rare gold Ring": "ring",
 		"Common bronze Long Sword": "weapon",
 		"Common bronze Buckler": "shield",
 	}

@@ -57,6 +57,7 @@ const PREV_FILE := "previous.json"
 const WORLD_SUFFIXES := [
 	".alm", ".npcs.json", ".structures.json", ".herbs.json",
 	".portal.json", ".spawn.json", ".nowalk.json", ".allowwalk.json",
+	".outposts.json",
 ]
 
 
@@ -636,6 +637,9 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 			# сохраняется путь к текущему .alm и его стабильное имя.
 			"path": str(map_files.get("path", "")),
 			"basename": str(map_files.get("basename", "")),
+			# Захваченные форпосты (пакет B): ключ включает зону/сектор/сид,
+			# поэтому словарь общий для всех карт мира, как Game.hotbar.
+			"outposts": Game.outposts_captured.duplicate(),
 		},
 		"hero": hero,
 		"world": world_dict,
@@ -881,6 +885,15 @@ static func apply_payload(d: Dictionary, player, slot: String = "") -> void:
 	Game.map_sector = str(map_d.get("sector", ""))
 	# Туман и события (19.10): применяются узлами после сборки карты.
 	Game.pending_fog_rle = str(map_d.get("fog", ""))
+	Game.pending_outposts_captured = {}
+	# Сейв — источник правды: захваты прежнего героя не должны «протечь» в
+	# загружаемый слот (даже если у карт совпал сид).
+	Game.outposts_captured.clear()
+	var cap: Variant = map_d.get("outposts", {})
+	if cap is Dictionary:
+		for key in cap:
+			if bool((cap as Dictionary)[key]):
+				Game.pending_outposts_captured[str(key)] = true
 	Game.pending_events = (d.get("events", []) as Array).duplicate(true)
 	# Older saves (before 22.10) kept an empty ARRAY here, meaning "no quests".
 	# That is not a corruption: fall back to the empty schema silently.

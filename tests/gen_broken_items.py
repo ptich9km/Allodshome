@@ -5,9 +5,9 @@
     -> рецепт -> новая вещь.
 Металл в игре существует ТОЛЬКО как производная от убитых НПЦ.
 
-ЧТО СОЗДАЁТСЯ (125 записей):
-    60  сломанная броня    = 20 металлов x 3 качества
-    60  сломанное оружие   = 20 металлов x 3 качества
+ЧТО СОЗДАЁТСЯ (пакет A, 28.10: METALS = 4 общих металла, раньше было 20):
+    12  сломанная броня    = 4 металла x 3 качества
+    12  сломанное оружие   = 4 металла x 3 качества
      3  сломанная одежда   = Linen x 3 качества
      1  Fabric             (ткань)
      1  Magic Essence      (магическая эссенция)
@@ -83,10 +83,7 @@ ICON_DIR = os.path.join(ROOT, "assets", "items", "broken")
 
 # Порядок = ItemDB._SMELTABLE (item_db.gd). Держать синхронно.
 METALS = [
-    "bronze", "iron", "steel", "gold", "argentum",
-    "lutetium", "lanthanum", "terbium", "wolfram", "chromium",
-    "cobalt", "titanium", "thorium", "uranium", "plutonium",
-    "radium", "gallium", "yttrium", "promethium", "neodymium",
+    "bronze", "iron", "steel", "gold",
 ]
 
 # Тот же словарь, что tests/material_migration_smoke.gd:46 RU_WORD, но в
@@ -97,23 +94,13 @@ METALS = [
 # отсюда «тербийская». RU_STEM ниже - контракт, он проверяется в тесте.
 RU_METAL = {
     "bronze": "бронзовая", "iron": "железная", "steel": "стальная",
-    "gold": "золотая", "argentum": "аргентумовая", "lutetium": "лютецевая",
-    "lanthanum": "лантановая", "terbium": "тербийская", "wolfram": "вольфрамовая",
-    "chromium": "хромовая", "cobalt": "кобальтовая", "titanium": "титановая",
-    "thorium": "торийская", "uranium": "урановая", "plutonium": "плутониевая",
-    "radium": "радиевая", "gallium": "галлиевая", "yttrium": "иттриевая",
-    "promethium": "прометиевая", "neodymium": "неодимовая",
+    "gold": "золотая",
 }
 
-# Побайтовая копия RU_WORD из tests/material_migration_smoke.gd:46.
+# Побайтовая копия RU_WORD из tests/material_migration_smoke.gd (пакет A:
+# 16 фракционных металлов удалены, остались 4 общих).
 RU_STEM = {
     "bronze": "бронз", "iron": "желез", "steel": "стал", "gold": "золот",
-    "argentum": "аргентум", "lutetium": "лютец", "lanthanum": "лантан",
-    "terbium": "тербий", "wolfram": "вольфрам", "chromium": "хром",
-    "cobalt": "кобальт", "titanium": "титан", "thorium": "торий",
-    "uranium": "уран", "plutonium": "плутони", "radium": "ради",
-    "gallium": "галли", "yttrium": "иттри", "promethium": "промети",
-    "neodymium": "неодим",
 }
 
 RU_GARMENT_MATERIAL = "льняная"

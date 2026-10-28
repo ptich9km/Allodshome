@@ -55,6 +55,12 @@ static var pending_events: Array = []   # saved events, applied by EventSystem
 ## Пусто — новая игра; applied=true — блок уже прочитан (не применяем дважды).
 static var pending_quests: Dictionary = {}
 static var pending_quests_applied: bool = false
+## Форпосты фракций (пакет B, 28.10): что стоит на текущей карте и какие уже
+## захвачены. Ключ захвата включает карту (зона|сектор|сид), потому что id
+## лагеря ("op0") повторяется на каждой карте.
+static var outposts: Array = []
+static var outposts_captured: Dictionary = {}
+static var pending_outposts_captured: Dictionary = {}
 static var _hit_sfx_ms: int = 0          # троттл звука попадания (единая точка урона)
 ## Slot the running game came from ("" — new game). The slot folder holds the
 ## map files, so a zone change reuses its maps instead of regenerating them.
@@ -91,6 +97,82 @@ static var _spell_targeting_frame: int = -1  # кадр, когда начато
 ## править код ради каждой отладки. Значение читается ОДИН раз при старте;
 ## тесты и дебаг присваивают переменную напрямую как раньше (перекрытие).
 static var debug_magic: bool = GameConfig.geti("debug", "all_magic") != 0
+## Профилировщик кадра (29.10, разбор просадки в городе). Включается
+## [debug] perf = 1 или присваиванием Game.perf_enabled = true из теста.
+## Копит МИКРОсекунды по именам блоков и число вызовов, раз в 2 с печатает
+## таблицу «мс на кадр». Нужен, чтобы не гадать, кто ест кадр: ИИ, поиск пути,
+## ховер, туман или UI.
+static var perf_enabled: bool = GameConfig.geti("debug", "perf") != 0
+static var perf_usec: Dictionary = {}
+static var perf_calls: Dictionary = {}
+static var perf_frames: int = 0
+static var _perf_since_ms: int = 0
+static var _perf_wall_usec: int = 0
+static var _perf_last_usec: int = 0
+
+
+## Начать замер блока. Возвращает метку времени (0 — профилировщик выключен).
+static func perf_begin() -> int:
+	return Time.get_ticks_usec() if perf_enabled else 0
+
+
+## Закрыть замер блока: key — имя блока в таблице.
+static func perf_end(key: String, t0: int) -> void:
+	if not perf_enabled or t0 == 0:
+		return
+	perf_usec[key] = int(perf_usec.get(key, 0)) + (Time.get_ticks_usec() - t0)
+
+
+## Счётчик событий (например, число вызовов поиска пути), не время.
+static func perf_count(key: String, amount: int = 1) -> void:
+	if not perf_enabled:
+		return
+	perf_calls[key] = int(perf_calls.get(key, 0)) + amount
+
+
+## Кадр закончился: раз в 2 секунды печатаем таблицу и обнуляем счётчики.
+## Wall-время считается между вызовами (обычно из Game._process), то есть это
+## реальная длительность кадра, а не сумма замеренных блоков.
+static func perf_frame() -> void:
+	if not perf_enabled:
+		return
+	perf_frames += 1
+	var now_us := Time.get_ticks_usec()
+	if _perf_last_usec != 0:
+		_perf_wall_usec += now_us - _perf_last_usec
+	_perf_last_usec = now_us
+	var now := Time.get_ticks_msec()
+	if _perf_since_ms == 0:
+		_perf_since_ms = now
+		return
+	if now - _perf_since_ms < 2000:
+		return
+	var frames := maxi(1, perf_frames)
+	var wall_ms := float(_perf_wall_usec) / 1000.0
+	var lines: Array = []
+	var total := 0.0
+	for key in perf_usec:
+		var ms := float(int(perf_usec[key])) / 1000.0 / float(frames)
+		total += ms
+		var calls := int(perf_calls.get(key, 0))
+		var per_frame := float(calls) / float(frames)
+		lines.append("%8.2f ms  %-14s (%6.1f выз/кадр)" % [ms, key, per_frame])
+	lines.sort()
+	print("--- PERF  кадров: %d, кадр: %.1f мс (%.1f FPS) ---" % [
+		frames, wall_ms / float(frames), 1000.0 * float(frames) / maxf(1.0, wall_ms)])
+	for l in lines:
+		print(l)
+	for ck in perf_calls:
+		if perf_usec.has(ck):
+			continue
+		print("%8s     %-14s (%6.1f выз/кадр)" % ["", ck,
+			float(int(perf_calls[ck])) / float(frames)])
+	print("     сумма замеренных блоков: %.2f мс/кадр" % total)
+	perf_usec.clear()
+	perf_calls.clear()
+	perf_frames = 0
+	_perf_wall_usec = 0
+	_perf_since_ms = now
 
 # --- Защитные баффы (книги/свитки защиты, Shield): уменьшение входящего урона ---
 static func apply_shield(unit: Node2D, strength: int, seconds: float) -> void:
@@ -386,6 +468,7 @@ static func _sep_rebuild_grid() -> void:
 	var f := Engine.get_physics_frames()
 	if f == _sep_grid_frame:
 		return
+	var t0 := perf_begin()
 	_sep_grid_frame = f
 	_sep_grid.clear()
 	if is_instance_valid(Game.hero):
@@ -396,6 +479,7 @@ static func _sep_rebuild_grid() -> void:
 		_sep_insert(other)
 	for other in Game.party:
 		_sep_insert(other)
+	perf_end("sep_grid", t0)
 
 
 static func _sep_neighbors(pos: Vector2) -> Array:
@@ -532,6 +616,11 @@ static func clear_load_position() -> void:
 
 static func clear_hero_save() -> void:
 	hero_save = {}
+	# Новая игра/новая карта: захваченные форпосты прежнего мира не должны
+	# «протекать» в новый (ключ включает сид, но старые ключи копились бы).
+	outposts.clear()
+	outposts_captured.clear()
+	pending_outposts_captured.clear()
 
 ## Путь портрета: явный hero_portrait или сборка из character_id (с легаси-маппингом).
 static func hero_portrait_path() -> String:
@@ -598,6 +687,89 @@ static func hero_reputation(race: String) -> int:
 	if bus == null or not ("state" in bus) or bus.state == null:
 		return 0
 	return int(bus.state.hero_rep(race))
+
+
+# --- Форпосты фракций (пакет B переработки ковки) --------------------------
+
+## Ключ захвата: id лагеря уникален только внутри карты, а карты у секторов
+## свои. Сид+зона+сектор остаются те же после сохранения и загрузки (имя файла
+## карты меняется на save_<slot>, поэтому имя в ключ не годится).
+static func outpost_key(oid: String) -> String:
+	if oid == "":
+		return ""
+	return "%s|%s|%d|%s" % [str(map_zone), str(map_sector), int(map_seed), oid]
+
+
+## Перечитать форпосты карты. Вызывается после сборки/загрузки карты и ДО
+## спавна юнитов: иначе стража уже захваченных лагерей успела бы появиться.
+static func reload_outposts(map_node = null) -> void:
+	outposts = []
+	if map_node != null and is_instance_valid(map_node) \
+			and map_node.has_method("outposts"):
+		var raw: Variant = map_node.call("outposts")
+		if raw is Array:
+			outposts = (raw as Array).duplicate(true)
+	# Захваченное пришло из сейва: переносим один раз, дальше живёт в словаре.
+	if not pending_outposts_captured.is_empty():
+		for key in pending_outposts_captured:
+			outposts_captured[str(key)] = true
+		pending_outposts_captured.clear()
+
+
+## Захвачен ли форпост текущей карты.
+static func is_outpost_captured(oid: String) -> bool:
+	return outposts_captured.has(outpost_key(oid))
+
+
+## Умер стражник форпоста: падение репутации фракции и, если лагерь зачищен,
+## его захват. Вызывает enemy.gd из take_damage (после лута и сигнала died).
+static func on_outpost_guard_died(unit: Node2D) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var oid := str(unit.get("outpost_id"))
+	if oid == "":
+		return
+	var faction := str(unit.get("faction"))
+	if faction != "":
+		var bus := _world_bus_static()
+		if bus != null and ("state" in bus) and bus.state != null:
+			bus.state.add_hero_reputation(faction, -GameConfig.geti("outpost", "rep_penalty"))
+	# Живые стражники того же лагеря? Труп уже вычищен из Game.enemies.
+	for e in enemies:
+		if e != null and is_instance_valid(e) and str(e.get("outpost_id")) == oid:
+			return
+	var key := outpost_key(oid)
+	if key == "" or outposts_captured.has(key):
+		return
+	outposts_captured[key] = true
+	var gold := GameConfig.geti("outpost", "capture_gold")
+	if hero != null and is_instance_valid(hero) and hero.has_method("add_gold"):
+		hero.call("add_gold", gold)
+	var name := oid
+	for o in outposts:
+		if str((o as Dictionary).get("id", "")) == oid:
+			name = str((o as Dictionary).get("name", oid))
+			break
+	var bus2 := _world_bus_static()
+	if bus2 != null and ("state" in bus2) and bus2.state != null:
+		bus2.state.log_entry("outpost", "%s захвачен" % name)
+	# Захват даёт чертежи наборов этой фракции (пакет C+D): взял лагерь —
+	# узнал, как куют их броню. Лавки (пакет F) добавят второй источник.
+	var scrolls := CraftDB.recipe_ids_of_faction(faction)
+	var given := 0
+	if hero != null and is_instance_valid(hero) and hero.has_method("add_item"):
+		for rid in scrolls:
+			var scroll_key := CraftDB.recipe_scroll_key(str(rid))
+			if ItemDB.find(scroll_key).is_empty():
+				continue
+			if not CraftDB.has_recipe_scroll(hero, str(rid)):
+				hero.call("add_item", scroll_key)
+				given += 1
+	var wf = load("res://scripts/world/world_feed.gd")
+	if wf != null:
+		var tail := "" if given == 0 else ", чертежей: %d" % given
+		wf.post("world", "%s захвачен (+%d золота%s)" % [name, gold, tail])
+	print("OUTPOST captured: %s (%s), +%d gold, +%d scrolls" % [name, oid, gold, given])
 
 
 func _world_bus() -> Node:
@@ -821,6 +993,8 @@ func _ready():  # Инициализация мира и боя
 	# Это же чинит хвост в _alive_gray_count (считал мёртвые узлы).
 	Game.enemies.clear()
 	Game.npcs.clear()
+	# Форпосты карты — ДО спавна юнитов: стража захваченных лагерей не появляется.
+	Game.reload_outposts(alm_map)
 	_sep_grid.clear()
 	_sep_grid_frame = -1
 	# НПЦ и монстры из карты (.alm секция units или sidecar .npcs.json)
@@ -974,11 +1148,15 @@ func _spawn_map_units(done: Callable = Callable()) -> void:
 			set_name = UnitDB.set_name_for_id(int(rec["type_id"]))
 		if set_name == "" or not UnitDB.has(set_name):
 			continue
+		# Захваченный форпост стражи не имеет: лагерь уже за героем.
+		var oid := str(rec.get("outpost", ""))
+		if oid != "" and is_outpost_captured(oid):
+			continue
 		var raw_cell := Vector2i(int(rec.get("x", 0)), int(rec.get("y", 0)))
 		var open_pos := _find_open_spot(raw_cell, int(alm_map.get("tile_size")))
 		if open_pos.x < 0.0:
 			continue
-		if UnitDB.is_hostile(set_name):
+		if UnitDB.is_hostile(set_name) or oid != "":
 			_spawn_monster(set_name, open_pos, rec)
 		else:
 			_spawn_npc(set_name, open_pos, rec)
@@ -987,6 +1165,11 @@ func _spawn_map_units(done: Callable = Callable()) -> void:
 		# Оверлей загрузки в это время ещё висит, полоса идёт 60..95%.
 		if spawned % 24 == 0:
 			_on_spawn_batch(spawned, recs.size())
+			# Карта могла быть снесена прямо во время спавна (смена сцены в
+			# тестах/переход между зонами): тогда get_tree() уже null, и
+			# await падал с "null instance". Остаток спавна бессмыслен.
+			if not is_inside_tree():
+				return
 			await get_tree().process_frame
 	print("Карта: спавн юнитов %d" % spawned)
 	_on_spawn_batch(recs.size(), recs.size())
@@ -1009,7 +1192,11 @@ func _on_startup_spawned() -> void:
 
 func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var e := Enemy.new()
-	e.name = "Monster_" + set_name.get_file()
+	var oid := str(rec.get("outpost", ""))
+	# Имя узла: у стражи форпоста набор одинаковый (city_ork_warrior/t1), и без
+	# id лагеря в отладочном выводе все стражники были бы «Monster_t1».
+	e.name = ("Outpost_%s_%s" % [oid, set_name.get_file()]) if oid != "" \
+		else "Monster_" + set_name.get_file()
 	e.anim_set = set_name
 	var hp := int(rec.get("hp_max", 0))
 	if hp > 0:
@@ -1017,6 +1204,9 @@ func _spawn_monster(set_name: String, pos: Vector2, rec: Dictionary) -> void:
 	var dmg := int(rec.get("damage", 0))
 	if dmg > 0:
 		e.damage = dmg
+	# Форпост (пакет B): фракция и id лагеря едут в записи .npcs.json.
+	e.faction = str(rec.get("faction", ""))
+	e.outpost_id = str(rec.get("outpost", ""))
 	e.position = pos
 	e.home_position = pos
 	add_child(e)
@@ -1494,11 +1684,17 @@ func _hover_unit() -> Node2D:
 	if not is_instance_valid(player):
 		return null
 	var mouse := player.get_global_mouse_position()
+	# Отсечение (29.10): раньше точный хит-бокс считался для КАЖДОГО врага и
+	# НПЦ карты каждый кадр (160+28), хотя под курсором может быть только
+	# соседняя фигура. Дешёвое сравнение по центрам снимает почти всё.
+	var reach_sq := 128.0 * 128.0
 	for e in enemies:
-		if is_instance_valid(e) and unit_hover_hit(e, mouse):
+		if is_instance_valid(e) and (e as Node2D).global_position.distance_squared_to(mouse) <= reach_sq \
+				and unit_hover_hit(e, mouse):
 			return e
 	for e in npcs:
-		if is_instance_valid(e) and unit_hover_hit(e, mouse):
+		if is_instance_valid(e) and (e as Node2D).global_position.distance_squared_to(mouse) <= reach_sq \
+				and unit_hover_hit(e, mouse):
 			return e
 	return null
 
@@ -1879,6 +2075,13 @@ func cancel_targeting() -> void:
 ## иначе — рамка тела по стойке (`UnitAnim.body_rect()`), а не по холсту и не
 ## по кадру удара (меч/посох не должны раздувать тело).
 static func unit_hit_rect(u: Node2D) -> Rect2:
+	var t0 := perf_begin()
+	var out := _unit_hit_rect_impl(u)
+	perf_end("hit_rect", t0)
+	return out
+
+
+static func _unit_hit_rect_impl(u: Node2D) -> Rect2:
 	if not is_instance_valid(u):
 		return Rect2()
 	var set_name := ""
@@ -1909,6 +2112,13 @@ static func unit_hit_rect(u: Node2D) -> Rect2:
 
 ## Рамка ТЕЛА в мире: по кадру стойки, а не по текущему (кадр удара шире).
 static func unit_body_rect(u: Node2D) -> Rect2:
+	var t0 := perf_begin()
+	var out := _unit_body_rect_impl(u)
+	perf_end("body_rect", t0)
+	return out
+
+
+static func _unit_body_rect_impl(u: Node2D) -> Rect2:
 	if not is_instance_valid(u):
 		return Rect2()
 	var anim := u.get_node_or_null("UnitAnim")
@@ -1990,6 +2200,7 @@ static func _build_alpha_mask(img: Image) -> Dictionary:
 ## Расстояние между КОРПУСАМИ юнитов (хит-бокс к хит-боксу; 0 при пересечении).
 ## Для боя: юниты встают вплотную телами и атакуют, а не «издалека по центру».
 static func units_range(a: Node2D, b: Node2D) -> float:
+	perf_count("units_range_calls")
 	var ra := unit_hit_rect(a)
 	var rb := unit_hit_rect(b)
 	if ra.intersects(rb):
@@ -2028,6 +2239,16 @@ func _physics_process(delta):
 
 
 func _process(delta):
+	if not Game.perf_enabled:
+		_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_process_impl(delta)
+	Game.perf_end("game", t0)
+	Game.perf_frame()
+
+
+func _process_impl(delta):
 	if is_paused:
 		return
 	_gray_respawn_tick(delta)
@@ -2043,7 +2264,12 @@ func _process(delta):
 	
 	# Обработка режимов действий
 	_process_action_mode()
-	_update_target_ring()
+	if Game.perf_enabled:
+		var th := Time.get_ticks_usec()
+		_update_target_ring()
+		Game.perf_end("hover", th)
+	else:
+		_update_target_ring()
 	_process_pending_building()
 	_process_pending_herb()
 	_process_pending_archmage()
@@ -2324,7 +2550,7 @@ func travel_to_sector(sector_id: String) -> void:
 		get_tree().paused = was_paused
 		return
 
-	await _swap_map(new_path, tier, false, sector_id, from_sector)
+	await _swap_map(new_path, tier, false, sector_id, from_sector, seed_value)
 	Game.map_sector = sector_id
 	Game.map_zone = tier
 	Game.map_seed = seed_value
@@ -2413,14 +2639,20 @@ func _zone_map_path(zone: String, seed_value: int) -> String:
 ## Пересоздать узел Map и переселить на него героя и партию.
 ## from_slot — карта пришла из папки этого слота (загрузка игры): тогда точка
 ## входа — позиция героя из сейва, а не спавн новой карты.
+## map_seed_value — сид НОВОЙ карты (переход между секторами): его надо
+## применить ДО спавна стражи форпостов, иначе ключ захвата считается по
+## сиду прежней карты.
 func _swap_map(new_path: String, zone: String, from_slot: bool = false,
-		sector: String = "", arrival_from: String = "") -> void:
+		sector: String = "", arrival_from: String = "",
+		map_seed_value: int = 0) -> void:
 	_clear_world_units()
 	# Зона меняется ДО создания карты: AlmMap._ready и спавн используют
 	# Game.map_zone, и он должен уже совпадать с новой картой.
 	Game.map_zone = zone
 	if sector != "":
 		Game.map_sector = sector
+	if map_seed_value != 0:
+		Game.map_seed = map_seed_value
 	Game.pending_map_path = new_path
 	if is_instance_valid(alm_map):
 		remove_child(alm_map)
@@ -2484,6 +2716,7 @@ func _swap_map(new_path: String, zone: String, from_slot: bool = false,
 		if is_instance_valid(unit):
 			unit.global_position = player.global_position + Vector2(32, 0)
 			unit.reset_physics_interpolation()
+	Game.reload_outposts(alm_map)
 	await _spawn_map_units()
 	if camera != null and is_instance_valid(player):
 		camera.position = player.camera_focus()

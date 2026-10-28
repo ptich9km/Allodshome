@@ -187,6 +187,19 @@ static func all_recipe_ids() -> Array:
 	return out
 
 
+## Рецепты фракционного набора (пакет C+D): id вида
+## `faction_<раса>_<kit>_<slot>`. Их выдают за захват форпоста этой фракции.
+static func recipe_ids_of_faction(race: String) -> Array:
+	if race == "":
+		return []
+	var prefix := "faction_%s_" % race
+	var out: Array = []
+	for id in all_recipe_ids():
+		if str(id).begins_with(prefix):
+			out.append(str(id))
+	return out
+
+
 ## Есть ли у игрока свиток этого рецепта.
 static func has_recipe_scroll(player: Player, recipe_id: String) -> bool:
 	if not is_instance_valid(player):

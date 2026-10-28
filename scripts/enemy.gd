@@ -35,6 +35,14 @@ var _anim: UnitAnimBase = null
 var event_tag: String = ""
 var foe_group: String = ""
 
+## Форпост фракции (пакет B, 28.10). Пустая faction — обычный Серый.
+## Стражник форпоста НЕ враг по умолчанию: он бьёт героя только при вражде
+## (репутация фракции < 0) или после удара героя (provoked). Это и есть
+## решение игрока «враждебны при плохой репутации».
+@export var faction: String = ""
+@export var outpost_id: String = ""
+var provoked: bool = false
+
 func _ready():
 	add_to_group("enemy")
 	Game.configure_unit_body(self)
@@ -63,6 +71,15 @@ func _create_sprite():
 	_anim.play(UnitAnim.Anim.IDLE)
 
 func _physics_process(delta):
+	if not Game.perf_enabled:
+		_physics_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_physics_process_impl(delta)
+	Game.perf_end("enemy_ai", t0)
+
+
+func _physics_process_impl(delta):
 	if Game.is_paused:
 		return
 	# P5: далеко от героя — AI спит (контент не трогаем, только CPU).
@@ -119,6 +136,9 @@ func _physics_process(delta):
 	if target == null:
 		velocity = Vector2.ZERO
 		move_and_slide()
+		# Стража форпоста стоит без цели (нейтральна) — обязана стоять на
+		# рельефе, иначе на холме уходит под землю на высоту рельефа.
+		_apply_relief_stand()
 		return
 	attack_target = target
 
@@ -246,6 +266,15 @@ func _can_step(step: Vector2) -> bool:
 ## ближайший страж-НПЦ города в радиусе агро.
 ## Невидимого героя враг «не замечает» дальше 40 px, но видит вплотную.
 func _combat_target() -> Node2D:
+	if not Game.perf_enabled:
+		return _combat_target_impl()
+	var t0 := Time.get_ticks_usec()
+	var out := _combat_target_impl()
+	Game.perf_end("enemy_target_scan", t0)
+	return out
+
+
+func _combat_target_impl() -> Node2D:
 	# Стычка событий (19.10): пока враг в группе события, он бьёт
 	# противоположную группу; удар героя по нему переводит его на героя
 	# (см. take_damage). Противник умер или исчез - обычная логика ниже.
@@ -253,6 +282,10 @@ func _combat_target() -> Node2D:
 		var foe: Node2D = EventSystem.foe_for(self)
 		if foe != null:
 			return foe
+	# Форпост (пакет B): нейтральная стража героя не замечает. Вражда
+	# начинается от репутации фракции < 0 или от удара героя (provoked).
+	if not is_hostile_to_hero():
+		return null
 	var player = get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player):
 		var dp := Game.units_range(self, player)
@@ -265,6 +298,11 @@ func _combat_target() -> Node2D:
 			return player
 	var best: Node2D = null
 	var bd := deaggro_radius * StatusEffects.vision_mult(self)
+	# Отсечение (29.10): точная геометрия только для тех НПЦ, кто может
+	# оказаться в радиусе; перебор всех 28 жителей с расчётом хит-боксов
+	# каждому тикающему врагу — это и была вторая половина просадки в городе.
+	var reach := bd + 128.0
+	var reach_sq := reach * reach
 	for n in Game.npcs:
 		if n == null or not is_instance_valid(n):
 			continue
@@ -272,11 +310,26 @@ func _combat_target() -> Node2D:
 			continue
 		if StatusEffects.is_invisible(n):
 			continue
+		var npos: Vector2 = (n as Node2D).global_position
+		var dx := npos.x - global_position.x
+		var dy := npos.y - global_position.y
+		if dx * dx + dy * dy > reach_sq:
+			continue
 		var d := Game.units_range(self, n)
 		if d < bd:
 			bd = d
 			best = n
 	return best
+
+## Можно ли этому юниту бить героя. Пустая faction — обычный монстр (всегда).
+## Форпост: вражда при репутации фракции < 0 либо после удара героя.
+func is_hostile_to_hero() -> bool:
+	if faction == "":
+		return true
+	if provoked:
+		return true
+	return Game.hero_reputation(faction) < 0
+
 
 ## Погоня с обходом препятствий. Перепланировка раз в ~1.2 с + случайный
 ## старт, чтобы 75 врагов не звали find_path в одном кадре (тормоза).
@@ -359,6 +412,18 @@ func take_damage(dmg: int, attacker) -> int:
 			and (attacker as Node).is_in_group("player"):
 		event_tag = ""
 		foe_group = ""
+	# Нейтральная стража форпоста после удара героя становится враждебной.
+	if faction != "" and is_instance_valid(attacker) \
+			and (attacker as Node).is_in_group("player"):
+		provoked = true
+		# Бьют лагерь — поднимается весь лагерь, а не один стражник: иначе
+		# форпост разбирался бы по одному безнаказанно.
+		if outpost_id != "":
+			for other in Game.enemies:
+				if other == null or not is_instance_valid(other) or other == self:
+					continue
+				if str(other.get("outpost_id")) == outpost_id:
+					other.set("provoked", true)
 	# Раньше щит на враге не работал: shield_reduce здесь не вызывался
 	var shielded := Game.shield_reduce(self, dmg)
 	if shielded <= 0:
@@ -377,6 +442,9 @@ func take_damage(dmg: int, attacker) -> int:
 		Game.enemies.erase(self)
 		EventSystem.note_freed()
 		_drop_loot()
+		# Форпост: смерть стражи может зачистить лагерь (пакет B).
+		if outpost_id != "":
+			Game.on_outpost_guard_died(self)
 		state = "dying"
 		attack_target = null
 		velocity = Vector2.ZERO
@@ -462,6 +530,13 @@ func _make_loot() -> Array:
 		var intact := _random_intact_gear()
 		if not intact.is_empty():
 			pool.append(intact)
+	# Бирка фракции (пакет B переработки ковки): стражник форпоста носит свою
+	# бирку всегда — решение игрока 28.10 «падают в любом случае». Это не
+	# роскошь, а единственный источник фракционного ингредиента для брони.
+	if faction != "":
+		var tag := ItemDB.tag_key(faction)
+		if tag != "" and not ItemDB.find(tag).is_empty():
+			pool.append({"key": tag})
 	# Магическая эссенция - второй источник наряду с портной (07.10).
 	if randi() % 100 < int(table.get("essence_chance", 0)):
 		pool.append({"key": CraftDB.ESSENCE_KEY})

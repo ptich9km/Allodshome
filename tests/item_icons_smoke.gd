@@ -1,8 +1,12 @@
 extends SceneTree
-## Проверка иконок предметов: у каждого из 1029 предметов путь icon обязан
+## Проверка иконок предметов: у каждого предмета путь icon обязан
 ## существовать на диске, металлические вещи берут фракционные ассеты, неметаллы -
 ## заглушки. Смысл теста: после удаления assets/inventory/ (982 старые иконки
 ## Аллодов) любая оставшаяся ссылка на него - это предмет без картинки в игре.
+##
+## Пакет A (28.10): 16 фракционных металлов и их иконки удалены; в базе
+## 316 предметов, 4 слитка, фракционные ассеты остались только в группе
+## common (bronze/iron/gold; сталь как is_base живёт в base/).
 ##
 ## Запуск: godot --headless --path . --script res://tests/item_icons_smoke.gd
 
@@ -11,10 +15,6 @@ const PALETTE_PATH := "res://assets/items/faction_palette.json"
 
 const METALS := [
 	"bronze", "iron", "steel", "gold",
-	"argentum", "lutetium", "lanthanum", "terbium",
-	"wolfram", "chromium", "cobalt", "titanium",
-	"thorium", "uranium", "plutonium", "radium",
-	"gallium", "yttrium", "promethium", "neodymium",
 ]
 
 const NON_METALS := ["Leather", "Hard Leather", "Dragon Leather", "Wood", "Magic Wood", "None"]
@@ -83,6 +83,7 @@ func _init() -> void:
 	var faction_items := 0
 	var weapon_items := 0
 	var base_items := 0
+	var faction_sets := 0
 	var broken_items := 0
 	var wrong_group := 0
 	var nonmetal_real := 0
@@ -118,6 +119,12 @@ func _init() -> void:
 			elif icon3.begins_with("res://assets/items/base/") \
 					or icon3.begins_with("res://assets/items/base_w/"):
 				base_items += 1
+			elif icon3.begins_with("res://assets/items/faction_sets/"):
+				# Пакет C+D (28.10): фракционные наборы куются из стали, но
+				# носят цвет фракции — это не «металл common», поэтому группа
+				# палитры к ним не применяется (проверка группы ниже их не
+				# видит). Текстуры свои, в faction_sets/.
+				faction_sets += 1
 			elif icon3.begins_with("res://assets/items/broken/"):
 				broken_items += 1
 			else:
@@ -133,6 +140,8 @@ func _init() -> void:
 	_check(base_items > 0, "базовые иконки (сталь) используются (%d)" % base_items)
 	_check(broken_items > 0,
 		"иконки сломанных вещей используются (%d)" % broken_items)
+	_check(faction_sets > 0,
+		"иконки фракционных наборов используются (%d)" % faction_sets)
 	_check(wrong_group == 0, "группа в пути совпадает с палитрой (расхождений: %d)" % wrong_group)
 	_check(nonmetal_real == 0,
 		"неметаллы не получили фракционные иконки (ошибок: %d)" % nonmetal_real)
@@ -148,7 +157,7 @@ func _init() -> void:
 		var want := "res://assets/professions/blacksmith/%s_ingot.png" % str(d4.get("material", ""))
 		if str(d4.get("icon", "")) != want:
 			ingot_bad += 1
-	_check(ingots == 20, "слитков в базе 20 (найдено: %d)" % ingots)
+	_check(ingots == 4, "слитков в базе 4 (найдено: %d)" % ingots)
 	_check(ingot_bad == 0, "иконки слитков указывают верно (ошибок: %d)" % ingot_bad)
 
 	# 5. Заглушек не осталось. Контракт поменян на этапе 1 чистки (03.10):
@@ -167,7 +176,8 @@ func _init() -> void:
 	_check(ph_bad.is_empty(), "заглушек не осталось (осталось: %d %s)" % [ph_bad.size(), ", ".join(ph_bad.slice(0, 5))])
 
 	# 6. Каталог faction/ и faction_w/ реально используется: без item_db
-	#    589 готовых файлов лежали бы мёртвыми.
+	#    готовые файлы лежали бы мёртвыми. Пакет A: остались только
+	#    иконки common-группы (bronze/iron/gold) - 42 уникальных пути.
 	var used_files := {}
 	for it6 in items:
 		var d6: Dictionary = it6
@@ -177,7 +187,7 @@ func _init() -> void:
 		var p := str(path)
 		if p.contains("/faction/") or p.contains("/faction_w/"):
 			used_faction += 1
-	_check(used_faction > 300,
+	_check(used_faction > 30,
 		"фракционные ассеты задействованы (уникальных путей: %d)" % used_faction)
 
 	_report(items.size())

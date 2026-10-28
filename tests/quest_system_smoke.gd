@@ -68,6 +68,7 @@ func _phase() -> void:
 	_test_accept_abandon(qs)
 	_test_turn_in(qs)
 	_test_progress(qs)
+	_test_faction_tags(qs)
 	_test_marker(qs)
 	_test_save_roundtrip(qs)
 	_test_art()
@@ -549,6 +550,52 @@ func _test_spawn_panel() -> void:
 
 
 # --- 9. Marker ----------------------------------------------------------------
+
+# --- 7. Faction tags (forge package E) ---------------------------------------
+
+## A town asks for RIVAL faction tags and pays with a blueprint of its own set.
+func _test_faction_tags(qs: QuestSystem) -> void:
+	qs.reset()
+	var q := qs.debug_add_offer(CITY, "gather_tags")
+	_check(not q.is_empty(), "a forced gather_tags offer is created")
+	if q.is_empty():
+		return
+	var rival := str(q.get("rival_race", ""))
+	_check(rival != "" and rival != CITY_RACE,
+		"the tag quest names a rival faction (%s vs %s)" % [rival, CITY_RACE])
+	_check(str(q.get("item_key", "")) == ItemDB.tag_key(rival),
+		"the quest asks for the rival's tag (%s)" % str(q.get("item_key", "")))
+	_check(not ItemDB.find(str(q.get("item_key", ""))).is_empty(),
+		"the asked tag exists in item_db")
+	_check(int(q.get("need", 0)) > 1, "several tags are needed (%d)" % int(q.get("need", 0)))
+	var text := str(q.get("text", ""))
+	_check(not text.contains("%") and text != "",
+		"the tag quest text is filled (no placeholders left)")
+	_check(text.contains(Lore.faction_label(rival)),
+		"the text names the rival faction")
+	# Reward: blueprint of the GIVER's faction, not a random recipe.
+	_check(str(q.get("blueprint", "")).begins_with("faction_%s_" % CITY_RACE),
+		"the reward is a blueprint of the town faction (%s)" % str(q.get("blueprint", "")))
+	_check(qs.accept(CITY, str(q["id"])) == "", "the tag quest is taken")
+	var hero := root.find_child("Hero", true, false)
+	hero.set("inventory", [])
+	var need := int(q.get("need", 1))
+	for _i in range(need):
+		hero.call("add_item", str(q.get("item_key", "")))
+	qs.sync_inventory()
+	var cur := qs.quest_by_id(str(q["id"]))
+	_check(str(cur.get("state", "")) == QuestSystem.STATE_READY,
+		"a full set of tags makes the quest ready")
+	var result := qs.turn_in(CITY, str(q["id"]))
+	_check(result != "", "the tag quest is turned in (%s)" % result)
+	var tags_left := 0
+	for raw in hero.inventory:
+		if str(raw) == str(q.get("item_key", "")):
+			tags_left += 1
+	_check(tags_left == 0, "turn-in takes the tags out of the bag (%d left)" % tags_left)
+	var scroll := CraftDB.recipe_scroll_key(str(q.get("blueprint", "")))
+	_check(hero.inventory.has(scroll), "the blueprint is in the bag (%s)" % scroll)
+
 
 func _test_marker(qs: QuestSystem) -> void:
 	qs.reset()

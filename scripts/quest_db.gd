@@ -117,7 +117,9 @@ static func _validate(raw: Variant) -> Dictionary:
 		return {}
 	var needs_items := type in ["GATHER", "FIND_ITEM", "DELIVER"]
 	var pool: Array = []
-	if needs_items:
+	# Пакет E: квест на бирки не держит item_pool — предмет выбирается по
+	# фракции-сопернику города (tags_of_rival), поэтому пустой пул законен.
+	if needs_items and not bool(d.get("tags_of_rival", false)):
 		var raw_pool: Variant = d.get("item_pool", [])
 		if not (raw_pool is Array) or (raw_pool as Array).is_empty():
 			push_error("QuestDB: %s - type %s without item_pool" % [id, type])

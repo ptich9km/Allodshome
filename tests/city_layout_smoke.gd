@@ -130,11 +130,18 @@ func _test_no_overlap() -> void:
 	# Раньше проверка была `CITY_GAP - 1`, то есть >= 1 — она подстроилась под
 	# фактический зашитый в коде зазор 1 и молча разрешала ему расти.
 	# Теперь зазор реально берётся из конфига, и проверка требует честного значения.
+	#
+	# ИСКЛЮЧЕНИЕ (пакет B, 28.10): форпосты. У лагеря костёр стоит ВПЛОТНУЮ к
+	# шатру — это его смысл, а не «город с домами». Городские правила зазора к
+	# лагерю не применяются; проверка пересечений выше по-прежнему общая.
+	var camp_ids := _camp_structure_ids()
 	var too_close: Array = []
 	for i in range(boxes.size()):
 		for j in range(i + 1, boxes.size()):
 			var a2: Dictionary = boxes[i]
 			var b2: Dictionary = boxes[j]
+			if camp_ids.has(int(a2["id"])) or camp_ids.has(int(b2["id"])):
+				continue
 			var g := _gap_between(a2, b2)
 			if g < MapGenerator.city_gap():
 				too_close.append([a2["id"], b2["id"], g])
@@ -192,6 +199,19 @@ func _gap_between(a: Dictionary, b: Dictionary) -> int:
 	var dx := maxi(maxi(int(a["x0"]) - int(b["x1"]), int(b["x0"]) - int(a["x1"])), 0)
 	var dy := maxi(maxi(int(a["y0"]) - int(b["y1"]), int(b["y0"]) - int(a["y1"])), 0)
 	return maxi(dx, dy)
+
+
+## id построек, которые ставит форпост (шатры фракций + костёр). Зазор
+## «городского» типа к ним не применяется: костёр стоит у шатра намеренно.
+func _camp_structure_ids() -> Dictionary:
+	var out := {}
+	for race in MapGenerator.OUTPOST_CAMPS:
+		for folder in (MapGenerator.OUTPOST_CAMPS[race] as Array):
+			if StructureDB.has(str(folder)):
+				out[int(StructureDB.get_structure(str(folder)).get("id", 0))] = true
+	if StructureDB.has(MapGenerator.OUTPOST_CAMPFIRE):
+		out[int(StructureDB.get_structure(MapGenerator.OUTPOST_CAMPFIRE).get("id", 0))] = true
+	return out
 
 
 func _read_sidecar(path: String, key: String) -> Array:

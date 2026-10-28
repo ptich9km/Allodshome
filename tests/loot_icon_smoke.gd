@@ -14,12 +14,9 @@ extends SceneTree
 const DB_PATH := "res://assets/items/item_db.json"
 
 ## Металлы, для которых в loot_icons есть иконки снаряжения.
+## Пакет A (28.10): 16 фракционных металлов удалены, остались 4 общих.
 const METALS := [
-	"bronze", "iron", "steel",
-	"argentum", "lutetium", "lanthanum", "terbium",
-	"wolfram", "chromium", "cobalt", "titanium",
-	"thorium", "uranium", "plutonium", "radium",
-	"gallium", "yttrium", "promethium", "neodymium",
+	"bronze", "iron", "steel", "gold",
 ]
 
 var _fails: Array[String] = []
@@ -97,25 +94,25 @@ func _test_icons_exist(items: Array) -> void:
 
 func _test_icon_for_weapon() -> void:
 	var sword := _first_with(func(d): return str(d.get("type", "")) == "Long Sword" \
-		and str(d.get("material", "")) == "terbium")
-	_check(not sword.is_empty(), "найден terbium Long Sword")
+		and str(d.get("material", "")) == "steel")
+	_check(not sword.is_empty(), "найден steel Long Sword")
 	if sword.is_empty():
 		return
 	var p := LootIcons.icon_for(sword)
-	_check(p.ends_with("terbium_weapon.png"),
-		"оружие terbium -> _weapon.png (получено %s)" % p.get_file())
+	_check(p.ends_with("steel_weapon.png"),
+		"оружие steel -> _weapon.png (получено %s)" % p.get_file())
 	_check(ResourceLoader.exists(p), "иконка оружия существует")
 
 
 func _test_icon_for_armor() -> void:
 	var helm := _first_with(func(d): return str(d.get("type", "")) == "Full Helm" \
-		and str(d.get("material", "")) == "terbium")
-	_check(not helm.is_empty(), "найден terbium Full Helm")
+		and str(d.get("material", "")) == "steel")
+	_check(not helm.is_empty(), "найден steel Full Helm")
 	if helm.is_empty():
 		return
 	var p := LootIcons.icon_for(helm)
-	_check(p.ends_with("terbium_armor.png"),
-		"броня terbium -> _armor.png (получено %s)" % p.get_file())
+	_check(p.ends_with("steel_armor.png"),
+		"броня steel -> _armor.png (получено %s)" % p.get_file())
 
 
 func _test_gold_icon() -> void:

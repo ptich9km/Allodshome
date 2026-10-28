@@ -47,7 +47,9 @@ func _run() -> void:
 	hero.gold = 100000
 
 	_shop = ShopPanel.new()
-	_shop.setup(hero)
+	# Раса города задана явно: полка фракционных чертежей (пакет F) показывает
+	# наборы ТОЛЬКО своей фракции, и без расы она пуста.
+	_shop.setup(hero, "humans")
 	current_scene.add_child(_shop)
 	await process_frame
 	await create_timer(0.3).timeout
@@ -58,6 +60,7 @@ func _run() -> void:
 	await _test_hover_card()
 	await _test_buy_sell()
 	await _test_rep_notice()
+	await _test_faction_shelf()
 	_finish()
 
 
@@ -201,6 +204,55 @@ func _test_rep_notice() -> void:
 	var hint = _shop.get("_hint_label")
 	_check(hint is Label and str((hint as Label).text).contains("фракц"),
 		"подсказка говорит, что ассортимент зависит от фракции")
+
+
+## Пакет F: полка фракционных чертежей — только наборы своей фракции, с плашкой.
+func _test_faction_shelf() -> void:
+	var idx := -1
+	for i in range(ShopPanel.CATEGORIES.size()):
+		if str(ShopPanel.CATEGORIES[i]["id"]) == "recipes_faction":
+			idx = i
+			break
+	_check(idx >= 0, "вкладка «Рец. Фракция» есть")
+	if idx < 0:
+		return
+	_shop.call("_set_category", idx)
+	await process_frame
+	var pool: Array = _shop.call("_category_items", idx)
+	_check(pool.size() == 12, "полка фракции: 12 чертежей наборов (%d)" % pool.size())
+	var foreign := 0
+	for item in pool:
+		var rid := str((item as Dictionary).get("recipe_id", ""))
+		if not rid.begins_with("faction_humans_"):
+			foreign += 1
+	_check(foreign == 0, "на полке только чертежи фракции города (%d чужих)" % foreign)
+	var grid: GridContainer = _find("NpcShelf")
+	var cells := 0
+	if grid != null:
+		for c in grid.get_children():
+			if c is PanelContainer:
+				cells += 1
+	_check(cells == 12, "ячеек на полке фракции: %d" % cells)
+	var notice = _shop.get("_npc_notice")
+	_check(notice is Label and (notice as Label).visible,
+		"полка фракции объяснена плашкой")
+	if notice is Label:
+		_check(str((notice as Label).text).to_lower().contains("фракц"),
+			"плашка называет фракцию")
+	# Чертежи фракции не должны просачиваться в другие вкладки рецептов.
+	for other in range(ShopPanel.CATEGORIES.size()):
+		if other == idx:
+			continue
+		var other_pool: Array = _shop.call("_category_items", other)
+		var leaked := 0
+		for item2 in other_pool:
+			if str((item2 as Dictionary).get("bp", "")) == "faction":
+				leaked += 1
+		if leaked > 0:
+			_check(false, "чертежи фракции просочились во вкладку %s (%d шт.)"
+				% [str(ShopPanel.CATEGORIES[other]["id"]), leaked])
+			return
+	_check(true, "в других вкладках чертежей фракции нет")
 
 
 func _find(node_name: String) -> Node:

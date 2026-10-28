@@ -86,6 +86,15 @@ func _bind_map(map: Node) -> void:
 
 
 func _process(delta: float) -> void:
+	if not Game.perf_enabled:
+		_process_impl(delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_process_impl(delta)
+	Game.perf_end("quests", t0)
+
+
+func _process_impl(delta: float) -> void:
 	if GameConfig.geti("quests", "enabled") == 0:
 		return
 	_tick_urgent(delta)
@@ -277,6 +286,7 @@ func _make_quest(tpl: Dictionary, rng: RandomNumberGenerator, city_id: String,
 		"species": "",
 		"set": "",
 		"deliver_city": "",
+		"rival_race": "",
 		"target_cell": [],
 		"elite": false,
 		"pick": str(tpl.get("pick", "")),
@@ -315,11 +325,22 @@ func _make_quest(tpl: Dictionary, rng: RandomNumberGenerator, city_id: String,
 			q["seconds_left"] = float(GameConfig.getf("quests", "urgent_seconds"))
 			q["seconds_total"] = float(GameConfig.getf("quests", "urgent_seconds"))
 		"GATHER", "FIND_ITEM", "DELIVER":
-			var pool: Array = tpl.get("item_pool", [])
-			if pool.is_empty():
-				return {}
-			q["item_key"] = str(pool[rng.randi_range(0, pool.size() - 1)])
-			q["need"] = 1 if type != "GATHER" else count
+			if bool(tpl.get("tags_of_rival", false)):
+				# Пакет E: бирки СОПЕРНИКА. Город просит трофеи чужой фракции,
+				# свои же бирки у него не в цене (и это же делает квест
+				# осмысленным: бей форпосты не той фракции, что кормит город).
+				var rival := _rival_race(race, rng)
+				if rival == "":
+					return {}
+				q["rival_race"] = rival
+				q["item_key"] = ItemDB.tag_key(rival)
+				q["need"] = count
+			else:
+				var pool: Array = tpl.get("item_pool", [])
+				if pool.is_empty():
+					return {}
+				q["item_key"] = str(pool[rng.randi_range(0, pool.size() - 1)])
+				q["need"] = 1 if type != "GATHER" else count
 			if type == "DELIVER":
 				var other := _other_city(city_id, rng)
 				if other == "":
@@ -418,11 +439,43 @@ func _reward_for(q: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 		"power": float(GameConfig.getf("quests", "power_base")) * mult,
 		"blueprint": "",
 	}
-	if diff >= GameConfig.geti("quests", "blueprint_min_difficulty"):
+	var tpl := QuestDB.template(str(q.get("template", "")))
+	if str(tpl.get("reward_recipe", "")) == "giver":
+		# Пакет E: квест на бирки платит чертежом набора СВОЕЙ фракции, а не
+		# случайным рецептом: игрок понимает, за что бьёт чужие форпосты.
+		out["blueprint"] = _pick_recipe_of_faction(faction, rng)
+	elif diff >= GameConfig.geti("quests", "blueprint_min_difficulty"):
 		# The quest's own rng: a hard quest without recipes left costs no draw,
 		# so the rest of its content stays stable from seed to seed.
 		out["blueprint"] = _pick_blueprint(faction, rng)
 	return out
+
+
+## Соперник для квеста на бирки: любая фракция, КРОМЕ фракции города.
+func _rival_race(race: String, rng: RandomNumberGenerator) -> String:
+	var pool: Array = []
+	for r in MapGenerator.CITY_RACES:
+		if str(r) != race:
+			pool.append(str(r))
+	if pool.is_empty():
+		return ""
+	return str(pool[rng.randi_range(0, pool.size() - 1)])
+
+
+## Рецепт набора фракции, которого у героя ещё нет ("" — все известны).
+func _pick_recipe_of_faction(race: String, rng: RandomNumberGenerator) -> String:
+	var known: Dictionary = {}
+	if Game.hero != null and is_instance_valid(Game.hero) and "inventory" in Game.hero:
+		for raw in Game.hero.inventory:
+			known[str(raw)] = true
+	var pool: Array = []
+	for rid in CraftDB.recipe_ids_of_faction(race):
+		if known.has(CraftDB.recipe_scroll_key(str(rid))):
+			continue
+		pool.append(str(rid))
+	if pool.is_empty():
+		return ""
+	return str(pool[rng.randi_range(0, pool.size() - 1)])
 
 
 ## Blueprint for a hard quest: a CraftDB recipe scroll the hero most likely
@@ -554,6 +607,10 @@ func _text_arg(key: String, q: Dictionary, short := false) -> String:
 			return named if named != "" else item_key
 		"city":
 			return city_name(str(q.get("deliver_city", "")))
+		"rival":
+			# Пакет E: имя фракции-соперника словами ("Орда", "Пожинатели").
+			var race := str(q.get("rival_race", ""))
+			return Lore.faction_label(race) if race != "" else ""
 		"minutes":
 			return str(int(round(float(q.get("seconds_total", 0.0)) / 60.0)))
 	return ""

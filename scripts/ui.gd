@@ -1524,6 +1524,15 @@ func cast_ability(_index: int):
 	pass
 
 func _process(_delta):
+	if not Game.perf_enabled:
+		_process_impl(_delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_process_impl(_delta)
+	Game.perf_end("ui", t0)
+
+
+func _process_impl(_delta):
 	if Game.is_paused:
 		pause_label.visible = true
 		pause_label.text = "ТАКТИЧЕСКАЯ ПАУЗА"

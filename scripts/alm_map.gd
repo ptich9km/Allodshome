@@ -28,6 +28,7 @@ var _obstacles: PackedByteArray # uint8 — объекты (0=нет, >0=объ�
 var _structures: Array = []     # секция id=4 — здания (или sidecar .structures.json)
 var map_units: Array = []       # секция id=6 — юниты (или sidecar .npcs.json)
 var _herbs: Array = []
+var _outposts: Array = []       # форпосты фракций (sidecar .outposts.json)
 var _nowalk: Dictionary = {}    # клетки «Нельзя пройти» (ручная разметка в редакторе)
 var _allowwalk: Dictionary = {} # клетки «Разрешить проход» — пускать сквозь препятствие
 var solar_angle: float = 0.785398  # угол солнца из info (.alm), default 45°
@@ -917,6 +918,10 @@ func _load_sidecars() -> void:
 	var h: Variant = _read_sidecar(base + ".herbs.json")
 	if h != null and h is Array:
 		_herbs = h
+	# Форпосты фракций (пакет B): отдельный sidecar, стражники при этом едут
+	# обычными записями .npcs.json с полем "outpost".
+	var op: Variant = _read_sidecar(base + ".outposts.json")
+	_outposts = op if op != null and op is Array else []
 	# Ручная разметка «Нельзя пройти» — редактор пишет её рядом с .alm
 	var n: Variant = _read_sidecar(base + ".nowalk.json")
 	_nowalk.clear()
@@ -953,6 +958,8 @@ func _read_sidecar(path: String) -> Variant:
 			return parsed["nowalk"]
 		if parsed.has("allowwalk") and parsed["allowwalk"] is Array:
 			return parsed["allowwalk"]
+		if parsed.has("outposts") and parsed["outposts"] is Array:
+			return parsed["outposts"]
 		return []
 	if parsed is Array:
 		return parsed
@@ -962,6 +969,12 @@ func _read_sidecar(path: String) -> Variant:
 ## Записи: {x, y — клетки, type_id | set, player, hp_max}.
 func get_units() -> Array:
 	return map_units
+
+
+## Форпосты фракций этой карты: [{id, faction, name, x, y}].
+## Пусто у карт без sidecar .outposts.json (военные .alm, старые карты).
+func outposts() -> Array:
+	return _outposts
 
 
 ## Подключить врага к событию смерти карты (Game._spawn_monster).
@@ -1137,6 +1150,16 @@ func is_within_bounds(pos: Vector2, margin: float = 12.0) -> bool:
 ## клетки. Если цель непроходима — ищем путь к ближайшей проходимой рядом с ней
 ## (клик по дереву/воде подводит героя к самому краю). Пустой — пути нет.
 func find_path(from_world: Vector2, to_world: Vector2) -> Array:
+	if not Game.perf_enabled:
+		return _find_path_impl(from_world, to_world)
+	var t0 := Time.get_ticks_usec()
+	var out := _find_path_impl(from_world, to_world)
+	Game.perf_end("find_path", t0)
+	Game.perf_count("find_path_calls")
+	return out
+
+
+func _find_path_impl(from_world: Vector2, to_world: Vector2) -> Array:
 	var start := _cell_of(from_world)
 	var goal := _cell_of(to_world)
 	# Герой может стоять в клетке, которая по разметке непроходима (упёрся/склон):

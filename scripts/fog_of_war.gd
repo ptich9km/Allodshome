@@ -267,6 +267,15 @@ func blocks_process(pos: Vector2) -> bool:
 	return state_at_world(pos) < STATE_VISIBLE
 
 func _physics_process(_delta: float) -> void:
+	if not Game.perf_enabled:
+		_physics_process_impl(_delta)
+		return
+	var t0 := Time.get_ticks_usec()
+	_physics_process_impl(_delta)
+	Game.perf_end("fog", t0)
+
+
+func _physics_process_impl(_delta: float) -> void:
 	if not enabled:
 		return
 	# Карта могла пересобраться (портал) — проверяем по размеру.

@@ -156,8 +156,10 @@ static func armor_kind(item: Dictionary) -> String:
 	# "Linen" - лён (ткань плащей, tests/gen_cloak_items.py). Плащи и рубашки
 	# относятся к тряпкам по ТИПУ (is_cloth ниже), но материал перечислен и
 	# здесь, чтобы одежда из льна была лёгкой и если тип когда-то изменится.
-	# Кожа и дерево удалены из базы (01.10), остались только металлы и лён.
-	var is_light_mat := m in ["Linen", "None"]
+	# Пакет C+D (29.10): "Leather" — кожа лёгкого фракционного комплекта
+	# (решение игрока «давай кожу»). Раньше кожа была выведена из игры; теперь
+	# вернулась как материал лёгкой брони и НЕ переплавляется в слитки.
+	var is_light_mat := m in ["Linen", "None", "Leather"]
 	var is_cloth := t in ["Cloak", "Cape", "Robe", "Dress", "Hat", "Low Hat", "Cap"]
 	if is_light_mat or is_cloth:
 		return "light"
@@ -176,10 +178,11 @@ static func is_equippable(item: Dictionary) -> bool:
 	return true
 
 ## Non-wearable qualities: broken gear and craft materials are raw stuff.
+## "Tag" — фракционная бирка (пакет B): трофей-ингредиент, не снаряжение.
 const NON_GEAR_QUALITY := [
 	"Book", "Potion", "Scroll", "SuperScroll", "Quest", "Herb",
 	"Broken", "Broken Fine", "Broken Rare",
-	"Fabric", "Essence", "Recipe",
+	"Fabric", "Essence", "Recipe", "Tag",
 ]
 
 ## Class restrictions (22.10 player decision): a warrior wears metal armor
@@ -297,32 +300,22 @@ static func has_broken(material: String, category: String) -> bool:
 			return true
 	return false
 
-## Фракционные металлы _SMELTABLE (все, кроме общих bronze/iron/steel/gold).
-## Полосы ровно те же, что в _SMELTABLE: Альянс, Орды, Пожинатели, Друиды.
-const FACTION_METALS := [
-	"argentum", "lutetium", "lanthanum", "terbium",
-	"wolfram", "chromium", "cobalt", "titanium",
-	"thorium", "uranium", "plutonium", "radium",
-	"gallium", "yttrium", "promethium", "neodymium",
-]
-
 ## Металлы лут-сломанного для категории с учётом ТИРА убитого (1..5).
 ##
 ## Смысл: сломанное падает с Серых и НПЦ как сырьё для кузницы, поэтому
 ## металл должен расти вместе с силой врага, а не выпадать случайно по всей
-## таблице. Иначе волк-новичок ронял бы радий, а переплавка на старте не
-## имела бы смысла. Полосы:
+## таблице. Иначе волк-новичок ронял бы мусор, а переплавка на старте не
+## имела бы смысла. Полосы (пакет A: 16 фракционных металлов удалены,
+## остаются только четыре общих):
 ##   тир <= 0 или <= 2 -> bronze, iron (старт/обучение);
 ##   тир 3             -> iron, steel;
-##   тир >= 4          -> steel + фракционные металлы.
+##   тир >= 4          -> steel.
 ## Одежда мага — только лён (material "Linen" в точном регистре, как в базе).
 static func broken_materials(category: String, tier: int) -> Array:
 	if category == "Garment":
 		return ["Linen"]
 	if tier >= 4:
-		var out: Array = ["steel"]
-		out.append_array(FACTION_METALS)
-		return out
+		return ["steel"]
 	if tier == 3:
 		return ["iron", "steel"]
 	return ["bronze", "iron"]
@@ -383,20 +376,12 @@ static func roll_broken_gear(materials: Array, categories: Array) -> Dictionary:
 	return {"key": key}
 
 ## Металлы, которые переплавляет кузница. Регистр важен: материал в item_db
-## хранится в нижнем регистре (bronze, terbium...) - так же, как названы файлы
-## иконок в faction/, faction_w/ и blacksmith/. 20 металлов из faction_palette.json.
-## Кожа/дерево/ткань сюда НЕ входят: кузнец их не берёт (см. is_smeltable).
+## хранится в нижнем регистре (bronze, iron...) - так же, как названы файлы
+## иконок. Пакет A: 16 фракционных металлов удалены из игры, остались только
+## четыре общих. Кожа/дерево/ткань сюда НЕ входят: кузнец их не берёт
+## (см. is_smeltable).
 const _SMELTABLE := [
-	# common
 	"bronze", "iron", "steel", "gold",
-	# Альянс Света
-	"argentum", "lutetium", "lanthanum", "terbium",
-	# Орды Огня
-	"wolfram", "chromium", "cobalt", "titanium",
-	# Пожинатели
-	"thorium", "uranium", "plutonium", "radium",
-	# Круг Друидов
-	"gallium", "yttrium", "promethium", "neodymium",
 ]
 
 static func is_smeltable(item: Dictionary) -> bool:
@@ -407,7 +392,7 @@ static func is_smeltable(item: Dictionary) -> bool:
 	return str(item.get("material", "")) in _SMELTABLE
 
 ## Ключ предмета-слитка для материала ("", если такого металла нет).
-## Материал приходит в нижнем регистре, и ключ слитка такой же: "terbium Ingot".
+## Материал приходит в нижнем регистре, и ключ слитка такой же: "iron Ingot".
 ## Раньше ключ строился как "%s Ingot" % material, что работало только при
 ## заглавном регистре в базе; после перевода металлов вниз переплавка находила
 ## слиток лишь у части металлов, молча ничего не выдавая.
@@ -416,6 +401,31 @@ static func ingot_key(material: String) -> String:
 		return ""
 	var ingot: Dictionary = find("%s Ingot" % material.to_lower())
 	return str(ingot.get("key", ""))
+
+## Бирки фракций (пакет B переработки ковки, 28.10). Ось — раса фракции,
+## та же, что у репутации: humans/ork/necro/druid. Бирка падает со стражника
+## форпоста и уходит в рецепты фракционной брони (пакет D).
+const TAG_OF_RACE := {
+	"humans": "Alliance Tag",
+	"ork": "Horde Tag",
+	"necro": "Reaper Tag",
+	"druid": "Circle Tag",
+}
+
+## Ключ бирки расы ("" — такой фракции нет).
+static func tag_key(race: String) -> String:
+	return str(TAG_OF_RACE.get(race, ""))
+
+## Это бирка-трофей? Читает type, а не quality: «Tag» в quality занят
+## отдельно, чтобы бирка не попала в таблицу сломанных вещей.
+static func is_tag(item: Dictionary) -> bool:
+	return str(item.get("type", "")) == "Trophy"
+
+## Это вещь фракционного набора (пакет C+D)? У неё есть поле `faction`
+## (humans/ork/necro/druid): текстура своя в faction_sets/, а металл — сталь.
+## Нужно тестам (материал в ключе/имени не обязан совпадать) и лавкам.
+static func is_faction_set(item: Dictionary) -> bool:
+	return str(item.get("faction", "")) != ""
 
 ## Предметы для инвентаря: все экипируемые в порядке базы.
 static func equippable_items() -> Array:
