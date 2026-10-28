@@ -35,34 +35,39 @@ func _run() -> void:
 
 
 ## full_height реально приходит из базы — иначе визуальный выступ не резервируется.
+##
+## 29.10: арт Аллодов удалён (ids 1..179), остались только наши здания 200..232 —
+## у всех цельный спрайт 3×3 (whole_image=1), `full_height == tile_height`.
+## Прежние проверки («есть выступ fh > th» и «есть вырожденный sel») держались
+## на Аллодовских тайл-сетах и без них всегда падали бы.
 func _test_db_has_full_height() -> void:
+	var ids := StructureDB.ids()
+	_check(ids.size() > 0, "в structure_db.json есть здания (%d)" % ids.size())
 	var with_fh := 0
-	var with_over := 0
-	for id in StructureDB.ids():
+	var whole := 0
+	var bad_sel := 0
+	for id in ids:
 		var def := StructureDB.get_by_id(int(id))
 		var fh := int(def.get("full_height", 0))
 		var th := int(def.get("tile_height", 1))
 		if fh > 0:
 			with_fh += 1
-			if fh > th:
-				with_over += 1
-	_check(with_fh > 0, "в structure_db.json full_height есть у %d зданий" % with_fh)
-	_check(with_over > 0,
-		"есть здания с выступом выше футпринта (full_height > tile_height): %d"
-			% with_over)
-
-	# `sel` в базе самопротиворечив, поэтому в футпринте не используется.
-	var bad_sel := 0
-	for id2 in StructureDB.ids():
-		var d2 := StructureDB.get_by_id(int(id2))
-		var sel: Variant = d2.get("sel", null)
+		if int(def.get("whole_image", 0)) == 1 and fh == th \
+				and int(def.get("tile_width", 0)) == 3:
+			whole += 1
+		var sel: Variant = def.get("sel", null)
 		if sel is Array and (sel as Array).size() == 4:
 			if int((sel as Array)[0]) >= int((sel as Array)[1]) \
 					or int((sel as Array)[2]) >= int((sel as Array)[3]):
 				bad_sel += 1
-	_check(bad_sel > 0,
-		"у %d зданий sel вырожден (x0>=x1) — поэтому футпринт берём по tile_*/full_height"
-			% bad_sel)
+	_check(with_fh == ids.size(), "full_height есть у всех зданий: %d из %d"
+		% [with_fh, ids.size()])
+	# Наши здания — цельный спрайт 3×3, без сетки кадров и без выступа крыши.
+	_check(whole == ids.size(),
+		"все здания — цельный спрайт 3×3 (whole_image, fh == th): %d из %d"
+			% [whole, ids.size()])
+	# Вырожденных sel больше нет; футпринт всё равно берём по tile_*, а не из sel.
+	_check(bad_sel == 0, "вырожденных sel нет (%d)" % bad_sel)
 
 
 ## Геометрия города — по решению игрока: овал 17×17, зазор 2.
@@ -72,12 +77,13 @@ func _test_geometry_constants() -> void:
 	_check(MapGenerator.CITY_GAP == 2, "зазор между зданиями 2 клетки (была 1)")
 
 	# full_height обязан доезжать из спеки в генератор (иначе vis_rows = 0).
-	var spec := MapGenerator.new()._structure_spec("druidinn2")
-	_check(not spec.is_empty(), "спека здания druidinn2 получена")
+	var spec := MapGenerator.new()._structure_spec("inn_s2")
+	_check(not spec.is_empty(), "спека здания inn_s2 получена")
 	if not spec.is_empty():
-		_check(int(spec.get("fh", 0)) > int(spec.get("h", 0)),
-			"спека несёт full_height: fh=%s > h=%s (без fh выступ не резервировался)"
-				% [str(spec.get("fh")), str(spec.get("h"))])
+		_check(int(spec.get("fh", 0)) == 3 and int(spec.get("w", 0)) == 3
+				and int(spec.get("h", 0)) == 3,
+			"спека несёт футпринт и full_height 3×3: fh=%s w=%s h=%s"
+				% [str(spec.get("fh")), str(spec.get("w")), str(spec.get("h"))])
 
 
 ## Ставим здания и проверяем, что полные визуальные прямоугольники
@@ -201,16 +207,15 @@ func _gap_between(a: Dictionary, b: Dictionary) -> int:
 	return maxi(dx, dy)
 
 
-## id построек, которые ставит форпост (шатры фракций + костёр). Зазор
-## «городского» типа к ним не применяется: костёр стоит у шатра намеренно.
+## id построек, которые ставит форпост (шатры фракций). Зазор «городского»
+## типа к ним не применяется: лагерь стоит отдельно от овала города.
+## 29.10: костра больше нет — у шатра стоит проп (MapGenerator.OUTPOST_PROP_ID).
 func _camp_structure_ids() -> Dictionary:
 	var out := {}
 	for race in MapGenerator.OUTPOST_CAMPS:
 		for folder in (MapGenerator.OUTPOST_CAMPS[race] as Array):
 			if StructureDB.has(str(folder)):
 				out[int(StructureDB.get_structure(str(folder)).get("id", 0))] = true
-	if StructureDB.has(MapGenerator.OUTPOST_CAMPFIRE):
-		out[int(StructureDB.get_structure(MapGenerator.OUTPOST_CAMPFIRE).get("id", 0))] = true
 	return out
 
 
