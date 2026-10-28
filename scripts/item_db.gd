@@ -156,8 +156,10 @@ static func armor_kind(item: Dictionary) -> String:
 	# "Linen" - лён (ткань плащей, tests/gen_cloak_items.py). Плащи и рубашки
 	# относятся к тряпкам по ТИПУ (is_cloth ниже), но материал перечислен и
 	# здесь, чтобы одежда из льна была лёгкой и если тип когда-то изменится.
-	# Кожа и дерево удалены из базы (01.10), остались только металлы и лён.
-	var is_light_mat := m in ["Linen", "None"]
+	# Пакет C+D (29.10): "Leather" — кожа лёгкого фракционного комплекта
+	# (решение игрока «давай кожу»). Раньше кожа была выведена из игры; теперь
+	# вернулась как материал лёгкой брони и НЕ переплавляется в слитки.
+	var is_light_mat := m in ["Linen", "None", "Leather"]
 	var is_cloth := t in ["Cloak", "Cape", "Robe", "Dress", "Hat", "Low Hat", "Cap"]
 	if is_light_mat or is_cloth:
 		return "light"

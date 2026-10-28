@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 from PIL import Image
@@ -87,17 +88,22 @@ KITS = {
     },
     "light": {
         "craft": "tailor",
-        "material": "Linen",
+        "material": "Leather",
         "source": "light",
         "resource": "Fabric",
         "slots": [
-            ("head", "Cap", "Капюшон", "head", 5, 3, 0, 20, 900, 1.0),
-            ("body", "Robe", "Роба", "chest", 10, 7, 0, 45, 1800, 3.0),
-            ("hands", "Bracers", "Наручи", "bracers", 6, 2, 0, 12, 600, 2.0),
-            ("feet", "Boots", "Сапоги", "legs", 5, 3, 0, 8, 700, 2.0),
+            ("head", "Cap", "Кожаный капюшон", "head", 5, 3, 0, 20, 900, 1.0),
+            ("body", "Scale Mail", "Кожаный доспех", "chest", 10, 8, 1, 18, 1800, 6.0),
+            ("hands", "Bracers", "Кожаные наручи", "bracers", 6, 2, 0, 10, 600, 2.0),
+            ("feet", "Boots", "Кожаные сапоги", "legs", 5, 3, 0, 8, 700, 2.5),
         ],
     },
 }
+
+# Старые ключи лёгкого набора, когда он был «робой из льна» (пакет D, 28.10).
+# Миграция 29.10: игрок выбрал КОЖУ, тип тела стал Scale Mail, материал Leather.
+LEGACY_LIGHT_BODY_RE = r"^(Crafted(?: Fine| Master)?) (Alliance|Horde|Reaper|Circle) Robe$"
+FACTION_KEYS = ["Alliance", "Horde", "Reaper", "Circle"]
 
 TIERS = [
     ("Crafted", "", None),
@@ -119,14 +125,20 @@ def mixed(steel, accent, k=FACTION_MIX):
     return tuple(int(round(a + (b - a) * k)) for a, b in zip(steel, accent))
 
 
-def build_icon(race: str, kit: str, slot: str, base_slot: str) -> str:
+def build_icon(race: str, kit: str, slot: str, base_slot: str,
+               rebuild: bool = False) -> str:
+    """Иконка набора. Существующий файл НЕ перезаписываем: с 29.10 там может
+    лежать ИИ-арт из extract_faction_art.py, а перекраска его бы затёрла."""
+    rel = "res://assets/items/faction_sets/%s/%s_%s.png" % (race, kit, slot)
+    if not rebuild and os.path.exists(os.path.join(ROOT, rel.replace("res://", ""))):
+        return rel
     src = os.path.join(BASE_DIR, "%s_%s_common.png" % (KITS[kit]["source"], base_slot))
     img = Image.open(src).convert("RGBA")
     out = duotone(img, mixed(STEEL, FACTIONS[race]["color"]))
     path = os.path.join(SETS_DIR, race, "%s_%s.png" % (kit, slot))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     out.save(path)
-    return "res://assets/items/faction_sets/%s/%s_%s.png" % (race, kit, slot)
+    return rel
 
 
 def build_scroll_icon(race: str) -> str:
@@ -296,9 +308,41 @@ def recipe_text(rec: dict) -> str:
 ## добавляются текстом, а не перезаписью всего документа.
 
 
-def apply() -> int:
+def migrate_recipe_outputs() -> None:
+    """Старые выходы рецептов лёгкого набора «... Robe» -> «... Scale Mail».
+
+    Текстовая замена, а не перезапись JSON: файлы рецептов исторически имеют
+    смешанное выравнивание, и json.dumps переформатировал бы их целиком.
+    """
+    changed = 0
+    for path in (SMITH, TAILOR):
+        with open(path, "r", encoding="utf-8", newline="") as fh:
+            raw = fh.read()
+        orig = raw
+        for fk in FACTION_KEYS:
+            for q in ("Crafted", "Crafted Fine", "Crafted Master"):
+                raw = raw.replace('"%s %s Robe"' % (q, fk),
+                                  '"%s %s Scale Mail"' % (q, fk))
+        if raw != orig:
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                fh.write(raw)
+            changed += 1
+    if changed:
+        print("миграция: рецепты лёгкого набора переведены на Scale Mail")
+
+
+def apply(rebuild_icons: bool = False) -> int:
     items = load_json(DB)
     by_key = {str(it.get("key", "")): it for it in items}
+    # Миграция «роба из льна -> кожаный доспех» (29.10). Старые ключи лёгкого
+    # набора убираем, иначе в базе останутся предметы без рецепта и без иконки
+    # нового типа, а рецепты будут ссылаться на несуществующие выходы.
+    legacy = [it for it in items if re.match(LEGACY_LIGHT_BODY_RE, str(it.get("key", "")))]
+    if legacy:
+        items = [it for it in items if not re.match(LEGACY_LIGHT_BODY_RE, str(it.get("key", "")))]
+        by_key = {str(it.get("key", "")): it for it in items}
+        print("миграция: удалено старых лёгких предметов (роба): %d" % len(legacy))
+    migrate_recipe_outputs()
     next_id = max(int(it.get("id", 0)) for it in items) + 1
     scroll_icons = {race: build_scroll_icon(race) for race in FACTIONS}
     smith_doc = load_json(SMITH)
@@ -310,18 +354,23 @@ def apply() -> int:
     for race in FACTIONS:
         for kit_name in ("heavy", "light"):
             for slot_spec in KITS[kit_name]["slots"]:
-                icon = build_icon(race, kit_name, str(slot_spec[0]), str(slot_spec[3]))
+                icon = build_icon(race, kit_name, str(slot_spec[0]), str(slot_spec[3]),
+                                  rebuild_icons)
                 for tier in TIERS:
                     item = build_item(FACTIONS[race]["key"], FACTIONS[race]["name_ru"],
                                       kit_name, slot_spec, tier)
                     item["icon"] = icon
                     item["faction"] = race
                     if item["key"] in by_key:
-                        # Запись уже есть (повторный запуск): досыпаем метку
-                        # фракции, по ней тесты и лавки отличают набор от
-                        # обычного крафта.
-                        by_key[item["key"]]["faction"] = race
-                        by_key[item["key"]]["icon"] = icon
+                        # Запись уже есть: генератор — источник правды для чисел
+                        # и подписей (миграция «роба -> кожа» меняет материал,
+                        # тип и имя), но id и метку времени не трогаем.
+                        existing = by_key[item["key"]]
+                        for field in ("name_ru", "name_en", "material", "price",
+                                      "weight", "damage_min", "damage_max", "to_hit",
+                                      "defence", "absorption", "magcap", "icon"):
+                            existing[field] = item[field]
+                        existing["faction"] = race
                         continue
                     item["id"] = next_id
                     next_id += 1
@@ -336,7 +385,11 @@ def apply() -> int:
                 scroll = build_scroll(race, kit_name, slot_spec)
                 scroll["icon"] = scroll_icons[race]
                 if scroll["key"] in by_key:
-                    by_key[scroll["key"]]["bp"] = scroll["bp"]
+                    # Свиток уже есть: обновляем подписи/полку (миграция кожи),
+                    # bp и иконку, но НЕ плодим вторую запись.
+                    for field in ("name_ru", "name_en", "icon", "craft", "bp",
+                                  "price", "weight"):
+                        by_key[scroll["key"]][field] = scroll[field]
                     continue
                 scroll["id"] = next_id
                 next_id += 1
@@ -417,8 +470,10 @@ def check() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--rebuild-icons", action="store_true",
+                    help="перерисовать иконки дуотоном (затрёт ИИ-арт!)")
     args = ap.parse_args()
-    return check() if args.check else apply()
+    return check() if args.check else apply(args.rebuild_icons)
 
 
 if __name__ == "__main__":

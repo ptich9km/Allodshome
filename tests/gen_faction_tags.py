@@ -98,8 +98,13 @@ def _draw_glyph(d: ImageDraw.ImageDraw, kind: str, color: tuple[int, int, int]) 
         d.line([(cx, cy - 14), (cx, cy + 12)], fill=METAL_DARK, width=2)
 
 
-def build_icon(race: str) -> None:
+def build_icon(race: str, rebuild: bool = False) -> None:
     key, _ru, _en, color, glyph = TAGS[race]
+    out = os.path.join(str(ICON_DIR), "tag_%s.png" % race)
+    # 29.10: иконки бирок теперь рисует ИИ (extract_faction_art.py). Существующий
+    # файл не перезаписываем, иначе процедурная заглушка затрёт арт.
+    if not rebuild and os.path.exists(out):
+        return
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     shape = _tag_shape()
@@ -160,13 +165,13 @@ def _entry(item_id: int, race: str) -> dict:
     }
 
 
-def apply() -> int:
+def apply(rebuild_icons: bool = False) -> int:
     items = load_db()
     keys = {it.get("key") for it in items}
     next_id = max(int(it.get("id", 0)) for it in items) + 1
     added = 0
     for race, (key, _ru, _en, _c, _g) in TAGS.items():
-        build_icon(race)
+        build_icon(race, rebuild_icons)
         if key in keys:
             continue
         items.append(_entry(next_id, race))
@@ -210,8 +215,10 @@ def check() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--rebuild-icons", action="store_true",
+                    help="перерисовать процедурные бирки (затрёт ИИ-арт!)")
     args = ap.parse_args()
-    return check() if args.check else apply()
+    return check() if args.check else apply(args.rebuild_icons)
 
 
 if __name__ == "__main__":

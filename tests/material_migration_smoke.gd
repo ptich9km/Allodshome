@@ -38,14 +38,15 @@ const DROPPED := ["Silver", "silver"]
 ## (переработка сломанной одежды) и магическая эссенция. Их нельзя было
 ## сделать material: "Linen": тогда is_smeltable() их не отсеял бы и логика
 ## «ломается только ткань» стала бы нечитаемой.
-const NON_METALS := ["Linen", "None", "Fabric", "Essence"]
+const NON_METALS := ["Linen", "Leather", "None", "Fabric", "Essence"]
 
 ## Материалы, удалённые из базы 01.10 по решению игрока: кожа и дерево не
 ## нужны в игре, в Аллодах II их не было. Проверяем, что они не вернулись.
 ## Исключение - посохи: их арт под металлы будет нарезан отдельно, до тех
 ## пор деревянный посох мага должен существовать.
-const REMOVED_MATERIALS := ["Leather", "Hard Leather", "Dragon Leather",
-	"Wood", "Magic Wood"]
+## 29.10: "Leather" ВЕРНУЛАСЬ осознанно — игрок выбрал кожу для лёгкого
+## фракционного набора (пакет C+D), поэтому из списка удалена только она.
+const REMOVED_MATERIALS := ["Hard Leather", "Dragon Leather", "Wood", "Magic Wood"]
 const REMOVED_EXCEPT_TYPES := ["Staff", "Shaman Staff"]
 
 ## Фэнтезийные имена оригинала: не должны встретиться нигде в файле.
@@ -205,7 +206,7 @@ func _init() -> void:
 		var d4: Dictionary = it4
 		var kind := ItemDB.armor_kind(d4)
 		var m4 := str(d4.get("material", ""))
-		if m4 in ["Linen", "None"]:
+		if m4 in ["Linen", "Leather", "None"]:
 			if kind != "light":
 				light_ok = false
 		elif m4 in METALS:

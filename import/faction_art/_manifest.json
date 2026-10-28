@@ -1,0 +1,101 @@
+{
+ "faction_humans_heavy": {
+  "file": "faction_humans_heavy.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of HEAVY PLATE ARMOR for a warrior: (1) a full plate helmet, (2) a plate cuirass, (3) ONE single plate bracer (one arm piece only, not a pair), (4) ONE pair of armoured boots standing together.\nFaction style: the Alliance of Light: polished silver-blue steel, royal blue cloth accents, a small golden eagle emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.0552705,
+  "sec": 24.1,
+  "generated": "2026-10-28 18:15:49",
+  "approved": false
+ },
+ "faction_humans_light": {
+  "file": "faction_humans_light.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of LIGHT LEATHER ARMOR for a mage: (1) a leather hood, (2) a studded leather scale cuirass, (3) ONE single leather bracer (one arm piece only, not a pair), (4) ONE pair of leather boots standing together.\nFaction style: the Alliance of Light: polished silver-blue steel, royal blue cloth accents, a small golden eagle emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.0555945,
+  "sec": 21.7,
+  "generated": "2026-10-28 18:16:23",
+  "approved": false
+ },
+ "faction_ork_heavy": {
+  "file": "faction_ork_heavy.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of HEAVY PLATE ARMOR for a warrior: (1) a full plate helmet, (2) a plate cuirass, (3) ONE single plate bracer (one arm piece only, not a pair), (4) ONE pair of armoured boots standing together.\nFaction style: the Fire Hordes: brutal dark iron, rust-red cloth accents, jagged edges, a small fang emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.0544395,
+  "sec": 24.4,
+  "generated": "2026-10-28 18:16:48",
+  "approved": false
+ },
+ "faction_ork_light": {
+  "file": "faction_ork_light.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of LIGHT LEATHER ARMOR for a mage: (1) a leather hood, (2) a studded leather scale cuirass, (3) ONE single leather bracer (one arm piece only, not a pair), (4) ONE pair of leather boots standing together.\nFaction style: the Fire Hordes: brutal dark iron, rust-red cloth accents, jagged edges, a small fang emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.054846,
+  "sec": 25.5,
+  "generated": "2026-10-28 18:17:14",
+  "approved": false
+ },
+ "faction_necro_heavy": {
+  "file": "faction_necro_heavy.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of HEAVY PLATE ARMOR for a warrior: (1) a full plate helmet, (2) a plate cuirass, (3) ONE single plate bracer (one arm piece only, not a pair), (4) ONE pair of armoured boots standing together.\nFaction style: the Reapers: blackened steel with pale bone trim, cold violet cloth, a faint green glow, a small skull emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.055185,
+  "sec": 23.4,
+  "generated": "2026-10-28 18:17:38",
+  "approved": false
+ },
+ "faction_necro_light": {
+  "file": "faction_necro_light.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of LIGHT LEATHER ARMOR for a mage: (1) a leather hood, (2) a studded leather scale cuirass, (3) ONE single leather bracer (one arm piece only, not a pair), (4) ONE pair of leather boots standing together.\nFaction style: the Reapers: blackened steel with pale bone trim, cold violet cloth, a faint green glow, a small skull emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.0549165,
+  "sec": 30.3,
+  "generated": "2026-10-28 18:18:09",
+  "approved": false
+ },
+ "faction_druid_heavy": {
+  "file": "faction_druid_heavy.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of HEAVY PLATE ARMOR for a warrior: (1) a full plate helmet, (2) a plate cuirass, (3) ONE single plate bracer (one arm piece only, not a pair), (4) ONE pair of armoured boots standing together.\nFaction style: the Circle of Druids: weathered bronze and dark leather, deep green cloth accents, leaf motifs.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.0546825,
+  "sec": 25.9,
+  "generated": "2026-10-28 18:18:36",
+  "approved": false
+ },
+ "faction_druid_light": {
+  "file": "faction_druid_light.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of LIGHT LEATHER ARMOR for a mage: (1) a leather hood, (2) a studded leather scale cuirass, (3) ONE single leather bracer (one arm piece only, not a pair), (4) ONE pair of leather boots standing together.\nFaction style: the Circle of Druids: weathered bronze and dark leather, deep green cloth accents, leaf motifs.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: helmet, chest armor, bracers, boots.",
+  "cost": 0.0552315,
+  "sec": 24.5,
+  "generated": "2026-10-28 18:19:01",
+  "approved": false
+ },
+ "tags": {
+  "file": "tags.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with FOUR metal dog-tag\ntrophies in one horizontal row, left to right:\n(1) a polished silver-blue tag with a simple stamped eagle silhouette,\n(2) a rusted dark-iron tag with a stamped fang silhouette,\n(3) a blackened violet tag with a stamped skull silhouette,\n(4) a green-bronze tag with a stamped leaf silhouette.\nEach tag is a flat metal plate with a punched hole and a short piece of chain,\nslightly weathered and scratched, painted as a fantasy RPG trophy icon.\n\nThe stamped shapes are SILHOUETTES ONLY - absolutely no letters, no words,\nno numbers, no engraved text on any tag.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n",
+  "cost": 0.0544335,
+  "sec": 22.6,
+  "generated": "2026-10-28 18:19:24",
+  "approved": false
+ }
+}
