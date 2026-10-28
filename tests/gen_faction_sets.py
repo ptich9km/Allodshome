@@ -34,7 +34,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 
 from PIL import Image
@@ -98,12 +97,24 @@ KITS = {
             ("feet", "Boots", "Кожаные сапоги", "legs", 5, 3, 0, 8, 700, 2.5),
         ],
     },
+    "magic": {
+        "craft": "tailor",
+        "material": "Linen",
+        "source": "magic",
+        "resource": "Fabric",
+        "slots": [
+            ("head", "Hat", "Магический колпак", "head", 5, 3, 0, 30, 1200, 1.0),
+            ("body", "Robe", "Магическая мантия", "chest", 10, 7, 0, 55, 2200, 3.0),
+            ("hands", "Gloves", "Магические перчатки", "bracers", 6, 2, 0, 16, 800, 2.0),
+            ("feet", "Shoes", "Магические туфли", "legs", 5, 3, 0, 12, 900, 2.0),
+        ],
+    },
 }
 
-# Старые ключи лёгкого набора, когда он был «робой из льна» (пакет D, 28.10).
-# Миграция 29.10: игрок выбрал КОЖУ, тип тела стал Scale Mail, материал Leather.
-LEGACY_LIGHT_BODY_RE = r"^(Crafted(?: Fine| Master)?) (Alliance|Horde|Reaper|Circle) Robe$"
-FACTION_KEYS = ["Alliance", "Horde", "Reaper", "Circle"]
+# ВАЖНО: миграция «роба из льна -> кожаный доспех» (29.10) уже применена в
+# данных и закоммичена. Повторять её здесь НЕЛЬЗЯ: у магического набора тело —
+# тоже Robe, и глобальная замена ключей превращала его мантию в Scale Mail.
+# Если понадобится новая миграция — только точечно, по id рецепта.
 
 TIERS = [
     ("Crafted", "", None),
@@ -308,41 +319,9 @@ def recipe_text(rec: dict) -> str:
 ## добавляются текстом, а не перезаписью всего документа.
 
 
-def migrate_recipe_outputs() -> None:
-    """Старые выходы рецептов лёгкого набора «... Robe» -> «... Scale Mail».
-
-    Текстовая замена, а не перезапись JSON: файлы рецептов исторически имеют
-    смешанное выравнивание, и json.dumps переформатировал бы их целиком.
-    """
-    changed = 0
-    for path in (SMITH, TAILOR):
-        with open(path, "r", encoding="utf-8", newline="") as fh:
-            raw = fh.read()
-        orig = raw
-        for fk in FACTION_KEYS:
-            for q in ("Crafted", "Crafted Fine", "Crafted Master"):
-                raw = raw.replace('"%s %s Robe"' % (q, fk),
-                                  '"%s %s Scale Mail"' % (q, fk))
-        if raw != orig:
-            with open(path, "w", encoding="utf-8", newline="") as fh:
-                fh.write(raw)
-            changed += 1
-    if changed:
-        print("миграция: рецепты лёгкого набора переведены на Scale Mail")
-
-
 def apply(rebuild_icons: bool = False) -> int:
     items = load_json(DB)
     by_key = {str(it.get("key", "")): it for it in items}
-    # Миграция «роба из льна -> кожаный доспех» (29.10). Старые ключи лёгкого
-    # набора убираем, иначе в базе останутся предметы без рецепта и без иконки
-    # нового типа, а рецепты будут ссылаться на несуществующие выходы.
-    legacy = [it for it in items if re.match(LEGACY_LIGHT_BODY_RE, str(it.get("key", "")))]
-    if legacy:
-        items = [it for it in items if not re.match(LEGACY_LIGHT_BODY_RE, str(it.get("key", "")))]
-        by_key = {str(it.get("key", "")): it for it in items}
-        print("миграция: удалено старых лёгких предметов (роба): %d" % len(legacy))
-    migrate_recipe_outputs()
     next_id = max(int(it.get("id", 0)) for it in items) + 1
     scroll_icons = {race: build_scroll_icon(race) for race in FACTIONS}
     smith_doc = load_json(SMITH)
@@ -352,7 +331,7 @@ def apply(rebuild_icons: bool = False) -> int:
     added_scrolls = 0
     new_recipes = {"smith": [], "tailor": []}
     for race in FACTIONS:
-        for kit_name in ("heavy", "light"):
+        for kit_name in KITS:
             for slot_spec in KITS[kit_name]["slots"]:
                 icon = build_icon(race, kit_name, str(slot_spec[0]), str(slot_spec[3]),
                                   rebuild_icons)
@@ -416,7 +395,7 @@ def check() -> int:
     smith = {str(r.get("id", "")): r for r in load_json(SMITH)["recipes"]}
     tailor = {str(r.get("id", "")): r for r in load_json(TAILOR)["recipes"]}
     for race in FACTIONS:
-        for kit_name in ("heavy", "light"):
+        for kit_name in KITS:
             for slot_spec in KITS[kit_name]["slots"]:
                 slot = str(slot_spec[0])
                 icon = "res://assets/items/faction_sets/%s/%s_%s.png" % (race, kit_name, slot)

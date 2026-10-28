@@ -97,5 +97,49 @@
   "sec": 22.6,
   "generated": "2026-10-28 18:19:24",
   "approved": false
+ },
+ "faction_humans_magic": {
+  "file": "faction_humans_magic.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of MAGIC CLOTH ROBES for a mage: (1) a tall pointed wizard hat, (2) a long flowing robe with a wide decorated hem, (3) ONE single cloth bracer (one arm piece only, not a pair), (4) ONE pair of cloth shoes standing together.\nFaction style: the Alliance of Light: arcane blue silk with golden rune embroidery and a small golden eagle emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: headwear, body garment, bracer, shoes.",
+  "cost": 0.05478,
+  "sec": 24.1,
+  "generated": "2026-10-28 19:06:15",
+  "approved": false
+ },
+ "faction_ork_magic": {
+  "file": "faction_ork_magic.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of MAGIC CLOTH ROBES for a mage: (1) a tall pointed wizard hat, (2) a long flowing robe with a wide decorated hem, (3) ONE single cloth bracer (one arm piece only, not a pair), (4) ONE pair of cloth shoes standing together.\nFaction style: the Fire Hordes: shamanic cloth in rust-red and charcoal, bone charms, a small fang emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: headwear, body garment, bracer, shoes.",
+  "cost": 0.0545235,
+  "sec": 22.9,
+  "generated": "2026-10-28 19:06:57",
+  "approved": false
+ },
+ "faction_necro_magic": {
+  "file": "faction_necro_magic.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of MAGIC CLOTH ROBES for a mage: (1) a tall pointed wizard hat, (2) a long flowing robe with a wide decorated hem, (3) ONE single cloth bracer (one arm piece only, not a pair), (4) ONE pair of cloth shoes standing together.\nFaction style: the Reapers: funeral violet silk with pale bone trim, faint green runes, a small skull emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: headwear, body garment, bracer, shoes.",
+  "cost": 0.0591405,
+  "sec": 31.5,
+  "generated": "2026-10-28 19:07:29",
+  "approved": false
+ },
+ "faction_druid_magic": {
+  "file": "faction_druid_magic.png",
+  "model": "google/gemini-nano-banana-2.1",
+  "size": "1536x1024",
+  "seed": null,
+  "prompt": "A clean high-resolution game asset sheet with four pieces of MAGIC CLOTH ROBES for a mage: (1) a tall pointed wizard hat, (2) a long flowing robe with a wide decorated hem, (3) ONE single cloth bracer (one arm piece only, not a pair), (4) ONE pair of cloth shoes standing together.\nFaction style: the Circle of Druids: deep green woven cloth with bronze leaf embroidery and a small leaf emblem.\n\nFour separate objects in ONE horizontal row, left to right, evenly spaced, all at\nthe same scale, each drawn in FRONT view as a single standalone inventory icon.\nPainted style of a high-end fantasy RPG inventory: soft studio light from the\nupper left, clean dark outline, 3-4 value planes, rich but restrained palette,\nsharp readable silhouette. Each object is a piece of equipment only - no person,\nno mannequin, no hands, no body inside it.\n\nSIZE: each object takes about one quarter of the image width. The gaps between\nneighbouring objects are pure background, at least 80 pixels wide; NOTHING of any\nkind may cross those gaps. Keep at least 40 pixels of pure background on ALL four\nsides of the image - no object may touch or be cut by the border.\n\nBackground: one single flat vivid magenta (255, 0, 255), perfectly uniform\neverywhere. No gradient, no vignette, no texture.\n\nABSOLUTELY NO ground, no floor line, no cast shadow, no contact shadow, no\nreflection, no pedestal, no frame, no grid, no panel, no ruler.\n\nEXCLUDE: text, letters, numbers, captions, labels, watermark, signature,\nduplicate objects, weapons, scenery.\n\nOrder left to right is fixed: headwear, body garment, bracer, shoes.",
+  "cost": 0.058299,
+  "sec": 36.7,
+  "generated": "2026-10-28 19:08:07",
+  "approved": false
  }
 }

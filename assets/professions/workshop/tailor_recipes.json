@@ -85,9 +85,9 @@
     {"item": "Alliance Tag", "count": 1}
    ],
    "outputs": [
-    {"key": "Crafted Alliance Robe", "weight": 80.0},
-    {"key": "Crafted Fine Alliance Robe", "weight": 15.0},
-    {"key": "Crafted Master Alliance Robe", "weight": 5.0}
+    {"key": "Crafted Alliance Scale Mail", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Scale Mail", "weight": 15.0},
+    {"key": "Crafted Master Alliance Scale Mail", "weight": 5.0}
    ]
   },
   {
@@ -145,9 +145,9 @@
     {"item": "Horde Tag", "count": 1}
    ],
    "outputs": [
-    {"key": "Crafted Horde Robe", "weight": 80.0},
-    {"key": "Crafted Fine Horde Robe", "weight": 15.0},
-    {"key": "Crafted Master Horde Robe", "weight": 5.0}
+    {"key": "Crafted Horde Scale Mail", "weight": 80.0},
+    {"key": "Crafted Fine Horde Scale Mail", "weight": 15.0},
+    {"key": "Crafted Master Horde Scale Mail", "weight": 5.0}
    ]
   },
   {
@@ -205,9 +205,9 @@
     {"item": "Reaper Tag", "count": 1}
    ],
    "outputs": [
-    {"key": "Crafted Reaper Robe", "weight": 80.0},
-    {"key": "Crafted Fine Reaper Robe", "weight": 15.0},
-    {"key": "Crafted Master Reaper Robe", "weight": 5.0}
+    {"key": "Crafted Reaper Scale Mail", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Scale Mail", "weight": 15.0},
+    {"key": "Crafted Master Reaper Scale Mail", "weight": 5.0}
    ]
   },
   {
@@ -265,9 +265,9 @@
     {"item": "Circle Tag", "count": 1}
    ],
    "outputs": [
-    {"key": "Crafted Circle Robe", "weight": 80.0},
-    {"key": "Crafted Fine Circle Robe", "weight": 15.0},
-    {"key": "Crafted Master Circle Robe", "weight": 5.0}
+    {"key": "Crafted Circle Scale Mail", "weight": 80.0},
+    {"key": "Crafted Fine Circle Scale Mail", "weight": 15.0},
+    {"key": "Crafted Master Circle Scale Mail", "weight": 5.0}
    ]
   },
   {
@@ -298,6 +298,246 @@
     {"key": "Crafted Circle Boots", "weight": 80.0},
     {"key": "Crafted Fine Circle Boots", "weight": 15.0},
     {"key": "Crafted Master Circle Boots", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_magic_head",
+   "name_ru": "Магический колпак Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Hat", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Hat", "weight": 15.0},
+    {"key": "Crafted Master Alliance Hat", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_magic_body",
+   "name_ru": "Магическая мантия Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Robe", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Robe", "weight": 15.0},
+    {"key": "Crafted Master Alliance Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_magic_head",
+   "name_ru": "Магический колпак Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Hat", "weight": 80.0},
+    {"key": "Crafted Fine Horde Hat", "weight": 15.0},
+    {"key": "Crafted Master Horde Hat", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_magic_body",
+   "name_ru": "Магическая мантия Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Robe", "weight": 80.0},
+    {"key": "Crafted Fine Horde Robe", "weight": 15.0},
+    {"key": "Crafted Master Horde Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_magic_head",
+   "name_ru": "Магический колпак Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Hat", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Hat", "weight": 15.0},
+    {"key": "Crafted Master Reaper Hat", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_magic_body",
+   "name_ru": "Магическая мантия Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Robe", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Robe", "weight": 15.0},
+    {"key": "Crafted Master Reaper Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_magic_head",
+   "name_ru": "Магический колпак Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Hat", "weight": 80.0},
+    {"key": "Crafted Fine Circle Hat", "weight": 15.0},
+    {"key": "Crafted Master Circle Hat", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_magic_body",
+   "name_ru": "Магическая мантия Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 10},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Robe", "weight": 80.0},
+    {"key": "Crafted Fine Circle Robe", "weight": 15.0},
+    {"key": "Crafted Master Circle Robe", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_magic_hands",
+   "name_ru": "Магические перчатки Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Gloves", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Gloves", "weight": 15.0},
+    {"key": "Crafted Master Alliance Gloves", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_humans_magic_feet",
+   "name_ru": "Магические туфли Альянса",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Alliance Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Alliance Shoes", "weight": 80.0},
+    {"key": "Crafted Fine Alliance Shoes", "weight": 15.0},
+    {"key": "Crafted Master Alliance Shoes", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_magic_hands",
+   "name_ru": "Магические перчатки Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Gloves", "weight": 80.0},
+    {"key": "Crafted Fine Horde Gloves", "weight": 15.0},
+    {"key": "Crafted Master Horde Gloves", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_ork_magic_feet",
+   "name_ru": "Магические туфли Орды",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Horde Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Horde Shoes", "weight": 80.0},
+    {"key": "Crafted Fine Horde Shoes", "weight": 15.0},
+    {"key": "Crafted Master Horde Shoes", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_magic_hands",
+   "name_ru": "Магические перчатки Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Gloves", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Gloves", "weight": 15.0},
+    {"key": "Crafted Master Reaper Gloves", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_necro_magic_feet",
+   "name_ru": "Магические туфли Пожинателей",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Reaper Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Reaper Shoes", "weight": 80.0},
+    {"key": "Crafted Fine Reaper Shoes", "weight": 15.0},
+    {"key": "Crafted Master Reaper Shoes", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_magic_hands",
+   "name_ru": "Магические перчатки Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 6},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Gloves", "weight": 80.0},
+    {"key": "Crafted Fine Circle Gloves", "weight": 15.0},
+    {"key": "Crafted Master Circle Gloves", "weight": 5.0}
+   ]
+  },
+  {
+   "id": "faction_druid_magic_feet",
+   "name_ru": "Магические туфли Круга",
+   "craft": "tailor",
+   "inputs": [
+    {"item": "Fabric", "count": 5},
+    {"item": "Magic Essence", "count": 1},
+    {"item": "Circle Tag", "count": 1}
+   ],
+   "outputs": [
+    {"key": "Crafted Circle Shoes", "weight": 80.0},
+    {"key": "Crafted Fine Circle Shoes", "weight": 15.0},
+    {"key": "Crafted Master Circle Shoes", "weight": 5.0}
    ]
   }
  ]

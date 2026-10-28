@@ -18,7 +18,7 @@ const SETS := "res://assets/items/faction_sets/"
 const TAGS := "res://assets/items/tags/"
 const MANIFEST := "res://import/faction_art/_manifest.json"
 const RACES := ["humans", "ork", "necro", "druid"]
-const KITS := ["heavy", "light"]
+const KITS := ["heavy", "light", "magic"]
 const SLOTS := ["head", "body", "hands", "feet"]
 
 var _fails: Array[String] = []
@@ -49,7 +49,7 @@ func _check_dims() -> void:
 				total += 1 if ok else 0
 	for race in RACES:
 		_check_icon("%stag_%s.png" % [TAGS, race])
-	_check(total == 32, "иконок брони проверено: %d из 32" % total)
+	_check(total == 48, "иконок брони проверено: %d из 48" % total)
 
 
 func _check_icon(path: String) -> bool:
@@ -131,7 +131,7 @@ func _check_manifest() -> void:
 		var rec: Variant = d[key]
 		if rec is Dictionary and str((rec as Dictionary).get("file", "")) != "":
 			sheets += 1
-	_check(sheets == 9, "манифест описывает 9 листов (%d)" % sheets)
+	_check(sheets == 13, "манифест описывает 13 листов (%d)" % sheets)
 
 
 func _check(cond: bool, label: String) -> void:

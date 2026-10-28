@@ -2,12 +2,16 @@
  "sheets": {
   "faction_humans_heavy.png": 4,
   "faction_humans_light.png": 4,
+  "faction_humans_magic.png": 4,
   "faction_ork_heavy.png": 4,
   "faction_ork_light.png": 4,
+  "faction_ork_magic.png": 4,
   "faction_necro_heavy.png": 4,
   "faction_necro_light.png": 4,
+  "faction_necro_magic.png": 4,
   "faction_druid_heavy.png": 4,
   "faction_druid_light.png": 4,
+  "faction_druid_magic.png": 4,
   "tags.png": 4
  },
  "icons": [
@@ -100,6 +104,50 @@
    ]
   },
   {
+   "name": "magic_head",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\humans\\magic_head.png",
+   "path": "res://assets/items/faction_sets/humans/magic_head.png",
+   "box": [
+    549,
+    1035,
+    80,
+    648
+   ]
+  },
+  {
+   "name": "magic_body",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\humans\\magic_body.png",
+   "path": "res://assets/items/faction_sets/humans/magic_body.png",
+   "box": [
+    231,
+    1487,
+    707,
+    1388
+   ]
+  },
+  {
+   "name": "magic_hands",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\humans\\magic_hands.png",
+   "path": "res://assets/items/faction_sets/humans/magic_hands.png",
+   "box": [
+    607,
+    1061,
+    1478,
+    1817
+   ]
+  },
+  {
+   "name": "magic_feet",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\humans\\magic_feet.png",
+   "path": "res://assets/items/faction_sets/humans/magic_feet.png",
+   "box": [
+    637,
+    1066,
+    1893,
+    2452
+   ]
+  },
+  {
    "name": "heavy_head",
    "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\ork\\heavy_head.png",
    "path": "res://assets/items/faction_sets/ork/heavy_head.png",
@@ -185,6 +233,50 @@
     1172,
     1834,
     2408
+   ]
+  },
+  {
+   "name": "magic_head",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\ork\\magic_head.png",
+   "path": "res://assets/items/faction_sets/ork/magic_head.png",
+   "box": [
+    420,
+    1127,
+    63,
+    728
+   ]
+  },
+  {
+   "name": "magic_body",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\ork\\magic_body.png",
+   "path": "res://assets/items/faction_sets/ork/magic_body.png",
+   "box": [
+    196,
+    1508,
+    772,
+    1478
+   ]
+  },
+  {
+   "name": "magic_hands",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\ork\\magic_hands.png",
+   "path": "res://assets/items/faction_sets/ork/magic_hands.png",
+   "box": [
+    548,
+    1131,
+    1561,
+    1886
+   ]
+  },
+  {
+   "name": "magic_feet",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\ork\\magic_feet.png",
+   "path": "res://assets/items/faction_sets/ork/magic_feet.png",
+   "box": [
+    931,
+    1390,
+    1813,
+    2457
    ]
   },
   {
@@ -276,6 +368,50 @@
    ]
   },
   {
+   "name": "magic_head",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\necro\\magic_head.png",
+   "path": "res://assets/items/faction_sets/necro/magic_head.png",
+   "box": [
+    539,
+    1086,
+    56,
+    702
+   ]
+  },
+  {
+   "name": "magic_body",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\necro\\magic_body.png",
+   "path": "res://assets/items/faction_sets/necro/magic_body.png",
+   "box": [
+    289,
+    1404,
+    749,
+    1431
+   ]
+  },
+  {
+   "name": "magic_hands",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\necro\\magic_hands.png",
+   "path": "res://assets/items/faction_sets/necro/magic_hands.png",
+   "box": [
+    560,
+    1109,
+    1553,
+    1848
+   ]
+  },
+  {
+   "name": "magic_feet",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\necro\\magic_feet.png",
+   "path": "res://assets/items/faction_sets/necro/magic_feet.png",
+   "box": [
+    610,
+    1088,
+    1970,
+    2434
+   ]
+  },
+  {
    "name": "heavy_head",
    "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\druid\\heavy_head.png",
    "path": "res://assets/items/faction_sets/druid/heavy_head.png",
@@ -361,6 +497,50 @@
     1314,
     1852,
     2478
+   ]
+  },
+  {
+   "name": "magic_head",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\druid\\magic_head.png",
+   "path": "res://assets/items/faction_sets/druid/magic_head.png",
+   "box": [
+    537,
+    1071,
+    29,
+    646
+   ]
+  },
+  {
+   "name": "magic_body",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\druid\\magic_body.png",
+   "path": "res://assets/items/faction_sets/druid/magic_body.png",
+   "box": [
+    133,
+    1561,
+    660,
+    1419
+   ]
+  },
+  {
+   "name": "magic_hands",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\druid\\magic_hands.png",
+   "path": "res://assets/items/faction_sets/druid/magic_hands.png",
+   "box": [
+    582,
+    1132,
+    1551,
+    1856
+   ]
+  },
+  {
+   "name": "magic_feet",
+   "file": "C:\\Work\\Allodshome\\assets\\items\\faction_sets\\druid\\magic_feet.png",
+   "path": "res://assets/items/faction_sets/druid/magic_feet.png",
+   "box": [
+    651,
+    1100,
+    1911,
+    2499
    ]
   },
   {

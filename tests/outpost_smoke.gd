@@ -261,6 +261,11 @@ func _check_capture() -> void:
 	_check(heavy_recipes.size() == 4 and light_recipes.size() == 4,
 		"после захвата мастерская знает 4+4 рецепта (%d+%d)"
 			% [heavy_recipes.size(), light_recipes.size()])
+	# Магический комплект (29.10): третья линия наборов, тоже 4 рецепта.
+	var magic_recipes := CraftDB.known_recipes(CraftDB.TAILOR, player).filter(
+		func(r: Dictionary) -> bool: return str(r.get("id", "")).begins_with("faction_ork_magic"))
+	_check(magic_recipes.size() == 4, "после захвата есть 4 рецепта магического набора (%d)"
+		% magic_recipes.size())
 	var cuirass := ItemDB.find(CraftDB.output_key(CraftDB.recipe_by_id("faction_ork_heavy_body"), 0))
 	var robe := ItemDB.find(CraftDB.output_key(CraftDB.recipe_by_id("faction_ork_light_body"), 0))
 	_check(not cuirass.is_empty() and ItemDB.allows_class(cuirass, "warrior")
@@ -269,6 +274,11 @@ func _check_capture() -> void:
 	_check(not robe.is_empty() and ItemDB.allows_class(robe, "mage")
 		and not ItemDB.allows_class(robe, "warrior"),
 		"лёгкая роба набора — только магу")
+	var magic_robe := ItemDB.find(CraftDB.output_key(
+		CraftDB.recipe_by_id("faction_ork_magic_body"), 0))
+	_check(not magic_robe.is_empty() and ItemDB.allows_class(magic_robe, "mage")
+		and not ItemDB.allows_class(magic_robe, "warrior"),
+		"магическая мантия — только магу")
 	var rbody := CraftDB.recipe_by_id("faction_ork_heavy_body")
 	var needs_tag := false
 	for ing in rbody.get("inputs", []):

@@ -219,7 +219,7 @@ func _test_faction_shelf() -> void:
 	_shop.call("_set_category", idx)
 	await process_frame
 	var pool: Array = _shop.call("_category_items", idx)
-	_check(pool.size() == 8, "полка фракции: 8 чертежей набора (%d)" % pool.size())
+	_check(pool.size() == 12, "полка фракции: 12 чертежей наборов (%d)" % pool.size())
 	var foreign := 0
 	for item in pool:
 		var rid := str((item as Dictionary).get("recipe_id", ""))
@@ -232,7 +232,7 @@ func _test_faction_shelf() -> void:
 		for c in grid.get_children():
 			if c is PanelContainer:
 				cells += 1
-	_check(cells == 8, "ячеек на полке фракции: %d" % cells)
+	_check(cells == 12, "ячеек на полке фракции: %d" % cells)
 	var notice = _shop.get("_npc_notice")
 	_check(notice is Label and (notice as Label).visible,
 		"полка фракции объяснена плашкой")

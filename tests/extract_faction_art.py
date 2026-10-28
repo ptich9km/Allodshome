@@ -47,7 +47,7 @@ SHEET_OUT = SRC / "_icons_sheet.png"
 REPORT = SRC / "_icons_report.json"
 
 RACES = ["humans", "ork", "necro", "druid"]
-KITS = ["heavy", "light"]
+KITS = ["heavy", "light", "magic"]
 SLOTS = ["head", "body", "hands", "feet"]
 ICON_W, ICON_H = 72, 80
 MARGIN = 3
@@ -319,8 +319,8 @@ def main() -> int:
                           encoding="utf-8")
         contact_sheet(entries, SHEET_OUT)
         print("иконок: %d, контактный лист: %s" % (len(entries), SHEET_OUT))
-        if len(entries) != 36:
-            print("RESULT: FAIL — ожидали 36 иконок, получили %d" % len(entries))
+        if len(entries) != 52:
+            print("RESULT: FAIL — ожидали 52 иконки, получили %d" % len(entries))
             return 1
         print("RESULT: OK extract_faction_art")
     return 0

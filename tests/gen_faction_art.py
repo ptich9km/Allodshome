@@ -60,6 +60,22 @@ KITS = {
               "(2) a studded leather scale cuirass, (3) ONE single leather "
               "bracer (one arm piece only, not a pair), (4) ONE pair of "
               "leather boots standing together"),
+    "magic": ("MAGIC CLOTH ROBES for a mage: (1) a tall pointed wizard hat, "
+              "(2) a long flowing robe with a wide decorated hem, (3) ONE single "
+              "cloth bracer (one arm piece only, not a pair), (4) ONE pair of "
+              "cloth shoes standing together"),
+}
+
+## Магический комплект: у каждой фракции своя школа, но крой общий (мантия).
+MAGIC_STYLES = {
+    "humans": "the Alliance of Light: arcane blue silk with golden rune "
+              "embroidery and a small golden eagle emblem",
+    "ork": "the Fire Hordes: shamanic cloth in rust-red and charcoal, bone "
+           "charms, a small fang emblem",
+    "necro": "the Reapers: funeral violet silk with pale bone trim, faint green "
+             "runes, a small skull emblem",
+    "druid": "the Circle of Druids: deep green woven cloth with bronze leaf "
+             "embroidery and a small leaf emblem",
 }
 
 COMMON = """
@@ -87,10 +103,11 @@ duplicate objects, weapons, scenery.
 
 
 def armor_prompt(race: str, kit: str) -> str:
+    style = MAGIC_STYLES[race] if kit == "magic" else FACTIONS[race]
     return ("A clean high-resolution game asset sheet with four pieces of %s.\n"
             "Faction style: %s.\n%s\n"
-            "Order left to right is fixed: helmet, chest armor, bracers, boots."
-            % (KITS[kit], FACTIONS[race], COMMON))
+            "Order left to right is fixed: headwear, body garment, bracer, shoes."
+            % (KITS[kit], style, COMMON))
 
 
 def tags_prompt() -> str:
