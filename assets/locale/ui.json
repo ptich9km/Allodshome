@@ -101,6 +101,21 @@
   "ru": "Моды и дополнения\n\nКаталог mods пуст.\nСюда будут складываться папки модов.",
   "en": "Mods and Add-ons\n\nThe mods folder is empty.\nMod folders will be placed here."
  },
+ "ui.mods.title": {"ru": "Моды", "en": "Mods"},
+ "ui.mods.count": {"ru": "Модов: %d · включено: %d", "en": "Mods: %d · enabled: %d"},
+ "ui.mods.hint_restart": {"ru": "Изменения применятся после перезапуска игры.", "en": "Changes take effect after restarting the game."},
+ "ui.mods.order_hint": {"ru": "Ниже в списке — применяется позже, то есть главнее.", "en": "Lower in the list = applied later, so it wins."},
+ "ui.mods.open_folder": {"ru": "Открыть папку", "en": "Open folder"},
+ "ui.mods.refresh": {"ru": "Обновить", "en": "Refresh"},
+ "ui.mods.toggle": {"ru": "Включить мод", "en": "Enable mod"},
+ "ui.mods.move_up": {"ru": "Выше (применяется раньше)", "en": "Move up (applied earlier)"},
+ "ui.mods.move_down": {"ru": "Ниже (применяется позже)", "en": "Move down (applied later)"},
+ "ui.mods.disabled": {"ru": "выключен", "en": "disabled"},
+ "ui.mods.orphans": {"ru": "Папки без mod.json (мод нужно положить на уровень выше):", "en": "Folders without mod.json (the mod folder must be one level higher):"},
+ "ui.mods.none": {
+  "ru": "Модов нет.\n\nСкопируй папку мода в user://mods/ или нажми «Открыть папку».",
+  "en": "No mods.\n\nCopy a mod folder into user://mods/ or press \"Open folder\"."
+ },
  "ui.mods.found": {
   "ru": "Моды и дополнения\n\nНайдено папок: %d\n%s\n\nРаспознавание модов появится позже.",
   "en": "Mods and Add-ons\n\nFolders found: %d\n%s\n\nMod detection will come later."

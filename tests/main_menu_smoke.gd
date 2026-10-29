@@ -100,8 +100,34 @@ func _run() -> void:
 				menu_box_visible = (mb as Control).visible
 			_check(menu_box_visible, "после «Назад» меню снова видно")
 
-	# --- Моды / сеть / об авторах / выход (панели) ---
-	for pair in [["Моды и дополнения", "Моды"], ["Сетевая игра", "Сетевая"],
+	# --- Моды: отдельная панель (29.10), а не меню-оверлей ---
+	# Менеджер модов переехал из оверлея в свою панель: нужен список со строками,
+	# превью, переключателями и порядком загрузки — в 420 px оверлея это не влезает.
+	var mods_btn := _find_button(mm, "Моды и дополнения")
+	_check(mods_btn != null, "кнопка «Моды и дополнения»")
+	if mods_btn != null:
+		mods_btn.pressed.emit()
+		await process_frame
+		await process_frame
+		var mp = mm.get("_mods_panel")
+		_check(mp != null and is_instance_valid(mp), "панель модов создана")
+		if mp != null:
+			var list = mp.get("_list")
+			var count = mp.get("_count")
+			_check(list != null and (list as Node).get_child_count() > 0,
+				"в панели модов есть строки или пустое состояние")
+			_check(count != null and not (count as Label).text.is_empty(),
+				"панель модов показывает счётчик")
+			var esc := InputEventKey.new()
+			esc.keycode = KEY_ESCAPE
+			esc.pressed = true
+			root.push_input(esc)
+			await process_frame
+			await process_frame
+			_check(mm.get("_mods_panel") == null, "Esc закрывает панель модов")
+
+	# --- сеть / об авторах / выход (панели) ---
+	for pair in [["Сетевая игра", "Сетевая"],
 			["Об авторах", "Об авторах"], ["Выйти", "Выйти"]]:
 		var b := _find_button(mm, str(pair[0]))
 		_check(b != null, "кнопка «%s»" % pair[0])

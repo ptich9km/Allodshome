@@ -53,6 +53,7 @@ var _overlay_body: VBoxContainer
 var _menu_buttons: Array[Button] = []
 var _lang_row: HBoxContainer
 var _settings: SettingsPanel
+var _mods_panel: ModsPanel
 var _quit_confirm := false
 var _fit_root: Control
 
@@ -478,7 +479,18 @@ func _on_load_game() -> void:
 
 func _on_mods() -> void:
 	SoundDB.play("ui.click")
-	_open_overlay("ui.menu.mods", _build_mods_body)
+	if _mods_panel != null and is_instance_valid(_mods_panel):
+		return
+	_mods_panel = ModsPanel.new()
+	_mods_panel.name = "ModsPanel"
+	_mods_panel.closed.connect(_on_mods_closed)
+	add_child(_mods_panel)
+
+
+func _on_mods_closed() -> void:
+	# Панель освобождает себя сама (queue_free в close), поэтому только забываем
+	# ссылку: повторный free() на уже удалённом узле был бы ошибкой.
+	_mods_panel = null
 
 
 func _on_network() -> void:
@@ -649,27 +661,6 @@ func _flash_overlay_status(msg: String) -> void:
 
 
 # --- Моды / сеть / об авторах / выход ---
-
-func _build_mods_body(parent: VBoxContainer) -> void:
-	var lab := _make_body_label(parent, 420)
-	var found: Array = []
-	for base in ["user://mods", "res://mods"]:
-		var dir := DirAccess.open(base)
-		if dir == null:
-			continue
-		dir.list_dir_begin()
-		var fn := dir.get_next()
-		while fn != "":
-			if dir.current_is_dir() and not fn.begins_with("."):
-				found.append("%s/%s" % [base.get_file(), fn])
-			fn = dir.get_next()
-		dir.list_dir_end()
-	if found.is_empty():
-		lab.text = Loc.t("ui.mods.empty")
-	else:
-		lab.text = Loc.f("ui.mods.found", [found.size(), "\n".join(found)])
-	_build_back_button(parent)
-
 
 func _build_network_body(parent: VBoxContainer) -> void:
 	# `_make_body_label` уже добавляет метку в parent. Второй add_child роняет

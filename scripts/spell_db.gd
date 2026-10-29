@@ -21,6 +21,7 @@ static func ensure_loaded() -> void:
 	f.close()
 	if parsed is Dictionary:
 		_db = parsed
+	ModLoader.overlay("spells", _db)
 
 ## Данные заклинания по имени ("Fire_Ball") или {}.
 static func get_spell(name: String) -> Dictionary:

@@ -645,6 +645,9 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"world": world_dict,
 		"events": events,
 		"quests": quests,
+		# Мод-профиль: что было включено на момент сохранения. По нему при
+		# загрузке видно, каких модов не хватает (см. _check_mods).
+		"mods": ModLoader.save_profile(),
 	}
 	var meta := {
 		"hero_name": Game.hero_name,
@@ -899,6 +902,33 @@ static func _stage_world_files(slot: String, src: String, dst_base: String) -> b
 ##
 ## slot — слот, из которого читаем: по нему вход в игру берёт файлы карты из
 ## папки сохранения. Без slot карта берётся по сиду.
+## Мод-профиль сейва против текущего набора: пропавшие и обновлённые моды —
+## предупреждение в лог, а не отказ грузить мир. Урок Space Engineers, где
+## удаление мода ломает мир: у нас ключи строковые, предметы просто не найдутся,
+## и игра обязана открыться.
+static func _check_mods(saved: Variant) -> void:
+	if not (saved is Array) or (saved as Array).is_empty():
+		return
+	var now: Dictionary = {}
+	for m in ModLoader.save_profile():
+		now[str(m.get("id", ""))] = str(m.get("version", ""))
+	var missing: Array[String] = []
+	for raw in (saved as Array):
+		if not (raw is Dictionary):
+			continue
+		var id := str((raw as Dictionary).get("id", ""))
+		if id == "":
+			continue
+		var ver := str((raw as Dictionary).get("version", ""))
+		if not now.has(id):
+			missing.append(id)
+		elif now[id] != ver:
+			push_warning("Сейв: мод '%s' другой версии (%s -> %s)" % [id, ver, str(now[id])])
+	if not missing.is_empty():
+		push_warning("Сейв: моды не загружены (%s) — часть предметов и монстров будет недоступна" %
+			", ".join(missing))
+
+
 static func apply_payload(d: Dictionary, player, slot: String = "") -> void:
 	var map_d: Dictionary = d.get("map", {})
 	Game.map_seed = int(map_d.get("seed", 0))
@@ -917,6 +947,7 @@ static func apply_payload(d: Dictionary, player, slot: String = "") -> void:
 			if bool((cap as Dictionary)[key]):
 				Game.pending_outposts_captured[str(key)] = true
 	Game.pending_events = (d.get("events", []) as Array).duplicate(true)
+	_check_mods(d.get("mods", []))
 	# Older saves (before 22.10) kept an empty ARRAY here, meaning "no quests".
 	# That is not a corruption: fall back to the empty schema silently.
 	var qd: Variant = d.get("quests", {})

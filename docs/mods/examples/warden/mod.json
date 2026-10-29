@@ -1,0 +1,11 @@
+{
+	"id": "warden",
+	"name": "Сторож топей",
+	"version": "1.0.0",
+	"author": "example",
+	"description": "Пример мода: новый зверь на базе волка, его клык и правка обычного волка.",
+	"priority": 0,
+	"affects_save": true,
+	"depends_on": [],
+	"load_after": []
+}

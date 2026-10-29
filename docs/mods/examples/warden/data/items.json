@@ -1,0 +1,22 @@
+[
+	{
+		"kind": "item",
+		"key": "Common warden fang",
+		"name_ru": "Клык сторожа",
+		"name_en": "Warden Fang",
+		"type": "Dagger",
+		"material": "steel",
+		"quality": "Common",
+		"price": 60,
+		"weight": 1.0,
+		"damage_min": 7,
+		"damage_max": 9,
+		"to_hit": 1,
+		"defence": 0,
+		"absorption": 0,
+		"magcap": 0,
+		"level": 2,
+		"effects": [],
+		"icon": "res://assets/items/faction/common/bronze_heavy_amulet_cheap.png"
+	}
+]
