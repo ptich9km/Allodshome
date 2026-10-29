@@ -70,9 +70,13 @@ static func ensure_loaded() -> void:
 		return
 	for raw in parsed:
 		if raw is Dictionary:
-			var it: Dictionary = raw
-			_items.append(it)
-			_by_key[str(it.get("key", ""))] = it
+			_items.append(raw)
+	# Моды применяются до построения индекса: patch меняет уже разобранные записи.
+	ModLoader.overlay("items", _items)
+	_by_key = {}
+	for raw in _items:
+		var it: Dictionary = raw
+		_by_key[str(it.get("key", ""))] = it
 	print("ItemDB: загружено %d предметов" % _items.size())
 
 static func all() -> Array:

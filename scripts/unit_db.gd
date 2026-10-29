@@ -42,6 +42,8 @@ static func ensure_loaded() -> void:
 	f.close()
 	if parsed is Dictionary:
 		_db = parsed
+	# Моды: новые наборы и патчи статов — до индекса, чтобы ids попали в _by_id.
+	ModLoader.overlay("units", _db)
 	# Индекс: ID юнита (из units.txt) -> имя набора (для спавна НПЦ из .alm)
 	_by_id = {}
 	for name in _db:
@@ -106,7 +108,11 @@ static func frame_count(name: String) -> int:
 
 ## Путь к кадру (1-based): res://assets/units/<folder>/<prefix>-NNN.png
 ## У наборов часть имени файла отличается (sprites | swordsman | ...).
+## `folder` вида `mod://<id>/assets/...` разрешается в папку мода — так мод может
+## принести свою полосу кадров, не копируя её в res://.
 static func frame_path(folder: String, prefix: String, frame: int) -> String:
+	if ModLoader.is_mod_path(folder):
+		return "%s/%s-%03d.png" % [ModLoader.resolve(folder), prefix, frame]
 	return "res://assets/units/%s/%s-%03d.png" % [folder, prefix, frame]
 
 ## Префикс кадров набора ("sprites" | "swordsman" | ...) из базы.

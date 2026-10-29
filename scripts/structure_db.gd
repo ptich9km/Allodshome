@@ -23,6 +23,7 @@ static func ensure_loaded() -> void:
 	f.close()
 	if parsed is Dictionary:
 		_db = parsed
+	ModLoader.overlay("structures", _db)
 
 ## Данные строения по ID (type_id из .alm) или {}.
 static func get_by_id(id: int) -> Dictionary:

@@ -1,0 +1,11 @@
+[
+	{
+		"kind": "unit",
+		"key": "monsters/warden",
+		"extends": "monsters/wolf",
+		"name_ru": "Сторож топей",
+		"tier": 3,
+		"palette": 5,
+		"resist": {"fire": 20, "water": 30, "air": 10, "earth": 20, "astral": 25}
+	}
+]
