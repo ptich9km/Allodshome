@@ -14,6 +14,9 @@ var _thread: Thread
 var _start_ms := 0
 var _finishing := false
 var _done := false
+## Готовая карта (редактор/«своя игра»): генерировать нечего, только показать
+## экран и перейти в мир. Путь пришёл в Game.pending_map_path.
+var _custom_path := ""
 
 
 func _ready() -> void:
@@ -40,6 +43,16 @@ func _ready() -> void:
 	UnitDB.ensure_loaded()
 	StructureDB.ensure_loaded()
 	_job = load("res://scripts/world/map_load_job.gd").new()
+
+	# Готовая карта: генерировать нечего. Раньше loading_scene всегда запускал
+	# генератор по сиду и в `_complete()` ПЕРЕЗАТИРАЛ pending_map_path —
+	# старт с картой из редактора был невозможен.
+	var requested := Game.pending_map_path
+	if requested != "" and FileAccess.file_exists(requested):
+		_custom_path = requested
+		_view.set_progress(100, Loc.t("ui.loading.map_ready"))
+		set_process(true)
+		return
 
 	var wm = load("res://scripts/world/world_map.gd")
 	var sector := str(Game.map_sector)
@@ -72,6 +85,12 @@ func _thread_generate(seed_value: int, tier: String, sector: String, size: int,
 
 func _process(_delta: float) -> void:
 	if _done or _finishing:
+		return
+	if _custom_path != "":
+		_view.set_progress(100, Loc.t("ui.loading.map_ready"))
+		if Time.get_ticks_msec() - _start_ms >= int(MIN_SECONDS * 1000.0):
+			_finishing = true
+			_complete(_custom_path)
 		return
 	var snap: Dictionary = _job.snapshot()
 	_view.set_progress(int(snap.get("percent", 0)), _phase_text(int(snap.get("phase", 0))))

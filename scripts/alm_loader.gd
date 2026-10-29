@@ -315,6 +315,107 @@ static func load_map(path: String) -> Dictionary:
 
 ## --- Запись тайлов обратно в .alm (редактор карт) ---
 
+## Собрать .alm с нуля: info + tiles + heights + obstacles.
+##
+## Раньше полный writer жил только в `MapGenerator._write_alm()` и редактор
+## не мог сохранить НОВУЮ карту в .alm (умел лишь патчить тайлы открытой).
+## Теперь writer один: генератор и редактор зовут его отсюда.
+##
+## heights/obstacles короче `w*h` — добиваются нулями; тайлы обязаны совпадать
+## по размеру (иначе карта битая, лучше честная ошибка и "").
+static func build_map_bytes(w: int, h: int, tiles: PackedInt32Array,
+		heights: PackedByteArray, obstacles: PackedByteArray,
+		map_name: String = "custom") -> PackedByteArray:
+	var n := w * h
+	if w <= 0 or h <= 0 or tiles.size() != n:
+		push_error("AlmLoader.build_map_bytes: размеры %dx%d и тайлов %d не сходятся"
+			% [w, h, tiles.size()])
+		return PackedByteArray()
+	var hs := heights.duplicate()
+	hs.resize(n)
+	var os := obstacles.duplicate()
+	os.resize(n)
+
+	var data := PackedByteArray()
+	data.resize(0x14)
+	_put_u32(data, 0, MAGIC)
+	_put_u32(data, 4, HEADER_SIZE)
+	_put_u32(data, 0x0c, 4)
+
+	# 0: info (660 байт; width/height в начале, имя по смещению 68)
+	var sec0 := PackedByteArray()
+	sec0.resize(20 + 660)
+	_put_u32(sec0, 8, 660)
+	_put_u32(sec0, 12, 0)
+	data.append_array(sec0)
+	var ds := HEADER_SIZE + 20
+	_put_u32(data, ds, w)
+	_put_u32(data, ds + 4, h)
+	for i in range(mini(0x40, map_name.length())):
+		data[ds + 68 + i] = map_name.unicode_at(i) & 0xFF
+
+	# 1: tiles
+	var sec1 := PackedByteArray()
+	sec1.resize(20 + n * 2)
+	_put_u32(sec1, 8, n * 2)
+	_put_u32(sec1, 12, 1)
+	data.append_array(sec1)
+	var tds := ds + 660 + 20
+	for i in range(n):
+		_put_u16(data, tds + i * 2, tiles[i])
+
+	# 2: heights (int8, 0..127)
+	var sec2 := PackedByteArray()
+	sec2.resize(20 + n)
+	_put_u32(sec2, 8, n)
+	_put_u32(sec2, 12, 2)
+	data.append_array(sec2)
+	var hds := tds + n * 2 + 20
+	for i in range(n):
+		data[hds + i] = clampi(hs[i], 0, 127)
+
+	# 3: obstacles
+	var sec3 := PackedByteArray()
+	sec3.resize(20 + n)
+	_put_u32(sec3, 8, n)
+	_put_u32(sec3, 12, 3)
+	data.append_array(sec3)
+	var ods := hds + n + 20
+	for i in range(n):
+		data[ods + i] = os[i]
+	return data
+
+
+static func write_map(path: String, w: int, h: int, tiles: PackedInt32Array,
+		heights: PackedByteArray, obstacles: PackedByteArray,
+		map_name: String = "custom") -> bool:
+	var data := build_map_bytes(w, h, tiles, heights, obstacles, map_name)
+	if data.is_empty():
+		return false
+	var dir := path.get_base_dir()
+	if dir != "" and not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(dir)):
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		push_error("AlmLoader: не открыть для записи: " + path)
+		return false
+	f.store_buffer(data)
+	f.close()
+	return true
+
+
+static func _put_u32(d: PackedByteArray, off: int, v: int) -> void:
+	d[off] = v & 0xFF
+	d[off + 1] = (v >> 8) & 0xFF
+	d[off + 2] = (v >> 16) & 0xFF
+	d[off + 3] = (v >> 24) & 0xFF
+
+
+static func _put_u16(d: PackedByteArray, off: int, v: int) -> void:
+	d[off] = v & 0xFF
+	d[off + 1] = (v >> 8) & 0xFF
+
+
 ## Перезаписать секцию tiles в существующем файле .alm (raw из load_map).
 static func write_tiles(path: String, raw: PackedByteArray, tiles_off: int, tiles: PackedInt32Array) -> bool:
 	if tiles_off < 0 or tiles.is_empty():

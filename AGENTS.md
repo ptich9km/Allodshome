@@ -96,8 +96,12 @@ ui/          — UI-сцены и скрипты
 | `scripts/spell_db.gd` | заклинания (сферы/магия), `sphere_of(spell_name)`, `sound_of(name)` → ключ SoundDB |
 | `scripts/sound_db.gd` | `SoundDB`: именованные ключи из `assets/audio/sound_db.json`, шины Music/SFX/UI/Voice/Ambient, пул плееров; числовых ID больше нет |
 | `scripts/music_db.gd` | `MusicDB`: непрерывный плейлист из `assets/audio/music_db.json` (v2), кроссфейд 2.5 с, `Timer` с `PROCESS_MODE_ALWAYS`; старт с трека 1 при запуске, очередь не сбрасывается сменой сцены и паузой |
-| `scripts/ui.gd`, `scripts/character_select.gd` | UI; для мага — панель сфер вместо навыков оружия |
-| `scripts/transition_editor.gd` | визуальный редактор переходов terrain (в редакторе карт) |
+| `scripts/ui.gd`, `scripts/character_select.gd` | UI; для мага — панель сфер вместо навыков оружия; блок «Мир» (сид/зона/готовая карта) |
+| `scripts/start_setup.gd` | `class_name StartSetup` — как начинается новая игра: `random` / `seed` / `map`; `apply()` пишет `Game.*` и раскладывает сид мира по секторам |
+| `scripts/map_meta.gd` | `class_name MapMeta` — паспорт `user://maps/custom/<name>.meta.json`, список карт для блока «Мир» |
+| `scripts/world_setup_panel.gd` | окно «Мир» на экране выбора героя (сид, зона, список готовых карт) |
+| `scripts/map_validator.gd` | проверка карты перед запуском: спавн, здания, НПЦ, порталы |
+| `scripts/map_editor.gd`, `scripts/custom_map.gd` | редактор карт: terrain, структуры, пропы, НПЦ, спавн, порталы; полная запись `.alm` + sidecar-ы |
 | `scripts/world/world_state.gd`, `world_bus.gd`, `world_sim.gd` | Слой-2, SIM-мир |
 | `scripts/world/map_generator.gd` | `class_name MapGenerator` — ядро процедурной генерации `.alm` по сиду; `generate(seed, zone, dir)`, `ensure_map(seed)` |
 | `scripts/portal_marker.gd` | `class_name PortalMarker`, Sprite2D + анимация 4 кадра |
@@ -258,8 +262,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 
 ### 8.7 Устаревшие заметки о переходах (tile8–15, transition_db)
 
-- База правил — `assets/maps/transition_db.json`: ключ `"типA:направление:типB"` → `{file, variant, row}`; interior — ключ `"тип"`. 330 правил. **На картинку больше не влияет** (см. 8.6), остаётся справочной для редактора.
-- Редактор — `scripts/transition_editor.gd`: сетка 3×3 (центр A + 8 направлений), палитра только тайлов типа A, центральная ячейка = interior. Импорт правил из `.alm` удалён 29.10: корпус карт Аллодов снесён, импортировать больше нечего.
+- База правил — `assets/maps/transition_db.json`: ключ `"типA:направление:типB"` → `{file, variant, row}`; interior — ключ `"тип"`. 330 правил. **На картинку больше не влияет** (см. 8.6) и **редактора у неё больше нет**: `transition_editor.gd` удалён 29.10 вместе с кнопкой «Transitions» (импорт из `.alm` был снесён раньше). Данные остаются справочными.
 - Палитра: `PALETTE_FILE {0:1, 1:2, 2:3, 3:4, 4:5, 5:1, 6:1}` (песок/грязь выбираются из tile1); `.alm`-рендер — `TERRAIN_FILE {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}`.
 - Хранение земли под объектами (`under_tiles` в `custom_map.gd`): упаковка `тип * 256 + tex_idx`; при ластике восстанавливаются и тип, и текстура.
 
@@ -294,6 +297,12 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 | `transition_grid_smoke.gd` | BlendMesh собран, border-поле, road cap; EDGE_SETS из генератора |
 | `test_simulation.gd` | просмотр `world_sim` |
 | `gen_seeds_smoke.gd` | разные сиды → разные карты + sidecar-ы, детерминизм, влияние зоны |
+| `alm_write_smoke.gd` | **полная запись `.alm` (29.10)**: `AlmLoader.build_map_bytes/write_map` — round-trip tiles/heights/obstacles, отказ на неверном размере; генератор пишет тем же writer-ом |
+| `start_setup_smoke.gd` | **«Своя игра» (29.10)**: один сид+зона → один `map_seed`, разные сиды → разные; готовая карта → `pending_map_path` + identity-сид; мета (зона/заголовок) читается и попадает в список |
+| `custom_map_loading_smoke.gd` | старт новой игры с готовой картой: `loading.tscn` не генерирует по сиду, `main.tscn` открывает тот же `.alm`, герой на спавне из `.spawn.json`; `.meta.json` едет в слот и обратно |
+| `map_editor_smoke.gd` | **редактор карт (29.10)**: проп НЕ двигает спавн (регрессия), здание ставится/снимается по любой клетке футпринта, порталы, высоты/obstacles, валидатор (нет спавна / старый id / портал в никуда), сцена редактора и «Новая» |
+| `character_select_escape_smoke.gd` | **Esc (29.10)**: закрывает панель «Мир», затем возвращает в главное меню (регрессия «из Новой игры нельзя выйти») |
+| `editor_dialog_cursor_smoke.gd` | **курсор в диалогах (29.10)**: пока открыт `FileDialog`/`PopupPanel`, `cursor_layer` возвращает системную стрелку и прячет свой спрайт; после закрытия — обратно |
 | `outpost_smoke.gd` | **форпосты (пакет B)**: 3 лагеря (в start 0), фракции/тир по зоне, достижимость от спавна, стража нейтральна при репутации 0 и враждебна после удара, бирка в луте, захват + `map.outposts`, живая сцена; **сторож 29.10**: на карте нет зданий с `type_id < 200` |
 | `city_ai_budget_smoke.gd` | **бюджет ИИ в городе (29.10)**: счётчики, а не мс — `units_range` ≤ 300 и сканов цели стражей ≤ 60 в кадр (сейчас 3 и 4), при живой страже (9) |
 | `faction_art_smoke.gd` | **ИИ-арт наборов (29.10)**: 52 иконки 72×80 (48 брони/магии + 4 бирки), прозрачные углы, содержимое не срезано, 48 иконок различаются по фракциям и линиям, манифест 13 листов |
@@ -584,6 +593,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 
 ### Индекс записей
 
+- 29.10 (Своя игра + редактор) — старт с сидом/зоной/готовой картой (`StartSetup`, окно «Мир», список `user://maps/custom/`, `.meta.json` в сейве); Esc с выбора героя возвращает в меню; редактор: удалён `transition_editor`, полная запись `.alm`, пропы/спавн/порталы/валидатор, проп больше не двигает спавн, UI на `UiKit` и курсор в диалогах; тесты `alm_write`, `start_setup`, `custom_map_loading`, `map_editor`, `character_select_escape`, `editor_dialog_cursor`; проверено в игре
 - 29.10 (чистка Аллодов) — удалены все 179 Аллодовских зданий (ids 1..179) и 17 оригинальных `.alm`-карт: на карте только наши (Alice 200–206 + seedream 207–232); форпосты переведены на наши постройки, вместо костра — проп, `GEN_VERSION` 33; сторожа `purge_legacy_structures --check`, `outpost_smoke` (нет `type_id < 200`), `structure_anim_smoke`; проверено в игре
 - 29.10 (ИИ-арт ковки) — 13 листов KodikRouter (тяжёлые, кожаные и 4 магических тканевых набора + бирки), ~$0.84: пилот, «один наруч/пара сапог», маджента, нарезка по компонентам с гашением призрачных дублей; лёгкий набор — кожа (Leather вернулась), магический — ткань (Hat/Robe/Gloves/Shoes), генераторы не затирают арт
 - 29.10 (переработка ковки, пакеты E+F) — квест «Бирки соперника» (шаблон `gather_tags`: бирки чужой фракции, награда — чертёж набора своей) и вкладка лавки «Рец. Фракция» (8 чертежей фракции города, плашка); данные в quest_db.json + Loc, код в quest_system/quest_db/shop_panel

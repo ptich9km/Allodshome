@@ -41,7 +41,9 @@ var tilemap: TileMapLayer      # слой земли (типы 0-4)
 var object_layer: TileMapLayer # слой объектов (типы 5-7) поверх земли
 var objects_root: Node2D       # слой анимированных спрайтов объектов (y-sort)
 var map_objects := {}          # клетка (Vector2i) -> MapObject
-var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (тип 7)
+var spawn_cell := Vector2i(-1, -1)   # клетка спавна героя (отдельно, НЕ тип 7)
+var portals: Array = []          # [{x, y, to, dir}] — переходы между зонами/секторами
+var portals_root: Node2D         # маркеры спавна и порталов
 var structures: Array = []     # записи {"x","y","type_id"} — здания (сетка тайлов)
 var npcs: Array = []           # записи {"x","y","set"} — жители/монстры
 var nowalk: Dictionary = {}    # клетка Vector2i -> true — «Нельзя пройти» (ручная разметка)
@@ -144,6 +146,13 @@ func load_map(path: String) -> bool:
 		tiles[i] = int(raw[i])
 	structures = _load_entity_list(json.get("structures", []))
 	npcs = _load_entity_list(json.get("npcs", []))
+	portals = _load_entity_list(json.get("portals", []))
+	# Спавн — отдельное поле. Раньше его выводили из клетки типа 7, но тип 7
+	# это ЛЮБОЙ проп (дерево/камень), и любой проп «перетаскивал» спавн.
+	spawn_cell = Vector2i(-1, -1)
+	var sp: Variant = json.get("spawn", null)
+	if sp is Array and (sp as Array).size() >= 2:
+		spawn_cell = Vector2i(int((sp as Array)[0]), int((sp as Array)[1]))
 	nowalk.clear()
 	var nw: Variant = json.get("nowalk", null)
 	if nw is Array:
@@ -256,6 +265,8 @@ func import_alm(data: Dictionary) -> void:
 	under_tiles.fill(-1)
 	structures = []
 	npcs = []
+	portals = []
+	spawn_cell = Vector2i(-1, -1)
 	nowalk.clear()
 	allowwalk.clear()
 	for i in range(alm_tiles.size()):
@@ -468,10 +479,6 @@ func set_tile(cell: Vector2i, type_id: int, tex_idx: int = -1) -> void:
 		tiles[i] = type_id
 		tex_ids[i] = tex_idx
 		under_tiles[i] = -1
-	if type_id == 7:
-		spawn_cell = cell
-	elif spawn_cell == cell:
-		spawn_cell = Vector2i(-1, -1)
 	if tilemap:
 		_refresh_cell(cell)
 
@@ -630,6 +637,8 @@ func _rebuild_entities() -> void:
 		s.position = Vector2(x * TILE + TILE / 2.0 - cx * sc, y * TILE + TILE - cy * sc)
 		npcs_root.add_child(s)
 
+	_refresh_markers()
+
 ## Создать (или обновить) спрайт объекта на клетке.
 func _ensure_map_object(cell: Vector2i, obj_name: String) -> void:
 	var existing: MapObject = map_objects.get(cell)
@@ -747,19 +756,175 @@ func export_alm_tiles(original_tiles: PackedInt32Array = PackedInt32Array()) -> 
 			out[i] = 0
 	return out
 
-## Мировая позиция спавна героя (тип 7) или центр карты если не задан.
+## Мировая позиция спавна героя или центр карты если не задан.
 func get_spawn_pos() -> Vector2:
 	if spawn_cell.x >= 0:
 		return Vector2(spawn_cell.x * TILE + TILE / 2.0, spawn_cell.y * TILE + TILE / 2.0)
 	return Vector2(map_width * TILE / 2.0, map_height * TILE / 2.0)
 
-## Найти клетку спавна (тип 7) — первая встреченная.
+## Маркеры спавна и порталов — отдельные узлы. Раньше спавн жил в клетке
+## типа 7 (как проп), из-за чего дерево/камень «перетаскивал» точку старта.
 func _refresh_spawn() -> void:
-	spawn_cell = Vector2i(-1, -1)
-	for i in range(tiles.size()):
-		if tiles[i] == 7:
-			spawn_cell = Vector2i(i % map_width, int(i / float(map_width)))
+	_refresh_markers()
+
+func _refresh_markers() -> void:
+	if portals_root == null:
+		portals_root = Node2D.new()
+		portals_root.name = "Markers"
+		portals_root.y_sort_enabled = true
+		portals_root.z_index = 9
+		add_child(portals_root)
+	for c in portals_root.get_children():
+		c.queue_free()
+	var marker_script: GDScript = load("res://scripts/portal_marker.gd")
+	if spawn_cell.x >= 0:
+		var pm = marker_script.new()
+		pm.setup(spawn_cell, "spawn_marker")
+		portals_root.add_child(pm)
+	for rec in portals:
+		var cell := Vector2i(int(rec.get("x", -1)), int(rec.get("y", -1)))
+		if cell.x < 0:
+			continue
+		var pm2 = marker_script.new()
+		pm2.setup(cell, "portal")
+		portals_root.add_child(pm2)
+
+## --- Структуры: футпринт, поиск по любой клетке, снятие ---
+
+## Прямоугольник, который структура занимает на карте (в клетках).
+## `y` записи — НИЖНЯЯ клетка корпуса, выступ крыши уходит вверх на fh-th.
+func structure_rect(rec: Dictionary) -> Rect2i:
+	var def := StructureDB.get_by_id(int(rec.get("type_id", 0)))
+	var fw := int(def.get("tile_width", 1))
+	var th := int(def.get("tile_height", 1))
+	var fh := int(def.get("full_height", th))
+	return Rect2i(int(rec.get("x", 0)), int(rec.get("y", 0)) - (fh - th), fw, fh)
+
+## Индекс структуры, в чей футпринт попадает клетка (-1 — нет).
+func structure_index_at(cell: Vector2i) -> int:
+	for i in range(structures.size()):
+		if structure_rect(structures[i] as Dictionary).has_point(cell):
+			return i
+	return -1
+
+## Поставить структуру, если футпринт внутри карты и не пересекает другие.
+func add_structure(cell: Vector2i, type_id: int) -> bool:
+	if type_id <= 0:
+		return false
+	var def := StructureDB.get_by_id(type_id)
+	if def.is_empty():
+		return false
+	var rec := {"x": cell.x, "y": cell.y, "type_id": type_id}
+	var rect := structure_rect(rec)
+	if rect.position.x < 0 or rect.position.y < 0 \
+			or rect.end.x > map_width or rect.end.y > map_height:
+		return false
+	for other in structures:
+		if structure_rect(other as Dictionary).intersects(rect):
+			return false
+	structures.append(rec)
+	_rebuild_entities()
+	return true
+
+## Снять структуру, кликнув по ЛЮБОЙ её клетке (раньше — только по якорю).
+func remove_structure_at(cell: Vector2i) -> bool:
+	var idx := structure_index_at(cell)
+	if idx < 0:
+		return false
+	structures.remove_at(idx)
+	_rebuild_entities()
+	return true
+
+## --- Пропы (деревья/камни/бочки) ---
+
+## Поставить объект-проп на клетку. Тип 7 = «Строение», но спавн больше
+## не двигается (см. set_tile). Новый спек добавляется в набор типа 7 —
+## после этого атлас пересобирается, иначе у новой текстуры нет source_id.
+func add_object(cell: Vector2i, obj_name: String) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
+		return
+	if obj_name == "" or not ObjectDB.has(obj_name):
+		return
+	var set: Array = texture_sets.get(7, [])
+	var idx := -1
+	for i in range(set.size()):
+		var spec: Dictionary = set[i]
+		if str(spec.get("kind", "")) == "object" \
+				and ObjectDB.object_name_from_spec(spec) == obj_name:
+			idx = i
 			break
+	if idx < 0:
+		set.append({"kind": "object", "obj": obj_name, "file": 1, "variant": 0, "row": 0})
+		texture_sets[7] = set
+		idx = set.size() - 1
+		_build_tilemap()
+	set_tile(cell, 7, idx)
+
+## --- Порталы ---
+
+func portal_index_at(cell: Vector2i) -> int:
+	for i in range(portals.size()):
+		var rec: Dictionary = portals[i]
+		if int(rec.get("x", -1)) == cell.x and int(rec.get("y", -1)) == cell.y:
+			return i
+	return -1
+
+func add_portal(cell: Vector2i, to: String = "", dir: String = "") -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= map_width or cell.y >= map_height:
+		return
+	var idx := portal_index_at(cell)
+	var rec := {"x": cell.x, "y": cell.y, "to": to, "dir": dir}
+	if idx >= 0:
+		portals[idx] = rec
+	else:
+		portals.append(rec)
+	_refresh_markers()
+
+func remove_portal_at(cell: Vector2i) -> bool:
+	var idx := portal_index_at(cell)
+	if idx < 0:
+		return false
+	portals.remove_at(idx)
+	_refresh_markers()
+	return true
+
+## --- Экспорт высот и препятствий для полной записи .alm ---
+
+## Псевдо-высоты по типу клетки (редактор их не рисует, но .alm без них
+## грузится плоско-серым: AlmMap использует heights для яркости рельефа).
+func export_heights() -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(map_width * map_height)
+	for i in range(out.size()):
+		var t := tiles[i]
+		if t >= 7:
+			if under_tiles[i] >= 0:
+				t = _under_type(under_tiles[i])
+			else:
+				t = 0
+		match t:
+			2: out[i] = 6      # вода
+			4: out[i] = 64     # горы
+			3: out[i] = 20     # дорога
+			5: out[i] = 18     # песок
+			6: out[i] = 15     # грязь
+			_: out[i] = 30     # трава/почва
+	return out
+
+## Секция obstacles .alm: id объекта по имени папки (alm_objects.json).
+## Земля под пропом остаётся в тайлах — AlmMap строит препятствия отдельно.
+func export_alm_obstacles() -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(map_width * map_height)
+	for i in range(out.size()):
+		if tiles[i] != 7:
+			continue
+		var spec := texture_spec_at(Vector2i(i % map_width, int(i / float(map_width))))
+		var name := ObjectDB.object_name_from_spec(spec)
+		if name == "":
+			continue
+		out[i] = ObjectDB.alm_id_of(name)
+	return out
 
 func save_map(path: String) -> bool:
 	if map_width == 0:
@@ -779,6 +944,8 @@ func save_map(path: String) -> bool:
 		"texture_sets": texture_sets,
 		"structures": structures,
 		"npcs": npcs,
+		"portals": portals,
+		"spawn": [spawn_cell.x, spawn_cell.y] if spawn_cell.x >= 0 else [],
 		"nowalk": nw_list,
 		"allowwalk": aw_list,
 	}

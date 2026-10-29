@@ -650,6 +650,14 @@ static var map_sector: String = ""
 ## пока идёт расселение и прогрев, а не мигать пустой картой.
 static var startup_loading: bool = false
 
+## Куда вернуться из редактора карт по Esc/F9: главное меню или выбор героя.
+## Пустая строка — поведение по умолчанию (главное меню).
+static var editor_return_scene: String = ""
+
+## Настройки новой игры, переданные из редактора карт («Играть эту карту»).
+## character_select читает их один раз в _ready и очищает.
+static var start_preset: Dictionary = {}
+
 static func _world_map() -> GDScript:
 	return load("res://scripts/world/world_map.gd") as GDScript
 
