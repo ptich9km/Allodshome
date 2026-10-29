@@ -29,17 +29,22 @@ static func get_spell(name: String) -> Dictionary:
 	return _db.get(name, {})
 
 ## Книга стихии ("Book Fire") -> имя сферы ("Fire"). "" если не книга.
+## Список сфер — в данных (assets/config/content_rules.json, "spells.spheres"):
+## мод может добавить новую школу магии, и свитки/книги подхватят её сами.
 static func sphere_of_book(book_name: String) -> String:
 	var n := str(book_name).to_lower()
 	if n.begins_with("book "):
 		var sphere := n.trim_prefix("book ").capitalize()
-		if sphere in ["Fire", "Water", "Air", "Earth", "Astral"]:
+		if sphere in ContentRules.list("spells.spheres"):
 			return sphere
 	return ""
 
 ## Какие книги стихий есть (для словаря предметов).
 static func book_item_names() -> Array:
-	return ["Book Fire", "Book Water", "Book Air", "Book Earth", "Book Astral"]
+	var out: Array = []
+	for sphere in ContentRules.list("spells.spheres"):
+		out.append("Book " + str(sphere))
+	return out
 
 ## Заклинания сферы ("Fire") в порядке базы.
 static func spells_of_sphere(sphere: String) -> Array:

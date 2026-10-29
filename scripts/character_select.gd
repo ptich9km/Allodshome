@@ -7,12 +7,11 @@ class_name CharacterSelect
 
 const PORTRAIT_DIR := "res://assets/hero_portraits/"
 
-const RACES := [
-	{"id": "human", "label": "Человек"},
-	{"id": "necro", "label": "Нежить"},
-	{"id": "druid", "label": "Друид"},
-	{"id": "ork", "label": "Орк"},
-]
+## Расы для выбора — данные (`races` в assets/config/content_rules.json).
+## Мод может добавить расу: портрет ищется по конвенции `<раса>_<пол>_<роль>`,
+## а флаг `two_styles` включает второй стиль (у людей human/human2).
+static func races() -> Array:
+	return ContentRules.list("races")
 
 ## Статы пресетов — прежние 4 карточки (пол × класс), без привязки к Аллодовским id.
 const PRESETS := [
@@ -139,19 +138,14 @@ func _ready():
 
 
 ## Ключ портрета: {race}_{m|f}_{war|mage}, у людей + стиль human/human2.
+## Раса из данных: `two_styles` — две внешности (только у людей), иначе
+## портрет называется ровно по id расы. Мод с новой расой работает без правок.
 func _portrait_key(race: String, gender: String, role: String) -> String:
 	var g := "m" if gender == "male" else "f"
 	var r := "war" if role == "warrior" else "mage"
-	match race:
-		"human":
-			return ("human" if _style <= 1 else "human2") + "_" + g + "_" + r
-		"necro":
-			return "necro_" + g + "_" + r
-		"druid":
-			return "druid_" + g + "_" + r
-		"ork":
-			return "ork_" + g + "_" + r
-	return "human_m_war"
+	if bool(ContentRules.race(race).get("two_styles", false)):
+		return ("human" if _style <= 1 else "human2") + "_" + g + "_" + r
+	return race + "_" + g + "_" + r
 
 
 func _rebuild_characters() -> void:
@@ -176,8 +170,9 @@ func _setup_race_row() -> void:
 	row.add_theme_constant_override("separation", 8)
 	_root.add_child(row)
 	_race_buttons.clear()
-	for i in range(RACES.size()):
-		var race: Dictionary = RACES[i]
+	var race_list := races()
+	for i in range(race_list.size()):
+		var race: Dictionary = race_list[i]
 		var b := Button.new()
 		b.name = "Race_" + str(race["id"])
 		b.text = str(race["label"])
@@ -205,8 +200,12 @@ func _refresh_style_btn() -> void:
 
 func _on_race_pressed(race_id: String) -> void:
 	_race = race_id
+	var race_list := races()
 	for i in range(_race_buttons.size()):
-		(_race_buttons[i] as Button).button_pressed = str(RACES[i]["id"]) == _race
+		var id := ""
+		if i < race_list.size() and race_list[i] is Dictionary:
+			id = str((race_list[i] as Dictionary).get("id", ""))
+		(_race_buttons[i] as Button).button_pressed = id == _race
 	_refresh_style_btn()
 	_rebuild_characters()
 	_refresh_card_images()

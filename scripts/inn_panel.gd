@@ -1,12 +1,14 @@
-class_name InnPanel
+﻿class_name InnPanel
 extends CanvasLayer
 
 signal closed
 
 const MAX_PARTY := 4
-const CANDIDATES := [
-	"ork_mage_a52/t0", "ork_mage_a52/t1", "ork_mage_a52/t2", "ork_mage_a52/t3",
-]
+## Кандидаты в наёмники по тирам (слабее -> сильнее). Данные, а не константа:
+## мод может добавить свой набор в таверну (`inn.candidates` в
+## assets/config/content_rules.json).
+func _candidate_sets() -> Array:
+	return ContentRules.list("inn.candidates")
 const TALK_LINES := [
 	"Говорят, на севере всё больше диких зверей... Охрана у ворот не справляется.",
 	"В школе тренировок берут золотом за каждую ступень. Дорого, но быстро.",
@@ -241,7 +243,7 @@ func _build_ui() -> void:
 	_build_hover_card()
 
 ## Тир наёмников по репутации: 0..3. Пороги — [reputation] tier_1..tier_3;
-## CANDIDATES перечислены от слабого тира к сильному, поэтому тир = индекс.
+## _candidate_sets() перечислены от слабого тира к сильному, поэтому тир = индекс.
 func _tier() -> int:
 	var t := 0
 	if _rep >= GameConfig.geti("reputation", "tier_1"):
@@ -268,7 +270,7 @@ func _tier_threshold(tier_index: int) -> int:
 ## Сколько репутации до следующего тира (0 — выше некуда).
 func _next_tier_need() -> int:
 	var next_tier := _tier() + 1
-	if next_tier > CANDIDATES.size() - 1:
+	if next_tier > _candidate_sets().size() - 1:
 		return 0
 	return _tier_threshold(next_tier)
 
@@ -276,21 +278,21 @@ func _next_tier_need() -> int:
 ## Ячейка-замок для тира выше текущего. Пустые клетки читались как «наёмники
 ## пропали» (жалоба игрока 28.10) — теперь видно, что и сколько нужно.
 func _locked_entry(index: int) -> Dictionary:
-	if index < 0 or index >= CANDIDATES.size():
+	if index < 0 or index >= _candidate_sets().size():
 		return {}
 	if index <= _tier():
 		return {}
 	var need := _tier_threshold(index)
 	if need <= 0:
 		return {}
-	return {"set": str(CANDIDATES[index]), "locked": true, "need": need}
+	return {"set": str(_candidate_sets()[index]), "locked": true, "need": need}
 
 
 func _generate_candidates() -> void:
 	_candidates.clear()
 	var tier := _tier()
 	var tier_cost := GameConfig.geti("reputation", "inn_tier_cost")
-	var pool: Array = CANDIDATES.slice(0, mini(tier + 1, CANDIDATES.size()))
+	var pool: Array = _candidate_sets().slice(0, mini(tier + 1, _candidate_sets().size()))
 	while not pool.is_empty():
 		var index := randi() % pool.size()
 		var set_name := str(pool[index])

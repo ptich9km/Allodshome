@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 ## Лут Серых: снаряжение падает СЛОМАННЫМ, металл — по тиру врага.
 ##
 ## ЗАЧЕМ ТЕСТ. До 22.10 Серые роняли ЦЕЛЫЕ вещи. Мастерская переплавляет целую
@@ -55,14 +55,14 @@ func _run() -> void:
 ## `monsters/wolf_t3` -> beast, оса -> insect, город/герой/пусто -> "".
 func _test_family_of_species() -> void:
 	var known := {}
-	for f in UnitDB.LOOT_FAMILIES:
+	for f in UnitDB.loot_families():
 		known[f] = true
 	var bad: Array[String] = []
-	for key in UnitDB.LOOT_BY_SPECIES.keys():
+	for key in UnitDB.loot_by_species().keys():
 		for tier in [1, 2, 3, 4, 5]:
 			var name := "monsters/%s_t%d" % [key, tier]
 			var fam := UnitDB.loot_family_of(name)
-			if fam != str(UnitDB.LOOT_BY_SPECIES[key]):
+			if fam != str(UnitDB.loot_by_species()[key]):
 				bad.append("%s -> %s" % [name, fam])
 	_check(bad.is_empty(), "вид+тир дают семейство вида (%s)" % ", ".join(bad.slice(0, 3)))
 	_check(UnitDB.loot_family_of("monsters/wolf") == "beast", "волк без тира — beast")

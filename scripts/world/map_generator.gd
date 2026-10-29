@@ -573,22 +573,19 @@ const BLACKSMITH_FOLDERS := ["blacksmith_s1"]
 
 ## Жильё и декор по расе города (ключи = faction id в world.json).
 ## У каждой расы свой стиль зданий - орочий город не выглядит людским.
-const HOUSE_FOLDERS_BY_RACE := {
-	"humans": ["house_s1", "house_s2"],
-	"ork": ["ork_house_a1", "ork_house_a2", "ork_house_b1", "ork_house_b2"],
-	"druid": ["druid_house_a1", "druid_house_a2", "druid_house_b1", "druid_house_b2"],
-	"necro": ["necro_house_a1", "necro_house_a2", "necro_house_b1", "necro_house_b2"],
-}
-const DECOR_FOLDERS_BY_RACE := {
-	"humans": ["barracks_s1", "barracks_s2"],
-	"ork": ["ork_decor_1", "ork_decor_2"],
-	"druid": ["druid_decor_1"],
-	"necro": ["necro_decor_1"],
-}
+## 29.10: переехали в данные (`map.house_folders` / `map.decor_folders`) —
+## мод с новым набором построек или новой фракцией не требует правки кода.
+static func house_folders() -> Dictionary:
+	return ContentRules.dict("map.house_folders")
+
+
+static func decor_folders() -> Dictionary:
+	return ContentRules.dict("map.decor_folders")
 
 ## Мелкий декор карты (seedream, alm_objects.json ID 193-199).
 ## Ставится вокруг городов: бочки/ящики/мешки у зданий, фонари вдоль дорог.
-const CITY_PROPS := [193, 194, 195, 196, 197, 198, 199]  # barrel, barrel2, crate, crate2, lantern, sack, pot
+## Список — в данных (`map.city_props`); фонарь 197 ставится отдельно у дорог.
+const LANTERN_PROP_ID := 197
 
 ## Зоны, в которых генератор ставит портал.
 ##
@@ -1116,8 +1113,8 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 		# Один жилой дом на город - по решению игрока (мы не симулятор городов).
 		# Раса дома/декора = раса города: орочий город строит орочье жильё.
 		var race := str(c.get("faction", "humans"))
-		var house_pool: Array = HOUSE_FOLDERS_BY_RACE.get(race, HOUSE_FOLDERS_BY_RACE["humans"])
-		var decor_pool: Array = DECOR_FOLDERS_BY_RACE.get(race, DECOR_FOLDERS_BY_RACE["humans"])
+		var house_pool: Array = house_folders().get(race, house_folders().get("humans", []))
+		var decor_pool: Array = decor_folders().get(race, decor_folders().get("humans", []))
 		plan.append(_pick(rng, house_pool))
 		plan.append(_pick(rng, decor_pool))
 		for folder in plan:
@@ -1134,6 +1131,14 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 ## у тротуара), с дистанцией >= 3 клеток между фонарями, чтобы не сбивались
 ## сгустком в центре площади.
 func _place_city_props(rng: RandomNumberGenerator) -> void:
+	# Пул пропов — из данных (`map.city_props`); фонарь ставится отдельной
+	# ветвью у дороги, поэтому из общего пула он исключён.
+	var prop_pool: Array = []
+	for p in ContentRules.list("map.city_props"):
+		if int(p) != LANTERN_PROP_ID:
+			prop_pool.append(int(p))
+	if prop_pool.is_empty():
+		prop_pool = [193]
 	var placed := 0
 	var lantern_cells: Array[Vector2i] = []
 	for c in _cities:
@@ -1185,7 +1190,7 @@ func _place_city_props(rng: RandomNumberGenerator) -> void:
 				prop_id = 197
 				lantern_cells.append(cell)
 			else:
-				prop_id = int(_pick(rng, [193, 194, 195, 196, 198, 199]))
+				prop_id = int(_pick(rng, prop_pool))
 			_obstacles[idx] = prop_id
 			got += 1
 			placed += 1

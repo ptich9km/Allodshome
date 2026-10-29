@@ -6,8 +6,10 @@ class_name UnitDB
 const DB_PATH := "res://assets/units/units_db.json"
 const TICK := 0.05  # множитель тайминга (единицы "тиков" из units.txt)
 
-## Семейства лута в порядке сводки (tests/package_a_smoke.gd).
-const LOOT_FAMILIES := ["beast", "insect", "humanoid", "undead", "monstrous"]
+## Семейства лута в порядке сводки (tests/package_a_smoke.gd). Данные, а не
+## константа: мод с новым семейством (например "demon") должен попадать в сводку.
+static func loot_families() -> Array:
+	return ContentRules.list("units.loot_families")
 
 ## Семейство лута набора по ВИДУ: запасной путь, если явного поля `loot_family`
 ## в units_db.json нет (поле вписано 22.10 тестами/gen_gray_loot_family.py для всех
@@ -18,13 +20,11 @@ const LOOT_FAMILIES := ["beast", "insect", "humanoid", "undead", "monstrous"]
 ## БРОНЮ И ОРУЖИЕ, а решение игрока 07.10 — у зверей снаряжения нет.
 ## Ключ берётся только из сегмента ВИДА (`monsters/bee_t3` -> `bee`), а не из
 ## всего имени: тир-суффикс отрезается ДО сверки, иначе тиры 2..5 не нашли бы себя.
-const LOOT_BY_SPECIES := {
-	"bat": "beast", "squirrel": "beast", "wolf": "beast",
-	"bee": "insect",
-	"ghost": "undead",
-	"cannibal": "humanoid", "troll": "humanoid",
-	"dino": "monstrous", "dragon": "monstrous", "succubus": "monstrous",
-}
+##
+## 29.10: таблица переехала в данные (`units.loot_by_species`) — мод с новым
+## зверем может сразу сказать, что с него падает.
+static func loot_by_species() -> Dictionary:
+	return ContentRules.dict("units.loot_by_species")
 
 static var _db: Dictionary = {}
 static var _loaded := false
@@ -77,7 +77,7 @@ static func get_set_by_id(unit_id: int) -> Dictionary:
 ## любую смену семейства. Сегодня поведение то же (palette 5 был только у
 ## монстров), завтра риг Серых получит palette 5 и станет враждебным сам.
 static func is_hostile(name: String) -> bool:
-	return int(get_set(name).get("palette", 0)) == 5
+	return int(get_set(name).get("palette", 0)) == ContentRules.int_value("units.hostile_palette", 5)
 
 ## Первый кадр набора (для статичного превью в редакторе/палитре).
 static func preview_frame(name: String) -> Texture2D:
@@ -219,7 +219,7 @@ static func loot_family_of(name: String) -> String:
 	var tier_at := short.rfind("_t")
 	if tier_at > 0 and short.substr(tier_at + 2).is_valid_int():
 		short = short.substr(0, tier_at)
-	return str(LOOT_BY_SPECIES.get(short, ""))
+	return str(loot_by_species().get(short, ""))
 
 ## Тир набора (1..5), 0 - если тира нет. Тиры Серых записывает
 ## tests/gen_grey_tiers_db.py; tests/gray_tier_smoke сверяет поле с суффиксом

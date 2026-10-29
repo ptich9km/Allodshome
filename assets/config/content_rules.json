@@ -1,0 +1,115 @@
+[
+	{
+		"key": "spells.spheres",
+		"value": ["Fire", "Water", "Air", "Earth", "Astral"]
+	},
+	{
+		"key": "items.weapon_types",
+		"value": [
+			"Dagger", "Short Sword", "Long Sword", "Bastard Sword", "Two Handed Sword",
+			"Spiked Club", "Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer",
+			"Axe", "Two Handed Axe", "Pike", "Lance", "Halberd",
+			"Staff", "Shaman Staff", "Short Bow", "Long Bow", "Crossbow"
+		]
+	},
+	{
+		"key": "items.shield_types",
+		"value": ["Buckler", "Small Shield", "Large Shield", "Tower Shield"]
+	},
+	{
+		"key": "items.sword_types",
+		"value": ["Dagger", "Short Sword", "Long Sword", "Bastard Sword", "Two Handed Sword"]
+	},
+	{
+		"key": "items.club_types",
+		"value": ["Spiked Club", "Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer"]
+	},
+	{
+		"key": "items.two_handed_types",
+		"value": [
+			"Two Handed Sword", "Two Handed Axe", "Staff", "Shaman Staff",
+			"Short Bow", "Long Bow", "Crossbow"
+		]
+	},
+	{
+		"key": "items.head_types",
+		"value": ["Helm", "Full Helm", "Plate Helm", "Chain Helm", "Cap", "Hat", "Low Hat"]
+	},
+	{
+		"key": "items.cloak_types",
+		"value": ["Cloak", "Cape"]
+	},
+	{
+		"key": "items.body_types",
+		"value": ["Cuirass", "Plate Cuirass", "Mail", "Chain Mail", "Scale Mail", "Robe", "Dress"]
+	},
+	{
+		"key": "items.hands_types",
+		"value": ["Bracers", "Plate Bracers", "Scale Gauntlets", "Gauntlets", "Gloves", "Chain Gauntlets"]
+	},
+	{
+		"key": "items.feet_types",
+		"value": ["Plate Boots", "Boots", "Shoes", "Chain Boots"]
+	},
+	{
+		"key": "items.amulet_types",
+		"value": ["Amulet"]
+	},
+	{
+		"key": "items.ring_types",
+		"value": ["Ring"]
+	},
+	{
+		"key": "units.hostile_palette",
+		"value": 5
+	},
+	{
+		"key": "units.loot_families",
+		"value": ["beast", "insect", "humanoid", "undead", "monstrous"]
+	},
+	{
+		"key": "units.loot_by_species",
+		"value": {
+			"bat": "beast", "squirrel": "beast", "wolf": "beast",
+			"bee": "insect",
+			"ghost": "undead",
+			"cannibal": "humanoid", "troll": "humanoid",
+			"dino": "monstrous", "dragon": "monstrous", "succubus": "monstrous"
+		}
+	},
+	{
+		"key": "races",
+		"value": [
+			{"id": "human", "label": "Человек", "two_styles": true},
+			{"id": "necro", "label": "Нежить"},
+			{"id": "druid", "label": "Друид"},
+			{"id": "ork", "label": "Орк"}
+		]
+	},
+	{
+		"key": "map.house_folders",
+		"value": {
+			"humans": ["house_s1", "house_s2"],
+			"ork": ["ork_house_a1", "ork_house_a2", "ork_house_b1", "ork_house_b2"],
+			"druid": ["druid_house_a1", "druid_house_a2", "druid_house_b1", "druid_house_b2"],
+			"necro": ["necro_house_a1", "necro_house_a2", "necro_house_b1", "necro_house_b2"]
+		}
+	},
+	{
+		"key": "map.decor_folders",
+		"value": {
+			"humans": ["barracks_s1", "barracks_s2"],
+			"ork": ["ork_decor_1", "ork_decor_2"],
+			"druid": ["druid_decor_1"],
+			"necro": ["necro_decor_1"]
+		}
+	},
+	{
+		"key": "map.city_props",
+		"value": [193, 194, 195, 196, 197, 198, 199]
+	},
+	{
+		"key": "inn.candidates",
+		"value": ["ork_mage_a52/t0", "ork_mage_a52/t1", "ork_mage_a52/t2", "ork_mage_a52/t3"]
+	}
+]

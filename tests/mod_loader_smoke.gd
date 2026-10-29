@@ -19,6 +19,9 @@ func _init() -> void:
 func _run() -> void:
 	_cleanup()
 	_cleanup()
+	# В `--script`-прогонах моды выключены по умолчанию (данные проверяются на
+	# базе) — этот тест проверяет сами моды, поэтому включает их явно.
+	ModLoader.set_active(true)
 	ModLoader.reset()
 	_build_mods()
 

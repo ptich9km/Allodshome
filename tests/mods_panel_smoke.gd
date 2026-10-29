@@ -21,7 +21,7 @@ func _run() -> void:
 	var cfg_backup := _read_cfg()
 	_cleanup()
 	_build_mods()
-	ModLoader.reset()
+	ModLoader.set_active(true)
 
 	var panel := ModsPanel.new()
 	panel.name = "ModsPanel"

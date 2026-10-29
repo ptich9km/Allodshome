@@ -1,4 +1,4 @@
-class_name ItemDB
+﻿class_name ItemDB
 extends Node
 ## База всех 491 предметов игры: assets/items/item_db.json (из data.bin + иконки).
 ## Данные настоящие: цена/вес/урон/защита из оригинальной игры (англ. релиз),
@@ -7,31 +7,11 @@ extends Node
 
 const DB_PATH := "res://assets/items/item_db.json"
 
-const _WEAPON_TYPES := [
-	"Dagger", "Short Sword", "Long Sword", "Bastard Sword", "Two Handed Sword",
-	"Spiked Club", "Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer",
-	"Axe", "Two Handed Axe", "Pike", "Lance", "Halberd",
-	"Staff", "Shaman Staff", "Short Bow", "Long Bow", "Crossbow"]
-const _SHIELD_TYPES := ["Buckler", "Small Shield", "Large Shield", "Tower Shield"]
-const _SWORD_TYPES := ["Dagger", "Short Sword", "Long Sword", "Bastard Sword", "Two Handed Sword"]
-const _CLUB_TYPES := ["Spiked Club", "Club", "Mace", "Morning Star", "Pick Hammer", "War Hammer"]
-const _TWO_HANDED_TYPES := [
-	"Two Handed Sword", "Two Handed Axe", "Staff", "Shaman Staff",
-	"Short Bow", "Long Bow", "Crossbow"]
-
-## Слоты экипировки (порядок = порядок на панели персонажа). Типы — из item_db.json:
-## шлемы (Helm/Full Helm/Plate Helm/Chain Helm/Cap/Hat/Low Hat), броня тела
-## (Cuirass/Plate Cuirass/Mail/Chain Mail/Scale Mail/Robe/Dress), плащи (Cloak/Cape),
-## руки (Bracers/Plate Bracers/Scale Gauntlets/Gauntlets/Gloves/Chain Gauntlets),
-## ноги (Plate Boots/Boots/Shoes/Chain Boots), амулеты и кольца. Раньше всё это
-## схлопывалось в один слот "armor" — теперь у каждой части тела свой слот.
-const _HEAD_TYPES := ["Helm", "Full Helm", "Plate Helm", "Chain Helm", "Cap", "Hat", "Low Hat"]
-const _CLOAK_TYPES := ["Cloak", "Cape"]
-const _BODY_TYPES := ["Cuirass", "Plate Cuirass", "Mail", "Chain Mail", "Scale Mail", "Robe", "Dress"]
-const _HANDS_TYPES := ["Bracers", "Plate Bracers", "Scale Gauntlets", "Gauntlets", "Gloves", "Chain Gauntlets"]
-const _FEET_TYPES := ["Plate Boots", "Boots", "Shoes", "Chain Boots"]
-const _AMULET_TYPES := ["Amulet"]
-const _RING_TYPES := ["Ring"]
+## Списки типов — в данных (`assets/config/content_rules.json`, раздел `items.*`):
+## мод может добавить новый тип оружия или брони, не правя код. Раньше здесь
+## лежали 12 констант, и новый тип был недоступен модам вообще.
+static func type_list(key: String) -> Array:
+	return ContentRules.shared_list("items." + key)
 ## Все слоты экипировки героя, в порядке отображения на панели персонажа.
 const EQUIP_SLOTS: Array[String] = [
 	"weapon", "shield", "head", "cloak", "body", "hands", "feet", "amulet", "ring1", "ring2",
@@ -92,23 +72,23 @@ static func find(key: String) -> Dictionary:
 ## "" — предмет не экипируется или тип неизвестен.
 static func slot_of(item: Dictionary) -> String:
 	var t := str(item.get("type", ""))
-	if t in _WEAPON_TYPES:
+	if t in type_list("weapon_types"):
 		return "weapon"
-	if t in _SHIELD_TYPES:
+	if t in type_list("shield_types"):
 		return "shield"
-	if t in _HEAD_TYPES:
+	if t in type_list("head_types"):
 		return "head"
-	if t in _CLOAK_TYPES:
+	if t in type_list("cloak_types"):
 		return "cloak"
-	if t in _BODY_TYPES:
+	if t in type_list("body_types"):
 		return "body"
-	if t in _HANDS_TYPES:
+	if t in type_list("hands_types"):
 		return "hands"
-	if t in _FEET_TYPES:
+	if t in type_list("feet_types"):
 		return "feet"
-	if t in _AMULET_TYPES:
+	if t in type_list("amulet_types"):
 		return "amulet"
-	if t in _RING_TYPES:
+	if t in type_list("ring_types"):
 		return "ring"
 	return ""
 
@@ -133,9 +113,9 @@ static func items_for_slot(slot: String) -> Array:
 ## Тип оружия для анимаций героя (unarmed/sword/axe/club/pike/bow/xbow/staff/magic).
 static func weapon_kind(item: Dictionary) -> String:
 	var t := str(item.get("type", ""))
-	if t in _SWORD_TYPES:
+	if t in type_list("sword_types"):
 		return "sword"
-	if t in _CLUB_TYPES:
+	if t in type_list("club_types"):
 		return "club"
 	if t in ["Axe", "Two Handed Axe"]:
 		return "axe"
@@ -151,7 +131,7 @@ static func weapon_kind(item: Dictionary) -> String:
 
 static func is_two_handed(item: Dictionary) -> bool:
 	var t := str(item.get("type", ""))
-	return t in _TWO_HANDED_TYPES
+	return t in type_list("two_handed_types")
 
 ## Лёгкая броня (кожа/ткань) — набор heroes_l/, тяжёлая (металл) — heroes/.
 static func armor_kind(item: Dictionary) -> String:

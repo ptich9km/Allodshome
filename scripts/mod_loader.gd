@@ -40,10 +40,13 @@ const DB_OF_KIND: Dictionary = {
 	"unit": "units",
 	"spell": "spells",
 	"structure": "structures",
+	"rule": "rules",
 }
 ## Поле-ключ у баз, которые хранятся массивом. У словарных баз ключ — это ключ словаря.
-const DB_KEY_FIELD: Dictionary = {"items": "key"}
-const DB_IS_ARRAY: Dictionary = {"items": true, "units": false, "spells": false, "structures": false}
+const DB_KEY_FIELD: Dictionary = {"items": "key", "rules": "key"}
+const DB_IS_ARRAY: Dictionary = {
+	"items": true, "units": false, "spells": false, "structures": false, "rules": true,
+}
 const ENTRY_META := ["op", "kind", "key", "extends"]
 
 static var _scanned := false
@@ -56,6 +59,12 @@ static var _manual_order: Array[String] = []  # из user://mods.cfg, ниже =
 static var _owners: Dictionary = {}     # "db|key" -> id мода, который добавил
 static var _patchers: Dictionary = {}   # "db|key" -> Array[String] id модов, которые патчили
 static var _orphans: Array[String] = []  # папки в mods/ без mod.json (частая ошибка копирования)
+## Моды включены? В headless-прогонах `--script` они ВЫКЛЮЧЕНЫ по умолчанию:
+## тесты проверяют базовые данные, а у игрока в user://mods лежат его моды
+## (29.10 то, что у игрока стоял `warden`, ломало `gray_tier_smoke`).
+## Тесты самих модов включают их через `set_active(true)`.
+static var _active := true
+static var _active_resolved := false
 
 
 ## Сброс кэша (тесты, пересканирование после включения/выключения мода).
@@ -103,6 +112,18 @@ static func all_mods() -> Array[Dictionary]:
 static func is_enabled(id: String) -> bool:
 	_scan()
 	return not _disabled.has(id)
+
+
+## Принудительно включить/выключить моды на весь процесс (тесты).
+static func set_active(on: bool) -> void:
+	_active = on
+	_active_resolved = true
+	reset()
+
+
+static func is_active() -> bool:
+	_scan()
+	return _active
 
 
 ## Включить/выключить мод. Применяется после перезапуска игры (данные баз уже
@@ -207,10 +228,23 @@ static func overlay(db: String, base: Variant) -> void:
 
 # --- сканирование -------------------------------------------------------------
 
+## Режим по умолчанию: в игре моды включены, в `--script`-прогонах — нет
+## (там проверяются базовые данные; `--with-mods` в аргументах после `--` включает).
+static func _resolve_active() -> void:
+	if _active_resolved:
+		return
+	_active_resolved = true
+	if OS.get_cmdline_args().has("--script"):
+		_active = OS.get_cmdline_user_args().has("--with-mods")
+
+
 static func _scan() -> void:
 	if _scanned:
 		return
 	_scanned = true   # ставим сразу: resolve() может звать _dir_of -> _scan
+	_resolve_active()
+	if not _active:
+		return
 	_load_config()
 	var found: Array[Dictionary] = []
 	var seen: Dictionary = {}
@@ -480,7 +514,7 @@ static func _apply_entry(m: Dictionary, e: Dictionary, base: Variant, is_array: 
 	if key == "":
 		_errors.append("мод '%s': запись без key (kind=%s)" % [mod_id, str(e.get("kind", "?"))])
 		return false
-	if op != "add" and op != "patch" and op != "remove":
+	if op != "add" and op != "patch" and op != "remove" and op != "append":
 		_errors.append("мод '%s': неизвестная op '%s' у '%s'" % [mod_id, op, key])
 		return false
 
@@ -504,6 +538,26 @@ static func _apply_entry(m: Dictionary, e: Dictionary, base: Variant, is_array: 
 
 	var existing: Variant = _get_def(base, key, is_array, db)
 	var exists: bool = existing is Dictionary
+
+	# append: дописать элементы к списку внутри записи — так мод добавляет
+	# новую сферу магии или новый тип брони, не переписывая весь список
+	# (перезапись легко теряет правки соседнего мода).
+	if op == "append":
+		if not exists:
+			_errors.append("мод '%s': append '%s' — ключа нет" % [mod_id, key])
+			return false
+		var cur: Variant = (existing as Dictionary).get("value", null)
+		var add: Variant = fields.get("value", null)
+		if not (cur is Array) or not (add is Array):
+			_errors.append("мод '%s': append '%s' — значение не список" % [mod_id, key])
+			return false
+		var merged: Dictionary = (existing as Dictionary).duplicate(true)
+		var merged_list: Array = (cur as Array).duplicate()
+		merged_list.append_array(add as Array)
+		merged["value"] = merged_list
+		_put_def(base, key, merged, is_array, db)
+		_note_patch(db, key, mod_id)
+		return true
 
 	if op == "patch":
 		if not exists:
