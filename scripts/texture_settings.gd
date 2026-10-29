@@ -10,6 +10,9 @@ signal applied
 signal closed
 
 const SAVE_PATH := "res://assets/maps/map_editor_palette.json"
+## В экспортированной игре res:// только для чтения: наборы текстур пишем
+## в user:// и оттуда же читаем, если res:// не открылся.
+const FALLBACK_PATH := "user://map_editor_palette.json"
 const PANEL_W := 840.0
 const PANEL_H := 560.0
 
@@ -435,6 +438,8 @@ func _on_add_default() -> void:
 func _on_save() -> void:
 	map.set_texture_sets(working_sets)
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f == null:
+		f = FileAccess.open(FALLBACK_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"texture_sets": working_sets}))
 		f.close()

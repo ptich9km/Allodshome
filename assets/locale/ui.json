@@ -36,6 +36,7 @@
   "ru": "Сетевая игра",
   "en": "Multiplayer"
  },
+ "ui.menu.map_editor": {"ru": "Редактор карт", "en": "Map Editor"},
  "ui.menu.about": {
   "ru": "Об авторах",
   "en": "About the Authors"
@@ -864,6 +865,7 @@
   "ui.world_map.s33": {"ru": "Пепельный Кряж", "en": "Ashen Ridge"},
   "ui.world_map.s43": {"ru": "Каменный Предел", "en": "Stone March"},
   "ui.loading.new_world": {"ru": "Новый мир", "en": "New world"},
+  "ui.loading.map_ready": {"ru": "Карта готова", "en": "Map is ready"},
   "ui.loading.travel": {"ru": "Переход", "en": "Travelling"},
   "ui.loading.assembly": {"ru": "Сборка карты", "en": "Assembling the map"},
   "ui.loading.preparing": {"ru": "Подготовка…", "en": "Preparing…"},

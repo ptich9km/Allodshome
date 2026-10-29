@@ -281,6 +281,7 @@ func _setup_menu() -> void:
 		["ui.menu.mods", _on_mods],
 		["ui.menu.network", _on_network],
 		["ui.menu.about", _on_about],
+		["ui.menu.map_editor", _on_map_editor],
 		["ui.menu.settings", _on_settings],
 		["ui.menu.quit", _on_quit_pressed],
 	]
@@ -488,6 +489,14 @@ func _on_network() -> void:
 func _on_about() -> void:
 	SoundDB.play("ui.click")
 	_open_overlay("ui.menu.about", _build_about_body)
+
+
+## Редактор карт — обычная сцена, доступная всем. Возврат по F9/«Назад» —
+## в главное меню (Game.editor_return_scene).
+func _on_map_editor() -> void:
+	SoundDB.play("ui.click")
+	Game.editor_return_scene = "res://scenes/main_menu.tscn"
+	get_tree().change_scene_to_file("res://scenes/map_editor.tscn")
 
 
 ## Настройки — отдельное окно поверх меню, а не экран в списке: у него свой

@@ -34,8 +34,22 @@ var _sprite: Sprite2D = null
 var _invisible_tex: ImageTexture = null
 var _t := 0.0
 var _i := 0
+## Пока открыт диалог (FileDialog/PopupPanel — отдельный Window), спрайт
+## курсора в главном вьюпорте не виден: возвращаем системную стрелку.
+## Стартовое значение — `true` («системный ещё виден»), чтобы первый же вызов
+## `_apply_system_cursor(false)` в _ready реально его спрятал. С `false`
+## срабатывала ранняя проверка «состояние уже такое» и курсора было ДВА.
+var _system_cursor := true
+var _cursor_applied := false
+const CURSOR_SHAPES := [
+	Input.CURSOR_ARROW, Input.CURSOR_POINTING_HAND, Input.CURSOR_IBEAM,
+	Input.CURSOR_CROSS, Input.CURSOR_WAIT, Input.CURSOR_BUSY,
+	Input.CURSOR_DRAG, Input.CURSOR_CAN_DROP, Input.CURSOR_FORBIDDEN,
+	Input.CURSOR_VSIZE, Input.CURSOR_HSIZE,
+]
 
 func _ready() -> void:
+	name = "CursorLayer"
 	layer = 100  # выше UI-слоёв: курсор не прячется под панелями
 	_ensure_loaded()
 	if not _have_any_frames():
@@ -50,11 +64,10 @@ func _ready() -> void:
 	# CURSOR_POINTING_HAND, поля ввода — IBEAM, иначе системная рука/бал
 	# будет видна рядом с нашим спрайтом.
 	_invisible_tex = _make_invisible_tex()
-	for shape in [Input.CURSOR_ARROW, Input.CURSOR_POINTING_HAND, Input.CURSOR_IBEAM,
-			Input.CURSOR_CROSS, Input.CURSOR_WAIT, Input.CURSOR_BUSY,
-			Input.CURSOR_DRAG, Input.CURSOR_CAN_DROP, Input.CURSOR_FORBIDDEN,
-			Input.CURSOR_VSIZE, Input.CURSOR_HSIZE]:
-		Input.set_custom_mouse_cursor(_invisible_tex, shape, Vector2.ZERO)
+	_apply_system_cursor(false)
+	get_tree().node_added.connect(_on_tree_changed)
+	get_tree().node_removed.connect(_on_tree_changed)
+	_queue_refresh()
 
 func _have_any_frames() -> bool:
 	for v in _frames.values():
@@ -129,6 +142,13 @@ func _current_variant() -> String:
 func _process(delta: float) -> void:
 	if _sprite == null:
 		return
+	# Диалог (FileDialog/PopupPanel) — отдельный Window со своим вьюпортом,
+	# наш спрайт туда не рисуется. Включаем системную стрелку на время диалога.
+	if _extra_window_open():
+		_apply_system_cursor(true)
+		_sprite.visible = false
+		return
+	_apply_system_cursor(false)
 	var variant := _current_variant()
 	if variant == "":
 		_sprite.visible = false
@@ -145,3 +165,65 @@ func _process(delta: float) -> void:
 	if _t >= FRAME_TIME:
 		_t = 0.0
 		_i = (_i + 1) % frames.size()
+
+
+## Открыт ли поверх главного окна ещё один Window (диалог, попап, файловый
+## выбор). В его вьюпорте наш CanvasLayer не действует — там нужен системный
+## курсор, иначе он «исчезает» (жалоба игрока 29.10).
+func _extra_window_open() -> bool:
+	return _open_windows > 0
+
+
+var _open_windows := 0
+var _refresh_queued := false
+
+## Пересчитать открытые дочерние окна. Вызывается по событиям дерева и
+## `visibility_changed`, а не каждый кадр: обход всей сцены в _process стоил бы
+## дорого на живой карте.
+func _queue_refresh() -> void:
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	_refresh_open_windows.call_deferred()
+
+
+func _refresh_open_windows() -> void:
+	_refresh_queued = false
+	if not is_inside_tree():
+		return
+	var main := get_viewport().get_window() if get_viewport() != null else null
+	_open_windows = _count_visible_windows(get_tree().root, main)
+
+
+func _count_visible_windows(node: Node, main: Window) -> int:
+	var total := 0
+	for c in node.get_children():
+		if c is Window:
+			var w := c as Window
+			if w != main:
+				if not w.visibility_changed.is_connected(_on_window_visibility):
+					w.visibility_changed.connect(_on_window_visibility)
+				if w.visible:
+					total += 1
+		total += _count_visible_windows(c, main)
+	return total
+
+
+func _on_window_visibility() -> void:
+	_queue_refresh()
+
+
+func _on_tree_changed(_n: Node = null) -> void:
+	_queue_refresh()
+
+
+## Переключить системный курсор: true — показать стрелку, false — спрятать
+## (вместо него рисуется наш спрайт).
+func _apply_system_cursor(on: bool) -> void:
+	if _system_cursor == on:
+		return
+	_system_cursor = on
+	_cursor_applied = true
+	var tex: Texture2D = null if on else _invisible_tex
+	for shape in CURSOR_SHAPES:
+		Input.set_custom_mouse_cursor(tex, shape, Vector2.ZERO)

@@ -57,7 +57,7 @@ const PREV_FILE := "previous.json"
 const WORLD_SUFFIXES := [
 	".alm", ".npcs.json", ".structures.json", ".herbs.json",
 	".portal.json", ".spawn.json", ".nowalk.json", ".allowwalk.json",
-	".outposts.json",
+	".outposts.json", ".meta.json",
 ]
 
 
@@ -751,7 +751,14 @@ static func world_files() -> Dictionary:
 	if Game.pending_map_path != "" and FileAccess.file_exists(Game.pending_map_path):
 		if not Game.pending_map_path.begins_with("res://"):
 			out["path"] = Game.pending_map_path
-			out["basename"] = Game.pending_map_path.get_file().get_basename()
+			# Зона/сектор — часть имени, как у карт генератора
+			# (`map_<сид>_<сектор>_<раса>`). Без этого `restore_zone_map` не
+			# находил готовая-карту после выхода и возврата: имя не содержало
+			# токена сектора, и карта на старте генерировалась заново.
+			var base := Game.pending_map_path.get_file().get_basename()
+			if Game.map_sector != "" and not base.contains(Game.map_sector):
+				base += "_" + Game.map_sector
+			out["basename"] = base
 		return out
 	if Game.map_seed == 0:
 		return out
@@ -802,6 +809,13 @@ static func restore_zone_map(slot: String, zone: String) -> String:
 	var slot_base := _basename_of(_read_doc(part_path(slot, MAP_FILE)).get("data", {}))
 	if slot_base == "":
 		return world_map_path(slot)
+	# Текущая карта слота уже принадлежит этой зоне (в имени есть токен
+	# сектора) — берём именно её и готовим в user://maps/ под стабильным
+	# именем. Без этого возврат на стартовую (готовую) карту генерировал
+	# новую карту по сиду.
+	if slot_base.split("_").has(zone):
+		if _stage_world_files(slot, slot_dir(slot) + slot_base + ".alm", "save_%s" % slot):
+			return MapGenerator.MAPS_DIR + "save_%s.alm" % slot
 	# Имя карты — `map_<сид>_<сектор>_<раса>` (или старый `_<зона>_`).
 	# Сектор/зона — отдельный токен имени: сид у соседних секторов свой, поэтому
 	# сравнивать «сид и расу» нельзя, а уникален здесь именно сектор.
@@ -819,7 +833,15 @@ static func restore_zone_map(slot: String, zone: String) -> String:
 	d.list_dir_end()
 	if names.is_empty():
 		return ""
-	names.sort()
+	# Свежая карта зоны — та, что правили последней. Раньше брали
+	# алфавитно первую: после возврата на готовую карту это был старый
+	# снимок `custom_<сектор>`, а не актуальный `save_<slot>_<сектор>`.
+	names.sort_custom(func(a, b):
+		var ta := FileAccess.get_modified_time(dir_path + str(a))
+		var tb := FileAccess.get_modified_time(dir_path + str(b))
+		if ta == tb:
+			return str(a) < str(b)
+		return ta > tb)
 	var src := dir_path + str(names[0])
 	var dst_base := src.get_file().get_basename()
 	if dst_base == slot_base:

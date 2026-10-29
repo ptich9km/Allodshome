@@ -33,6 +33,43 @@ static func has(name: String) -> bool:
 	ensure_loaded()
 	return _db.has(name)
 
+
+## Все имена объектов (папок) в базе — для пикера пропов в редакторе карт.
+static func all_names() -> Array:
+	ensure_loaded()
+	var out: Array = _db.keys()
+	out.sort()
+	return out
+
+## ID препятствия в .alm (секция obstacles) по имени папки map-objects.
+## В редакторе пропы хранятся по имени (`{kind:object, obj}`), а .alm пишет
+## числовые id — нужен обратный маппинг alm_objects.json (id -> folder).
+static func alm_id_of(name: String) -> int:
+	_ensure_alm_ids()
+	return int(_alm_ids.get(name, 0))
+
+static var _alm_ids: Dictionary = {}
+static var _alm_ids_loaded := false
+
+static func _ensure_alm_ids() -> void:
+	if _alm_ids_loaded:
+		return
+	_alm_ids_loaded = true
+	var f := FileAccess.open("res://assets/map-objects/alm_objects.json", FileAccess.READ)
+	if f == null:
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if not (parsed is Dictionary):
+		return
+	for key in (parsed as Dictionary):
+		var rec: Variant = (parsed as Dictionary)[key]
+		if not (rec is Dictionary):
+			continue
+		var folder := str((rec as Dictionary).get("folder", ""))
+		if folder != "":
+			_alm_ids[folder] = int(str(key))
+
 ## Число кадров (sprites-00N.png).
 static func frame_count(name: String) -> int:
 	var o := get_obj(name)

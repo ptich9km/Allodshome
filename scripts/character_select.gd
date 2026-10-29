@@ -48,6 +48,8 @@ const PRESETS := [
 	},
 ]
 
+const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
+
 ## Легаси id из старых сейвов → новые портреты рас.
 const LEGACY_ID := {
 	"mfighter": "human_m_war",
@@ -93,9 +95,11 @@ var _name_idx := -1  # последнее сгенерированное имя 
 var _root: VBoxContainer   # корневая колонка-раскладка
 var _start_btn: Button
 var _name_row: HBoxContainer
-## Кнопка «Продолжить» - в СУЩЕСТВУЮЩУЮ строку старта, а не отдельным блоком.
-var _continue_btn: Button = null
-var _continue_slot: String = ""
+
+# --- «Мир»: сид / зона / готовая карта (пакет «своя игра») ---
+var _world_btn: Button
+var _world_panel: Node = null     # WorldSetupPanel (CanvasLayer), пока открыта
+var _start_setup: StartSetup      # что применится при «В ПУТЬ!»
 
 # --- Настройка героя (как в оригинале): атрибуты и склонность навыка ---
 var _edit: Dictionary = {}          # редактируемые статы (копия пресета)
@@ -116,6 +120,9 @@ func _ready():
 	# Тематический анимированный курсор вместо системной стрелки.
 	add_child(load("res://scripts/cursor_layer.gd").new())
 	MusicDB.start_playlist.call_deferred()
+	_start_setup = StartSetup.from_dict(Game.start_preset) if not Game.start_preset.is_empty() \
+		else StartSetup.new()
+	Game.start_preset = {}
 	_rebuild_characters()
 	_apply_theme()
 	_setup_background()
@@ -292,47 +299,19 @@ func _setup_title() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
 
-func _on_continue(slot: String) -> void:
-	var err := _load_slot_into_game(slot)
-	if err != "":
-		push_warning("Сохранение %s не загружено: %s" % [slot, err])
+## Esc — назад в главное меню. До этого экран выбора героя не обрабатывал
+## отмену: из «Новой игры» можно было выйти только через «В ПУТЬ!» или
+## закрыв окно. Если открыта панель «Мир», Esc закрывает сначала её.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel"):
 		return
-	SoundDB.play("ui.confirm")
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
-
-
-## Восстановить героя, мир и сид карты из слота. Возвращает "" при успехе
-## или текст ошибки. Вынесено отдельно от смены сцены, чтобы это можно было
-## проверить тестом БЕЗ загрузки main.tscn (а её подъём тянет за собой ui.gd).
-func _load_slot_into_game(slot: String) -> String:
-	var res := SaveSystem.load_slot(slot)
-	var err_kind := str(res.get("error", ""))
-	if err_kind == "version":
-		return "Это сохранение сделано более новой версией игры — загрузить нельзя."
-	if err_kind == "corrupt":
-		return "Файл сохранения повреждён, а резервной копии нет."
-	if res.is_empty():
-		return "Слот пуст."
-	var data: Dictionary = res.get("data", {})
-	SaveSystem.apply_payload(data, null)
-	_restore_world(data.get("world", {}))
-	return ""
-
-
-
-func _restore_world(world_data: Variant) -> void:
-	if not (world_data is Dictionary) or (world_data as Dictionary).is_empty():
+	if _world_panel != null and is_instance_valid(_world_panel):
+		_world_panel.close()
+		get_viewport().set_input_as_handled()
 		return
-	var ws_script: GDScript = load("res://scripts/world/world_state.gd")
-	var restored = ws_script.from_json_text(JsonSafe.dump(world_data))
-	if restored == null:
-		return
-	var bus = get_tree().root.get_node_or_null("WorldBus")
-	if bus == null:
-		return
-	bus.state = restored
-	if "sim" in bus and bus.sim != null and "state" in bus.sim:
-		bus.sim.state = restored
+	SoundDB.play("ui.click")
+	get_viewport().set_input_as_handled()
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
 func _setup_cards() -> void:
@@ -429,7 +408,7 @@ func _setup_name_row() -> void:
 	row.add_child(lab)
 
 	name_input = LineEdit.new()
-	name_input.custom_minimum_size = Vector2(320, 40)
+	name_input.custom_minimum_size = Vector2(260, 40)
 	name_input.max_length = 20
 	name_input.add_theme_font_size_override("font_size", 18)
 	name_input.placeholder_text = "Введите имя..."
@@ -437,13 +416,61 @@ func _setup_name_row() -> void:
 
 	# Кнопка случайного греческого имени
 	_name_btn = Button.new()
-	_name_btn.text = "🎲 Случайное греческое имя"
-	_name_btn.custom_minimum_size = Vector2(240, 40)
+	_name_btn.text = "🎲 Имя"
+	_name_btn.custom_minimum_size = Vector2(120, 40)
+	_name_btn.tooltip_text = "Случайное греческое имя"
 	_name_btn.pressed.connect(_random_name)
 	row.add_child(_name_btn)
 
+	# «Мир»: сид / зона / готовая карта. Живёт в строке старта, чтобы не
+	# съедать высоту отдельной строкой (экран уже впритык на 1280×600).
+	_world_btn = Button.new()
+	_world_btn.custom_minimum_size = Vector2(260, 40)
+	_world_btn.clip_text = true
+	_world_btn.tooltip_text = "Начало игры: сид мира, зона или готовая карта"
+	_world_btn.pressed.connect(_open_world_panel)
+	row.add_child(_world_btn)
+	_update_world_button()
+
 	if name_input.text == "":
 		_random_name()
+
+func _update_world_button() -> void:
+	if _world_btn == null:
+		return
+	var text := _start_setup.summary()
+	_world_btn.text = "Мир: " + text
+	_world_btn.tooltip_text = "Начало игры — " + text
+
+func _open_world_panel() -> void:
+	SoundDB.play("ui.click")
+	if _world_panel != null and is_instance_valid(_world_panel):
+		return
+	_world_panel = WorldSetupPanel.new()
+	add_child(_world_panel)
+	_world_panel.applied.connect(_on_world_applied)
+	_world_panel.edit_requested.connect(_on_world_edit)
+	_world_panel.closed.connect(_on_world_closed)
+	_world_panel.open(_start_setup)
+
+func _on_world_applied(setup: StartSetup) -> void:
+	_start_setup = setup
+	_update_world_button()
+
+func _on_world_closed() -> void:
+	_world_panel = null
+	if _world_btn != null:
+		_world_btn.grab_focus()
+
+## «Открыть редактор» из окна «Мир»: редактор вернётся сюда же, а сделанную
+## карту игрок сразу увидит в списке.
+func _on_world_edit(map_path: String) -> void:
+	Game.editor_return_scene = "res://scenes/character_select.tscn"
+	Game.start_preset = _start_setup.to_dict()
+	if map_path != "":
+		Game.start_preset["mode"] = "map"
+		Game.start_preset["path"] = map_path
+	get_tree().change_scene_to_file("res://scenes/map_editor.tscn")
 
 func _random_name() -> void:
 	var c: Dictionary = CHARACTERS[selected]
@@ -468,46 +495,6 @@ func _setup_start_button() -> void:
 	_start_btn.pressed.connect(_start_game)
 	row.add_child(_start_btn)
 	# «Продолжить» перенесён в главное меню → «Загрузить игру» (05.10).
-
-
-## Кнопка «Продолжить» - в СУЩЕСТВУЮЩУЮ строку старта, а не отдельным блоком.
-##
-## Отдельный блок стоил 127 px (замерено: 44 шапка + 79 строка списка слотов),
-## а экран при 1280x600 и так впритык: без блока содержимое 534 px при
-## бюджете 560. ScrollContainer не помогает - character_select_ui_smoke
-## требует, чтобы каждый видимый узел лежал ВНУТРИ окна, а у детей
-## скролл-контейнера координаты всё равно уходят за нижний край.
-##
-## Поэтому здесь только «Продолжить» (самый свежий слот). Выбор конкретного
-## слота и удаление живут в меню по Esc - это и правильнее (слоты меняют
-## в игре), и не съедает высоту стартового экрана.
-func _setup_continue_button(row: HBoxContainer) -> void:
-	_continue_slot = SaveSystem.newest_slot()
-	if _continue_slot == "":
-		return
-	var res := SaveSystem.load_slot(_continue_slot)
-	if str(res.get("error", "")) != "":
-		# Единственное сохранение непригодно (битое или из будущей версии).
-		# Кнопку не показываем: игрок не должен видеть «Продолжить», который
-		# гарантированно провалится.
-		_continue_slot = ""
-		return
-	var meta: Dictionary = res.get("meta", {})
-	_continue_btn = Button.new()
-	_continue_btn.theme_type_variation = &"CsStart"
-	_continue_btn.text = "Продолжить"
-	# Ширина 170, а не 320: строка старта с именем героя, кнопкой «Случайное
-	# имя» и «В ПУТЬ!» занимала 1240 px при доступных 1224 (окно 1280 минус
-	# поля 28+28) - и вылезала за экран ровно на 16 px. Длинный текст с именем
-	# и днём уехал в подсказку: разбивка по ширине не должна ломать раскладку.
-	_continue_btn.custom_minimum_size = Vector2(170, 48)
-	_continue_btn.tooltip_text = "%s, день %d · %s" % [
-		str(meta.get("hero_name", "Герой")), int(meta.get("day", 0)),
-		"маг" if str(meta.get("hero_class", "warrior")) == "mage" else "воин",
-	]
-	_continue_btn.pressed.connect(_on_continue.bind(_continue_slot))
-	row.add_child(_continue_btn)
-
 ## Панель настройки внизу: атрибуты (очки) и склонность навыка (+20).
 func _setup_editor() -> void:
 	var panel := PanelContainer.new()
@@ -703,12 +690,14 @@ func _start_game() -> void:
 	Game.hero_character_id = str(c["id"])
 	Game.hero_portrait = str(c["image"])
 	Game.hero_race = _race
-	# Новая игра — новая карта: случайный сид, карта генерируется в user://maps/.
-	# Продолжение сохранения (пакет B) переставит сид ДО этого вызова.
-	# Стартовая зона — "start" (зона новичка): один безопасный город, слабые
-	# Серые, портал на выход в "mid". Раньше зона не передавалась и подставлялся
-	# дефолт "mid" — профиль новичка был написан, но недостижим из игры.
-	Game.new_random_map("start")
+	# Мир из блока «Мир»: случайный сид, конкретный сид или готовая карта.
+	# `StartSetup.apply()` сам раскладывает сид мира по секторам через
+	# world_map.seed_of (то же правило, что было в new_random_map).
+	var err := _start_setup.apply()
+	if err != "":
+		push_warning("Новая игра не начата: %s" % err)
+		_open_world_panel()
+		return
 	# Новая игра — чистый лист: отряд и хотбар прошлой партии не переносятся.
 	# Хотбар раньше вообще не сбрасывался: назначенные клавиши нового героя
 	# ссылались на заклинания/предметы прежнего.
