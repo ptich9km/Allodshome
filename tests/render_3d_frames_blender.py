@@ -20,6 +20,7 @@ match `UnitAnim.FILE_DIR_4`: 0=down, 1=left, 2=up, 3=right.
 import argparse
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -42,9 +43,20 @@ def parse_args() -> argparse.Namespace:
 
 
 def action_key(action) -> str:
+    """idle/walk/attack/die из любого разумного имени действия.
+
+    Real files rarely carry a bare name: glTF exports `Armature|Idle`,
+    Mixamo gives `Armature|mixamo.com|walk`, Blender appends `.001`. Tokenising
+    on separators is much less brittle than prefix matching, and a name that is
+    just `mixamo.com` matches nothing — which is honest.
+    """
+    tokens = re.split(r"[^a-z0-9]+", action.name.lower())
+    for want in ACTIONS:
+        if want in tokens:
+            return want
     key = action.name.split("|")[-1].strip().lower()
     for want in ACTIONS:
-        if key == want or key.startswith(want + ".") or key.startswith(want + "_"):
+        if key.startswith(want + ".") or key.startswith(want + "_"):
             return want
     return key
 
