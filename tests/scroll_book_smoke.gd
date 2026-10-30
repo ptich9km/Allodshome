@@ -70,6 +70,46 @@ func _run() -> void:
 	_check(_hero.inventory.count("Scroll Heal") == 2,
 		"склад по-прежнему хранит оба свитка Heal")
 
+	# 30.10: у ячейки обязана быть подложка. `flat = true` в Godot 4 не рисует
+	# stylebox в обычном состоянии, и иконки «парили» над панелью без фона.
+	var first := cells[0] as Button
+	var sb: StyleBox = first.get_theme_stylebox("normal")
+	_check(not first.flat, "ячейка свитка не flat (иначе фон не рисуется)")
+	_check(sb is StyleBoxFlat, "у ячейки свитка есть StyleBoxFlat")
+	if sb is StyleBoxFlat:
+		var alpha := (sb as StyleBoxFlat).bg_color.a
+		_check(alpha >= 0.5 and alpha < 1.0,
+			"подложка ячейки полупрозрачная (alpha=%.2f)" % alpha)
+	_check(first.has_node("Cooldown"), "у ячейки свитка есть счётчик секунд")
+	_check(first.has_node("CooldownVeil"), "у ячейки свитка есть пелена кулдауна")
+
+	# 30.10: книга пересобирается при ОТКРЫТИИ, а не живёт с того момента, как
+	# загрузился мир (раньше свитки, добытые позже, не появлялись вовсе).
+	_hero.add_item("Scroll Slow")
+	_check(_scroll_cells().size() == 3, "книга ещё не пересобрана (склад уже вырос)")
+	_ui.call("toggle_spells")   # закрыть
+	_ui.call("toggle_spells")   # открыть -> пересборка
+	await process_frame
+	_check(_scroll_cells().size() == 4,
+		"книга пересобрана при открытии (=%d)" % _scroll_cells().size())
+
+	# 30.10: свиток, купленный в лавке, не попадал в книгу — open_shop() не
+	# подключал inventory_changed, и сигнал панели уходил в пустоту.
+	_ui.call("open_shop")
+	await process_frame
+	var shop: ShopPanel = _ui.get("_shop")
+	_check(shop != null, "лавка открылась через интерфейс")
+	if shop != null:
+		_check(shop.inventory_changed.get_connections().size() > 0,
+			"лавка сообщает интерфейсу об изменении склада")
+		var before := _scroll_cells().size()
+		shop.call("_buy_item", "Scroll Shield", 0)
+		await process_frame
+		_check(_scroll_cells().size() == before + 1,
+			"купленный свиток сразу попал в книгу (=%d)" % _scroll_cells().size())
+		# Без close(): он зовёт автосейв и перезаписал бы сохранение игрока.
+		shop.queue_free()
+
 	# 3. ПКМ по свитку: пометка только для «на себя».
 	_ui.call("_toggle_auto_scroll", "Scroll Heal")
 	await process_frame
@@ -93,6 +133,20 @@ func _run() -> void:
 	_hero.has_mana = false
 	_ui.call("refresh_spell_book")
 	await process_frame
+
+	# 30.10: у воина книга — свитки из склада. Без подсказки пустая панель
+	# выглядела как «B не открывает меню магии» (жалоба игрока).
+	var saved_inv: Array = _hero.inventory.duplicate()
+	_hero.inventory.clear()
+	_ui.call("refresh_spell_book")
+	await process_frame
+	var hint: Label = _ui.get("_book_empty_hint")
+	_check(hint != null and is_instance_valid(hint) and hint.text != "",
+		"пустая книга воина показывает подсказку")
+	_hero.inventory.assign(saved_inv)
+	_ui.call("refresh_spell_book")
+	await process_frame
+	_check(_ui.get("_book_empty_hint") == null, "подсказка убирается, когда свитки вернулись")
 
 	# 4. Сила свитка: 50 обычный / 100 эльфийский, и она реально влияет.
 	var base_item := ItemDB.find("Scroll Fire Ball")

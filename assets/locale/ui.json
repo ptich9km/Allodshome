@@ -101,6 +101,8 @@
   "ru": "Моды и дополнения\n\nКаталог mods пуст.\nСюда будут складываться папки модов.",
   "en": "Mods and Add-ons\n\nThe mods folder is empty.\nMod folders will be placed here."
  },
+ "ui.book.empty_warrior": {"ru": "Свитков нет. Они покупаются в лавке и читаются из этой книги.", "en": "No scrolls yet. Buy them in a shop and read them from this book."},
+ "ui.book.empty_mage": {"ru": "Заклинания не выучены. Нужны книги стихий (лавка, «Книги и свитки»).", "en": "No spells learned yet. Buy sphere books in a shop."},
  "ui.mods.title": {"ru": "Моды", "en": "Mods"},
  "ui.mods.count": {"ru": "Модов: %d · включено: %d", "en": "Mods: %d · enabled: %d"},
  "ui.mods.hint_restart": {"ru": "Изменения применятся после перезапуска игры.", "en": "Changes take effect after restarting the game."},
