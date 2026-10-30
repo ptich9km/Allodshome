@@ -77,6 +77,7 @@ from __future__ import annotations
 import argparse
 import glob as globmod
 import hashlib
+import io
 import json
 import math
 import os
@@ -104,15 +105,17 @@ SHEET = os.path.join(
 )
 SHEET_PATH = os.path.join(OUT_DIR, "_contact_sheet.png")
 
-# Порядок = ItemDB._SMELTABLE (scripts/item_db.gd). Держать синхронно.
-METALS = [
-    "bronze", "iron", "steel", "gold",
-]
+# The metal set is NOT hardcoded: it is read from assets/items/faction_palette.json
+# (the single source of truth for which metals exist) and narrowed to the metals
+# that actually have an installed source icon. After the 28.10 purge only the four
+# `common` metals remain, so a fixed 20-metal list would keep demanding files that
+# no longer have a source or an item referencing them.
+KINDS = ("armor", "weapon")
 
-# Тир качества у картинки ОДИН на металл (bronze — cheap, iron — common,
-# steel — good/base, terbium — elite): берётся первый найденный внутри группы
-# металла из палитры. Сталь (is_base) лежит в базовых каталогах без префикса
-# металла, у неё картинка одна и та же по всем качествам.
+# Quality tier per metal picture is a single one (bronze — cheap, iron — common,
+# steel — good/base, gold — elite): the first file found inside the metal's palette
+# group is taken. Steel (is_base) lives in the base directories without a metal
+# prefix; its picture is the same across all qualities.
 FACTION_GLOB = {
     "armor": "assets/items/{sub}/*/%(metal)s_heavy_chest_*.png",
     "weapon": "assets/items/{sub}/*/%(metal)s_" + WEAPON_LOOT + "_*.png",
@@ -163,12 +166,33 @@ CRACK_LIGHT = (255, 252, 244, 250)
 SEED = 2210              # детерминизм: одна и та же трещина при каждом прогоне
 
 
+_palette_cache: dict | None = None
+
+
+def palette() -> dict:
+    """Parsed assets/items/faction_palette.json (read once per run)."""
+    global _palette_cache
+    if _palette_cache is None:
+        with open(PALETTE, encoding="utf-8") as fh:
+            _palette_cache = json.load(fh)
+    return _palette_cache
+
+
+def palette_metals() -> list[str]:
+    """Metals in palette order — the only source of truth for the metal set."""
+    out: list[str] = []
+    for rec in (palette().get("groups") or {}).values():
+        for metal_rec in rec.get("metals", []):
+            metal = str(metal_rec.get("metal", ""))
+            if metal and metal not in out:
+                out.append(metal)
+    return out
+
+
 def faction_groups() -> dict[str, str]:
-    """металл -> каталог в assets/items/faction[_w]/ по faction_palette.json."""
-    with open(PALETTE, encoding="utf-8") as fh:
-        data = json.load(fh)
+    """Metal -> directory in assets/items/faction[_w]/ according to the palette."""
     groups: dict[str, str] = {}
-    for group_name, rec in (data.get("groups") or {}).items():
+    for group_name, rec in (palette().get("groups") or {}).items():
         for metal_rec in rec.get("metals", []):
             metal = str(metal_rec.get("metal", ""))
             if metal:
@@ -177,10 +201,8 @@ def faction_groups() -> dict[str, str]:
 
 
 def is_base_metal(metal: str) -> bool:
-    """Сталь в палитре помечена is_base: её иконки лежат в base/, а не во фракции."""
-    with open(PALETTE, encoding="utf-8") as fh:
-        data = json.load(fh)
-    for rec in (data.get("groups") or {}).values():
+    """Steel is marked is_base in the palette: its icons live in base/, not faction/."""
+    for rec in (palette().get("groups") or {}).values():
         for metal_rec in rec.get("metals", []):
             if str(metal_rec.get("metal", "")) == metal:
                 return bool(metal_rec.get("is_base"))
@@ -215,6 +237,20 @@ def resolve_source(metal: str, kind: str) -> tuple[str, list[str]]:
                     % (metal, kind, FACTION_GLOB[kind].format(sub="faction")
                        % {"metal": metal}))
     return "", problems
+
+
+_sources: dict[tuple[str, str], str] = {}
+_missing: list[str] = []
+
+
+def source_of(metal: str, kind: str) -> str:
+    """Cached resolve_source(); problems are collected once into `_missing`."""
+    key = (metal, kind)
+    if key not in _sources:
+        path, problems = resolve_source(metal, kind)
+        _sources[key] = path
+        _missing.extend(problems)
+    return _sources[key]
 
 
 def silhouette(img: Image.Image) -> Image.Image:
@@ -440,16 +476,24 @@ def derive(src: Image.Image, variant: dict, seed: int) -> Image.Image:
 
 
 def targets() -> list[tuple[str, str, str, str]]:
-    """(metal, kind, source_path, dest_path) для всех сломанных вещей базы.
+    """(metal, kind, source_path, dest_path) for every broken base item.
 
-    Использование по FIGURE: 20 металлов × {броня, оружие} плюс одежда, то есть
-    ровно те 41 файл, на которые ссылаются 125 записей Broken в item_db.json.
+    The metal set is the palette metal list narrowed to the metals whose sources
+    exist on disk: {armor, weapon} per metal plus the Linen garment. Today that is
+    four metals and nine files, which is exactly what item_db.json references.
     """
     out: list[tuple[str, str, str, str]] = []
-    for metal in METALS:
-        for kind in ("armor", "weapon"):
-            out.append((metal, kind, "", os.path.join(BROKEN_DIR, "%s_%s.png" % (metal, kind))))
-    out.append(("Linen", "garment", "", os.path.join(BROKEN_DIR, "linen_garment.png")))
+    for metal in palette_metals():
+        paths = {kind: source_of(metal, kind) for kind in KINDS}
+        if not all(paths.values()):
+            continue
+        for kind in KINDS:
+            out.append((metal, kind, paths[kind],
+                        os.path.join(BROKEN_DIR, "%s_%s.png" % (metal, kind))))
+    garment = source_of("Linen", "garment")
+    if garment:
+        out.append(("Linen", "garment", garment,
+                    os.path.join(BROKEN_DIR, "linen_garment.png")))
     return out
 
 
@@ -462,6 +506,72 @@ def out_name(dest: str, variant: str) -> str:
 def sha256(path: str) -> str:
     with open(path, "rb") as fh:
         return hashlib.sha256(fh.read()).hexdigest()
+
+
+def png_bytes(img: Image.Image) -> bytes:
+    """Encoded PNG payload; the same bytes are hashed and (outside --check) written."""
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def check_installed(candidates: dict[str, dict[str, str]], variants: list[str]) -> int:
+    """Compare installed icons with the generated candidates, like for like.
+
+    Every variant writes the same destination names, so the hashes are kept per
+    variant. `--check` without `--variant` accepts a file matching ANY candidate
+    variant and names the variant it matches; `--check --variant X` demands that
+    exact variant. (The old code kept one hash per destination — the last variant
+    silently won — so after installing v7 the check always failed against v8.)
+
+    Returns a shell exit code: 0 when every target is installed and matches,
+    1 otherwise. Extra files without a target are reported but do not fail.
+    """
+    if not candidates:
+        print("RESULT: FAIL check — нет целей (палитра/источники пусты)")
+        return 1
+    dests = list(next(iter(candidates.values())).keys())
+    matched: dict[str, list[str]] = {}
+    missing: list[str] = []
+    bad: list[str] = []
+    for rel in dests:
+        path = os.path.join(ROOT, rel)
+        if not os.path.isfile(path):
+            missing.append(rel)
+            continue
+        digest = sha256(path)
+        hit = [v for v in variants if candidates[v][rel] == digest]
+        if hit:
+            matched[rel] = hit
+        else:
+            bad.append(rel)
+    known = set(dests)
+    extra = sorted(os.path.relpath(p, ROOT)
+                   for p in globmod.glob(os.path.join(BROKEN_DIR, "*.png"))
+                   if os.path.relpath(p, ROOT) not in known)
+    print("Целей: %d, совпало: %d, не совпало: %d, не установлено: %d, лишних: %d"
+          % (len(dests), len(matched), len(bad), len(missing), len(extra)))
+    for rel in dests:
+        if rel in matched:
+            print("   = %s (%s)" % (rel, ", ".join(matched[rel])))
+    for v in variants:
+        n = sum(1 for rels in matched.values() if v in rels)
+        print("  вариант %s: %d из %d" % (v, n, len(dests)))
+    for rel in missing:
+        print("   ! %s — не установлен" % rel)
+    for rel in bad:
+        print("   ! %s — не совпадает (%s)" % (rel, ", ".join(variants)))
+    for rel in extra:
+        print("   ? %s — лишний, цели нет (устаревший файл от снятого металла?)" % rel)
+    used = sorted({v for rels in matched.values() for v in rels})
+    if bad or missing:
+        print("RESULT: FAIL check")
+        return 1
+    if len(used) == 1:
+        print("RESULT: OK check (установлено вариантом %s)" % used[0])
+    else:
+        print("RESULT: WARN check (файлы разных вариантов: %s)" % ", ".join(used))
+    return 0
 
 
 
@@ -549,59 +659,57 @@ def main() -> int:
     todo = {args.variant: VARIANTS[args.variant]} if args.variant else dict(VARIANTS)
 
     srcs: dict[tuple[str, str], str] = {}
-    problems: list[str] = []
+    plan = targets()
+    metals = sorted({metal for metal, kind, _p, _d in plan if kind != "garment"})
     print("-- источники --")
-    for metal, kind, path, _dest in targets():
-        if path == "":
-            path, p = resolve_source(metal, kind)
-            problems.extend(p)
-        if path == "":
-            continue
+    for metal, kind, path, _dest in plan:
         srcs[(metal, kind)] = path
         with Image.open(path) as im:
             print("  %s/%s: %s (%dx%d)"
                   % (metal, kind, os.path.relpath(path, ROOT), im.width, im.height))
+    problems = list(_missing)
     for p in problems:
         print("  ! %s" % p)
+    print("-- набор: металлов %d (%s), целей %d --"
+          % (len(metals), ", ".join(metals) or "нет", len(plan)))
     if args.report:
         print("DRY-RUN: источников %d, вариантов %d, металлов %d"
-              % (len(srcs), len(todo), len(METALS)))
+              % (len(srcs), len(todo), len(metals)))
         print("RESULT: OK report" if not problems else "RESULT: WARN report (%d)" % len(problems))
         return 0
-    if any(not os.path.isfile(p) for p in srcs.values()):
+    if not plan or any(not os.path.isfile(p) for p in srcs.values()):
         print("RESULT: FAIL — не найдены источники")
         return 1
 
-    os.makedirs(OUT_DIR, exist_ok=True)
-    compare_srcs = build_compare_sources()
     written: list[str] = []
-    hashes: dict[str, str] = {}
+    hashes: dict[str, dict[str, str]] = {}
     print("-- деривация: силуэт -> трещина (8x, LANCZOS) --")
     for vname, variant in sorted(todo.items()):
-        for metal, kind, path, dest in targets():
-            src_path = path if path != "" else srcs[(metal, kind)]
-            with Image.open(src_path) as src:
+        hashes[vname] = {}
+        for metal, kind, path, dest in plan:
+            with Image.open(path) as src:
                 img = derive(src, variant, SEED)
-            out_path = os.path.join(OUT_DIR, out_name(dest, vname))
-            img.save(out_path, "PNG")
-            written.append(out_path)
-            hashes[os.path.relpath(dest, ROOT)] = sha256(out_path)
+            payload = png_bytes(img)
+            rel = os.path.relpath(dest, ROOT)
+            hashes[vname][rel] = hashlib.sha256(payload).hexdigest()
+            # --check only compares: it must not rewrite the candidate folder.
+            if not args.check:
+                out_path = os.path.join(OUT_DIR, out_name(dest, vname))
+                with open(out_path, "wb") as fh:
+                    fh.write(payload)
+                written.append(out_path)
         print("  OK вариант %s: %d файлов" % (vname, len(srcs)))
 
+    if args.check:
+        return check_installed(hashes, list(todo))
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+    compare_srcs = build_compare_sources()
     if not args.no_sheet:
         build_sheet(written)
         compare_files = build_compare(compare_srcs)
         build_sheet(compare_files, sheet_path=COMPARE_PATH, columns=1)
         build_sheet(compare_files, sheet_path=COMPARE_SMALL_PATH, columns=3, cell_size=48)
-
-    if args.check:
-        bad = [rel for rel in hashes if not os.path.isfile(os.path.join(ROOT, rel))
-               or sha256(os.path.join(ROOT, rel)) != hashes[rel]]
-        print("Проверено установленных: %d, расхождений: %d" % (len(hashes), len(bad)))
-        for b in bad[:10]:
-            print("   ! %s" % b)
-        print("RESULT: %s check" % ("OK" if not bad else "FAIL"))
-        return 0 if not bad else 1
 
     if args.install:
         if len(todo) != 1:
@@ -609,7 +717,7 @@ def main() -> int:
             return 1
         vname = next(iter(todo))
         copied = 0
-        for metal, kind, path, dest in targets():
+        for metal, kind, path, dest in plan:
             src_png = os.path.join(OUT_DIR, out_name(dest, vname))
             if not os.path.isfile(src_png):
                 print("  ! нет %s" % src_png)
@@ -623,7 +731,7 @@ def main() -> int:
 
     print("Итого файлов: %d" % len(written))
     print("RESULT: OK broken_overlay (вариантов %d, металлов %d, файлов %d)"
-          % (len(todo), len(METALS), len(srcs)))
+          % (len(todo), len(metals), len(srcs)))
     return 0
 
 
