@@ -94,6 +94,30 @@ func new_city(name: String, faction_id: String = "", region_id: String = "") -> 
 	}
 	return cities[id]
 
+
+## Economy block of a city — the ONE place that owns the schema.
+##
+## `new_city` has always kept gold/food/prod inside `economy`, while the first
+## version of `TickSettlements` read them as flat city keys. Flat keys loaded
+## from such saves are folded back into `economy` once and removed, so old saves
+## keep their numbers and there is no second source of truth afterwards.
+func city_economy(c: Dictionary) -> Dictionary:
+	var raw: Variant = c.get("economy", null)
+	var eco: Dictionary = raw if raw is Dictionary else {}
+	for key in ["gold", "food", "prod"]:
+		if c.has(key):
+			if not eco.has(key):
+				eco[key] = c[key]
+			c.erase(key)
+	if not eco.has("gold"):
+		eco["gold"] = 50.0
+	if not eco.has("food"):
+		eco["food"] = 100.0
+	if not eco.has("prod"):
+		eco["prod"] = 5.0
+	c["economy"] = eco
+	return eco
+
 func new_faction(name: String, race: String = "") -> Dictionary:
 	var id := _id("f")
 	var f: Dictionary = {
@@ -343,9 +367,13 @@ func add_hero_reputation(faction_or_race: String, amount: int) -> int:
 	return delta
 
 
+## `power` is a combat-power cache. 0 means "not computed yet" and
+## WorldSim._army_power derives it from `unit_ids` on the first fight. The field
+## always exists because without it losses were computed from 1 and armies
+## fought forever (audit 30.09).
 func new_army(faction_id: String, pos: Vector2 = Vector2.ZERO) -> Dictionary:
 	var id := _id("a")
-	armies[id] = { "id": id, "faction_id": faction_id, "unit_ids": [], "pos": pos, "target": Vector2.ZERO, "owner_player": false }
+	armies[id] = { "id": id, "faction_id": faction_id, "unit_ids": [], "pos": pos, "target": Vector2.ZERO, "owner_player": false, "power": 0 }
 	return armies[id]
 
 func new_region(name: String) -> Dictionary:

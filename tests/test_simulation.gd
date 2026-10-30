@@ -36,14 +36,12 @@ func _run() -> void:
 	f_e["color"] = Color(1.0, 0.4, 0.2)
 
 	# Городам — нормальная стартовая экономика (иначе голод → бунт каждый день).
-	c_h["food"] = 500.0
-	c_h["prod"] = 30
-	c_h["gold"] = 500
-	c_h["population"] = 100
-	c_e["food"] = 500.0
-	c_e["prod"] = 30
-	c_e["gold"] = 500
-	c_e["population"] = 100
+	# Экономика живёт во вложенном блоке `economy` (единый источник правды).
+	for city in [c_h, c_e]:
+		city["economy"]["food"] = 500.0
+		city["economy"]["prod"] = 30.0
+		city["economy"]["gold"] = 500.0
+		city["population"] = 100
 
 	var u1 = w.new_unit(f_h.id, "fire")
 	var u2 = w.new_unit(f_e.id, "fire")
