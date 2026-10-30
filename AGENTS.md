@@ -288,6 +288,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 | `render_alm_png.gd` | `.alm`→PNG для визуального контроля (`missing_tiles=0`) |
 | `gen_hero_strip.py` | генерация ИИ-полосы героя (`stand/walk/attack/die`, 4 или 8 панелей) + **preflight** сырого PNG: фон, фигуры, зазоры, тень, линия ног, **толщина**. `--sex m\|f`, `--tag nb5\|nb6` — пол персонажа и имя файла |
 | `extract_hero_nb.py` | нарезка полос в 12 кадров героя (`idle1+move4+attack3+dying4`) + `_contact_sheet.png` + `_entry.json`. `--tag nb5\|nb6` — мужской/женский набор |
+| `render_3d_frames.py` | **3D-модель → 12 спрайтов героя (30.10)**: драйвер (Python+Pillow) находит Blender, зовёт `render_3d_frames_blender.py` (орто-камера 3/4, свет сверху-слева, 4×), нормализует масштаб по `idle` (фигура 54 px), пивот по origin модели (32,62), дописывает 1 px контур (`--outline`); `.blend`/`.glb`, бриф — `docs/3d-model-brief.md` |
 | `facing_probe.py` | замер направления по центру кожи лица; `--split4` для полосы из 8 фигур в два ряда |
 | `crop_rows.py` | отрезает верхний ряд фигур (модель возвращает 8 фигур в два ряда) |
 | `hero_size_probe.gd` | замер силуэтов героя и NPC в игре: контент, ширина/высота |
@@ -613,6 +614,7 @@ COLOR = mix(tex[tid], tex[nid], m) * COLOR.a
 
 ### Индекс записей
 
+- 30.10 (3D-моделлер) — бриф `docs/3d-model-brief.md` и пайплайн «3D-модель → 12 спрайтов» (`render_3d_frames.py` + `render_3d_frames_blender.py`: орто-камера 3/4, нормализация по `idle` 54 px, пивот (32,62), `--outline`); ловушки: Action'ы без Fake User/NLA пропадают при сохранении, `.glb` без `Animation mode: Actions` едет без анимаций, `bound_box` не годится для кадра, `paste` с отрицательным сдвигом ≠ композиция; `import/3d_src/`, `*.blend` в `.gitignore`
 - 30.10 (техдолг) — мёртвый код удалён (5 функций: `_create_lightning_effect`, `_unused`, `cast_ability`, `crit_*_of`, `_add_vert`); экономика города читается из `economy{}` (`WorldState.city_economy`, плоские ключи старых сейвов поглощаются), `felt()` → `hunger_of()` по дефициту, амбар не в минусе, армии получили `power` и бой заканчивается, потери от силы противника; `hash(Vector2i)` → `MapGenerator._cell_hash`, `GEN_VERSION` 34; тест `world_sim_smoke` (17)
 - 30.10 (вклад художника) — `docs/asset-contribution-agreement.md` (шаблон на страницу: авторство у автора, проекту — бессрочное разрешение на игру/моды/промо) и `docs/credits/README.md` (реестр авторства); `CONTRIBUTING.md` принимает арт с двумя вопросами; `branding_smoke` 20
 - 30.10 (публичный облик) — имя **Mirotokhome**, лицензия source-available (`LICENSE`), правила модов (`MODDING.md`), `THIRD-PARTY.md`, `CONTRIBUTING.md` (только моды и баги, без патчей); README переписан для игрока, техчасть в `README.dev.md`; `docs/rom2-ref` и оригинальные `structures.reg/.txt` вынесены из публичного репозитория; `branding_smoke` проверяет и публичные тексты (18); ключи Kodik вынесены в `%APPDATA%\Mirotokhome`; `gen_broken_overlay --check` перестал врать (эталон `v7_red_line`), `import/broken_overlay/` в `.gitignore`

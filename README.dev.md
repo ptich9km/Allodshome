@@ -92,6 +92,17 @@
 - Свет: три слоя, `CanvasModulate` + `Light2D` + `LightOccluder2D`, glow через
   `WorldEnvironment`, пост-обработка экранным шейдером.
 
+### Арт: 3D-модель → спрайты героя
+
+- Моделлер присылает `.blend` (и `.glb` запасным) с четырьмя действиями
+  `idle`/`walk`/`attack`/`die`; бриф для него — `docs/3d-model-brief.md`.
+- `tests/render_3d_frames.py` (Blender 4.2/5.2 + Python/Pillow) рендерит
+  12 кадров 64×64 с ортокамеры три четверти, нормализует масштаб по `idle` и
+  пивот по origin модели, пишет `sprites-001..012.png`, `_entry.json` и
+  контактный лист.
+- Исходники 3D в git не идут: `import/3d_src/`, `*.blend`, `*.blend1` —
+  в `.gitignore`.
+
 ## Структура
 
 ```
