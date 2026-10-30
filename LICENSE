@@ -1,0 +1,57 @@
+MIROTOKHOME — SOURCE-AVAILABLE LICENSE
+Version 1.0, 2026-10-30
+
+Copyright (c) 2026 Mirotokhome. All rights reserved.
+
+This repository contains the source code, data and art of the game
+"Mirotokhome" ("the Game"). It is published so that players and modders can
+read it, learn from it and build the Game for their own use.
+
+This is NOT an open-source license: no right is granted except those stated
+below.
+
+1. PERMITTED
+
+   a) read, study and learn from the source code;
+   b) build the Game from this repository and run it for personal,
+      non-commercial use;
+   c) create mods for the Game and distribute them free of charge under the
+      terms of MODDING.md;
+   d) fork the repository privately for experiments, as long as the result is
+      neither published nor distributed.
+
+2. NOT PERMITTED
+
+   a) distribute, publish or sell the Game, this repository or any build made
+      from it — modified or not — including on app stores and marketplaces;
+   b) use the code, art, audio, data or texts of the Game in another project;
+   c) sell mods or any derivative work, or put them behind a paywall;
+   d) remove or alter copyright notices.
+
+3. ASSETS
+
+   Art, audio, fonts, texts and game data are not covered by any free license.
+   Third-party works keep their own terms: fonts are under the SIL Open Font
+   License (see assets/fonts/), sound effects are CC0 (see
+   docs/audio-credits.md). Everything else is all rights reserved. The full
+   list is in THIRD-PARTY.md.
+
+4. CONTRIBUTIONS
+
+   Bug reports and mods are welcome. Patches to the Game's code are not
+   accepted, so that the licensing of the code stays unambiguous (see
+   CONTRIBUTING.md).
+
+5. NO WARRANTY
+
+   The Game is provided "as is", without warranty of any kind, express or
+   implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose and non-infringement. In no event shall the
+   authors be liable for any claim, damages or other liability arising from the
+   Game or its use.
+
+6. TERMINATION
+
+   Any use that violates this license terminates it automatically. On
+   termination you must stop using the Game and destroy all copies in your
+   possession.

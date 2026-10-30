@@ -126,9 +126,10 @@
   `import/Player/hero_{stand,walk,attack,die}_nb5.png` лежат в git, нужны
   только `numpy` и `pillow`: `python tests/extract_hero_nb.py`.
 - **Сгенерировать новые полосы — нужен ключ KodikRouter.** Он намеренно НЕ в
-  git (`.gitignore: *.kodik_key`). Способы: файл `.kodik_key` в корне проекта
-  или переменная окружения `KODIK_API_KEY`. Без ключа `gen_hero_strip.py`
-  завершается понятным сообщением, а не ошибкой 401.
+  git и НЕ в папке проекта (`.gitignore: *.kodik_key` — страховка). Ключи лежат
+  вне репозитория: `%APPDATA%\Mirotokhome\kodik_key` и `kodik_audio_key`;
+  альтернатива — переменная окружения `KODIK_API_KEY`. Без ключа
+  `gen_hero_strip.py` завершается понятным сообщением, а не ошибкой 401.
 - Первый запуск Godot после `git pull` требует `--headless --import`: кэш
   `.godot/` в репозитории не лежит, и без импорта глобальные классы
   (`Game`, `UnitDB`, `SpellDB`) не зарегистрированы — см. §3.

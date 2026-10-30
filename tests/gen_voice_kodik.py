@@ -28,6 +28,11 @@ BASE = "https://api.kodikrouter.ru/v1"
 REPO = Path(__file__).resolve().parent.parent
 KEY_FILE = REPO / ".kodik_audio_key"
 LEGACY_KEY_FILE = REPO / ".kodik_key"
+## Secrets live outside the repository: an archive of the project folder must
+## never carry an API key.
+USER_DIR = Path(os.environ.get("APPDATA", Path.home())) / "Mirotokhome"
+USER_KEY_FILE = USER_DIR / "kodik_audio_key"
+USER_LEGACY_KEY_FILE = USER_DIR / "kodik_key"
 LINES = REPO / "assets" / "audio" / "voice_lines.json"
 DB = REPO / "assets" / "audio" / "sound_db.json"
 OUT = REPO / "assets" / "audio" / "sfx" / "voice"
@@ -39,18 +44,22 @@ def load_key() -> str:
         return key
     # Отдельный ключ: ключ из `.kodik_key` выдан под картинки и не имеет
     # доступа к аудио-моделям (403 «модель не разрешена»).
-    if KEY_FILE.exists():
-        key = KEY_FILE.read_text(encoding="utf-8").strip()
-        if key:
-            return key
+    # Lookup order: user profile folder first (outside the repo), then the
+    # legacy files in the repo root.
+    for path in (USER_KEY_FILE, KEY_FILE):
+        if path.exists():
+            key = path.read_text(encoding="utf-8").strip()
+            if key:
+                return key
     key = os.environ.get("KODIK_API_KEY", "").strip()
     if key:
         return key
-    if LEGACY_KEY_FILE.exists():
-        key = LEGACY_KEY_FILE.read_text(encoding="utf-8").strip()
-        if key:
-            return key
-    sys.exit(f"API key not found: set KODIK_AUDIO_KEY or create {KEY_FILE}")
+    for path in (USER_LEGACY_KEY_FILE, LEGACY_KEY_FILE):
+        if path.exists():
+            key = path.read_text(encoding="utf-8").strip()
+            if key:
+                return key
+    sys.exit(f"API key not found: set KODIK_AUDIO_KEY or create {USER_KEY_FILE}")
 
 
 def speech(key: str, model: str, voice: str, text: str, out: Path) -> None:

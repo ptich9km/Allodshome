@@ -85,12 +85,12 @@ func _setup_spells():
 	spell_grid.add_theme_constant_override("h_separation", 2)
 	spell_grid.add_theme_constant_override("v_separation", 2)
 
-## Перестроить книгу магии: всегда 2 ряда по 12 ячеек = 24 книжных заклинания
-## (порядок docs/rom2-ref/spells.txt). Слот 1 (1-й ряд, левая ячейка) … слот 24
-## (2-й ряд, 12-я ячейка). Иконка каждой магии — каноничная иконка из книги
-## (assets/spells/spell_NN.png, нарезаны из spellbook.bmp). Выучено — иконка +
-## подсказка с названием; не выучено — пустой квадрат spellback с подсказкой,
-## какая магия здесь учится.
+## Rebuild the spell book: always 2 rows of 12 cells = 24 book spells, in the
+## order of the canonical spell table (internal archive of the project, not
+## published). Slot 1 (row 1, left cell) … slot 24 (row 2, 12th cell). Each spell
+## icon is the canonical book icon (assets/spells/spell_NN.png, sliced from
+## spellbook.bmp). Learned — the icon plus a tooltip with the name; not learned —
+## an empty spellback square that tells which magic is taught here.
 func refresh_spell_book() -> void:
 	if not is_instance_valid(player):
 		return
