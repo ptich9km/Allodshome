@@ -48,7 +48,10 @@ def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--blend", help="source .blend (preferred)")
-    src.add_argument("--glb", help="source .glb / .gltf (fallback)")
+    src.add_argument("--mesh", help="source mesh: .glb/.gltf/.obj/.fbx "
+                                    "(ComfyUI and other generators usually "
+                                    "deliver one of these)")
+    src.add_argument("--glb", help="legacy alias for --mesh")
     ap.add_argument("--name", required=True,
                     help="unit set name, e.g. hero_brute (folder and units_db key)")
     ap.add_argument("--out", default="",
@@ -106,9 +109,11 @@ def find_blender(explicit: str) -> Path:
 
 
 def render_raw(args: argparse.Namespace, work: Path) -> dict:
+    source = Path(args.blend or args.mesh or args.glb)
     job = {
-        "source": str(Path(args.blend or args.glb).resolve()),
+        "source": str(source.resolve()),
         "blend": bool(args.blend),
+        "suffix": source.suffix.lower(),
         "render_px": OUT_SIZE * RENDER_SCALE,
         "azimuth": args.azimuth,
         "elevation": args.elevation,
@@ -341,7 +346,7 @@ def write_contact_sheet(frames: list, manifest: dict, out_dir: Path) -> Path:
 
 def main() -> None:
     args = parse_args()
-    source = Path(args.blend or args.glb)
+    source = Path(args.blend or args.mesh or args.glb)
     out_dir = Path(args.out) if args.out else \
         repo_root() / "assets" / "units" / "hero" / args.name
     out_dir.mkdir(parents=True, exist_ok=True)

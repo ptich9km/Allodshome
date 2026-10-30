@@ -51,11 +51,23 @@ def action_key(action) -> str:
 
 def load_model(job: dict) -> None:
     source = Path(job["source"])
+    suffix = str(job.get("suffix", source.suffix)).lower()
     if job.get("blend"):
         bpy.ops.wm.open_mainfile(filepath=str(source))
     else:
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        bpy.ops.import_scene.gltf(filepath=str(source))
+        # Mesh generators export different formats: glTF is the most common,
+        # but ComfyUI pipelines also produce .obj and .fbx.
+        if suffix in (".glb", ".gltf"):
+            bpy.ops.import_scene.gltf(filepath=str(source))
+        elif suffix == ".obj":
+            bpy.ops.wm.obj_import(filepath=str(source))
+        elif suffix == ".fbx":
+            bpy.ops.import_scene.fbx(filepath=str(source))
+        else:
+            raise SystemExit(
+                "unsupported mesh format: %s (expected .glb/.gltf/.obj/.fbx; "
+                "for .blend use --blend)" % suffix)
     # A camera or light that came with the file would win over ours.
     for obj in list(bpy.data.objects):
         if obj.type in {"CAMERA", "LIGHT"}:
