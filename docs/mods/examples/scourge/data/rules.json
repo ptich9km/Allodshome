@@ -1,0 +1,20 @@
+﻿[
+	{
+		"into": "rule",
+		"op": "append",
+		"key": "spells.spheres",
+		"value": ["Shadow"]
+	},
+	{
+		"into": "rule",
+		"op": "append",
+		"key": "items.head_types",
+		"value": ["Crown"]
+	},
+	{
+		"into": "rule",
+		"op": "append",
+		"key": "spawn.gray_species",
+		"value": ["scourge"]
+	}
+]

@@ -6,23 +6,26 @@ class_name UnitDB
 const DB_PATH := "res://assets/units/units_db.json"
 const TICK := 0.05  # множитель тайминга (единицы "тиков" из units.txt)
 
-## Семейства лута в порядке сводки (tests/package_a_smoke.gd). Данные, а не
-## константа: мод с новым семейством (например "demon") должен попадать в сводку.
+## Loot families in summary order (tests/package_a_smoke.gd). Data, not a
+## constant: a mod with a new family (say "demon") must reach the summary.
 static func loot_families() -> Array:
 	return ContentRules.list("units.loot_families")
 
-## Семейство лута набора по ВИДУ: запасной путь, если явного поля `loot_family`
-## в units_db.json нет (поле вписано 22.10 тестами/gen_gray_loot_family.py для всех
-## 50 наборов `monsters/*` и имеет приоритет — см. loot_family_of). Вид берётся из
-## арта: img2img-копии `monsters/<вид>_t<N>` (tests/gen_grey_tiers.py) несут ровно тот
-## же вид, что и исходный `monsters/<вид>`. Без этой привязки животное
-## (`monsters/wolf...`) попадало бы в финансовую таблицу `default` и роняло
-## БРОНЮ И ОРУЖИЕ, а решение игрока 07.10 — у зверей снаряжения нет.
-## Ключ берётся только из сегмента ВИДА (`monsters/bee_t3` -> `bee`), а не из
-## всего имени: тир-суффикс отрезается ДО сверки, иначе тиры 2..5 не нашли бы себя.
+## Loot family of a set by SPECIES: the fallback path when there is no explicit
+## `loot_family` field in units_db.json (the field was written 2026-10-22 by
+## tests/gen_gray_loot_family.py for all 50 `monsters/*` sets and takes priority
+## — see loot_family_of). The species comes from the art: img2img copies
+## `monsters/<species>_t<N>` (tests/gen_grey_tiers.py) carry exactly the same
+## species as the original `monsters/<species>`. Without this binding an animal
+## (`monsters/wolf...`) would fall into the financial `default` table and drop
+## ARMOR AND WEAPONS, while the player's decision of 2026-10-07 was that beasts
+## carry no equipment.
+## The key is taken from the SPECIES segment only (`monsters/bee_t3` -> `bee`),
+## not from the whole name: the tier suffix is cut BEFORE the lookup, otherwise
+## tiers 2..5 would not find themselves.
 ##
-## 29.10: таблица переехала в данные (`units.loot_by_species`) — мод с новым
-## зверем может сразу сказать, что с него падает.
+## 2026-10-29: the table moved to data (`units.loot_by_species`) — a mod with a
+## new beast can state right away what it drops.
 static func loot_by_species() -> Dictionary:
 	return ContentRules.dict("units.loot_by_species")
 
@@ -42,7 +45,7 @@ static func ensure_loaded() -> void:
 	f.close()
 	if parsed is Dictionary:
 		_db = parsed
-	# Моды: новые наборы и патчи статов — до индекса, чтобы ids попали в _by_id.
+	# Mods: new sets and stat patches — before the index, so ids reach _by_id.
 	ModLoader.overlay("units", _db)
 	# Индекс: ID юнита (из units.txt) -> имя набора (для спавна НПЦ из .alm)
 	_by_id = {}
@@ -106,10 +109,10 @@ static func has(name: String) -> bool:
 static func frame_count(name: String) -> int:
 	return int(get_set(name).get("frames", 0))
 
-## Путь к кадру (1-based): res://assets/units/<folder>/<prefix>-NNN.png
-## У наборов часть имени файла отличается (sprites | swordsman | ...).
-## `folder` вида `mod://<id>/assets/...` разрешается в папку мода — так мод может
-## принести свою полосу кадров, не копируя её в res://.
+## Path to a frame (1-based): res://assets/units/<folder>/<prefix>-NNN.png
+## Some sets use their own file name prefix (sprites | swordsman | ...).
+## A `folder` of the form `mod://<id>/assets/...` resolves into the mod folder —
+## that is how a mod can ship its own frame strip without copying it into res://.
 static func frame_path(folder: String, prefix: String, frame: int) -> String:
 	if ModLoader.is_mod_path(folder):
 		return "%s/%s-%03d.png" % [ModLoader.resolve(folder), prefix, frame]
@@ -203,12 +206,13 @@ static func tile_size(name: String) -> int:
 static func loot_family(name: String) -> String:
 	return str(get_set(name).get("loot_family", ""))
 
-## Таблица лута для жертвы `name` (ключ family из loot_tables.json).
+## Loot table for the victim `name` (family key of loot_tables.json).
 ##
-## Источники по приоритету: явное поле `loot_family` в базе (вписано во все
-## `monsters/*` тестами/gen_gray_loot_family.py), затем вид из LOOT_BY_SPECIES
-## (страховка для новых наборов без поля). Тировый суффикс отрезается до
-## сверки (`monsters/bee_t3` -> `bee`). Городские наборы, герои и пустое имя -> "".
+## Sources by priority: the explicit `loot_family` field in the base (present on
+## all `monsters/*` sets, written by tests/gen_gray_loot_family.py), then the
+## species from `units.loot_by_species` (a safety net for new sets without the
+## field). The tier suffix is cut before the lookup (`monsters/bee_t3` -> `bee`).
+## City sets, heroes and an empty name -> "".
 static func loot_family_of(name: String) -> String:
 	var explicit := str(get_set(name).get("loot_family", ""))
 	if explicit != "":

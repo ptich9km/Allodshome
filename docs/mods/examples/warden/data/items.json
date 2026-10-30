@@ -1,6 +1,6 @@
 [
 	{
-		"kind": "item",
+		"into": "item",
 		"key": "Common warden fang",
 		"name_ru": "Клык сторожа",
 		"name_en": "Warden Fang",

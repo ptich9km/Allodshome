@@ -7,9 +7,10 @@ class_name CharacterSelect
 
 const PORTRAIT_DIR := "res://assets/hero_portraits/"
 
-## Расы для выбора — данные (`races` в assets/config/content_rules.json).
-## Мод может добавить расу: портрет ищется по конвенции `<раса>_<пол>_<роль>`,
-## а флаг `two_styles` включает второй стиль (у людей human/human2).
+## Races available on the screen — data (`races` in assets/config/content_rules.json).
+## A mod can add a race: its portrait is looked up by the convention
+## `<race>_<gender>_<role>`, and the `two_styles` flag enables the second look
+## (human/human2 for humans).
 static func races() -> Array:
 	return ContentRules.list("races")
 
@@ -137,9 +138,10 @@ func _ready():
 		_start_btn.call_deferred("grab_focus")
 
 
-## Ключ портрета: {race}_{m|f}_{war|mage}, у людей + стиль human/human2.
-## Раса из данных: `two_styles` — две внешности (только у людей), иначе
-## портрет называется ровно по id расы. Мод с новой расой работает без правок.
+## Portrait key: {race}_{m|f}_{war|mage}, plus a style for humans (human/human2).
+## The race comes from data: `two_styles` means two looks (humans only),
+## otherwise the portrait is named exactly by the race id. A mod with a new race
+## works without code changes.
 func _portrait_key(race: String, gender: String, role: String) -> String:
 	var g := "m" if gender == "male" else "f"
 	var r := "war" if role == "warrior" else "mage"

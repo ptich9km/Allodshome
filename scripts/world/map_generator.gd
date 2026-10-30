@@ -512,11 +512,17 @@ const GRAY_POOL_TEST: Array = [
 	"monsters/bee", "monsters/bat", "monsters/ghost", "monsters/dragon",
 ]
 
-# Тиры Серых. Каждый вид имеет 5 наборов: тир 1 — сам зверь без перекраски
-# (`monsters/<вид>`), тиры 2..5 — перекрашенные копии `monsters/<вид>_t<N>`.
-# Перекраска бесплатна (ни одного вызова API), генератор — tests/gen_grey_tiers.py.
-const GRAY_SPECIES: Array = ["wolf", "dino", "squirrel", "bee", "bat", "ghost", "dragon",
-	"cannibal", "troll", "succubus"]
+# Grey tiers. Every species has 5 sets: tier 1 is the beast itself, without a
+# recolour (`monsters/<species>`); tiers 2..5 are recoloured copies
+# `monsters/<species>_t<N>`. The recolour is free (zero API calls), the
+# generator is tests/gen_grey_tiers.py.
+#
+# 2026-10-30: the species list moved to data (`spawn.gray_species`) — a mod can
+# add its own beast and it starts to appear in the world. Missing sets (for
+# example a mod with tier 1 only) are filtered out: the pool must never offer a
+# spawn of a set that does not exist.
+static func gray_species() -> Array:
+	return ContentRules.list("spawn.gray_species")
 
 # Полоса тиров по зонам (решение игрока): чем глубже, тем опаснее вид.
 #  start   1-2  новичок не встречает элит
@@ -540,13 +546,15 @@ static func gray_set_name(species: String, tier: int) -> String:
 	return "monsters/%s" % species if tier <= 1 else "monsters/%s_t%d" % [species, tier]
 
 
-## Пул наборов зоны: все виды × тиры её полосы.
+## Zone set pool: all species × the tiers of its band (existing sets only).
 static func gray_pool_for_zone(zone: String) -> Array:
 	var band: Array = GRAY_TIER_BAND.get(zone, GRAY_TIER_BAND["mid"])
 	var out: Array = []
-	for sp in GRAY_SPECIES:
+	for sp in gray_species():
 		for t in range(int(band[0]), int(band[1]) + 1):
-			out.append(gray_set_name(str(sp), t))
+			var set_name := gray_set_name(str(sp), t)
+			if UnitDB.has(set_name):
+				out.append(set_name)
 	return out
 
 
@@ -571,10 +579,10 @@ const INN_FOLDERS := ["inn_s1", "inn_s2"]
 const TRAIN_FOLDERS := ["train_s1"]
 const BLACKSMITH_FOLDERS := ["blacksmith_s1"]
 
-## Жильё и декор по расе города (ключи = faction id в world.json).
-## У каждой расы свой стиль зданий - орочий город не выглядит людским.
-## 29.10: переехали в данные (`map.house_folders` / `map.decor_folders`) —
-## мод с новым набором построек или новой фракцией не требует правки кода.
+## Housing and decor by city race (keys = faction id in world.json).
+## Every race has its own building style — an orc city does not look human.
+## 2026-10-29: moved to data (`map.house_folders` / `map.decor_folders`) — a mod
+## with a new building set or a new faction needs no code change.
 static func house_folders() -> Dictionary:
 	return ContentRules.dict("map.house_folders")
 
@@ -582,9 +590,10 @@ static func house_folders() -> Dictionary:
 static func decor_folders() -> Dictionary:
 	return ContentRules.dict("map.decor_folders")
 
-## Мелкий декор карты (seedream, alm_objects.json ID 193-199).
-## Ставится вокруг городов: бочки/ящики/мешки у зданий, фонари вдоль дорог.
-## Список — в данных (`map.city_props`); фонарь 197 ставится отдельно у дорог.
+## Small map decor (seedream, alm_objects.json IDs 193-199).
+## Placed around cities: barrels/crates/sacks near buildings, lanterns along
+## roads. The list lives in data (`map.city_props`); lantern 197 is placed by a
+## dedicated branch next to roads.
 const LANTERN_PROP_ID := 197
 
 ## Зоны, в которых генератор ставит портал.
@@ -1131,8 +1140,8 @@ func _place_city_content(rng: RandomNumberGenerator) -> void:
 ## у тротуара), с дистанцией >= 3 клеток между фонарями, чтобы не сбивались
 ## сгустком в центре площади.
 func _place_city_props(rng: RandomNumberGenerator) -> void:
-	# Пул пропов — из данных (`map.city_props`); фонарь ставится отдельной
-	# ветвью у дороги, поэтому из общего пула он исключён.
+	# Prop pool comes from data (`map.city_props`); the lantern is placed by a
+	# dedicated branch next to roads, so it is excluded from the general pool.
 	var prop_pool: Array = []
 	for p in ContentRules.list("map.city_props"):
 		if int(p) != LANTERN_PROP_ID:

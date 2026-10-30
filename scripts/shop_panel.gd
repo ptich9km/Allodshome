@@ -609,10 +609,12 @@ func _category_items(category_index: int) -> Array[Dictionary]:
 				# Все зелья, включая эликсиры атрибутов за 1M.
 				matches = quality == "Potion" and price > 0
 			"books":
-				# Только свитки заклинаний из базы. Книги ОДНОГО заклинания
-				# добавляются ниже через make_book_item. Сферные «Book Fire»
-				# (учат всю сферу) в лавку НЕ продаются.
-				matches = quality in ["Scroll", "SuperScroll"]
+				# Scrolls from the base. Books of a SINGLE spell are added below
+				# via make_book_item. Since 2026-10-30 SCHOOL books are sold too
+				# (quality "Book"): the five vanilla ones cost 0 (they are given
+				# at start), while a mod can sell its own — and that opens the
+				# whole new magic school.
+				matches = quality in ["Scroll", "SuperScroll", "Book"]
 			"recipes_armor":
 				matches = quality == "Recipe" and str(item.get("bp", "")) == "armor"
 			"recipes_weapon":

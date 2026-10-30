@@ -645,8 +645,8 @@ static func build_payload(player, world_dict: Dictionary, world_meta: Dictionary
 		"world": world_dict,
 		"events": events,
 		"quests": quests,
-		# Мод-профиль: что было включено на момент сохранения. По нему при
-		# загрузке видно, каких модов не хватает (см. _check_mods).
+		# Mod profile: what was enabled at save time. On load it shows which mods
+		# are missing (see _check_mods).
 		"mods": ModLoader.save_profile(),
 	}
 	var meta := {
@@ -902,10 +902,10 @@ static func _stage_world_files(slot: String, src: String, dst_base: String) -> b
 ##
 ## slot — слот, из которого читаем: по нему вход в игру берёт файлы карты из
 ## папки сохранения. Без slot карта берётся по сиду.
-## Мод-профиль сейва против текущего набора: пропавшие и обновлённые моды —
-## предупреждение в лог, а не отказ грузить мир. Урок Space Engineers, где
-## удаление мода ломает мир: у нас ключи строковые, предметы просто не найдутся,
-## и игра обязана открыться.
+## Mod profile of the save against the current set: missing and updated mods are
+## a log warning, not a refusal to load the world. Lesson from Space Engineers,
+## where removing a mod breaks the world: our keys are strings, missing items
+## simply are not found, and the game must still open.
 static func _check_mods(saved: Variant) -> void:
 	if not (saved is Array) or (saved as Array).is_empty():
 		return

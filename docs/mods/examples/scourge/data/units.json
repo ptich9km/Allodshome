@@ -1,0 +1,13 @@
+[
+	{
+		"into": "unit",
+		"key": "monsters/scourge",
+		"extends": "monsters/wolf",
+		"name_ru": "Теневой пёс",
+		"desc": "Зверь мода «Тень»: наследует волка, попадается в зонах, где есть тир 1.",
+		"tier": 1,
+		"palette": 5,
+		"loot_family": "beast",
+		"resist": {"fire": 10, "water": 10, "air": 10, "earth": 10, "astral": 40}
+	}
+]

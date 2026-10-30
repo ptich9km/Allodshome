@@ -16,7 +16,7 @@ const DB_PATH := "res://assets/quests/quest_db.json"
 const TYPES := ["KILL_SPECIES", "KILL_GROUP", "KILL_TARGET", "GATHER",
 	"FIND_ITEM", "DELIVER", "URGENT"]
 
-## Beasts from MapGenerator.GRAY_SPECIES that have an English singular name.
+## Beasts from MapGenerator.gray_species() that have an English singular name.
 ## A target beast is ONE concrete monster: its name goes into the title (%s)
 ## and the text, so a missing key just means the species is never a target.
 const BEAST_SINGULAR := {
@@ -330,7 +330,7 @@ static func species_for_quest(zone: String, difficulty: int,
 	var lo := int(band[0])
 	var hi := int(band[1])
 	var out: Array = []
-	for sp in MapGenerator.GRAY_SPECIES:
+	for sp in MapGenerator.gray_species():
 		var tier := clampi(lo + shift + rng.randi_range(0, 1), lo, hi)
 		if UnitDB.has(MapGenerator.gray_set_name(str(sp), tier)):
 			out.append(str(sp))

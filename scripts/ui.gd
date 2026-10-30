@@ -60,10 +60,17 @@ func _layout_panels() -> void:
 # Панель заклинаний с иконками
 const SPELL_CELL := 36              # ячейка магии = spellback.bmp (36x36)
 const SPELL_COLS := 12              # колонок в книге (как сетка 12 в tscn)
+## Icon and cooldown veil inset inside a book cell: the art nearly touches the
+## frame, as in the reference skill panels (WoW/Lineage/AION).
+const BOOK_ICON_INSET := 2.0
 const SPHERE_RU := {"Fire": "Огонь", "Water": "Вода", "Air": "Воздух",
 	"Earth": "Земля", "Astral": "Астрал"}
 var spell_buttons: Array = []       # ВСЕ ячейки (включая пустые квадратики)
 var _spell_buttons_filled: Array = []  # только ячейки с заклинаниями (аляйно с names)
+## "Book is empty" hint: the warrior's book is scrolls from the inventory, the
+## mage's is learned spells. Without text the empty panel looked like "B does not
+## open the menu" (2026-10-30).
+var _book_empty_hint: Label = null
 ## заклинание -> последнее показанное ЧИСЛО секунд кулдауна. Ключ нужен,
 ## чтобы не трогать узлы каждый кадр: пока целое число не изменилось,
 ## картинка та же.
@@ -94,11 +101,14 @@ func refresh_spell_book() -> void:
 	_spell_buttons_filled.clear()
 	_spell_button_names.clear()
 	_cd_shown.clear()
+	_clear_book_empty_hint()
 
 	# ВОИН: книга = свитки из склада. Маг свитки сюда НЕ берёт — они бы
 	# затирали книжную магию; у мага свиток живёт в складе и на хоткее.
 	if not player.has_mana:
 		_build_scroll_book()
+		if spell_buttons.is_empty():
+			_show_book_empty_hint(Loc.t("ui.book.empty_warrior"))
 		_ensure_auto_status_label()
 		_refresh_auto_status()
 		return
@@ -124,11 +134,142 @@ func refresh_spell_book() -> void:
 		var ch := player.spell_charges(name)
 		var known: bool = (player.has_mana and ch == -1) or (not player.has_mana and ch > 0)
 		_make_spell_cell(name, str(s["icon"]), known)
+	if spell_buttons.is_empty():
+		_show_book_empty_hint(Loc.t("ui.book.empty_mage"))
 	_ensure_auto_status_label()
 	_refresh_auto_status()
 
-## Ячейка книги: StyleBoxFlat с цветной полосой стихии снизу; выучено — иконка;
-## не выучено — приглушённый border. Вместо spellback.bmp — кастомный стиль.
+
+## Hint in the middle of the book when there are no cells.
+func _show_book_empty_hint(text: String) -> void:
+	_clear_book_empty_hint()
+	var lab := Label.new()
+	lab.name = "BookEmptyHint"
+	lab.text = text
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lab.add_theme_color_override("font_color", UiTheme.TEXT)
+	lab.set_anchors_preset(Control.PRESET_FULL_RECT)
+	spell_panel.add_child(lab)
+	_book_empty_hint = lab
+
+
+func _clear_book_empty_hint() -> void:
+	if _book_empty_hint != null and is_instance_valid(_book_empty_hint):
+		_book_empty_hint.queue_free()
+	_book_empty_hint = null
+
+## Shared look of a book cell (spell and scroll alike): a translucent dark slot,
+## a warm hairline frame and a 2 px stripe of the sphere colour at the bottom —
+## the stripe is how the player reads the school of magic.
+##
+## `flat` must stay FALSE on these buttons: in Godot 4 a flat button does not
+## draw its stylebox in the normal state at all, so the icon floated bare above
+## the panel while the "not learned" slots (plain PanelContainers) kept their
+## background — two looks in one book (player report of 2026-10-30).
+func _book_cell_style(accent: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(UiTheme.SLOT_BG.r, UiTheme.SLOT_BG.g, UiTheme.SLOT_BG.b, 0.88)
+	style.set_border_width_all(UiTheme.BORDER_HAIRLINE)
+	style.set_border_width(SIDE_BOTTOM, 2)
+	style.border_color = accent.lerp(UiTheme.PANEL_EDGE.darkened(0.45), 0.4)
+	style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
+	style.set_content_margin_all(UiTheme.SPACE_1)
+	return style
+
+
+## normal / hover / pressed / focus for a book cell. The focus box is set
+## explicitly: without it the theme's generic frame was invisible on these cells,
+## so a keyboard/gamepad user could not see where the cursor was.
+func _apply_book_cell_styles(b: Button, accent: Color) -> void:
+	var style := _book_cell_style(accent)
+	b.add_theme_stylebox_override("normal", style)
+
+	var hover := style.duplicate()
+	hover.border_color = accent
+	hover.bg_color = Color(UiTheme.PANEL_INNER.r, UiTheme.PANEL_INNER.g,
+		UiTheme.PANEL_INNER.b, 0.92)
+	b.add_theme_stylebox_override("hover", hover)
+
+	var pressed := style.duplicate()
+	pressed.bg_color = Color(UiTheme.BG_DEEP.r, UiTheme.BG_DEEP.g,
+		UiTheme.BG_DEEP.b, 0.95)
+	b.add_theme_stylebox_override("pressed", pressed)
+
+	var focus := style.duplicate()
+	focus.border_color = UiTheme.ACCENT
+	focus.set_border_width_all(UiTheme.BORDER_FOCUS)
+	b.add_theme_stylebox_override("focus", focus)
+
+
+## Dark veil that recedes upwards as the cooldown runs out (WoW-style sweep).
+## Added BEFORE the counters and labels so they stay readable on top of it.
+func _add_cooldown_veil(b: Button) -> void:
+	var veil := ColorRect.new()
+	veil.name = "CooldownVeil"
+	veil.color = Color(UiTheme.BG_DEEP.r, UiTheme.BG_DEEP.g, UiTheme.BG_DEEP.b, 0.55)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.offset_left = BOOK_ICON_INSET
+	veil.offset_top = BOOK_ICON_INSET
+	veil.offset_right = -BOOK_ICON_INSET
+	veil.offset_bottom = -BOOK_ICON_INSET
+	veil.visible = false
+	b.add_child(veil)
+
+
+## Seconds counter in the middle of a book cell. Scroll cells had no such label,
+## so their cooldown ran silently while spell cells showed the number.
+func _add_cooldown_label(b: Button) -> void:
+	var cd := Label.new()
+	cd.name = "Cooldown"
+	cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cd.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cd.add_theme_font_size_override("font_size", UiTheme.FONT_SUBHEAD)
+	cd.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
+	cd.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	cd.add_theme_constant_override("outline_size", 4)
+	cd.visible = false
+	b.add_child(cd)
+
+
+## Icon of a book cell. The texture is inset by 2 px so the art nearly touches
+## the frame, as in the reference skill panels (WoW/Lineage/AION). A PNG that
+## Godot never imported (a mod asset in user://) is loaded by hand.
+func _book_cell_icon(b: Button, icon_path: String) -> TextureRect:
+	if icon_path == "":
+		return null
+	var tex: Texture2D = null
+	if ResourceLoader.exists(icon_path):
+		tex = load(icon_path) as Texture2D
+	elif FileAccess.file_exists(icon_path):
+		# A PNG in user:// (a mod asset) is not imported by Godot: it is loaded by
+		# hand, the same way the mods panel loads its preview.
+		var img := Image.new()
+		if img.load(icon_path) == OK:
+			tex = ImageTexture.create_from_image(img)
+	if tex == null:
+		return null
+	var ic := TextureRect.new()
+	ic.texture = tex
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ic.offset_left = BOOK_ICON_INSET
+	ic.offset_top = BOOK_ICON_INSET
+	ic.offset_right = -BOOK_ICON_INSET
+	ic.offset_bottom = -BOOK_ICON_INSET
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(ic)
+	return ic
+
+
+## Spell cell: a stripe of the sphere colour at the bottom; learned — icon,
+## not learned — a dimmed frame with a hint of what is taught here.
 func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	var spell := SpellDB.get_spell(name)
 	var title := str(spell.get("ru", name))
@@ -137,14 +278,13 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	var charges := player.spell_charges(name)
 	var mana := SpellDB.mana_cost(name)
 	var sphere_color: Color = UiKit.SPHERE_COLORS.get(sphere_name, Color(0.5, 0.5, 0.5))
-	var border_base := UiTheme.PANEL_EDGE.darkened(0.45)
 
 	if not known:
-		# Пустой слот книги: приглушённый border цвета стихии
+		# Empty slot of the book: a dimmed frame in the sphere colour.
 		var cell := PanelContainer.new()
 		cell.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
 		var style := StyleBoxFlat.new()
-		style.bg_color = UiTheme.BG_DEEP
+		style.bg_color = Color(UiTheme.BG_DEEP.r, UiTheme.BG_DEEP.g, UiTheme.BG_DEEP.b, 0.88)
 		style.border_color = sphere_color.darkened(0.5)
 		style.set_border_width_all(1)
 		style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
@@ -156,46 +296,21 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
-	b.flat = true
 	b.focus_mode = Control.FOCUS_ALL
+	_apply_book_cell_styles(b, sphere_color)
 
-	# Стиль ячейки: тёмный фон + цветной border стихии снизу (2px)
-	var style := StyleBoxFlat.new()
-	style.bg_color = UiTheme.SLOT_BG
-	style.set_border_width_all(UiTheme.BORDER_HAIRLINE)
-	style.set_border_width(SIDE_BOTTOM, 2)
-	style.border_color = sphere_color.lerp(border_base, 0.4)
-	style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
-	style.set_content_margin_all(UiTheme.SPACE_1)
-	b.add_theme_stylebox_override("normal", style)
+	# Icon of the spell from assets/spells; the veil goes right above it, all
+	# counters are added after the veil and therefore stay legible.
+	var ic := _book_cell_icon(b, icon)
+	if ic != null:
+		# Only the icon is dimmed on cooldown, not the whole button.
+		b.set_meta("icon", ic)
+	_add_cooldown_veil(b)
 
-	var hover_style := style.duplicate()
-	hover_style.border_color = sphere_color
-	hover_style.bg_color = UiTheme.PANEL_INNER.lightened(0.08)
-	b.add_theme_stylebox_override("hover", hover_style)
-
-	var pressed_style := style.duplicate()
-	pressed_style.bg_color = UiTheme.BG_DEEP
-	b.add_theme_stylebox_override("pressed", pressed_style)
-
-	# Иконка нужной магии из каталога assets/spells
-	if icon != "":
-		var ic := TextureRect.new()
-		ic.texture = load(icon)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.set_anchors_preset(Control.PRESET_FULL_RECT)
-		ic.offset_left = 3.0
-		ic.offset_top = 3.0
-		ic.offset_right = -3.0
-		ic.offset_bottom = -3.0
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(ic)
-
-	# Тултип: сфера, стоимость, урон/лечение, радиус, длительность эффектов
+	# Tooltip: sphere, cost, damage/heal, radius, effect duration.
 	b.tooltip_text = _spell_tooltip(name, title, sphere, charges, mana)
 
-	# Число зарядов свитка в ячейке (чётко читается поверх иконки)
+	# Charges left in the cell (readable above the icon).
 	if charges > 0:
 		var lbl := Label.new()
 		lbl.text = str(charges)
@@ -213,7 +328,7 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 		b.add_child(lbl)
 
 	b.pressed.connect(func(sn: String = name): _cast_spell_button(sn))
-	# ПКМ: сделать заклинание «по умолчанию» для авто-каста мага (пакет C).
+	# RMB: make the spell the default for the mage's auto-cast (pack C).
 	b.gui_input.connect(func(event: InputEvent, sn: String = name):
 		if event is InputEventMouseButton and event.pressed \
 				and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -229,47 +344,48 @@ func _make_spell_cell(name: String, icon: String, known: bool) -> void:
 	_spell_button_names.append(name)
 	if Game.auto_spell == name:
 		_mark_auto_spell_cell(b, name)
-	# Метка обратного отсчёта кулдауна.
-	var cd := Label.new()
-	cd.name = "Cooldown"
-	cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	cd.set_anchors_preset(Control.PRESET_FULL_RECT)
-	cd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cd.add_theme_font_size_override("font_size", UiTheme.FONT_SUBHEAD)
-	cd.add_theme_color_override("font_color", UiTheme.TEXT_MUTED)
-	cd.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	cd.add_theme_constant_override("outline_size", 4)
-	cd.visible = false
-	b.add_child(cd)
-	# Иконку запоминаем, чтобы гасить только её, а не кнопку целиком
-	if icon != "":
-		b.set_meta("icon", b.get_child(0))
+	_add_cooldown_label(b)
 	_set_cooldown_visual(b, 0.0, Game.spell_cooldown(player, name))
 
 
-## Обновить вид клетки под текущим кулдауном: left секунд, либо 0 = готово.
-## Работает и для отрицательного total (неизвестно), тогда total = 0.
+## Sets the cooldown look of a book cell: `left` seconds, 0 = ready.
+## Works for a non-positive `total` too (unknown duration): then the veil is
+## shown fully for as long as the cooldown is on, instead of not at all —
+## "no feedback" reads as a broken button.
 func _set_cooldown_visual(b: Button, left: float, total: float) -> void:
 	if not is_instance_valid(b):
 		return
-	var cd := b.get_node_or_null("Cooldown") as Label
 	var on := left > 0.0
+	var t := 0.0
+	if on:
+		t = clampf(left / total, 0.0, 1.0) if total > 0.0 else 1.0
+	var cd := b.get_node_or_null("Cooldown") as Label
 	if cd != null:
 		cd.visible = on
-		# Целое число секунд: «3» читается как «осталось 3 секунды», а «2.7»
-		# мигает и не говорит ничего. Показываем ceil, чтобы не показывать 0
-		# при положительном остатке.
+		# Whole seconds: "3" reads as "3 seconds left", while "2.7" blinks and
+		# says nothing. ceil keeps a positive remainder from showing 0.
 		cd.text = str(int(ceil(left))) if on else ""
-	var icon_node := b.get_meta("icon") as CanvasItem
+
+	# Veil recedes from the top: full height = full cooldown, zero = ready.
+	var veil := b.get_node_or_null("CooldownVeil") as ColorRect
+	if veil != null:
+		veil.visible = on
+		if on:
+			var cell_h := b.size.y if b.size.y > 0.0 else float(SPELL_CELL)
+			var inner := maxf(0.0, cell_h - 2.0 * BOOK_ICON_INSET)
+			veil.offset_top = BOOK_ICON_INSET + inner * (1.0 - t)
+
+	var icon_node: CanvasItem = null
+	# The "icon" meta exists only on spell cells (scroll cells lacked it): without
+	# this check Godot printed a C++ error "no 'meta' with key 'icon'" every frame
+	# as soon as a scroll appeared in the warrior's book (2026-10-30).
+	if b.has_meta("icon"):
+		icon_node = b.get_meta("icon") as CanvasItem
 	if icon_node != null:
-		# Плавное гашение по мере восстановления: чем меньше осталось, тем
-		# светлее иконка. Прыжок из тёмной в светлую раз в 3 секунды читается
-		# как «сломанная кнопка», а не как «готово».
-		var t := 0.0
-		if total > 0.0:
-			t = clampf(left / total, 0.0, 1.0)
-		icon_node.modulate = Color(1, 1, 1, 1.0 - 0.65 * t)
+		# A light fade that follows the veil: a jump from dark to bright once per
+		# 3 seconds reads as "broken button" rather than "ready". Kept shallow
+		# (0.35) because the veil already darkens the cell.
+		icon_node.modulate = Color(1, 1, 1, 1.0 - 0.35 * t)
 
 
 ## Тултип заклинания. Раньше показывал только имя/сферу/заряды/ману —
@@ -433,10 +549,11 @@ func _ensure_auto_status_label() -> void:
 	spell_panel.add_child(lab)
 
 
-## --- Книга воина: свитки из склада -----------------------------------------
+## --- Warrior's book: scrolls from the inventory -----------------------------
 
-## Воин не учит магию: его «книга» — свитки в складе. Одна ячейка на тип,
-## склад остаётся хозяином (свиток можно продать). Маг свитки сюда не берёт.
+## A warrior does not learn magic: his "book" is the scrolls he carries. One
+## cell per scroll type, the inventory stays the owner (a scroll can be sold).
+## A mage never takes scrolls here — they would overwrite his book magic.
 func _build_scroll_book() -> void:
 	var seen: Array = []
 	for raw in player.inventory:
@@ -445,7 +562,18 @@ func _build_scroll_book() -> void:
 			continue
 		var item := ItemDB.find(key)
 		if item.is_empty():
-			continue
+			# A scroll of a modded spell may have no item_db record (the shop and
+			# loot build it from SpellDB). Dropping it here would make the book
+			# silently disagree with the inventory, so it is rebuilt from the key.
+			var known := SpellDB.spell_from_scroll(key)
+			if known == "":
+				continue
+			item = {
+				"key": key,
+				"name_ru": key,
+				"quality": "SuperScroll" if key.begins_with("SuperScroll ") else "Scroll",
+				"icon": SpellDB.icon_of(known),
+			}
 		var q := str(item.get("quality", ""))
 		if q != "Scroll" and q != "SuperScroll":
 			continue
@@ -453,7 +581,7 @@ func _build_scroll_book() -> void:
 		_make_scroll_cell(key, item, player.inventory.count(key))
 
 
-## Ячейка свитка: иконка предмета, остаток, метка автокаста.
+## Scroll cell: item icon, remaining count, auto-cast mark, cooldown veil.
 func _make_scroll_cell(item_key: String, item: Dictionary, count: int) -> void:
 	var spell := SpellDB.spell_from_scroll(item_key)
 	var sphere_name := SpellDB.sphere_of(spell)
@@ -462,41 +590,15 @@ func _make_scroll_cell(item_key: String, item: Dictionary, count: int) -> void:
 
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(SPELL_CELL, SPELL_CELL)
-	b.flat = true
 	b.focus_mode = Control.FOCUS_ALL
 	b.set_meta("scroll_item", item_key)
-
-	var style := StyleBoxFlat.new()
-	style.bg_color = UiTheme.SLOT_BG
-	style.set_border_width_all(UiTheme.BORDER_HAIRLINE)
-	style.set_border_width(SIDE_BOTTOM, 2)
-	style.border_color = UiTheme.ACCENT if elven else sphere_color.lerp(
-		UiTheme.PANEL_EDGE.darkened(0.45), 0.4)
-	style.set_corner_radius_all(UiTheme.RADIUS_SLOT)
-	style.set_content_margin_all(UiTheme.SPACE_1)
-	b.add_theme_stylebox_override("normal", style)
-	var hover_style := style.duplicate()
-	hover_style.border_color = UiTheme.ACCENT if elven else sphere_color
-	hover_style.bg_color = UiTheme.PANEL_INNER.lightened(0.08)
-	b.add_theme_stylebox_override("hover", hover_style)
-	var pressed_style := style.duplicate()
-	pressed_style.bg_color = UiTheme.BG_DEEP
-	b.add_theme_stylebox_override("pressed", pressed_style)
+	_apply_book_cell_styles(b, UiTheme.ACCENT if elven else sphere_color)
 
 	var icon_path := str(item.get("icon", ""))
-	if icon_path != "" and ResourceLoader.exists(icon_path):
-		var ic := TextureRect.new()
-		ic.texture = load(icon_path)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.set_anchors_preset(Control.PRESET_FULL_RECT)
-		ic.offset_left = 3.0
-		ic.offset_top = 3.0
-		ic.offset_right = -3.0
-		ic.offset_bottom = -3.0
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ic := _book_cell_icon(b, icon_path)
+	if ic != null:
 		CraftVFX.apply_elven(ic, item)
-		b.add_child(ic)
+	_add_cooldown_veil(b)
 
 	b.tooltip_text = "%s\nОсталось: %d\nЛКМ — применить · ПКМ — автокаст на себя · Ctrl+1..9 — хоткей" % [
 		str(item.get("name_ru", item_key)), count]
@@ -520,7 +622,7 @@ func _make_scroll_cell(item_key: String, item: Dictionary, count: int) -> void:
 		var mark := Label.new()
 		mark.text = "A"
 		mark.add_theme_font_size_override("font_size", UiTheme.FONT_MICRO)
-		mark.add_theme_color_override("font_color", Color(0.7, 1.0, 0.75))
+		mark.add_theme_color_override("font_color", UiTheme.SUCCESS)
 		mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 		mark.add_theme_constant_override("outline_size", 3)
 		mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -547,6 +649,11 @@ func _make_scroll_cell(item_key: String, item: Dictionary, count: int) -> void:
 	spell_buttons.append(b)
 	_spell_buttons_filled.append(b)
 	_spell_button_names.append(spell)
+	# The scroll's cooldown comes from the power stored inside it (50/100), not
+	# from the hero: the same number the cast itself uses.
+	_add_cooldown_label(b)
+	_set_cooldown_visual(b, 0.0,
+		Game.spell_cooldown(player, spell, SpellDB.scroll_power_of(item)))
 
 
 ## ПКМ по свитку: ЕДИНСТВЕННЫЙ автокаст, и только на себя.
@@ -1571,11 +1678,15 @@ func _update_cooldowns() -> void:
 		var left := float(player.cast_cooldowns.get(spell_name, 0.0))
 		# Считать округлённые секунды: показывать «0.3 с» бессмысленно.
 		var shown := int(ceil(left))
-		if shown == _cd_shown.get(spell_name, -1):
+		# Cache per CELL, not per spell: two scrolls of the same spell (Scroll Heal
+		# and SuperScroll Heal) carry different power and therefore different
+		# cooldowns — a shared key kept the second cell frozen at the first value.
+		var cell_key := str(b.get_instance_id())
+		if shown == _cd_shown.get(cell_key, -1):
 			continue
-		_cd_shown[spell_name] = shown
-		# Кольцо кулдауна обязано совпадать с РАСЧЁТОМ: у свитка это сила
-		# магии внутри него (50/100), у заклинания — навык сферы и разум.
+		_cd_shown[cell_key] = shown
+		# The cooldown ring must match the CALCULATION: for a scroll it is the
+		# magic power inside it (50/100), for a spell — the sphere skill and mind.
 		var scroll_key := str(b.get_meta("scroll_item", ""))
 		var total := Game.spell_cooldown(player, spell_name)
 		if scroll_key != "":
@@ -1585,6 +1696,12 @@ func _update_cooldowns() -> void:
 
 func toggle_spells():
 	spells_visible = !spells_visible
+	# The book is only a view of the inventory (warrior) or of the learned spells
+	# (mage), so it is rebuilt on every open: a scroll bought in a shop must show
+	# up without a world reload (player report of 2026-10-30: "bought 4 scrolls,
+	# the book shows 2").
+	if spells_visible:
+		refresh_spell_book()
 	_update_bottom_panel_visibility()
 
 ## Магия (B) — нижняя панель. Инвентарь теперь в модальном окне.
@@ -1747,6 +1864,10 @@ func open_shop(city_race: String = "") -> void:
 	_shop = ShopPanel.new()
 	_shop.setup(player, city_race)
 	_shop.closed.connect(_on_panel_closed)
+	# Buying a scroll must reach the warrior's book immediately: the panel emits
+	# inventory_changed, and before 2026-10-30 nobody listened to it here (the
+	# same signal was already wired for the archmage, workshop and inventory).
+	_shop.inventory_changed.connect(_on_inventory_changed)
 	add_child(_shop)
 
 func open_alchemy() -> void:
@@ -1756,6 +1877,7 @@ func open_alchemy() -> void:
 	_alchemy = AlchemyPanel.new()
 	_alchemy.setup(player)
 	_alchemy.closed.connect(_on_panel_closed)
+	_alchemy.inventory_changed.connect(_on_inventory_changed)
 	add_child(_alchemy)
 
 ## Школа тренировок: навыки за золото (клик по Training School).

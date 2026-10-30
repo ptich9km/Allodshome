@@ -1,16 +1,16 @@
 class_name ContentRules
 extends RefCounted
-## Правила контента, которые раньше были зашиты в код: сферы магии, типы
-## предметов и слоты, расы, папки городских зданий, семейства лута, наёмники
-## в таверне. Теперь — данные в `assets/config/content_rules.json`, а мод может
-## их расширить (kind `rule`, op `append`/`patch`).
+## Content rules that used to be hard-coded: magic spheres, item types and
+## equipment slots, races, city building folders, loot families, inn recruits.
+## Now they live in `assets/config/content_rules.json` and a mod can extend them
+## (`into: "rule"`, `op: "append"` / `"patch"`).
 ##
-## Формат файла: массив записей `{"key": "<точечный путь>", "value": <любое>}`.
-## Двоичные данные (Dictionary/Array) отдаются КОПИЕЙ: иначе первый же
-## вызывающий, дописавший элемент в список, испортил бы правила для всех.
+## File format: an array of records `{"key": "<dotted path>", "value": <any>}`.
+## Containers (Dictionary/Array) are returned as a COPY: otherwise the first
+## caller appending to a list would corrupt the rules for everyone.
 ##
-## Зачем: без этого мод мог добавить запись в существующую таблицу, но не новый
-## ТИП (новую школу магии, новую категорию брони, новую расу).
+## Why this exists: without it a mod could add a row to an existing table but
+## not a new TYPE (a new magic school, a new armor category, a new race).
 
 const PATH := "res://assets/config/content_rules.json"
 
@@ -27,10 +27,10 @@ static func ensure_loaded() -> void:
 	if parsed is Array:
 		entries = parsed
 	else:
-		push_error("ContentRules: %s — ожидался массив записей" % PATH)
+		push_error("ContentRules: %s — expected an array of records" % PATH)
 		return
-	# Моды применяются к самим записям, а не к словарю: так работает общий
-	# движок (add/patch/remove/append по полю key).
+	# Mods are applied to the records themselves, not to the dictionary: that is
+	# how the shared engine works (add/patch/remove/append by the "key" field).
 	ModLoader.overlay("rules", entries)
 	for raw in entries:
 		if not (raw is Dictionary):
@@ -47,7 +47,7 @@ static func has(key: String) -> bool:
 	return _data.has(key)
 
 
-## Копия значения (список/словарь можно менять без страха).
+## Copy of a value (a returned list/dictionary is safe to mutate).
 static func value(key: String, fallback: Variant = null) -> Variant:
 	ensure_loaded()
 	if not _data.has(key):
@@ -58,8 +58,8 @@ static func value(key: String, fallback: Variant = null) -> Variant:
 	return v
 
 
-## Общий (НЕ копия) список — для горячих путей, где элементы только читают
-## (проверки `t in list`). Мутировать результат нельзя.
+## Shared (NOT a copy) list for hot paths where elements are only read
+## (`t in list` checks). Never mutate the result.
 static func shared_list(key: String) -> Array:
 	ensure_loaded()
 	var v: Variant = _data.get(key, null)
@@ -86,7 +86,7 @@ static func int_value(key: String, fallback: int = 0) -> int:
 	return int(v) if v != null else fallback
 
 
-## Раса по id из списка `races` ({} если такой нет).
+## Race record by id from the `races` list ({} when there is no such race).
 static func race(id: String) -> Dictionary:
 	for r in list("races"):
 		if r is Dictionary and str((r as Dictionary).get("id", "")) == id:
@@ -94,8 +94,8 @@ static func race(id: String) -> Dictionary:
 	return {}
 
 
-## Сброс кэша правил. В игре правила читаются один раз при старте; сброс нужен
-## тестам (и будущему «перечитать данные без перезапуска»).
+## Drops the rules cache. In game the rules are read once at startup; the reset
+## is for tests (and for a future "reload data without restart").
 static func reload() -> void:
 	_loaded = false
 	_data.clear()
@@ -104,12 +104,12 @@ static func reload() -> void:
 static func _read_json() -> Variant:
 	var f := FileAccess.open(PATH, FileAccess.READ)
 	if f == null:
-		push_error("ContentRules: не открыть " + PATH)
+		push_error("ContentRules: cannot open " + PATH)
 		return null
 	var txt := f.get_as_text()
 	f.close()
 	var json := JSON.new()
 	if json.parse(txt) != OK:
-		push_error("ContentRules: битый JSON в %s (строка %d)" % [PATH, json.get_error_line()])
+		push_error("ContentRules: broken JSON in %s (line %d)" % [PATH, json.get_error_line()])
 		return null
 	return json.data
