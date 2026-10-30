@@ -66,6 +66,10 @@ def parse_args() -> argparse.Namespace:
                     help="extra yaw of the model if it does not face -Y")
     ap.add_argument("--outline", action="store_true",
                     help="add a 1px dark outline, closer to the painted sprites")
+    ap.add_argument("--static", action="store_true",
+                    help="the mesh has no rig/actions (a ComfyUI generation): "
+                         "render its single pose in every slot, for a look test "
+                         "at game scale only")
     ap.add_argument("--keep-renders", action="store_true",
                     help="keep the 4x frames next to the output (debugging)")
     ap.add_argument("--blender", default="", help="path to the Blender executable")
@@ -110,6 +114,7 @@ def render_raw(args: argparse.Namespace, work: Path) -> dict:
         "elevation": args.elevation,
         "model_yaw": args.model_yaw,
         "directions": args.directions,
+        "static": args.static,
         "work_dir": str(work),
         "manifest": str(work / "manifest.json"),
     }
@@ -261,14 +266,15 @@ def add_outline(img: Image.Image) -> Image.Image:
     return out
 
 
-def entry_record(name: str, source: Path, directions: int) -> dict:
+def entry_record(name: str, source: Path, directions: int, static: bool = False) -> dict:
     view = "four views (down/left/up/right)" if directions == 4 \
         else "three-quarter east view + mirror"
+    note = "STATIC POSE (no rig): a look test, not an animation" if static else \
+        "idle1+move4+attack3+dying4 per view"
     return {
         "desc": "Hero: %s, 3D model %s rendered to %d frames by "
-                "tests/render_3d_frames.py, %s, "
-                "idle1+move4+attack3+dying4 per view"
-                % (name, source.name, 12 * directions, view),
+                "tests/render_3d_frames.py, %s, %s"
+                % (name, source.name, 12 * directions, view, note),
         "folder": "hero/%s" % name,
         "frames": 12 * directions,
         "prefix": "sprites",
@@ -344,7 +350,7 @@ def main() -> None:
 
     manifest = render_raw(args, work)
     frames = normalize(manifest, args, out_dir)
-    entry = entry_record(args.name, source, args.directions)
+    entry = entry_record(args.name, source, args.directions, args.static)
     (out_dir / "_entry.json").write_text(
         json.dumps(entry, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     sheet = write_contact_sheet(frames, manifest, out_dir)

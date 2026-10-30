@@ -121,7 +121,7 @@ def pose_bounds(host, found: dict, frames: list) -> tuple:
     hi = Vector((-1.0e9, -1.0e9, -1.0e9))
     current_action = None
     for key, _dir, _index, frame in frames:
-        if key != current_action:
+        if found and key != current_action:
             assign_action(host, found[key])
             current_action = key
         scene.frame_set(frame)
@@ -281,7 +281,13 @@ def build_schedule(found: dict, directions: int) -> list:
     schedule = []
     for key in ACTIONS:
         for file_dir in range(directions):
-            for index, frame in enumerate(sample_frames(found[key])):
+            if found:
+                sampled = sample_frames(found[key])
+            else:
+                # Static mesh (a ComfyUI generation has no rig yet): the same
+                # pose fills every slot, only the camera turns.
+                sampled = [1] * SAMPLES[key]
+            for index, frame in enumerate(sampled):
                 schedule.append((key, file_dir, index, frame))
     return schedule
 
@@ -296,7 +302,8 @@ def main() -> None:
     elevation = float(job.get("elevation", 20.0))
 
     load_model(job)
-    found = find_actions()
+    static = bool(job.get("static", False))
+    found = {} if static else find_actions()
     host = animation_host()
     schedule = build_schedule(found, directions)
 
@@ -316,7 +323,7 @@ def main() -> None:
             aim_camera(cam, azimuth, elevation)
             pivots[str(file_dir)] = pivot_px(render_px)
             current_dir = file_dir
-        if key != current_action:
+        if key != current_action and found:
             assign_action(host, found[key])
             current_action = key
         scene.frame_set(frame)
