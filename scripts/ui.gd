@@ -1626,10 +1626,6 @@ func update_ui(p: Player, delta: float = 0.0):
 
 var _spell_button_names: Array = []
 
-func cast_ability(_index: int):
-	# Больше не используется (кнопки кастуют через _cast_spell_button)
-	pass
-
 func _process(_delta):
 	if not Game.perf_enabled:
 		_process_impl(_delta)

@@ -289,6 +289,3 @@ static func resist_of(name: String, sphere: String) -> int:
 	if r is Dictionary:
 		return int((r as Dictionary).get(str(sphere).to_lower(), 0))
 	return 0
-
-func _unused() -> void:
-	pass
