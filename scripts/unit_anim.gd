@@ -30,6 +30,13 @@ const ROT_STEP_TIME := 0.05      # сек на шаг направления п�
 var _last_dir := 0
 var _mirror_last := false        # dirs=1: бок «скольжения» на севере/юге
 
+## Мировое направление (0..7, см. `unit_anim_base.dir`) -> файловое
+## направление набора из 4 ракурсов: 0 = вниз, 1 = влево, 2 = вверх, 3 = вправо.
+## Направление 0 — это движение ВНИЗ по экрану (так считает Game.unit_octant),
+## поэтому 0 -> 0, а не 2. Диагонали показываются боком: профиль читается
+## лучше, чем «спиной вперёд».
+const FILE_DIR_4 := [0, 1, 1, 1, 2, 3, 3, 3]
+
 var _sprite: Sprite2D
 
 ## Настроить набор. Переиспользует спрайт (не плодит новых при экипировке).
@@ -75,6 +82,10 @@ func _file_dir_of(world_dir: int) -> Array:
 		if world_dir != 0 and world_dir != 4:
 			_mirror_last = world_dir <= 3
 		return [0, _mirror_last]
+	# 4 нарисованных ракурса (3D-наборы): все направления нарисованы, зеркало
+	# не нужно, диагонали схлопываются на бок.
+	if d == 4:
+		return [FILE_DIR_4[world_dir], false]
 	# 5 направлений: правая половина (5,6,7) = зеркало (3,2,1)
 	if world_dir <= 4:
 		return [world_dir, false]
@@ -280,7 +291,11 @@ func _frame_index(kind: int) -> int:
 			return dir
 		var ip := UnitDB.idle_phases(set_name)
 		if ip > 0:
-			return file_dir * ip + anim_idx
+			# `idle_phases` — это ВСЕГДА суммарное число кадров стойки в наборе
+			# (1 у dirs=1, 4 у dirs=4, 8 у dirs=8). На один ракурс приходится
+			# ip/dirs, иначе у многоракурсных наборов стойка уезжала в чужой блок.
+			var per_dir: int = maxi(1, int(ip / float(maxi(1, _file_dirs()))))
+			return file_dir * per_dir + anim_idx
 		return _block_offset()
 	var phases: int = _phases_for(kind)
 	if phases < 1:

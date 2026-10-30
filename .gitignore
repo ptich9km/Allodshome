@@ -82,6 +82,13 @@ import/Cursor/compare_*
 import/Cursor/_proto_*.png
 import/Cursor/*_preview.png
 
+# 3D sources for the sprite pipeline (tests/render_3d_frames.py): the artist
+# sends .blend/.glb, the game only needs the rendered PNG frames.
+# Sources stay outside git (they are hundreds of MB); keep a copy on disk/cloud.
+import/3d_src/
+*.blend
+*.blend1
+
 # API keys (never commit)
 .kodik_key
 *.kodik_key
