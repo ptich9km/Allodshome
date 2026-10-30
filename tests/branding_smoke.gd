@@ -135,6 +135,23 @@ func _run() -> void:
 	# формул и формата карт («как в Allods16», «Аллодов» в player.gd:265).
 	# Проверяем только конкретные видимые игроку строки — они выше.
 
+	# Публичные тексты репозитория: их читает игрок и моддер, поэтому имя чужой
+	# игры в них недопустимо так же, как в титульном экране. Журнал и AGENTS.md
+	# не проверяются — там история решений и атрибуция источников.
+	for pair in [["res://README.md", "README.md"],
+			["res://README.dev.md", "README.dev.md"],
+			["res://MODDING.md", "MODDING.md"],
+			["res://CONTRIBUTING.md", "CONTRIBUTING.md"],
+			["res://THIRD-PARTY.md", "THIRD-PARTY.md"],
+			["res://LICENSE", "LICENSE"]]:
+		var pub_path := str(pair[0])
+		if not FileAccess.file_exists(pub_path):
+			_check(false, "%s существует" % pair[1])
+			continue
+		var pub_hits := _banned_hits(_read(pub_path))
+		_check(pub_hits.is_empty(),
+			"%s: запрещённых слов нет (%s)" % [pair[1], str(pub_hits)])
+
 	_report()
 
 

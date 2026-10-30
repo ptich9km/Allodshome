@@ -71,6 +71,9 @@ import/items_atlas/_check_*
 import/items_atlas/_dbg_*
 import/items_atlas/_sliced/
 import/loot_icons_derived/
+## Выход tests/gen_broken_overlay.py: варианты иконки «сломано», контакт-листы
+## и сравнения. Пересоздаётся одной командой; в git уходят установленные иконки.
+import/broken_overlay/
 
 # Контакт-листы курсора и диагностика нарезки (tests/extract_cursor_frames.py,
 # tests/gen_cursor_strip.py) — выход dev-инструмента, пересоздаётся одной командой.

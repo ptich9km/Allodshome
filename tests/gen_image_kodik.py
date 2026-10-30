@@ -25,17 +25,24 @@ from pathlib import Path
 BASE = "https://api.kodikrouter.ru/v1"
 REPO = Path(__file__).resolve().parent.parent
 KEY_FILE = REPO / ".kodik_key"
+## Secrets live outside the repository: an archive of the project folder must
+## never carry an API key.
+USER_KEY_FILE = Path(os.environ.get("APPDATA", Path.home())) / "Mirotokhome" / "kodik_key"
 
 
 def load_key() -> str:
+    # Lookup order: environment, then the user profile folder (outside the
+    # repository, so an archive of the project never carries the secret), then
+    # the legacy file in the repo root.
     key = os.environ.get("KODIK_API_KEY", "").strip()
     if key:
         return key
-    if KEY_FILE.exists():
-        key = KEY_FILE.read_text(encoding="utf-8").strip()
-        if key:
-            return key
-    sys.exit(f"API key not found: set KODIK_API_KEY or create {KEY_FILE}")
+    for path in (USER_KEY_FILE, KEY_FILE):
+        if path.exists():
+            key = path.read_text(encoding="utf-8").strip()
+            if key:
+                return key
+    sys.exit(f"API key not found: set KODIK_API_KEY or create {USER_KEY_FILE}")
 
 
 def _req(method: str, path: str, body: dict | None, key: str, timeout: int = 300) -> dict:
