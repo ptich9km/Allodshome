@@ -785,11 +785,6 @@ func _box_blur_rf(src: Image) -> Image:
 			dst.set_pixel(x, y, Color(acc / 9.0, 0.0, 0.0, 1.0))
 	return dst
 
-func _add_vert(st: SurfaceTool, p: Vector3, u: float, v: float, c: Color) -> void:
-	st.set_uv(Vector2(u, v))
-	st.set_color(c)
-	st.add_vertex(p)
-
 ## Мировая позиция спавна: из файла-якоря "<имя>.spawn.json" рядом с .alm
 ## (ставится в редакторе карт) или центр карты (game.gd сам ищет проходимый тайл).
 func get_spawn_pos() -> Vector2:

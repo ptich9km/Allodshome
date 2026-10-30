@@ -2105,38 +2105,6 @@ func get_nearest_enemy(click_pos: Vector2, attack_range: float) -> Node2D:
 
 	return nearest
 
-func _create_lightning_effect(from: Vector2, to: Vector2):
-	var line = Line2D.new()
-	line.width = 3.0
-	line.default_color = Color(0.3, 0.6, 1.0, 1.0)
-	line.add_point(from)
-	
-	# Зигзаг молнии
-	var steps = 8
-	for i in range(1, steps):
-		var t = float(i) / steps
-		var mid = from.lerp(to, t)
-		mid.x += randf_range(-20, 20)
-		mid.y += randf_range(-20, 20)
-		line.add_point(mid)
-	
-	line.add_point(to)
-	get_tree().root.add_child(line)
-	
-	# Вспышка в точке попадания
-	var flash = ColorRect.new()
-	flash.color = Color(0.5, 0.7, 1.0, 0.8)
-	flash.position = to - Vector2(15, 15)
-	flash.size = Vector2(30, 30)
-	get_tree().root.add_child(flash)
-	
-	# Удаляем через 0.3 секунды
-	var timer = get_tree().create_timer(0.3)
-	timer.timeout.connect(func():
-		if is_instance_valid(line): line.queue_free()
-		if is_instance_valid(flash): flash.queue_free()
-	)
-
 ## Авто-каст мага: лечение при падении HP + авто-баффы по ветке.
 ## Не прерывает ручной прицел (pending_spell) и не работает в casting.
 var _auto_buff_accum := 0.0

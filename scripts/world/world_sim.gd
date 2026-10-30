@@ -18,6 +18,13 @@ extends RefCounted
 
 var state  # WorldState (данные), см. слой-1; здесь бестипово для headless-canon.
 
+## Food eaten by one citizen per day.
+const FOOD_PER_POP := 0.15
+## Loyalty lost per unit of daily hunger.
+const LOYALTY_PER_HUNGER := 0.1
+## Loyalty regained on a day without hunger.
+const LOYALTY_RECOVERY := 0.5
+
 
 func _init(state_) -> void:
 	state = state_
@@ -179,21 +186,50 @@ func _find_enemy(aid: String, a: Dictionary, killed: Array) -> String:
 	return best
 
 
+## Combat power of an army. `power` is a cache in the army record; 0 means
+## "never computed", then it is derived from `unit_ids` (attack + half max_hp).
+## Without it `WorldBus.reseed()` created armies with no power, losses were
+## computed from 1 and a fight never ended (audit 30.09, 01-§3.3). Reset `power`
+## to 0 when the roster changes and the next fight derives it again.
+func _army_power(a: Dictionary) -> int:
+	var p := int(a.get("power", 0))
+	if p > 0:
+		return p
+	for uid in a.get("unit_ids", []):
+		var u: Dictionary = state.units.get(str(uid), {})
+		if u.is_empty():
+			continue
+		p += int(u.get("attack", 10)) + int(float(u.get("max_hp", 100)) * 0.5)
+	a["power"] = p
+	return p
+
+
 func _fight(aid: String, a: Dictionary) -> void:
 	var eid: String = a.get("enemy_id", "")
 	if not state.armies.has(eid):
 		a["enemy_id"] = ""
 		return
 	var e: Dictionary = state.armies[eid]
-	var my_p := int(a.get("power", 1))
-	var e_p := int(e.get("power", 1))
+	var my_p := _army_power(a)
+	var e_p := _army_power(e)
 	if my_p <= 0 or e_p <= 0:
 		a["enemy_id"] = ""
 		return
-	var my_loss := int(float(my_p) / float(my_p + e_p) * 0.15 * my_p)
-	var e_loss := int(float(e_p) / float(my_p + e_p) * 0.15 * e_p)
+	# Losses come from the OPPONENT's strength. Losses proportional to one's own
+	# power decay geometrically and `int()` rounds down to 0 long before 0, so
+	# two armies traded blows forever (audit 30.09, 01-§3.3). At least 1 per
+	# tick guarantees a decisive end.
+	var my_loss := maxi(1, int(float(e_p) * 0.15))
+	var e_loss := maxi(1, int(float(my_p) * 0.15))
 	a["power"] = maxi(0, my_p - my_loss)
 	e["power"] = maxi(0, e_p - e_loss)
+	# Even armies annihilate each other in one tick; handling it explicitly
+	# avoids leaving a "power 0" husk on the map that can never fight again.
+	if a["power"] <= 0 and e["power"] <= 0:
+		_log("battle", "Армии %s и %s уничтожили друг друга" % [aid, eid])
+		state.armies.erase(aid)
+		state.armies.erase(eid)
+		return
 	var winner := ""
 	if a["power"] <= 0:
 		winner = eid
@@ -205,28 +241,42 @@ func _fight(aid: String, a: Dictionary) -> void:
 
 
 # --- 4. Города ------------------------------------------------------------------
+## Economy lives in `cities[].economy` (see WorldState.city_economy); the flat
+## keys the first version of this tick read simply did not exist, so every city
+## was permanently broke and starving no matter what the data said.
 func TickSettlements() -> void:
 	for cid: String in state.cities:
 		var c: Dictionary = state.cities[cid]
+		var eco: Dictionary = state.city_economy(c)
 		var pop := int(c.get("population", 100))
-		var food := float(c.get("food", 0.0))
-		var prod := int(c.get("prod", 0))
-		var gold := int(c.get("gold", 0))
-		food += prod - pop * 0.15
-		gold += prod
-		c["population"] = pop + (1 if food > 0 else -1)
-		c["food"] = food
-		c["gold"] = gold
+		var prod := float(eco.get("prod", 5.0))
+		var net := prod - pop * FOOD_PER_POP
+		# The granary cannot hold a negative amount: hunger is the daily deficit
+		# (`hunger_of`), not a debt that keeps growing below zero.
+		eco["food"] = maxf(0.0, float(eco.get("food", 100.0)) + net)
+		eco["gold"] = float(eco.get("gold", 50.0)) + prod
+		if net > 0.0:
+			c["population"] = pop + 1
+		elif net < 0.0:
+			c["population"] = maxi(1, pop - 1)
+		var hunger := hunger_of(net)
 		var loyalty := float(c.get("loyalty", 50.0))
-		if food < 0:
-			loyalty = clampf(loyalty - felt(food) * 0.1, 0.0, 100.0)
-		c["loyalty"] = loyalty
-		if loyalty < 15.0:
-			_log("revolt", "Жители %s бунтуют (верность %d%%)" % [c.get("name", cid), int(loyalty)])
+		if hunger > 0.0:
+			loyalty -= hunger * LOYALTY_PER_HUNGER
+		else:
+			loyalty += LOYALTY_RECOVERY
+		c["loyalty"] = clampf(loyalty, 0.0, 100.0)
+		# Once per 10 days: a hungry city would otherwise write one revolt line
+		# per day and flood the journal (cap 400 in the live game).
+		if c["loyalty"] < 15.0 and state.day % 10 == 0:
+			_log("revolt", "Жители %s бунтуют (верность %d%%)" % [c.get("name", cid), int(c["loyalty"])])
 
 
-func felt(v: float) -> float:
-	return -v if v < 0.0 else v
+## How hard hunger is felt today. Only a deficit counts: a surplus is not
+## "negative hunger". The old `felt()` returned `abs`, so abundance lowered
+## loyalty exactly like famine did, which made the function pointless.
+func hunger_of(net: float) -> float:
+	return maxf(0.0, -net)
 
 
 # --- 5. События -----------------------------------------------------------------

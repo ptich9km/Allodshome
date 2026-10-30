@@ -106,12 +106,6 @@ static func target_of(name: String) -> String:
 static func power_coef_of(name: String) -> float:
 	return float(get_spell(name).get("power_coef", 1.0))
 
-static func crit_chance_of(name: String) -> float:
-	return float(get_spell(name).get("crit_chance", 0.0))
-
-static func crit_mult_of(name: String) -> float:
-	return float(get_spell(name).get("crit_mult", 1.5))
-
 static func min_damage_of(name: String) -> int:
 	return int(get_spell(name).get("min_damage", 1))
 

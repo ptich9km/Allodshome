@@ -160,7 +160,10 @@ static func map_basename(seed_value: int, zone: String, race: String = "",
 # 33 (29.10): арт Аллодов удалён из игры — ids 1..179 снесены, форпосты стоят из
 # наших seedream-построек, вместо костра проп. Без бампа старые карты в user://
 # ссылались бы на удалённые папки (здания молча исчезали бы).
-const GEN_VERSION := 33
+# 34 (30.10): вариация кромки и выбор interior-текстуры берутся из собственного
+# `_cell_hash` вместо `hash(Vector2i)` — карты те же по смыслу, но другие по
+# байтам; без бампа `ensure_map` вернул бы старые .alm с диска.
+const GEN_VERSION := 34
 
 ## Путь к карте по сиду. Если карта уже сгенерирована той же версией генератора —
 ## переиспользуем её, иначе генерируем заново. Пустая строка при ошибке.
@@ -2578,6 +2581,16 @@ func _diag_covered(x: int, y: int, t: int, n: int, d: String) -> bool:
 				return true
 	return false
 
+## Stable per-cell hash.
+##
+## `hash(Vector2i)` is engine-defined and Godot may change it between versions,
+## which would silently reshuffle generated maps while the seed stayed the same.
+## This mixing formula is ours (same constants as `_interior_tile`), so a cell
+## keeps its value across engine upgrades. No player data depends on the exact
+## numbers, only determinism does.
+func _cell_hash(x: int, y: int) -> int:
+	return absi(x * 19349663 ^ y * 83492791)
+
 ## Переходный тайл A -> B по направлению dir_index. -1, если перехода нет.
 ##
 ## Известное ограничение: угловая клетка с двумя отличающимися соседями
@@ -2594,7 +2607,7 @@ func _transition_tile(t: int, s: Dictionary, x: int, y: int) -> int:
 	var file_n: int = AlmLoader.TRANSITION_FILE_MIN + dir_index
 	# row = B * 2 + вариация. Вариацию берём от координаты клетки, чтобы
 	# соседние кромки не были одинаковыми, но оставались детерминированными.
-	var variation: int = abs(hash(Vector2i(x, y))) % 2
+	var variation: int = _cell_hash(x, y) % 2
 	var row: int = b * 2 + variation
 	return AlmLoader.tile_encode_transition(file_n, t, row)
 
@@ -2690,8 +2703,8 @@ func _shape_tile(t: int, entry: Dictionary, x: int, y: int, mask: int) -> Dictio
 		total += int(ti.get("w", 0))
 	if total <= 0:
 		return {}
-	var h: int = hash(Vector2i(x, y))
-	var r: int = abs(h) % total
+	var h: int = _cell_hash(x, y)
+	var r: int = h % total
 	var acc := 0
 	var picked: Dictionary = candidates[candidates.size() - 1]
 	for ti in candidates:
