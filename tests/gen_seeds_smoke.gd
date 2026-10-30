@@ -70,6 +70,16 @@ func _initialize() -> void:
 	_check_marker(_basename(path_a_start) + ".portal.json", "portal (start)")
 	_check_marker(_basename(path_a_start) + ".spawn.json", "spawn (start)")
 
+	# --- 5. Стабильный хеш клетки (не зависит от hash(Vector2i) движка) ---
+	# Эталон зафиксирован числами: если формула изменится или кто-то вернёт
+	# hash(Vector2i), проверка покраснеет — карты нельзя молча перетасовывать
+	# сменой версии Godot.
+	var mg: MapGenerator = MapGenerator.new()
+	_check(mg._cell_hash(0, 0) == 0, "cell_hash(0,0) = 0")
+	_check(mg._cell_hash(7, 13) == 1218656274, "cell_hash(7,13) стабилен")
+	_check(mg._cell_hash(191, 191) == 14676721448, "cell_hash(191,191) стабилен")
+	_check(mg._cell_hash(7, 13) == mg._cell_hash(7, 13), "cell_hash повторяем")
+
 	_report()
 
 func _basename(alm_path: String) -> String:
