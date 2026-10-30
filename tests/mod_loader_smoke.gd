@@ -1,11 +1,11 @@
 ﻿extends SceneTree
-## Моды: загрузчик, порядок, extends/patch/remove, конфликты, пути mod://.
+## Mods: loader, order, extends/patch/remove, conflicts, mod:// paths.
 ##
-## Тест создаёт СВОИ моды в `user://mods/_smoke_*` и удаляет их в конце: чужие
-## моды игрока не трогаем и на их количество не опираемся — проверяем конкретные
-## id/ключи. Формат записи — как в docs/mods.md.
+## The test creates ITS OWN mods in `user://mods/_smoke_*` and removes them at
+## the end: the player's mods are never touched and their count is not relied
+## on — concrete ids/keys are checked. Entry format — see docs/mods.md.
 ##
-## Запуск: godot --headless --path . --script res://tests/mod_loader_smoke.gd
+## Run: godot --headless --path . --script res://tests/mod_loader_smoke.gd
 
 var _fails: Array[String] = []
 
@@ -19,8 +19,8 @@ func _init() -> void:
 func _run() -> void:
 	_cleanup()
 	_cleanup()
-	# В `--script`-прогонах моды выключены по умолчанию (данные проверяются на
-	# базе) — этот тест проверяет сами моды, поэтому включает их явно.
+	# In `--script` runs mods are off by default (data is checked against the
+	# base) — this test checks mods themselves, so it enables them explicitly.
 	ModLoader.set_active(true)
 	ModLoader.reset()
 	_build_mods()
@@ -37,7 +37,7 @@ func _run() -> void:
 		"load_after: '_smoke_base' применяется раньше '_smoke_patch'")
 	_check(order.has("_smoke_bad"), "мод с битым data всё равно в списке (виден игроку)")
 
-	# --- units: новый набор через extends + патч базы ---
+	# --- units: a new set via extends + a patch of the base ---
 	var hound := UnitDB.get_set("monsters/smoke_hound")
 	_check(not hound.is_empty(), "новый набор units загружен")
 	_check(int(hound.get("frames", 0)) == 12, "extends: frames унаследованы от wolves (12)")
@@ -58,7 +58,7 @@ func _run() -> void:
 	_check(str(blade.get("icon", "")).begins_with("user://"), "mod:// путь к иконке развёрнут")
 	_check(int(blade.get("damage_min", -1)) == 7, "новый предмет несёт свои статы")
 	_check(str(blade.get("type", "")) == "Long Sword",
-		"поле type предмета свободно (не занято маршрутизацией kind)")
+		"поле type предмета свободно (не занято маршрутизацией into)")
 
 	var bolt := SpellDB.get_spell("Smoke_Bolt")
 	_check(str(bolt.get("sphere", "")) == "Fire", "новое заклинание добавлено")
@@ -68,7 +68,7 @@ func _run() -> void:
 	_check(str(house.get("folder", "")) == "smoke_house", "новая структура добавлена")
 	_check(StructureDB.get_by_id(200).has("folder"), "базовые структуры не пострадали")
 
-	# --- диагностика ---
+	# --- diagnostics ---
 	var errs := "\n".join(ModLoader.errors())
 	var warns := "\n".join(ModLoader.warnings())
 	_check(errs.contains("уже занят"), "конфликт ключей — ошибка с указанием, кто занял")
@@ -78,7 +78,7 @@ func _run() -> void:
 	_check(errs.contains("patch 'monsters/no_such_patch_target'"), "patch несуществующего — ошибка")
 	_check(warns.contains("правят два мода"), "два мода на одном ключе — предупреждение")
 
-	# --- прочее ---
+	# --- misc ---
 	_check(ModLoader.resolve("mod://_smoke_base/assets/blade.png") ==
 		"user://mods/_smoke_base/assets/blade.png", "resolve(mod://) даёт путь мода")
 	_check(ModLoader.resolve("res://assets/x.png") == "res://assets/x.png", "обычный путь не тронут")
@@ -94,73 +94,73 @@ func _run() -> void:
 	_report()
 
 
-# --- создание тестовых модов --------------------------------------------------
+# --- test mods ----------------------------------------------------------------
 
 func _build_mods() -> void:
 	_mkdir(ROOT)
-	# 1) база: новый юнит через extends, предмет, заклинание, структура, юнит на удаление
+	# 1) base: a new unit via extends, an item, a spell, a structure, a unit to remove
 	_write("_smoke_base/mod.json", {
 		"id": "_smoke_base", "name": "Smoke Base", "version": "1.0.0",
 		"author": "test", "priority": 0, "depends_on": [],
 	})
-	_write("_smoke_base/assets/blade.png", "not-a-real-png")   # важен факт наличия
+	_write("_smoke_base/assets/blade.png", "not-a-real-png")   # only existence matters
 	_write("_smoke_base/data/units.json", [
-		{"kind": "unit", "key": "monsters/smoke_hound", "extends": "monsters/wolf",
+		{"into": "unit", "key": "monsters/smoke_hound", "extends": "monsters/wolf",
 			"name_ru": "Смоук-гончая", "palette": 5, "tier": 1},
-		{"kind": "unit", "key": "monsters/smoke_removable", "extends": "monsters/wolf"},
+		{"into": "unit", "key": "monsters/smoke_removable", "extends": "monsters/wolf"},
 	])
 	_write("_smoke_base/data/items.json", {
 		"entries": [
-			{"kind": "item", "key": "Common smoke blade", "name_ru": "Дымный клинок",
+			{"into": "item", "key": "Common smoke blade", "name_ru": "Дымный клинок",
 				"type": "Long Sword", "material": "steel", "quality": "Common",
 				"icon": "mod://_smoke_base/assets/blade.png",
 				"damage_min": 7, "damage_max": 9, "price": 50},
 		],
 	})
 	_write("_smoke_base/data/spells.json", [
-		{"kind": "spell", "key": "Smoke_Bolt", "name": "Smoke_Bolt", "sphere": "Fire",
+		{"into": "spell", "key": "Smoke_Bolt", "name": "Smoke_Bolt", "sphere": "Fire",
 			"damage": 21, "mana_cost": 4},
 	])
 	_write("_smoke_base/data/structures.json", [
-		{"kind": "structure", "key": "900", "folder": "smoke_house", "prefix": "house",
+		{"into": "structure", "key": "900", "folder": "smoke_house", "prefix": "house",
 			"tile_width": 3, "tile_height": 3},
 	])
 
-	# 2) патч базы: ждёт базу через load_after
+	# 2) base patch: waits for the base via load_after
 	_write("_smoke_patch/mod.json", {
 		"id": "_smoke_patch", "name": "Smoke Patch", "version": "1.0.0",
 		"load_after": ["_smoke_base"], "affects_save": true,
 	})
 	_write("_smoke_patch/data/patch.json", [
-		{"kind": "unit", "op": "patch", "key": "monsters/wolf", "w": 100, "smoke_note": "patched"},
+		{"into": "unit", "op": "patch", "key": "monsters/wolf", "w": 100, "smoke_note": "patched"},
 	])
 
-	# 3) второй патчер того же ключа -> предупреждение о конфликте правок
+	# 3) a second patcher of the same key -> a patch-conflict warning
 	_write("_smoke_patch2/mod.json", {
 		"id": "_smoke_patch2", "name": "Smoke Patch 2", "version": "1.0.0",
 		"load_after": ["_smoke_patch"], "priority": 1,
 	})
 	_write("_smoke_patch2/data/patch.json", [
-		{"kind": "unit", "op": "patch", "key": "monsters/wolf", "h": 64},
+		{"into": "unit", "op": "patch", "key": "monsters/wolf", "h": 64},
 	])
 
-	# 4) битый JSON
+	# 4) broken JSON
 	_write("_smoke_bad/mod.json", {"id": "_smoke_bad", "name": "Smoke Bad"})
 	_write_raw("_smoke_bad/data/broken.json", "{ this is not json")
 
-	# 5) конфликт ключа, потерянный ассет, remove, patch несуществующего
+	# 5) key conflict, a lost asset, remove, patch of a missing key
 	_write("_smoke_clash/mod.json", {
 		"id": "_smoke_clash", "name": "Smoke Clash", "load_after": ["_smoke_base"],
 	})
 	_write("_smoke_clash/data/x.json", [
-		{"kind": "unit", "key": "monsters/wolf", "name_ru": "Перехват"},
-		{"kind": "unit", "key": "monsters/smoke_lost", "icon": "mod://_smoke_clash/assets/nope.png"},
-		{"kind": "unit", "op": "remove", "key": "monsters/smoke_removable"},
-		{"kind": "unit", "op": "patch", "key": "monsters/no_such_patch_target", "name_ru": "нет такого"},
+		{"into": "unit", "key": "monsters/wolf", "name_ru": "Перехват"},
+		{"into": "unit", "key": "monsters/smoke_lost", "icon": "mod://_smoke_clash/assets/nope.png"},
+		{"into": "unit", "op": "remove", "key": "monsters/smoke_removable"},
+		{"into": "unit", "op": "patch", "key": "monsters/no_such_patch_target", "name_ru": "нет такого"},
 	])
 
 
-# --- утилиты ------------------------------------------------------------------
+# --- helpers ------------------------------------------------------------------
 
 func _write(rel: String, data: Variant) -> void:
 	_write_raw(rel, JSON.stringify(data, "\t"))

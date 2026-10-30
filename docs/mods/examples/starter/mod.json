@@ -1,0 +1,9 @@
+{
+	"id": "starter",
+	"name": "Мой мод",
+	"version": "0.1.0",
+	"author": "ваш ник",
+	"description": "Шаблон: скопируйте папку, поменяйте id на имя папки и правьте data/.",
+	"priority": 0,
+	"affects_save": true
+}

@@ -1,0 +1,11 @@
+﻿[
+	{
+		"into": "unit",
+		"key": "monsters/my_beast",
+		"extends": "monsters/wolf",
+		"name_ru": "Мой зверь",
+		"desc": "Замените эту запись своим монстром (см. docs/mods-first.md).",
+		"tier": 2,
+		"palette": 5
+	}
+]

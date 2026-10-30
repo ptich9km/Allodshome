@@ -52,7 +52,7 @@ func _run() -> void:
 	for zone in expected:
 		var band: Array = MapGenerator.GRAY_TIER_BAND[zone]
 		var pool: Array = MapGenerator.gray_pool_for_zone(zone)
-		var species: int = MapGenerator.GRAY_SPECIES.size()
+		var species: int = MapGenerator.gray_species().size()
 		# Пул = все виды × тиры полосы, без дублей и без лишнего.
 		var want: int = species * (int(band[1]) - int(band[0]) + 1)
 		var uniq: Dictionary = {}
@@ -107,7 +107,7 @@ func _run() -> void:
 	print("-- имена --")
 	var no_name := 0
 	var latin := 0
-	for sp in MapGenerator.GRAY_SPECIES:
+	for sp in MapGenerator.gray_species():
 		for t2 in range(1, 6):
 			var sn5 := MapGenerator.gray_set_name(str(sp), t2)
 			var nm := str(UnitDB.get_set(sn5).get("name_ru", ""))
@@ -115,7 +115,7 @@ func _run() -> void:
 				no_name += 1
 			elif nm.to_lower().find("monster") >= 0 or nm.to_lower().find("gemini") >= 0:
 				latin += 1
-	var total_sets := MapGenerator.GRAY_SPECIES.size() * 5
+	var total_sets := MapGenerator.gray_species().size() * 5
 	_check(no_name == 0, "у всех %d наборов есть name_ru (нет %d)" % [total_sets, no_name])
 	_check(latin == 0, "в именах нет английского служебного desc (%d)" % latin)
 	_check(str(UnitDB.get_set("monsters/wolf_t5").get("name_ru", "")) == "Владыка волков",
@@ -123,7 +123,7 @@ func _run() -> void:
 
 	print("-- летающие --")
 	var z_bad := 0
-	for sp2 in MapGenerator.GRAY_SPECIES:
+	for sp2 in MapGenerator.gray_species():
 		var base := "monsters/%s" % str(sp2)
 		var bz := int(UnitDB.get_set(base).get("z", 0))
 		for t3 in range(2, 6):
@@ -167,7 +167,7 @@ func _run() -> void:
 					int(expected[zone2][0]), int(expected[zone2][1])])
 
 	print("-- каждый вид реально появляется на картах --")
-	# Список видов задан ЗДЕСЬ, а не читается из `MapGenerator.GRAY_SPECIES`.
+	# Список видов задан ЗДЕСЬ, а не читается из `MapGenerator.gray_species()`.
 	# Первая версия проверки перебирала сам список кода — и потому проходила на
 	# сломанном коде: убрать `troll` из `GRAY_SPECIES` означало убрать его и из
 	# проверки (проверено мутацией: 0 провалов). Ожидание живёт отдельно от
@@ -175,7 +175,7 @@ func _run() -> void:
 	var species_expected := ["bat", "bee", "cannibal", "dino", "dragon", "ghost",
 		"squirrel", "succubus", "troll", "wolf"]
 	var in_code: Array = []
-	for sp4 in MapGenerator.GRAY_SPECIES:
+	for sp4 in MapGenerator.gray_species():
 		in_code.append(str(sp4))
 	var code_missing: Array = []
 	var code_extra: Array = []
@@ -214,7 +214,7 @@ func _run() -> void:
 			absent.append(str(sp3))
 	_check(absent.is_empty(),
 		"все %d видов встречаются на картах четырёх зон (нет: %s)"
-			% [MapGenerator.GRAY_SPECIES.size(), str(absent)])
+			% [MapGenerator.gray_species().size(), str(absent)])
 
 	print("RESULT: %s gray_tier_smoke (проверок: %d, провалов: %d)"
 		% ["OK" if _fails.is_empty() else "FAIL", _checks, _fails.size()])

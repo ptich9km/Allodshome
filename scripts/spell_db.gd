@@ -28,9 +28,10 @@ static func get_spell(name: String) -> Dictionary:
 	ensure_loaded()
 	return _db.get(name, {})
 
-## Книга стихии ("Book Fire") -> имя сферы ("Fire"). "" если не книга.
-## Список сфер — в данных (assets/config/content_rules.json, "spells.spheres"):
-## мод может добавить новую школу магии, и свитки/книги подхватят её сами.
+## Sphere book ("Book Fire") -> sphere name ("Fire"). "" when it is not a book.
+## The sphere list lives in data (assets/config/content_rules.json,
+## "spells.spheres"): a mod can add a new magic school and scrolls/books pick it
+## up automatically.
 static func sphere_of_book(book_name: String) -> String:
 	var n := str(book_name).to_lower()
 	if n.begins_with("book "):
@@ -39,7 +40,7 @@ static func sphere_of_book(book_name: String) -> String:
 			return sphere
 	return ""
 
-## Какие книги стихий есть (для словаря предметов).
+## Which sphere books exist (for the item dictionary).
 static func book_item_names() -> Array:
 	var out: Array = []
 	for sphere in ContentRules.list("spells.spheres"):
@@ -305,6 +306,26 @@ static func spell_of_book(item_key: String) -> String:
 ## Ключ предмета-книги одного заклинания ("Fire_Arrow" -> "Book Fire Arrow").
 static func book_key_for_spell(spell: String) -> String:
 	return "Book " + str(spell).replace("_", " ")
+
+## Sphere book as an item. item_db holds only the five vanilla books; a modded
+## school has no record there, yet the shop still sells the book — so ItemDB
+## takes it from here (fallback in item_db.find).
+static func make_sphere_book(sphere: String) -> Dictionary:
+	if sphere == "":
+		return {}
+	return {
+		"key": "Book " + sphere,
+		"name_ru": "Книга: " + sphere,
+		"name_en": "Book",
+		"quality": "Book",
+		"type": sphere,
+		"price": 0,
+		"weight": 10.0,
+		"level": 1,
+		"icon": str(BOOK_ICONS.get(sphere, BOOK_ICONS["Fire"])),
+		"sphere": sphere,
+	}
+
 
 ## Предмет-книга по ключу склада ("Book Fire Arrow") или {} (не книга).
 static func book_item(item_key: String) -> Dictionary:

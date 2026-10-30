@@ -1,10 +1,11 @@
 extends SceneTree
-## Правила контента: базовые значения из данных + расширение модом.
+## Content rules: base values from data + extension by a mod.
 ##
-## Проверяем главный смысл M3: мод может добавить НЕ тип записи, а новый ТИП
-## контента — школу магии, категорию брони, расу — и игра это подхватывает.
+## Checks the main point of M3: a mod can add not a record type but a new TYPE
+## of content — a magic school, an armor category, a race — and the game picks
+## it up.
 ##
-## Запуск: godot --headless --path . --script res://tests/content_rules_smoke.gd
+## Run: godot --headless --path . --script res://tests/content_rules_smoke.gd
 
 var _fails: Array[String] = []
 
@@ -19,20 +20,21 @@ func _init() -> void:
 func _run() -> void:
 	_rmrf(ROOT.path_join(MOD_ID))
 
-	# --- база: значения совпадают с прежними константами (моды выключены) ---
+	# --- base: values match the former constants (mods are off) ---
 	_check(ContentRules.list("spells.spheres").size() == 5, "5 сфер магии из данных")
 	_check(ContentRules.list("items.weapon_types").size() == 21, "21 тип оружия из данных")
 	_check(ContentRules.list("items.head_types").size() == 7, "7 типов шлемов из данных")
 	_check(ContentRules.list("races").size() == 4, "4 расы из данных")
 	_check(ContentRules.dict("map.house_folders").has("ork"), "жильё по расам в данных")
 	_check(ContentRules.list("inn.candidates").size() == 4, "кандидаты таверны в данных")
+	_check(ContentRules.list("spawn.gray_species").size() == 10, "виды Серых в данных")
 	_check(ContentRules.int_value("units.hostile_palette", 0) == 5, "враждебная палитра в данных")
 
 	var copy := ContentRules.list("items.head_types")
 	copy.append("ЧУЖОЙ")
 	_check(ContentRules.list("items.head_types").size() == 7, "list() отдаёт копию, данные не портятся")
 
-	# --- поведение на базе не изменилось ---
+	# --- behaviour on the base did not change ---
 	_check(ItemDB.slot_of({"type": "Long Sword"}) == "weapon", "меч -> слот weapon")
 	_check(ItemDB.slot_of({"type": "Tower Shield"}) == "shield", "щит -> слот shield")
 	_check(ItemDB.is_two_handed({"type": "Staff"}), "посох двуручный")
@@ -43,7 +45,7 @@ func _run() -> void:
 	_check(UnitDB.loot_family_of("monsters/bee_t3") == "insect", "пчела -> insect")
 	_check(CharacterSelect.races().size() == 4, "экран героя: 4 расы")
 
-	# --- мод расширяет правила ---
+	# --- a mod extends the rules ---
 	_build_mod()
 	ModLoader.set_active(true)
 	ContentRules.reload()
@@ -66,9 +68,9 @@ func _build_mod() -> void:
 		"id": MOD_ID, "name": "Rules Probe", "version": "1.0.0",
 	})
 	_write_json("%s/data/rules.json" % MOD_ID, [
-		{"kind": "rule", "op": "append", "key": "spells.spheres", "value": ["Shadow"]},
-		{"kind": "rule", "op": "append", "key": "items.head_types", "value": ["Crown"]},
-		{"kind": "rule", "op": "append", "key": "races", "value": [{"id": "shadow", "label": "Тень"}]},
+		{"into": "rule", "op": "append", "key": "spells.spheres", "value": ["Shadow"]},
+		{"into": "rule", "op": "append", "key": "items.head_types", "value": ["Crown"]},
+		{"into": "rule", "op": "append", "key": "races", "value": [{"id": "shadow", "label": "Тень"}]},
 	])
 
 

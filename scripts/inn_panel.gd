@@ -4,11 +4,12 @@ extends CanvasLayer
 signal closed
 
 const MAX_PARTY := 4
-## Кандидаты в наёмники по тирам (слабее -> сильнее). Данные, а не константа:
-## мод может добавить свой набор в таверну (`inn.candidates` в
+## Mercenary candidates by tier (weaker -> stronger). Data, not a constant:
+## a mod can add its own set to the inn (`inn.candidates` in
 ## assets/config/content_rules.json).
 func _candidate_sets() -> Array:
 	return ContentRules.list("inn.candidates")
+
 const TALK_LINES := [
 	"Говорят, на севере всё больше диких зверей... Охрана у ворот не справляется.",
 	"В школе тренировок берут золотом за каждую ступень. Дорого, но быстро.",

@@ -488,8 +488,8 @@ func _on_mods() -> void:
 
 
 func _on_mods_closed() -> void:
-	# Панель освобождает себя сама (queue_free в close), поэтому только забываем
-	# ссылку: повторный free() на уже удалённом узле был бы ошибкой.
+	# The panel frees itself (queue_free inside close), so we only forget the
+	# reference: a second free() on an already freed node would be an error.
 	_mods_panel = null
 
 
@@ -660,7 +660,7 @@ func _flash_overlay_status(msg: String) -> void:
 	(lab as Label).text = msg
 
 
-# --- Моды / сеть / об авторах / выход ---
+# --- mods / network / about / quit ---
 
 func _build_network_body(parent: VBoxContainer) -> void:
 	# `_make_body_label` уже добавляет метку в parent. Второй add_child роняет

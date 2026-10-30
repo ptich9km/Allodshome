@@ -1,0 +1,33 @@
+[
+	{
+		"into": "spell",
+		"key": "Shadow_Bolt",
+		"name": "Shadow_Bolt",
+		"ru": "Теневая стрела",
+		"sphere": "Shadow",
+		"damage": 18,
+		"mana_cost": 6,
+		"range": 300,
+		"area": 0,
+		"projectile": "firebolt",
+		"icon": "",
+		"icons": {
+			"scroll": "res://assets/spells/fire_arrow.png",
+			"super": "res://assets/spells/fire_arrow.png"
+		},
+		"kind": "attack",
+		"sound": "magic.fire.arrow",
+		"cooldown": 0.8,
+		"cast_time": 0.35,
+		"projectile_speed": 420,
+		"target": "enemy",
+		"power_coef": 1.0,
+		"crit_chance": 0,
+		"crit_mult": 1.0,
+		"min_damage": 1,
+		"effects": [],
+		"wall_mode": 0,
+		"wall_width": 0,
+		"wall_life": 0
+	}
+]

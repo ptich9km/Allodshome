@@ -7,9 +7,9 @@ extends Node
 
 const DB_PATH := "res://assets/items/item_db.json"
 
-## Списки типов — в данных (`assets/config/content_rules.json`, раздел `items.*`):
-## мод может добавить новый тип оружия или брони, не правя код. Раньше здесь
-## лежали 12 констант, и новый тип был недоступен модам вообще.
+## Type lists live in data (`assets/config/content_rules.json`, `items.*`): a mod
+## can add a new weapon or armor type without touching code. Twelve constants
+## used to sit here, and a new type was unreachable for mods at all.
 static func type_list(key: String) -> Array:
 	return ContentRules.shared_list("items." + key)
 ## Все слоты экипировки героя, в порядке отображения на панели персонажа.
@@ -51,7 +51,7 @@ static func ensure_loaded() -> void:
 	for raw in parsed:
 		if raw is Dictionary:
 			_items.append(raw)
-	# Моды применяются до построения индекса: patch меняет уже разобранные записи.
+	# Mods are applied before indexes are built: patches mutate parsed records.
 	ModLoader.overlay("items", _items)
 	_by_key = {}
 	for raw in _items:
@@ -65,7 +65,17 @@ static func all() -> Array:
 
 static func find(key: String) -> Dictionary:
 	ensure_loaded()
-	return _by_key.get(key, {})
+	var found: Dictionary = _by_key.get(key, {})
+	if found.is_empty() and key.begins_with("Book "):
+		# Spell book: the base only stores books of the five vanilla spheres,
+		# while shops build books from SpellDB (SpellDB.make_book_item) — so a
+		# modded school is sold but has no item_db record. Without this fallback
+		# the item in the inventory would be "empty" (no name/icon/price).
+		var sphere := SpellDB.sphere_of_book(key)
+		if sphere != "":
+			return SpellDB.make_sphere_book(sphere)
+		return SpellDB.book_item(key)
+	return found
 
 ## Слот экипировки: weapon / shield / head / cloak / body / hands / feet / amulet / ring.
 ## Кольцо возвращает "ring" — конкретный слот ring1/ring2 выбирает player.equip_item().

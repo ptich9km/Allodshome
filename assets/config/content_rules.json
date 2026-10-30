@@ -64,6 +64,11 @@
 		"value": 5
 	},
 	{
+		"key": "spawn.gray_species",
+		"value": ["wolf", "dino", "squirrel", "bee", "bat", "ghost", "dragon",
+			"cannibal", "troll", "succubus"]
+	},
+	{
 		"key": "units.loot_families",
 		"value": ["beast", "insect", "humanoid", "undead", "monstrous"]
 	},

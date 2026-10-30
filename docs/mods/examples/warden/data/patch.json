@@ -1,6 +1,6 @@
 [
 	{
-		"kind": "unit",
+		"into": "unit",
 		"op": "patch",
 		"key": "monsters/wolf",
 		"tier": 2

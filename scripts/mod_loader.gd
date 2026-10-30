@@ -1,40 +1,41 @@
 class_name ModLoader
 extends RefCounted
-## Загрузчик модов: папки `res://mods/<id>/` (вшитые наборы) и `user://mods/<id>/`
-## (моды игрока). Никакого autoload — статика, как SaveSystem.
+## Mod loader: `res://mods/<id>/` (bundled packs) and `user://mods/<id>/`
+## (player mods). No autoload — plain statics, like SaveSystem.
 ##
-## Почему так, а не «как в Space Engineers»: там переопределение молчаливое (второй
-## мод с тем же SubtypeId просто исчезает), а «не написал поле — взялся дефолт из
-## кода». Здесь наоборот — конфликт ключей и потеря ассета это ОШИБКА с именем мода
-## и ключом, и запись пропускается (в игре остаётся базовая версия), а наследование
-## только явное: `"extends": "<ключ базы>"`.
+## Why not "the Space Engineers way": there a redefinition is silent (the second
+## mod with the same SubtypeId simply disappears) and "field omitted = default
+## from code". Here the opposite — a key conflict or a lost asset is an ERROR
+## naming the mod and the key, the entry is skipped (the base version stays),
+## and inheritance is always explicit: `"extends": "<base key>"`.
 ##
-## Структура мода:
-##   mods/<id>/mod.json     — манифест (id, name, version, author, priority, ...)
-##   mods/<id>/data/*.json  — записи (массив объектов или {"entries": [...]})
-##   mods/<id>/assets/*     — свои файлы, ссылки вида `mod://<id>/assets/x.png`
-##   mods/<id>/thumb.png    — превью для списка модов (необязательно)
+## Mod layout:
+##   mods/<id>/mod.json     — manifest (id, name, version, author, priority, ...)
+##   mods/<id>/data/*.json  — entries (array of objects or {"entries": [...]})
+##   mods/<id>/assets/*     — own files, referenced as `mod://<id>/assets/x.png`
+##   mods/<id>/thumb.png    — preview for the mods panel (optional)
 ##
-## Запись в data:
-##   {"kind": "unit", "key": "monsters/warden", "extends": "monsters/wolf",
-##    "name_ru": "Сторож топей", "palette": 5}
-##   op: "add" (по умолчанию) | "patch" | "remove"
-## `kind` — куда класть (item/unit/spell/structure), `key` — ключ внутри базы.
-## Остальные поля записи — данные самого объекта; `type` у предмета остаётся
-## свободным и означает тип предмета ("Long Sword"), а не базу.
+## Entry in data:
+##   {"into": "unit", "key": "monsters/warden", "extends": "monsters/wolf",
+##    "name_ru": "...", "palette": 5}
+##   op: "add" (default) | "patch" | "remove" | "append"
+## `into` says where to put it (item/unit/spell/structure/rule); `key` is the key
+## inside that base. The rest of the entry is the object data itself. The field
+## is called `into` and not `kind` because spells already own a `kind` field
+## ("attack") — routing used to swallow it.
 ##
-## Порядок загрузки: depends_on (жёстко) -> load_after (мягко) -> priority
-## (больше = позже, то есть «главнее») -> id по алфавиту. Одно направление,
-## оно же показывается в UI: ниже в списке = применяется позже.
+## Load order: depends_on (hard) -> load_after (soft) -> priority (higher = later,
+## i.e. wins) -> id alphabetically. One direction only, the same one the UI
+## shows: lower in the list = applied later.
 
 const MOD_ROOTS: Array[String] = ["res://mods", "user://mods"]
 const MANIFEST_NAME := "mod.json"
 const DATA_DIR := "data"
 const USER_MODS_DIR := "user://mods"
-## Настройки игрока рядом с модами: выключенные и ручной порядок.
+## Player settings next to the mods: disabled ids and the manual order.
 const CONFIG_PATH := "user://mods.cfg"
 
-## "type" записи -> база (см. overlay()).
+## Entry "into" -> base id (see overlay()).
 const DB_OF_KIND: Dictionary = {
 	"item": "items",
 	"unit": "units",
@@ -42,33 +43,33 @@ const DB_OF_KIND: Dictionary = {
 	"structure": "structures",
 	"rule": "rules",
 }
-## Поле-ключ у баз, которые хранятся массивом. У словарных баз ключ — это ключ словаря.
+## Key field for bases stored as arrays. Dictionary bases use the dict key.
 const DB_KEY_FIELD: Dictionary = {"items": "key", "rules": "key"}
 const DB_IS_ARRAY: Dictionary = {
 	"items": true, "units": false, "spells": false, "structures": false, "rules": true,
 }
-const ENTRY_META := ["op", "kind", "key", "extends"]
+const ENTRY_META := ["op", "into", "key", "extends"]
 
 static var _scanned := false
-static var _mods: Array[Dictionary] = []      # включённые, в порядке применения
-static var _all: Array[Dictionary] = []       # все найденные (для панели модов)
+static var _mods: Array[Dictionary] = []      # enabled mods, in apply order
+static var _all: Array[Dictionary] = []       # every found mod (for the panel)
 static var _errors: Array[String] = []
 static var _warnings: Array[String] = []
-static var _disabled: Array[String] = []      # из user://mods.cfg
-static var _manual_order: Array[String] = []  # из user://mods.cfg, ниже = позже
-static var _owners: Dictionary = {}     # "db|key" -> id мода, который добавил
-static var _patchers: Dictionary = {}   # "db|key" -> Array[String] id модов, которые патчили
-static var _orphans: Array[String] = []  # папки в mods/ без mod.json (частая ошибка копирования)
-## Моды включены? В headless-прогонах `--script` они ВЫКЛЮЧЕНЫ по умолчанию:
-## тесты проверяют базовые данные, а у игрока в user://mods лежат его моды
-## (29.10 то, что у игрока стоял `warden`, ломало `gray_tier_smoke`).
-## Тесты самих модов включают их через `set_active(true)`.
+static var _disabled: Array[String] = []      # from user://mods.cfg
+static var _manual_order: Array[String] = []  # from user://mods.cfg, lower = later
+static var _owners: Dictionary = {}     # "db|key" -> id of the mod that added it
+static var _patchers: Dictionary = {}   # "db|key" -> Array[String] of patching mods
+static var _orphans: Array[String] = []  # folders in mods/ without mod.json
+## Are mods on? In headless `--script` runs they are OFF by default: tests check
+## base data, while the player has own mods in user://mods (2026-10-29: the
+## player's `warden` broke `gray_tier_smoke`). Mod tests opt in with
+## `set_active(true)`.
 static var _active := true
 static var _active_resolved := false
 
 
-## Сброс кэша (тесты, пересканирование после включения/выключения мода).
-## Настройки (что выключено и ручной порядок) перечитываются из `mods.cfg`.
+## Drops the cache (tests, rescan after enabling/disabling a mod).
+## Settings (disabled ids, manual order) are re-read from `mods.cfg`.
 static func reset() -> void:
 	_scanned = false
 	_mods.clear()
@@ -82,8 +83,9 @@ static func reset() -> void:
 	_orphans.clear()
 
 
-## Папки в `mods/`, где нет `mod.json`. Игроки (и мы) регулярно копируют папку
-## на уровень глубже — тогда «модов нет» без объяснения. Панель показывает список.
+## Folders under `mods/` without a `mod.json`. Players (and we) regularly copy a
+## folder one level too deep — then "no mods" appears with no explanation.
+## The panel lists these folders.
 static func orphan_folders() -> Array[String]:
 	_scan()
 	var out: Array[String] = []
@@ -98,7 +100,7 @@ static func mods() -> Array[Dictionary]:
 	return out
 
 
-## Все найденные моды (включая выключенные) в порядке применения — для панели.
+## Every found mod (including disabled ones) in apply order — for the panel.
 static func all_mods() -> Array[Dictionary]:
 	_scan()
 	var out: Array[Dictionary] = []
@@ -114,7 +116,7 @@ static func is_enabled(id: String) -> bool:
 	return not _disabled.has(id)
 
 
-## Принудительно включить/выключить моды на весь процесс (тесты).
+## Force mods on/off for the whole process (tests).
 static func set_active(on: bool) -> void:
 	_active = on
 	_active_resolved = true
@@ -126,8 +128,8 @@ static func is_active() -> bool:
 	return _active
 
 
-## Включить/выключить мод. Применяется после перезапуска игры (данные баз уже
-## разобраны), поэтому UI обязан сказать это игроку.
+## Enable/disable a mod. Takes effect after a game restart (base data is already
+## parsed), so the UI must tell the player exactly that.
 static func set_enabled(id: String, on: bool) -> void:
 	_scan()
 	if on:
@@ -138,7 +140,7 @@ static func set_enabled(id: String, on: bool) -> void:
 	reset()
 
 
-## Сдвинуть мод в ручном порядке: delta > 0 — ниже в списке (то есть позже).
+## Move a mod in the manual order: delta > 0 — lower in the list (applied later).
 static func move(id: String, delta: int) -> void:
 	_scan()
 	_ensure_order()
@@ -168,14 +170,14 @@ static func warnings() -> Array[String]:
 	return out
 
 
-## Папка модов игрока (создаётся при первом обращении).
+## Player mods folder (created on first access).
 static func user_mods_dir() -> String:
 	if DirAccess.open(USER_MODS_DIR) == null:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(USER_MODS_DIR))
 	return USER_MODS_DIR
 
 
-## Профиль модов для сейва: что было включено и в каком порядке.
+## Mod profile for saves: what was enabled and in which order.
 static func save_profile() -> Array:
 	_scan()
 	var out: Array = []
@@ -184,7 +186,7 @@ static func save_profile() -> Array:
 	return out
 
 
-## `mod://<id>/<путь>` -> реальный путь. Не-mod-пути возвращаются как есть.
+## `mod://<id>/<path>` -> real path. Non-mod paths are returned unchanged.
 static func resolve(path: String) -> String:
 	if not path.begins_with("mod://"):
 		return path
@@ -204,8 +206,8 @@ static func is_mod_path(path: String) -> bool:
 	return path.begins_with("mod://")
 
 
-## Наложить моды на данные базы. Вызывается из ensure_loaded() каждой базы ПОСЛЕ
-## разбора JSON и ДО построения индексов. `base` мутируется на месте.
+## Applies mods to a base's data. Called from every base's ensure_loaded() AFTER
+## the JSON is parsed and BEFORE indexes are built. `base` is mutated in place.
 static func overlay(db: String, base: Variant) -> void:
 	_scan()
 	if base == null or _mods.is_empty():
@@ -218,7 +220,7 @@ static func overlay(db: String, base: Variant) -> void:
 			if not (raw is Dictionary):
 				continue
 			var e: Dictionary = raw
-			if str(DB_OF_KIND.get(str(e.get("kind", "")), "")) != db:
+			if str(DB_OF_KIND.get(str(e.get("into", "")), "")) != db:
 				continue
 			if _apply_entry(m, e, base, is_array, db):
 				applied += 1
@@ -226,10 +228,10 @@ static func overlay(db: String, base: Variant) -> void:
 		print("ModLoader: %s — записей из модов: %d (модов: %d)" % [db, applied, _mods.size()])
 
 
-# --- сканирование -------------------------------------------------------------
+# --- scanning -----------------------------------------------------------------
 
-## Режим по умолчанию: в игре моды включены, в `--script`-прогонах — нет
-## (там проверяются базовые данные; `--with-mods` в аргументах после `--` включает).
+## Default mode: mods on in game, off in `--script` runs (those check base data);
+## `--with-mods` in the args after `--` turns them on.
 static func _resolve_active() -> void:
 	if _active_resolved:
 		return
@@ -241,7 +243,7 @@ static func _resolve_active() -> void:
 static func _scan() -> void:
 	if _scanned:
 		return
-	_scanned = true   # ставим сразу: resolve() может звать _dir_of -> _scan
+	_scanned = true   # set first: resolve() may call _dir_of -> _scan
 	_resolve_active()
 	if not _active:
 		return
@@ -271,8 +273,8 @@ static func _scan() -> void:
 			folder = da.get_next()
 		da.list_dir_end()
 
-	# Жёсткие зависимости: отсутствует — мод не грузится (иначе тихо получим мод,
-	# который читает данные несуществующего соседа).
+	# Hard dependencies: missing — the mod is not loaded (otherwise we would
+	# silently get a mod reading data of a neighbour that does not exist).
 	var ids: Dictionary = {}
 	for m in found:
 		ids[m["id"]] = true
@@ -290,7 +292,7 @@ static func _scan() -> void:
 	for m in _all:
 		if _disabled.has(str(m["id"])):
 			continue
-		# Зависимость выключена — включённый мод не должен грузиться «наполовину».
+		# A disabled dependency means the mod must not load "half-way".
 		var off := ""
 		for dep in m.get("depends_on", []):
 			if _disabled.has(str(dep)):
@@ -305,7 +307,7 @@ static func _scan() -> void:
 			[_all.size(), _mods.size(), _errors.size(), _warnings.size()])
 
 
-## Настройки игрока: что выключено и ручной порядок (`user://mods.cfg`).
+## Player settings: what is disabled and the manual order (`user://mods.cfg`).
 static func _load_config() -> void:
 	_disabled.clear()
 	_manual_order.clear()
@@ -335,7 +337,7 @@ static func _as_array(value: Variant) -> Array[String]:
 	return out
 
 
-## Ручной порядок: дописывает новых модов в конец, ничего не теряя.
+## Manual order: new mods are appended to the end, nothing is lost.
 static func _ensure_order() -> void:
 	for m in _all:
 		var id := str(m["id"])
@@ -343,7 +345,7 @@ static func _ensure_order() -> void:
 			_manual_order.append(id)
 
 
-## Место в ручном порядке. Моды, которых в списке нет, — в конце.
+## Position in the manual order. Mods missing from it go last.
 static func _rank_of(id: String) -> int:
 	var i := _manual_order.find(id)
 	return i if i >= 0 else 100000
@@ -427,8 +429,8 @@ static func _json_files(dir: String) -> Array[String]:
 	return out
 
 
-## JSON через экземпляр парсера: `JSON.parse_string` при ошибке печатает
-## движковый ERROR в stderr, и битый мод в логе выглядит как падение игры.
+## JSON through a parser instance: `JSON.parse_string` prints an engine ERROR to
+## stderr on failure, and a broken mod would look like a game crash in the log.
 static func _parse_json(path: String) -> Variant:
 	var txt := FileAccess.get_file_as_string(path)
 	if txt.is_empty():
@@ -447,7 +449,7 @@ static func _str_array(value: Variant) -> Array[String]:
 	return out
 
 
-## Топосорт: depends_on -> load_after -> priority -> id.
+## Topological sort: depends_on -> load_after -> priority -> id.
 static func _sort_mods(list: Array[Dictionary]) -> Array[Dictionary]:
 	var by_id: Dictionary = {}
 	for m in list:
@@ -491,7 +493,7 @@ static func _deps_ready(m: Dictionary, by_id: Dictionary, done: Dictionary) -> b
 		if not done.has(str(dep)):
 			return false
 	for after in m.get("load_after", []):
-		# load_after — мягкое: ждём только если такой мод вообще есть.
+		# load_after is soft: wait only if such a mod exists at all.
 		if by_id.has(str(after)) and not done.has(str(after)):
 			return false
 	return true
@@ -505,14 +507,14 @@ static func _dir_of(id: String) -> String:
 	return ""
 
 
-# --- применение записей -------------------------------------------------------
+# --- applying entries ---------------------------------------------------------
 
 static func _apply_entry(m: Dictionary, e: Dictionary, base: Variant, is_array: bool, db: String) -> bool:
 	var mod_id := str(m.get("id", ""))
 	var key := str(e.get("key", "")).strip_edges()
 	var op := str(e.get("op", "add")).to_lower()
 	if key == "":
-		_errors.append("мод '%s': запись без key (kind=%s)" % [mod_id, str(e.get("kind", "?"))])
+		_errors.append("мод '%s': запись без key (into=%s)" % [mod_id, str(e.get("into", "?"))])
 		return false
 	if op != "add" and op != "patch" and op != "remove" and op != "append":
 		_errors.append("мод '%s': неизвестная op '%s' у '%s'" % [mod_id, op, key])
@@ -532,16 +534,16 @@ static func _apply_entry(m: Dictionary, e: Dictionary, base: Variant, is_array: 
 			continue
 		fields[str(k)] = _expand(e[k], missing)
 	if not missing.is_empty():
-		# Потерянный ассет — не «розовый квадрат в игре», а отказ от записи.
+		# A lost asset is not a "pink square in game" but a refused entry.
 		_errors.append("мод '%s': '%s' — не найдены файлы: %s" % [mod_id, key, ", ".join(missing)])
 		return false
 
 	var existing: Variant = _get_def(base, key, is_array, db)
 	var exists: bool = existing is Dictionary
 
-	# append: дописать элементы к списку внутри записи — так мод добавляет
-	# новую сферу магии или новый тип брони, не переписывая весь список
-	# (перезапись легко теряет правки соседнего мода).
+	# append: adds items to a list inside a rules record — that is how a mod adds
+	# a new magic sphere or armor type without rewriting the whole list
+	# (a rewrite easily loses a neighbouring mod's change).
 	if op == "append":
 		if not exists:
 			_errors.append("мод '%s': append '%s' — ключа нет" % [mod_id, key])
@@ -656,7 +658,7 @@ static func _deep_merge(base: Dictionary, over: Dictionary) -> Dictionary:
 	return out
 
 
-## Разворачивает `mod://<id>/...` в реальный путь; собирает ненайденные файлы.
+## Expands `mod://<id>/...` into a real path; collects files that are missing.
 static func _expand(value: Variant, missing: Array[String]) -> Variant:
 	match typeof(value):
 		TYPE_STRING:

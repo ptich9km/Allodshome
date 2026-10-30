@@ -1,6 +1,6 @@
 [
 	{
-		"kind": "unit",
+		"into": "unit",
 		"key": "monsters/warden",
 		"extends": "monsters/wolf",
 		"name_ru": "Сторож топей",

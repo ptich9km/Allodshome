@@ -1,14 +1,14 @@
 class_name ModsPanel
 extends CanvasLayer
-## Панель модов: список, включение, ручной порядок, диагностика.
+## Mods panel: list, enable toggle, manual order, diagnostics.
 ##
-## Порядок загрузки применяется к базам один раз, при их первом обращении,
-## поэтому переключения НЕ меняют уже загруженную игру — панель честно пишет
-## «после перезапуска» и не врёт, что всё применилось сразу (урок X4/SE: там
-## включение мода требует перезагрузки, и попытка соврать дороже, чем сказать).
+## The load order is applied to the bases once, on their first access, so
+## toggling does NOT change an already loaded game — the panel honestly says
+## "after restart" instead of pretending the change is live (lesson from X4/SE:
+## there enabling a mod requires a reload, and a lie costs more than the truth).
 ##
-## Записи хранятся в `user://mods.cfg` (ModLoader._save_config), не в сейве:
-## набор модов — свойство установки, а не сохранения.
+## Settings live in `user://mods.cfg` (ModLoader._save_config), not in the save:
+## the mod set belongs to the installation, not to a savegame.
 
 signal closed
 
@@ -16,9 +16,9 @@ const PANEL_MIN := Vector2(880, 0)
 const LIST_HEIGHT := 340
 const THUMB_SIZE := Vector2(56, 56)
 
-## Свои цвета вместо дефолтной темы Godot: без явного StyleBox панель была
-## полностью прозрачной и сквозь неё просвечивало главное меню (проверено
-## снимком 29.10).
+## Own colours instead of the default Godot theme: without an explicit StyleBox
+## the panel was fully transparent and the main menu showed through (verified by
+## a screenshot on 2026-10-29).
 const PANEL_BG := Color(0.10, 0.07, 0.05, 0.97)
 const PANEL_BORDER := Color(0.70, 0.40, 0.14, 1.0)
 const ROW_BG := Color(0.17, 0.11, 0.07, 0.95)
@@ -41,9 +41,9 @@ var _pending_focus := 0
 func _ready() -> void:
 	layer = 30
 	_previous_focus = UiKit.save_focus(self)
-	# Свежий скан при каждом открытии: игрок мог скопировать мод, пока панель
-	# была закрыта, а кэш сканирования живёт до перезапуска (жалоба 29.10:
-	# «скопировал мод, а в меню пусто»).
+	# Fresh scan on every open: the player may copy a mod while the panel is
+	# closed, and the scan cache lives until restart (report of 2026-10-29:
+	# "copied a mod, but the list is empty").
 	ModLoader.reset()
 	_build()
 	_refresh(0)
@@ -64,7 +64,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-# === построение ===
+# === building ===
 
 func _build() -> void:
 	_root = Control.new()
@@ -174,7 +174,7 @@ func _footer_button(text: String, cb: Callable) -> Button:
 	return b
 
 
-# === список ===
+# === list ===
 
 func _refresh(focus_index: int = 0) -> void:
 	UiKit.clear(_list)
@@ -208,9 +208,9 @@ func _refresh(focus_index: int = 0) -> void:
 	_grab_pending.call_deferred()
 
 
-## Фокус ставим отдельным отложенным шагом и с проверкой живости: перестройка
-## строк (`UiKit.clear`) удаляет старые кнопки, и `grab_focus` на уже вынутом из
-## дерева Control печатает движковый ERROR.
+## Focus is set in a separate deferred step with a liveness check: rebuilding the
+## rows (`UiKit.clear`) frees the old buttons, and `grab_focus` on a Control that
+## already left the tree prints an engine ERROR.
 func _grab_pending() -> void:
 	if _pending_focus < 0 or _pending_focus >= _nav.size():
 		return
@@ -286,8 +286,8 @@ func _make_row(m: Dictionary, index: int, total: int) -> Control:
 	return card
 
 
-## Плоская «карточка» с явными внутренними отступами: у `UiKit.panel_style`
-## их нет, а без них строки слипаются в сплошное полотно.
+## Flat "card" with explicit inner padding: `UiKit.panel_style` has none, and
+## without it the rows collapse into one solid strip.
 func _card_style(bg: Color, border: Color, radius: int, pad: int) -> StyleBoxFlat:
 	var style := UiKit.panel_style(bg, border, radius, 1)
 	style.content_margin_left = pad
@@ -321,12 +321,12 @@ func _make_thumb(id: String, path: String) -> Control:
 	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	box.add_child(rect)
 	if path != "" and FileAccess.file_exists(path):
-		# `load()` тут не годится: PNG в user:// не импортирован движком.
+		# `load()` is not an option here: a PNG in user:// is not imported.
 		var img := Image.new()
 		if img.load(path) == OK:
 			rect.texture = ImageTexture.create_from_image(img)
 			return box
-	# Без превью — первая буква имени мода вместо пустого чёрного квадрата.
+	# No preview — first letter of the mod id instead of an empty black square.
 	var letter := Label.new()
 	letter.name = "Letter"
 	letter.text = id.substr(0, 1).to_upper()
@@ -337,7 +337,7 @@ func _make_thumb(id: String, path: String) -> Control:
 	return box
 
 
-# === действия ===
+# === actions ===
 
 func _on_toggled(id: String, pressed: bool, index: int) -> void:
 	ModLoader.set_enabled(id, pressed)
@@ -356,15 +356,15 @@ func _on_open_folder() -> void:
 	OS.shell_open(ProjectSettings.globalize_path(dir))
 
 
-## «Обновить» = пересканировать папку, а не только перерисовать строки.
+## "Refresh" means rescan the folder, not just repaint the rows.
 func _on_refresh() -> void:
 	ModLoader.reset()
 	_refresh(0)
 
 
-# === диагностика ===
+# === diagnostics ===
 
-## Строки ошибок/предупреждений этого мода.
+## Error/warning lines that belong to this mod.
 func _notes_for(id: String) -> String:
 	var lines: Array[String] = []
 	for e in ModLoader.errors():
@@ -376,7 +376,7 @@ func _notes_for(id: String) -> String:
 	return "\n".join(lines)
 
 
-## Ошибки, которые не привязаны к конкретному моду (цикл зависимостей и т.п.).
+## Errors not tied to any concrete mod (a dependency cycle, for example).
 func _update_global_notes(mods: Array[Dictionary]) -> void:
 	var ids: Array[String] = []
 	for m in mods:
