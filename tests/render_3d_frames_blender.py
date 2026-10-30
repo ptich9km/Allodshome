@@ -1,4 +1,4 @@
-"""Blender stage of tests/render_3d_frames.py: render raw 4x frames + manifest.
+"""Blender stage of tests/render_3d_frames.py: raw 4x frames + manifest.
 
 Runs INSIDE Blender (no Pillow there), called by the driver:
 
@@ -6,11 +6,16 @@ Runs INSIDE Blender (no Pillow there), called by the driver:
         -- --job <work>/job.json
 
 Reads the job, loads the model, finds the four actions (idle/walk/attack/die),
-puts an orthographic 3/4 camera and a key light from the upper left, renders the
-sampled frames on a transparent background and writes a manifest with the
-screen position of the model origin (the feet pivot). No image processing here:
-normalization, outlining and contact sheets belong to the driver, which has
-Pillow.
+puts an orthographic camera and a key light from the upper left, renders the
+sampled frames of every requested direction on a transparent background and
+writes a manifest with the screen position of the model origin (feet pivot) per
+direction. No image processing here: normalization, outlining and contact
+sheets belong to the driver, which has Pillow.
+
+Directions. The game wants `directions` file views: 1 (side view + mirror) or 4
+(front/down, left, back/up, right). A 3D model gives them for free — the artist
+does not draw four versions, we just move the camera. File direction order must
+match `UnitAnim.FILE_DIR_4`: 0=down, 1=left, 2=up, 3=right.
 """
 import argparse
 import json
@@ -24,6 +29,9 @@ from mathutils import Vector
 ACTIONS = ["idle", "walk", "attack", "die"]
 SAMPLES = {"idle": 1, "walk": 4, "attack": 3, "die": 4}
 FIT_MARGIN = 1.12   # camera margin around the union of the rendered poses
+# Camera yaw per FILE direction (0 = in front of the model, it faces -Y).
+# The 4-dir order is UnitAnim.FILE_DIR_4: 0=down, 1=left, 2=up, 3=right.
+DIR_AZIMUTH = {0: 0.0, 1: 60.0, 2: 180.0, 3: -60.0}
 
 
 def parse_args() -> argparse.Namespace:
@@ -98,19 +106,24 @@ def assign_action(host, action) -> None:
             host.animation_data.action_slot = slots[0]
 
 
-def pose_bounds(host, found: dict, schedule: list) -> tuple:
+def pose_bounds(host, found: dict, frames: list) -> tuple:
     """World-space bounds over every pose we are going to render.
 
     `obj.bound_box` is not reliable here: it is the REST bbox (and may be stale
     right after joining/importing), while a death pose can be three times wider
     than the rest pose. Measuring the evaluated meshes keeps every frame inside
-    the camera instead of silently clipping arms and legs.
+    the camera instead of silently clipping arms and legs. The actions must be
+    applied while measuring: a .blend saved in a death pose otherwise reports
+    bounds of that pose only, and every view is fitted to the wrong box.
     """
     scene = bpy.context.scene
     lo = Vector((1.0e9, 1.0e9, 1.0e9))
     hi = Vector((-1.0e9, -1.0e9, -1.0e9))
-    for key, frame in schedule:
-        assign_action(host, found[key])
+    current_action = None
+    for key, _dir, _index, frame in frames:
+        if key != current_action:
+            assign_action(host, found[key])
+            current_action = key
         scene.frame_set(frame)
         bpy.context.view_layer.update()
         depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -144,7 +157,7 @@ def pick_engine(scene) -> None:
     raise SystemExit("no usable render engine found")
 
 
-def setup_render(job: dict, lo: Vector, hi: Vector) -> None:
+def setup_scene(job: dict) -> None:
     scene = bpy.context.scene
     render_px = int(job["render_px"])
     # Standard view transform: Filmic/AgX washes out a 64px sprite, and the
@@ -162,24 +175,6 @@ def setup_render(job: dict, lo: Vector, hi: Vector) -> None:
     scene.render.image_settings.color_depth = "8"
     scene.render.fps = 24
     pick_engine(scene)
-
-    size = max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, 0.5) * FIT_MARGIN
-    target = (lo + hi) / 2.0
-    az = math.radians(float(job["azimuth"]))
-    el = math.radians(float(job["elevation"]))
-    dist = max(6.0, size * 4.0)
-    cam_data = bpy.data.cameras.new("UnitCam")
-    cam_data.type = "ORTHO"
-    cam_data.ortho_scale = size
-    cam = bpy.data.objects.new("UnitCam", cam_data)
-    scene.collection.objects.link(cam)
-    cam.location = target + Vector((
-        math.sin(az) * math.cos(el),
-        -math.cos(az) * math.cos(el),
-        math.sin(el),
-    )) * dist
-    cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
-    scene.camera = cam
 
     # Key light from the screen upper left: the painted sprites are lit that way.
     key_data = bpy.data.lights.new("Key", type="SUN")
@@ -204,9 +199,41 @@ def setup_render(job: dict, lo: Vector, hi: Vector) -> None:
     if bg is not None:
         bg.inputs[0].default_value = (0.32, 0.34, 0.36, 1.0)
         bg.inputs[1].default_value = 0.55
-    # The camera was just created and moved; until the depsgraph is rebuilt its
-    # matrix_world is still identity, and world_to_camera_view would answer
-    # "the origin is in the middle of the frame" instead of the feet.
+
+
+FIT_SIZE = 2.2      # orthographic view size in metres, filled by add_camera
+FIT_TARGET = Vector((0.0, 0.0, 1.0))
+
+
+def add_camera(lo: Vector, hi: Vector) -> object:
+    global FIT_SIZE, FIT_TARGET
+    scene = bpy.context.scene
+    FIT_SIZE = max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, 0.5) * FIT_MARGIN
+    FIT_TARGET = (lo + hi) / 2.0
+    cam_data = bpy.data.cameras.new("UnitCam")
+    cam_data.type = "ORTHO"
+    cam_data.ortho_scale = FIT_SIZE
+    cam = bpy.data.objects.new("UnitCam", cam_data)
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+    return cam
+
+
+def aim_camera(cam, azimuth_deg: float, elevation_deg: float) -> None:
+    """Point the camera at the model from a yaw/elevation around its centre."""
+    size = FIT_SIZE
+    target = FIT_TARGET
+    az = math.radians(azimuth_deg)
+    el = math.radians(elevation_deg)
+    dist = max(6.0, size * 4.0)
+    cam.location = target + Vector((
+        math.sin(az) * math.cos(el),
+        -math.cos(az) * math.cos(el),
+        math.sin(el),
+    )) * dist
+    cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
+    # The camera was just moved; until the depsgraph is rebuilt its matrix_world
+    # is stale and world_to_camera_view would answer for the old pose.
     bpy.context.view_layer.update()
 
 
@@ -245,41 +272,72 @@ def pivot_px(render_px: int) -> list:
     return pivot
 
 
+def build_schedule(found: dict, directions: int) -> list:
+    """Frames in the order the game reads them: block, then direction, then phase.
+
+    UnitAnim computes `frame = block_offset + file_dir * phases + phase`, so the
+    driver must write the PNGs exactly in this order.
+    """
+    schedule = []
+    for key in ACTIONS:
+        for file_dir in range(directions):
+            for index, frame in enumerate(sample_frames(found[key])):
+                schedule.append((key, file_dir, index, frame))
+    return schedule
+
+
 def main() -> None:
     args = parse_args()
     job = json.loads(Path(args.job).read_text(encoding="utf-8"))
     work = Path(job["work_dir"])
     work.mkdir(parents=True, exist_ok=True)
     render_px = int(job["render_px"])
+    directions = int(job.get("directions", 1))
+    elevation = float(job.get("elevation", 20.0))
 
     load_model(job)
     found = find_actions()
     host = animation_host()
-    schedule = [(key, frame) for key in ACTIONS
-                for frame in sample_frames(found[key])]
+    schedule = build_schedule(found, directions)
+
+    setup_scene(job)
     lo, hi = pose_bounds(host, found, schedule)
-    setup_render(job, lo, hi)
-    pivot = pivot_px(render_px)
+    cam = add_camera(lo, hi)
 
     scene = bpy.context.scene
     frames = []
-    for key in ACTIONS:
-        assign_action(host, found[key])
-        for index, frame in enumerate(sample_frames(found[key])):
-            scene.frame_set(frame)
-            bpy.context.view_layer.update()
-            path = work / ("%s_%02d_%04d.png" % (key, index, frame))
-            scene.render.filepath = str(path)
-            bpy.ops.render.render(write_still=True)
-            frames.append({
-                "action": key, "index": index, "frame": frame, "path": str(path),
-            })
+    pivots = {}
+    current_action = None
+    current_dir = -1
+    for key, file_dir, index, frame in schedule:
+        if file_dir != current_dir:
+            azimuth = float(job["azimuth"]) if directions == 1 \
+                else DIR_AZIMUTH[file_dir % 4]
+            aim_camera(cam, azimuth, elevation)
+            pivots[str(file_dir)] = pivot_px(render_px)
+            current_dir = file_dir
+        if key != current_action:
+            assign_action(host, found[key])
+            current_action = key
+        scene.frame_set(frame)
+        bpy.context.view_layer.update()
+        path = work / ("%s_d%d_%02d_%04d.png" % (key, file_dir, index, frame))
+        scene.render.filepath = str(path)
+        bpy.ops.render.render(write_still=True)
+        frames.append({
+            "action": key, "dir": file_dir, "index": index,
+            "frame": frame, "path": str(path),
+        })
 
-    manifest = {"render_px": render_px, "pivot": pivot, "frames": frames}
+    manifest = {
+        "render_px": render_px,
+        "directions": directions,
+        "pivots": pivots,
+        "frames": frames,
+    }
     Path(job["manifest"]).write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
-    print("RENDERED %d frames, pivot=(%.1f, %.1f) px of %d"
-          % (len(frames), pivot[0], pivot[1], render_px))
+    print("RENDERED %d frames, %d direction(s)" % (len(frames), directions))
 
 
 main()

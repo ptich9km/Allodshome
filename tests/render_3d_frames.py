@@ -55,6 +55,9 @@ def parse_args() -> argparse.Namespace:
                     help="output folder, default assets/units/hero/<name>")
     ap.add_argument("--figure-px", type=float, default=FIGURE_PX,
                     help="figure height inside the 64px frame (default 54)")
+    ap.add_argument("--directions", type=int, default=4, choices=[1, 4],
+                    help="1 = side view + mirror, 4 = down/left/up/right "
+                         "(default 4: a 3D model gives all four for free)")
     ap.add_argument("--azimuth", type=float, default=-60.0,
                     help="camera yaw in degrees, 0 = straight in front of the model")
     ap.add_argument("--elevation", type=float, default=20.0,
@@ -106,6 +109,7 @@ def render_raw(args: argparse.Namespace, work: Path) -> dict:
         "azimuth": args.azimuth,
         "elevation": args.elevation,
         "model_yaw": args.model_yaw,
+        "directions": args.directions,
         "work_dir": str(work),
         "manifest": str(work / "manifest.json"),
     }
@@ -138,38 +142,53 @@ def content_bbox(img: Image.Image):
 
 def normalize(manifest: dict, args: argparse.Namespace, out_dir: Path) -> list:
     render_px = int(manifest["render_px"])
-    pivot = manifest["pivot"]
+    pivots = manifest["pivots"]
     frames = manifest["frames"]
 
-    idle = [f for f in frames if f["action"] == "idle"]
-    ref_path = (idle[0] if idle else frames[0])["path"]
-    ref_small = Image.open(ref_path).convert("RGBA") \
-        .resize((OUT_SIZE, OUT_SIZE), Image.LANCZOS)
-    box = content_bbox(ref_small)
-    if box is None:
-        raise SystemExit("the idle frame is fully transparent - nothing rendered")
-    ref_h = max(1.0, float(box[3] - box[1]))
-    zoom = args.figure_px / ref_h          # 64-space zoom, the same for all frames
-    ratio = zoom * (OUT_SIZE / float(render_px))  # apply the zoom while downsampling
+    # One zoom for every frame AND every direction: measured on the tallest
+    # idle view, so the character keeps the same size whichever way it faces.
+    refs = [f for f in frames if f["action"] == "idle"] or [frames[0]]
+    ref_h = 0.0
+    for ref in refs:
+        small = Image.open(ref["path"]).convert("RGBA") \
+            .resize((OUT_SIZE, OUT_SIZE), Image.LANCZOS)
+        box = content_bbox(small)
+        if box is not None:
+            ref_h = max(ref_h, float(box[3] - box[1]))
+    if ref_h < 1.0:
+        raise SystemExit("the idle frames are fully transparent - nothing rendered")
+    # The 1px outline grows the figure by 2px, so the render itself is aimed at
+    # figure_px-2: the painted sets keep their contour INSIDE the 54px quota.
+    ratio = (args.figure_px - (2.0 if args.outline else 0.0)) / ref_h \
+        * (OUT_SIZE / float(render_px))
     # One correction pass: the fringe threshold is approximate, so measure the
-    # resized reference once and fix the ratio. Without it the figure lands on
+    # resized references once and fix the ratio. Without it the figure lands on
     # 52-53px instead of the 54px the rest of the sets use.
     probe_size = max(1, int(round(render_px * ratio)))
-    probe = Image.open(ref_path).convert("RGBA").resize(
-        (probe_size, probe_size), Image.LANCZOS)
-    probe_box = content_bbox(probe)
-    if probe_box is not None:
-        probe_h = max(1.0, float(probe_box[3] - probe_box[1]))
-        ratio *= args.figure_px / probe_h
+    inner_px = args.figure_px - (2.0 if args.outline else 0.0)
+    worst = 1.0
+    for ref in refs:
+        probe = Image.open(ref["path"]).convert("RGBA").resize(
+            (probe_size, probe_size), Image.LANCZOS)
+        probe_box = content_bbox(probe)
+        if probe_box is not None:
+            probe_h = max(1.0, float(probe_box[3] - probe_box[1]))
+            worst = max(worst, probe_h / inner_px)
+    ratio /= worst
 
     size = max(1, int(round(render_px * ratio)))
-    offset_x = int(round(PIVOT_X - pivot[0] * ratio))
-    offset_y = int(round(PIVOT_Y - pivot[1] * ratio))
+    offsets = {}
+    for dir_key, pivot in pivots.items():
+        offsets[str(dir_key)] = (
+            int(round(PIVOT_X - pivot[0] * ratio)),
+            int(round(PIVOT_Y - pivot[1] * ratio)),
+        )
 
     out_paths = []
     for n, item in enumerate(frames, start=1):
         big = Image.open(item["path"]).convert("RGBA").resize(
             (size, size), Image.LANCZOS)
+        offset_x, offset_y = offsets[str(item["dir"])]
         # The pivot is the projected world origin, but the feet have depth: seen
         # from 20 degrees above, the near edge of the boot lands a couple of
         # pixels BELOW the origin and gets cut. Lift only as much as needed, so
@@ -183,10 +202,10 @@ def normalize(manifest: dict, args: argparse.Namespace, out_dir: Path) -> list:
                 oy -= bottom - PIVOT_Y
         canvas = _composite(big, offset_x, oy)
         if _edge_hit(canvas):
-            print("WARN %s[%d]: content touches the frame edge - the pose is "
-                  "wider than the frame. Check that it stays near the pivot, "
+            print("WARN %s dir%d[%d]: content touches the frame edge - the pose "
+                  "is wider than the frame. Check that it stays near the pivot, "
                   "or lower --figure-px (%.1f)"
-                  % (item["action"], item["index"], args.figure_px))
+                  % (item["action"], item["dir"], item["index"], args.figure_px))
         if args.outline:
             canvas = add_outline(canvas)
         target = out_dir / ("sprites-%03d.png" % n)
@@ -226,9 +245,15 @@ def _edge_hit(img: Image.Image) -> bool:
 
 
 def add_outline(img: Image.Image) -> Image.Image:
-    """1px dark contour under the sprite: the painted sets all have one."""
+    """1px dark contour under the sprite: the painted sets all have one.
+
+    The ring is hardened to full opacity: a dilated antialiased alpha leaves a
+    faint 1px halo that neither reads as a contour at 64px nor measures as part
+    of the figure (it fell below the measurement threshold).
+    """
     grown = img.getchannel("A").filter(ImageFilter.MaxFilter(3))
-    line = Image.new("RGBA", img.size, (18, 16, 14, 235))
+    grown = grown.point(lambda v: 255 if v > 8 else 0)
+    line = Image.new("RGBA", img.size, (18, 16, 14, 255))
     line.putalpha(grown)
     out = Image.new("RGBA", img.size, (0, 0, 0, 0))
     out.alpha_composite(line)
@@ -236,16 +261,21 @@ def add_outline(img: Image.Image) -> Image.Image:
     return out
 
 
-def entry_record(name: str, source: Path) -> dict:
+def entry_record(name: str, source: Path, directions: int) -> dict:
+    view = "four views (down/left/up/right)" if directions == 4 \
+        else "three-quarter east view + mirror"
     return {
-        "desc": "Hero: %s, 3D model %s rendered to 12 frames by "
-                "tests/render_3d_frames.py, three-quarter east view + mirror, "
-                "idle1+move4+attack3+dying4" % (name, source.name),
+        "desc": "Hero: %s, 3D model %s rendered to %d frames by "
+                "tests/render_3d_frames.py, %s, "
+                "idle1+move4+attack3+dying4 per view"
+                % (name, source.name, 12 * directions, view),
         "folder": "hero/%s" % name,
-        "frames": 12,
+        "frames": 12 * directions,
         "prefix": "sprites",
-        "dirs": 1,
-        "idle_phases": 1,
+        "dirs": directions,
+        # Total idle frames in the set, not per view: UnitAnim derives the
+        # per-view count from dirs (4 views -> 1 frame each).
+        "idle_phases": directions,
         "move": 4,
         "move_begin": 0,
         "attack": 3,
@@ -271,9 +301,19 @@ def entry_record(name: str, source: Path) -> dict:
     }
 
 
-def write_contact_sheet(frames: list, out_dir: Path) -> Path:
-    cell = OUT_SIZE * 3
-    cols, rows = 4, 3
+def write_contact_sheet(frames: list, manifest: dict, out_dir: Path) -> Path:
+    """Checkerboard preview. Columns = view direction, rows = pose."""
+    directions = int(manifest.get("directions", 1))
+    if directions == 1:
+        cols, rows, cell, order = 4, 3, OUT_SIZE * 3, list(range(len(frames)))
+    else:
+        # idle 1 + walk 4 + attack 3 + die 4 = 12 rows, one column per view.
+        row_of = {}
+        for i, item in enumerate(manifest["frames"]):
+            row = {"idle": 0, "walk": 1, "attack": 5, "die": 8}[item["action"]] \
+                + item["index"]
+            row_of[i] = (row, item["dir"])
+        cols, rows, cell, order = directions, 12, OUT_SIZE * 2, None
     sheet = Image.new("RGBA", (cell * cols, cell * rows), (0, 0, 0, 255))
     draw = ImageDraw.Draw(sheet)
     for y in range(0, sheet.height, 16):
@@ -283,7 +323,11 @@ def write_contact_sheet(frames: list, out_dir: Path) -> Path:
             draw.rectangle([x, y, x + 15, y + 15], fill=shade)
     for i, path in enumerate(frames):
         img = Image.open(path).convert("RGBA").resize((cell, cell), Image.NEAREST)
-        sheet.alpha_composite(img, ((i % cols) * cell, (i // cols) * cell))
+        if order is None:
+            row, col = row_of[i]
+        else:
+            row, col = i // cols, i % cols
+        sheet.alpha_composite(img, (col * cell, row * cell))
     out = out_dir / "_contact_sheet.png"
     sheet.save(out)
     return out
@@ -300,10 +344,10 @@ def main() -> None:
 
     manifest = render_raw(args, work)
     frames = normalize(manifest, args, out_dir)
-    entry = entry_record(args.name, source)
+    entry = entry_record(args.name, source, args.directions)
     (out_dir / "_entry.json").write_text(
         json.dumps(entry, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    sheet = write_contact_sheet(frames, out_dir)
+    sheet = write_contact_sheet(frames, manifest, out_dir)
 
     print("")
     print("rendered %d frames -> %s" % (len(frames), out_dir))
