@@ -5,17 +5,16 @@ Runs INSIDE Blender (no Pillow there), called by the driver:
     blender --background --factory-startup --python tests/render_3d_frames_blender.py \
         -- --job <work>/job.json
 
-Reads the job, loads the model, finds the four actions (idle/walk/attack/die),
-puts an orthographic camera and a key light from the upper left, renders the
-sampled frames of every requested direction on a transparent background and
-writes a manifest with the screen position of the model origin (feet pivot) per
-direction. No image processing here: normalization, outlining and contact
-sheets belong to the driver, which has Pillow.
+Two modes come from the job:
 
-Directions. The game wants `directions` file views: 1 (side view + mirror) or 4
-(front/down, left, back/up, right). A 3D model gives them for free — the artist
-does not draw four versions, we just move the camera. File direction order must
-match `UnitAnim.FILE_DIR_4`: 0=down, 1=left, 2=up, 3=right.
+  * **actions** (a rigged model): one file, four actions named idle/walk/attack/
+    die. We sample frames out of the actions and orbit the camera.
+  * **poses** (no rig, e.g. 12 separate ComfyUI generations): every slot of the
+    set points at its own mesh file. Each file is imported into a clean scene,
+    fitted by its own silhouette and rendered from every requested direction.
+
+No image processing here: normalization, outlining and contact sheets belong to
+the driver, which has Pillow.
 """
 import argparse
 import json
@@ -34,6 +33,9 @@ FIT_MARGIN = 1.12   # camera margin around the union of the rendered poses
 # The 4-dir order is UnitAnim.FILE_DIR_4: 0=down, 1=left, 2=up, 3=right.
 DIR_AZIMUTH = {0: 0.0, 1: 60.0, 2: 180.0, 3: -60.0}
 
+FIT_SIZE = 2.2      # orthographic view size in metres, filled by add_camera
+FIT_TARGET = Vector((0.0, 0.0, 1.0))
+
 
 def parse_args() -> argparse.Namespace:
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
@@ -43,11 +45,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def action_key(action) -> str:
-    """idle/walk/attack/die из любого разумного имени действия.
+    """idle/walk/attack/die from any reasonable action name.
 
-    Real files rarely carry a bare name: glTF exports `Armature|Idle`,
-    Mixamo gives `Armature|mixamo.com|walk`, Blender appends `.001`. Tokenising
-    on separators is much less brittle than prefix matching, and a name that is
+    Real files rarely carry a bare name: glTF exports `Armature|Idle`, Mixamo
+    gives `Armature|mixamo.com|walk`, Blender appends `.001`. Tokenising on
+    separators is much less brittle than prefix matching, and a name that is
     just `mixamo.com` matches nothing — which is honest.
     """
     tokens = re.split(r"[^a-z0-9]+", action.name.lower())
@@ -61,35 +63,40 @@ def action_key(action) -> str:
     return key
 
 
-def load_model(job: dict) -> None:
-    source = Path(job["source"])
-    suffix = str(job.get("suffix", source.suffix)).lower()
-    if job.get("blend"):
-        bpy.ops.wm.open_mainfile(filepath=str(source))
+def open_blend(path: Path) -> None:
+    bpy.ops.wm.open_mainfile(filepath=str(path))
+
+
+def import_mesh(path: Path) -> None:
+    """Empty scene + one mesh file. Format by suffix: generators disagree."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    suffix = path.suffix.lower()
+    if suffix in (".glb", ".gltf"):
+        bpy.ops.import_scene.gltf(filepath=str(path))
+    elif suffix == ".obj":
+        bpy.ops.wm.obj_import(filepath=str(path))
+    elif suffix == ".fbx":
+        bpy.ops.import_scene.fbx(filepath=str(path))
     else:
-        bpy.ops.wm.read_factory_settings(use_empty=True)
-        # Mesh generators export different formats: glTF is the most common,
-        # but ComfyUI pipelines also produce .obj and .fbx.
-        if suffix in (".glb", ".gltf"):
-            bpy.ops.import_scene.gltf(filepath=str(source))
-        elif suffix == ".obj":
-            bpy.ops.wm.obj_import(filepath=str(source))
-        elif suffix == ".fbx":
-            bpy.ops.import_scene.fbx(filepath=str(source))
-        else:
-            raise SystemExit(
-                "unsupported mesh format: %s (expected .glb/.gltf/.obj/.fbx; "
-                "for .blend use --blend)" % suffix)
-    # A camera or light that came with the file would win over ours.
+        raise SystemExit(
+            "unsupported mesh format: %s (expected .glb/.gltf/.obj/.fbx; "
+            "for .blend use --blend)" % suffix)
+
+
+def strip_cameras_and_lights() -> None:
     for obj in list(bpy.data.objects):
         if obj.type in {"CAMERA", "LIGHT"}:
             bpy.data.objects.remove(obj, do_unlink=True)
-    yaw = math.radians(float(job.get("model_yaw", 0.0)))
-    if yaw:
-        for obj in bpy.data.objects:
-            if obj.parent is None and obj.type in {"MESH", "ARMATURE", "EMPTY"}:
-                obj.rotation_mode = "XYZ"
-                obj.rotation_euler.z += yaw
+
+
+def apply_model_yaw(yaw_deg: float) -> None:
+    yaw = math.radians(yaw_deg)
+    if not yaw:
+        return
+    for obj in bpy.data.objects:
+        if obj.parent is None and obj.type in {"MESH", "ARMATURE", "EMPTY"}:
+            obj.rotation_mode = "XYZ"
+            obj.rotation_euler.z += yaw
 
 
 def find_actions() -> dict:
@@ -105,8 +112,9 @@ def find_actions() -> dict:
             "missing actions: %s (found in file: %s). Actions must be named "
             "exactly idle/walk/attack/die. If the .blend has them, they were "
             "probably dropped on save: enable Fake User (the shield icon) on "
-            "each Action or keep them as NLA strips."
-            % (", ".join(missing), names))
+            "each Action or keep them as NLA strips. A mesh with no rig at all "
+            "cannot animate - use --static for a look test, or --poses with "
+            "one mesh per frame." % (", ".join(missing), names))
     return found
 
 
@@ -130,15 +138,38 @@ def assign_action(host, action) -> None:
             host.animation_data.action_slot = slots[0]
 
 
+def scene_bounds() -> tuple:
+    """World-space bounds of the evaluated meshes in the current pose."""
+    bpy.context.view_layer.update()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    lo = Vector((1.0e9, 1.0e9, 1.0e9))
+    hi = Vector((-1.0e9, -1.0e9, -1.0e9))
+    for obj in bpy.data.objects:
+        if obj.type != "MESH":
+            continue
+        ev = obj.evaluated_get(depsgraph)
+        mesh = ev.to_mesh()
+        for vertex in mesh.vertices:
+            world = ev.matrix_world @ vertex.co
+            lo.x = min(lo.x, world.x)
+            lo.y = min(lo.y, world.y)
+            lo.z = min(lo.z, world.z)
+            hi.x = max(hi.x, world.x)
+            hi.y = max(hi.y, world.y)
+            hi.z = max(hi.z, world.z)
+        ev.to_mesh_clear()
+    if lo.x > hi.x:
+        return Vector((-1.0, -1.0, 0.0)), Vector((1.0, 1.0, 1.8))
+    return lo, hi
+
+
 def pose_bounds(host, found: dict, frames: list) -> tuple:
-    """World-space bounds over every pose we are going to render.
+    """Bounds over every pose we render, in the FIRST direction only.
 
     `obj.bound_box` is not reliable here: it is the REST bbox (and may be stale
     right after joining/importing), while a death pose can be three times wider
-    than the rest pose. Measuring the evaluated meshes keeps every frame inside
-    the camera instead of silently clipping arms and legs. The actions must be
-    applied while measuring: a .blend saved in a death pose otherwise reports
-    bounds of that pose only, and every view is fitted to the wrong box.
+    than the rest pose. The actions must be applied while measuring: a .blend
+    saved in a death pose otherwise reports bounds of that pose only.
     """
     scene = bpy.context.scene
     lo = Vector((1.0e9, 1.0e9, 1.0e9))
@@ -149,24 +180,13 @@ def pose_bounds(host, found: dict, frames: list) -> tuple:
             assign_action(host, found[key])
             current_action = key
         scene.frame_set(frame)
-        bpy.context.view_layer.update()
-        depsgraph = bpy.context.evaluated_depsgraph_get()
-        for obj in bpy.data.objects:
-            if obj.type != "MESH":
-                continue
-            ev = obj.evaluated_get(depsgraph)
-            mesh = ev.to_mesh()
-            for vertex in mesh.vertices:
-                world = ev.matrix_world @ vertex.co
-                lo.x = min(lo.x, world.x)
-                lo.y = min(lo.y, world.y)
-                lo.z = min(lo.z, world.z)
-                hi.x = max(hi.x, world.x)
-                hi.y = max(hi.y, world.y)
-                hi.z = max(hi.z, world.z)
-            ev.to_mesh_clear()
-    if lo.x > hi.x:
-        return Vector((-1.0, -1.0, 0.0)), Vector((1.0, 1.0, 1.8))
+        one_lo, one_hi = scene_bounds()
+        lo.x = min(lo.x, one_lo.x)
+        lo.y = min(lo.y, one_lo.y)
+        lo.z = min(lo.z, one_lo.z)
+        hi.x = max(hi.x, one_hi.x)
+        hi.y = max(hi.y, one_hi.y)
+        hi.z = max(hi.z, one_hi.z)
     return lo, hi
 
 
@@ -223,10 +243,6 @@ def setup_scene(job: dict) -> None:
     if bg is not None:
         bg.inputs[0].default_value = (0.32, 0.34, 0.36, 1.0)
         bg.inputs[1].default_value = 0.55
-
-
-FIT_SIZE = 2.2      # orthographic view size in metres, filled by add_camera
-FIT_TARGET = Vector((0.0, 0.0, 1.0))
 
 
 def add_camera(lo: Vector, hi: Vector) -> object:
@@ -316,16 +332,22 @@ def build_schedule(found: dict, directions: int) -> list:
     return schedule
 
 
-def main() -> None:
-    args = parse_args()
-    job = json.loads(Path(args.job).read_text(encoding="utf-8"))
-    work = Path(job["work_dir"])
-    work.mkdir(parents=True, exist_ok=True)
-    render_px = int(job["render_px"])
+def azimuth_for(job: dict, file_dir: int) -> float:
+    return float(job["azimuth"]) if int(job.get("directions", 1)) == 1 \
+        else DIR_AZIMUTH[file_dir % 4]
+
+
+def render_actions(job: dict, work: Path) -> tuple:
+    """Rigged model: one file, four actions. Returns frames + pivots."""
     directions = int(job.get("directions", 1))
     elevation = float(job.get("elevation", 20.0))
-
-    load_model(job)
+    source = Path(job["source"])
+    if job.get("blend"):
+        open_blend(source)
+    else:
+        import_mesh(source)
+    strip_cameras_and_lights()
+    apply_model_yaw(float(job.get("model_yaw", 0.0)))
     static = bool(job.get("static", False))
     found = {} if static else find_actions()
     host = animation_host()
@@ -342,10 +364,8 @@ def main() -> None:
     current_dir = -1
     for key, file_dir, index, frame in schedule:
         if file_dir != current_dir:
-            azimuth = float(job["azimuth"]) if directions == 1 \
-                else DIR_AZIMUTH[file_dir % 4]
-            aim_camera(cam, azimuth, elevation)
-            pivots[str(file_dir)] = pivot_px(render_px)
+            aim_camera(cam, azimuth_for(job, file_dir), elevation)
+            pivots[str(file_dir)] = pivot_px(int(job["render_px"]))
             current_dir = file_dir
         if key != current_action and found:
             assign_action(host, found[key])
@@ -359,16 +379,68 @@ def main() -> None:
             "action": key, "dir": file_dir, "index": index,
             "frame": frame, "path": str(path),
         })
+    return frames, pivots
+
+
+def render_poses(job: dict, work: Path) -> tuple:
+    """Rig-less workflow: one mesh per frame, fitted by its own silhouette."""
+    directions = int(job.get("directions", 1))
+    elevation = float(job.get("elevation", 20.0))
+    poses = job["poses"]            # [{action, index, file}, ...]
+    frames = []
+    for item in poses:
+        source = Path(item["file"])
+        open_mesh = source
+        if source.suffix.lower() == ".blend":
+            open_blend(open_mesh)
+            bpy.context.scene.frame_set(1)
+        else:
+            import_mesh(open_mesh)
+        strip_cameras_and_lights()
+        apply_model_yaw(float(job.get("model_yaw", 0.0)))
+        setup_scene(job)
+        lo, hi = scene_bounds()
+        cam = add_camera(lo, hi)
+        for file_dir in range(directions):
+            aim_camera(cam, azimuth_for(job, file_dir), elevation)
+            path = work / ("%s_d%d_%02d_%s.png"
+                           % (item["action"], file_dir, item["index"],
+                              source.stem))
+            bpy.context.scene.render.filepath = str(path)
+            bpy.ops.render.render(write_still=True)
+            frames.append({
+                "action": item["action"], "dir": file_dir,
+                "index": item["index"], "frame": 1, "path": str(path),
+            })
+    # Engine order: block, then direction, then phase.
+    order = {k: i for i, k in enumerate(ACTIONS)}
+    frames.sort(key=lambda f: (order[f["action"]], f["dir"], f["index"]))
+    return frames, {}
+
+
+def main() -> None:
+    args = parse_args()
+    job = json.loads(Path(args.job).read_text(encoding="utf-8-sig"))
+    work = Path(job["work_dir"])
+    work.mkdir(parents=True, exist_ok=True)
+    mode = str(job.get("mode", "actions"))
+
+    if mode == "poses":
+        frames, pivots = render_poses(job, work)
+    else:
+        frames, pivots = render_actions(job, work)
 
     manifest = {
-        "render_px": render_px,
-        "directions": directions,
+        "mode": mode,
+        "render_px": int(job["render_px"]),
+        "directions": int(job.get("directions", 1)),
         "pivots": pivots,
         "frames": frames,
     }
     Path(job["manifest"]).write_text(
         json.dumps(manifest, indent=1), encoding="utf-8")
-    print("RENDERED %d frames, %d direction(s)" % (len(frames), directions))
+    print("RENDERED %d frames (%s), %d direction(s)"
+          % (len(frames), mode, manifest["directions"]))
 
 
 main()
