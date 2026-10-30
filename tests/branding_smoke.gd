@@ -143,7 +143,9 @@ func _run() -> void:
 			["res://MODDING.md", "MODDING.md"],
 			["res://CONTRIBUTING.md", "CONTRIBUTING.md"],
 			["res://THIRD-PARTY.md", "THIRD-PARTY.md"],
-			["res://LICENSE", "LICENSE"]]:
+			["res://LICENSE", "LICENSE"],
+			["res://docs/asset-contribution-agreement.md", "asset-contribution-agreement.md"],
+			["res://docs/credits/README.md", "credits/README.md"]]:
 		var pub_path := str(pair[0])
 		if not FileAccess.file_exists(pub_path):
 			_check(false, "%s существует" % pair[1])
